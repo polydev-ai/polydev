@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter } from 'lucide-react'
-import { PROVIDERS, ProviderTag } from '../../../types/providers-extension'
+import { PROVIDERS, ProviderTag } from '../../../types/providers'
 
 interface ApiKey {
   id: string
@@ -187,7 +187,7 @@ export default function ApiKeysPage() {
         provider_name: provider.id,
         display_name: provider.name,
         base_url: provider.baseUrl || '',
-        api_key_required: provider.authType === 'api-key',
+        api_key_required: provider.authType === 'api_key',
         supports_streaming: provider.features?.streaming !== false,
         supports_tools: provider.features?.tools === true,
         supports_images: provider.features?.images === true,
@@ -219,7 +219,7 @@ export default function ApiKeysPage() {
     
     // Remove key name validation
     
-    if (provider?.authType === 'api-key' && !formData.api_key.trim()) {
+    if (provider?.authType === 'api_key' && !formData.api_key.trim()) {
       setError('API key is required for this provider')
       return
     }
@@ -550,7 +550,7 @@ export default function ApiKeysPage() {
             </div>
 
             {/* API Key - only show for providers that require it */}
-            {PROVIDERS[formData.provider]?.authType === 'api-key' && (
+            {PROVIDERS[formData.provider]?.authType === 'api_key' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -578,7 +578,7 @@ export default function ApiKeysPage() {
             )}
             
             {/* CLI/Cloud Provider Info */}
-            {PROVIDERS[formData.provider]?.authType !== 'api-key' && (
+            {PROVIDERS[formData.provider]?.authType !== 'api_key' && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -885,7 +885,7 @@ export default function ApiKeysPage() {
                   {/* Tier badge */}
                   <span className={`px-1.5 py-0.5 text-xs rounded font-medium ${
                     provider.tier === 'premium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                    provider.tier === 'enterprise' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                    provider.tier === 'standard' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
                     'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                   }`}>
                     {provider.tier}
@@ -903,7 +903,7 @@ export default function ApiKeysPage() {
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
                 {provider.authType === 'cli' ? 'CLI Authentication' : 
-                 provider.authType === 'api-key' ? 'API Key Authentication' :
+                 provider.authType === 'api_key' ? 'API Key Authentication' :
                  provider.authType === 'oauth' ? 'OAuth Authentication' :
                  provider.authType === 'local' ? 'Local Authentication' :
                  'API Key Authentication'}

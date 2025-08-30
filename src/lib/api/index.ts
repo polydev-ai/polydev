@@ -1,5 +1,4 @@
-import { ApiHandlerOptions, ModelInfo } from '../../types/providers'
-import { ProviderConfiguration } from '../../types/providers-extension'
+import { ApiHandlerOptions, ModelInfo, ProviderConfiguration } from '../../types/providers'
 import { AnthropicHandler } from './providers/anthropic'
 import { OpenAIHandler } from './providers/openai'
 import { GoogleHandler } from './providers/google'
