@@ -64,6 +64,7 @@ export default function Chat() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           messages: [...messages, userMessage],
           models: selectedModels,

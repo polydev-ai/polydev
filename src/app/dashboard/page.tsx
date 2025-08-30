@@ -48,6 +48,7 @@ export default function Dashboard() {
     try {
       // Simulate API call for dashboard data
       const response = await fetch('/api/dashboard/stats', {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${user?.id}`
         }

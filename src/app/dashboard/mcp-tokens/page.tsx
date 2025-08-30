@@ -42,7 +42,9 @@ export default function MCPTokensPage() {
     try {
       setLoading(true)
       
-      const response = await fetch('/api/mcp/tokens')
+      const response = await fetch('/api/mcp/tokens', {
+        credentials: 'include'
+      })
       const data = await response.json()
       
       if (!response.ok) {
@@ -71,6 +73,7 @@ export default function MCPTokensPage() {
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(formData)
       })
       
@@ -98,6 +101,7 @@ export default function MCPTokensPage() {
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({ id: tokenId, active: !active })
       })
       
@@ -117,7 +121,8 @@ export default function MCPTokensPage() {
 
     try {
       const response = await fetch(`/api/mcp/tokens?id=${tokenId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
       })
       
       if (!response.ok) {

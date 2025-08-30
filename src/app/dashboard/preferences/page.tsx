@@ -37,7 +37,9 @@ export default function PreferencesPage() {
     try {
       setLoading(true)
       
-      const response = await fetch('/api/preferences')
+      const response = await fetch('/api/preferences', {
+        credentials: 'include'
+      })
       const data = await response.json()
       
       if (!response.ok) {
@@ -63,6 +65,7 @@ export default function PreferencesPage() {
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(preferences)
       })
       
