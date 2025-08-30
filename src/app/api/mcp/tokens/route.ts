@@ -8,9 +8,17 @@ export async function GET() {
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (userError || !user) {
+    if (userError) {
+      console.error('Auth error in MCP tokens GET:', userError)
+      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
+    }
+    
+    if (!user) {
+      console.log('No user found in MCP tokens GET')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    console.log('MCP tokens GET - User authenticated:', user.id)
     
     const { data: tokens, error } = await supabase
       .from('mcp_user_tokens')
@@ -19,14 +27,21 @@ export async function GET() {
       .order('created_at', { ascending: false })
     
     if (error) {
-      console.error('Error fetching MCP tokens:', error)
-      return NextResponse.json({ error: 'Failed to fetch tokens' }, { status: 500 })
+      console.error('Database error fetching MCP tokens:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 })
     }
+    
+    console.log('MCP tokens fetched successfully, count:', tokens?.length || 0)
     
     return NextResponse.json({ tokens })
   } catch (error) {
-    console.error('Error in GET /api/mcp/tokens:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Unexpected error in GET /api/mcp/tokens:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
@@ -36,9 +51,17 @@ export async function POST(request: NextRequest) {
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (userError || !user) {
+    if (userError) {
+      console.error('Auth error in MCP tokens POST:', userError)
+      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
+    }
+    
+    if (!user) {
+      console.log('No user found in MCP tokens POST')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    console.log('MCP tokens POST - User authenticated:', user.id)
     
     const { token_name, rate_limit_tier = 'standard' } = await request.json()
     
@@ -66,9 +89,12 @@ export async function POST(request: NextRequest) {
       .single()
     
     if (error) {
-      console.error('Error creating MCP token:', error)
-      return NextResponse.json({ error: 'Failed to create token' }, { status: 500 })
+      console.error('Database error creating MCP token:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 })
     }
+    
+    console.log('MCP token created successfully:', newToken?.id)
     
     // Return the token only once (for security)
     return NextResponse.json({ 
@@ -77,8 +103,12 @@ export async function POST(request: NextRequest) {
       message: 'Token created successfully. Save this API key securely - it won\'t be shown again.'
     })
   } catch (error) {
-    console.error('Error in POST /api/mcp/tokens:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Unexpected error in POST /api/mcp/tokens:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 

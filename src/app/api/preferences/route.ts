@@ -7,9 +7,17 @@ export async function GET() {
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
-    if (userError || !user) {
+    if (userError) {
+      console.error('Auth error in preferences GET:', userError)
+      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
+    }
+    
+    if (!user) {
+      console.log('No user found in preferences GET')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    console.log('Preferences GET - User authenticated:', user.id)
     
     const { data: preferences, error } = await supabase
       .from('user_preferences')
@@ -18,8 +26,12 @@ export async function GET() {
       .single()
     
     if (error) {
+      console.error('Database error fetching preferences:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      
       // If no preferences exist, create default ones
       if (error.code === 'PGRST116') {
+        console.log('No preferences found, creating defaults for user:', user.id)
         const defaultPreferences = {
           user_id: user.id,
           default_provider: 'openai',
@@ -44,21 +56,29 @@ export async function GET() {
           .single()
         
         if (insertError) {
-          console.error('Error creating default preferences:', insertError)
-          return NextResponse.json({ error: 'Failed to create preferences' }, { status: 500 })
+          console.error('Database error creating default preferences:', insertError)
+          console.error('Insert error details:', JSON.stringify(insertError, null, 2))
+          return NextResponse.json({ error: `Failed to create preferences: ${insertError.message}` }, { status: 500 })
         }
+        
+        console.log('Default preferences created successfully for user:', user.id)
         
         return NextResponse.json({ preferences: newPreferences })
       }
       
-      console.error('Error fetching preferences:', error)
-      return NextResponse.json({ error: 'Failed to fetch preferences' }, { status: 500 })
+      console.error('Unexpected database error fetching preferences:', error)
+      return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 })
     }
     
+    console.log('Preferences fetched successfully for user:', user.id)
     return NextResponse.json({ preferences })
   } catch (error) {
-    console.error('Error in GET /api/preferences:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Unexpected error in GET /api/preferences:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
