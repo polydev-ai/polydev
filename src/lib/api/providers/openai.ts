@@ -7,7 +7,7 @@ export class OpenAIHandler implements ApiHandler {
   private baseUrl = 'https://api.openai.com/v1'
   
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
-    const { apiKey, baseUrl } = options
+    const { apiKey, openAiBaseUrl } = options
     
     if (!apiKey) {
       throw new Error('API key is required for OpenAI')
@@ -16,7 +16,7 @@ export class OpenAIHandler implements ApiHandler {
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false
     
-    const endpoint = baseUrl || this.baseUrl
+    const endpoint = openAiBaseUrl || this.baseUrl
     const response = await fetch(`${endpoint}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -35,7 +35,7 @@ export class OpenAIHandler implements ApiHandler {
   }
   
   async streamMessage(options: ApiHandlerOptions): Promise<ReadableStream> {
-    const { apiKey, baseUrl } = options
+    const { apiKey, openAiBaseUrl } = options
     
     if (!apiKey) {
       throw new Error('API key is required for OpenAI')
@@ -43,7 +43,7 @@ export class OpenAIHandler implements ApiHandler {
     
     const requestBody = this.transformer.transformRequest(options)
     
-    const endpoint = baseUrl || this.baseUrl
+    const endpoint = openAiBaseUrl || this.baseUrl
     const response = await fetch(`${endpoint}/chat/completions`, {
       method: 'POST',
       headers: {

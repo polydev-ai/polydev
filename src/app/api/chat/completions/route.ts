@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '../../../utils/supabase/server'
-import { apiManager } from '../../../lib/api'
+import { createClient } from '@/app/utils/supabase/server'
+import { apiManager } from '@/lib/api'
 import crypto from 'crypto'
 import { cookies } from 'next/headers'
 
 async function authenticateRequest(request: NextRequest): Promise<{ user: any; preferences: any } | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   // Check for MCP API key in Authorization header
   const authorization = request.headers.get('Authorization')
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
     
     const { user, preferences } = authResult
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Parse request body - support both OpenAI format and Polydev format
     const body = await request.json()
@@ -164,8 +164,8 @@ export async function POST(request: NextRequest) {
         }
         
         try {
-          // Prepare API call options
-          const apiOptions = {
+          // Prepare API call options - need to map provider specific baseUrl names
+          const apiOptions: any = {
             messages: messages.map((msg: any) => ({
               role: msg.role,
               content: msg.content
@@ -174,8 +174,29 @@ export async function POST(request: NextRequest) {
             temperature,
             maxTokens: max_tokens,
             stream: false, // For now, handle streaming separately
-            apiKey: providerKey.apiKey,
-            baseUrl: providerKey.baseUrl
+            apiKey: providerKey.apiKey
+          }
+          
+          // Map provider-specific baseUrl property names
+          if (providerKey.baseUrl) {
+            switch (provider) {
+              case 'openai':
+              case 'groq':
+              case 'deepseek':
+                apiOptions.openAiBaseUrl = providerKey.baseUrl
+                break
+              case 'anthropic':
+                apiOptions.anthropicBaseUrl = providerKey.baseUrl
+                break
+              case 'google':
+                apiOptions.googleBaseUrl = providerKey.baseUrl
+                break
+              case 'xai':
+                apiOptions.xaiBaseUrl = providerKey.baseUrl
+                break
+              default:
+                apiOptions.openAiBaseUrl = providerKey.baseUrl // fallback to OpenAI format
+            }
           }
           
           // Make API call through our provider system
