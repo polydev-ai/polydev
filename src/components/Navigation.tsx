@@ -12,6 +12,7 @@ export default function Navigation() {
 
   const publicNavigation = [
     { name: 'Home', href: '/' },
+    { name: 'CLI Integration', href: '/cli' },
     { name: 'Documentation', href: '/docs' },
   ]
 
@@ -19,6 +20,9 @@ export default function Navigation() {
     { name: 'Home', href: '/' },
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'API Keys', href: '/dashboard/api-keys' },
+    { name: 'MCP Tokens', href: '/dashboard/mcp-tokens' },
+    { name: 'Preferences', href: '/dashboard/preferences' },
+    { name: 'CLI Integration', href: '/cli' },
     { name: 'Chat', href: '/chat' },
     { name: 'Settings', href: '/settings' },
   ]
