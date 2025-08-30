@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import { cookies } from 'next/headers'
 import crypto from 'crypto'
 
 export async function GET() {
   try {
-    const cookieStore = cookies()
     const supabase = await createClient()
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -34,7 +32,6 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = cookies()
     const supabase = await createClient()
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -87,7 +84,6 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const cookieStore = cookies()
     const supabase = await createClient()
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -129,7 +125,6 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const cookieStore = cookies()
     const supabase = await createClient()
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()

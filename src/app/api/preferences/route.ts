@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import { cookies } from 'next/headers'
 
 export async function GET() {
   try {
-    const cookieStore = cookies()
     const supabase = await createClient()
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -66,7 +64,6 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const cookieStore = cookies()
     const supabase = await createClient()
     
     const { data: { user }, error: userError } = await supabase.auth.getUser()

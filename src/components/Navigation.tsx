@@ -1,30 +1,42 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const { user, loading, signOut, isAuthenticated } = useAuth()
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
   const publicNavigation = [
     { name: 'Home', href: '/' },
-    { name: 'CLI Integration', href: '/cli' },
     { name: 'Documentation', href: '/docs' },
+    { name: 'CLI Integration', href: '/cli' },
   ]
 
   const authenticatedNavigation = [
-    { name: 'Home', href: '/' },
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'API Keys', href: '/dashboard/api-keys' },
-    { name: 'MCP Tokens', href: '/dashboard/mcp-tokens' },
-    { name: 'Preferences', href: '/dashboard/preferences' },
-    { name: 'CLI Integration', href: '/cli' },
     { name: 'Chat', href: '/chat' },
-    { name: 'Settings', href: '/settings' },
+    { name: 'Documentation', href: '/docs' },
+    { name: 'CLI Integration', href: '/cli' },
   ]
 
   const navigation = isAuthenticated ? authenticatedNavigation : publicNavigation
@@ -72,19 +84,81 @@ export default function Navigation() {
             {loading ? (
               <div className="w-16 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
             ) : isAuthenticated ? (
-              <div className="flex items-center space-x-4">
-                <Link
-                  href="/profile"
-                  className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 font-medium"
-                >
-                  {user?.email}
-                </Link>
+              <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={signOut}
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 text-sm font-medium"
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
-                  Sign Out
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <span className="max-w-32 truncate">{user?.email}</span>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
+
+                {userDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
+                    <div className="px-4 py-3">
+                      <p className="text-sm text-gray-900 dark:text-white">Signed in as</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.email}</p>
+                    </div>
+                    <div className="py-1">
+                      <Link
+                        href="/profile"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        Profile
+                      </Link>
+                      <Link
+                        href="/dashboard/api-keys"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        API Keys
+                      </Link>
+                      <Link
+                        href="/dashboard/mcp-tokens"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        MCP Tokens
+                      </Link>
+                      <Link
+                        href="/dashboard/preferences"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        Preferences
+                      </Link>
+                      <Link
+                        href="/settings"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        Settings
+                      </Link>
+                    </div>
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          signOut()
+                          setUserDropdownOpen(false)
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <>
