@@ -96,22 +96,21 @@ function buildRequestConfig(
       const isGPT5Model = model.startsWith('gpt-5')
       
       if (isGPT5Model) {
-        // GPT-5 is not yet publicly available - fallback to GPT-4o
-        console.log(`[MCP] GPT-5 requested but not available - falling back to GPT-4o`)
-        const fallbackModel = 'gpt-4o'
+        // Try GPT-5 with proper Responses API (based on GPT-5's expert guidance)
+        console.log(`[MCP] Using GPT-5 with corrected Responses API: ${model}`)
         return {
-          url: `${baseUrl}/chat/completions`,
+          url: `${baseUrl}/responses`,
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
+            // No OpenAI-Beta header unless specifically required
           },
           body: {
-            model: fallbackModel,
-            messages: [{ role: 'user', content: prompt }],
+            model,  // Use exact model name from user
+            input: prompt,  // Use 'input' for responses endpoint
             temperature,
-            max_tokens: maxTokens,
+            max_output_tokens: maxTokens,  // Use max_output_tokens for responses
           },
-          actualModel: fallbackModel,
         }
       }
       
@@ -205,9 +204,13 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
   switch (provider) {
     case 'openai':
     case 'openai-native':
-      // GPT-5 fallback is handled in buildRequestConfig, so parse as standard OpenAI
+      // Handle GPT-5 Responses API format
       if (model?.startsWith('gpt-5')) {
-        console.log(`[MCP] Parsing GPT-5 fallback response (using GPT-4o)`)
+        console.log(`[MCP] Parsing GPT-5 Responses API response`)
+        return {
+          content: data.output || 'No response',
+          tokens_used: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+        }
       }
       console.log(`[MCP] Parsing standard OpenAI response for model: ${model}`)
       // Fall through to standard OpenAI format
