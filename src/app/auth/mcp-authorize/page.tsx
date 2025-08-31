@@ -83,6 +83,7 @@ function MCPAuthorizeContent() {
         headers: {
           'Content-Type': 'application/json'
         },
+        credentials: 'include', // Ensure cookies are sent for session auth
         body: JSON.stringify({
           client_id: clientId,
           redirect_uri: redirectUri,
@@ -112,7 +113,9 @@ function MCPAuthorizeContent() {
       window.location.href = callbackUrl.toString()
 
     } catch (error) {
-      console.error('Authorization error:', error)
+      console.error('[MCP Frontend] Authorization error:', error)
+      console.error('[MCP Frontend] User state:', { user: user ? { id: user.id, email: user.email } : null })
+      console.error('[MCP Frontend] Request details:', { clientId, redirectUri, codeChallenge: codeChallenge?.substring(0, 10) + '...' })
       setError(error instanceof Error ? error.message : 'Authorization failed')
     } finally {
       setLoading(false)
