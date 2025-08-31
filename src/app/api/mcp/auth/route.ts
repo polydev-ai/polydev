@@ -79,6 +79,8 @@ export async function POST(request: NextRequest) {
     
     const { grant_type, code, client_id, client_secret, redirect_uri, code_verifier } = body
 
+    console.log(`[MCP Auth] Request body:`, { grant_type, code: code?.substring(0, 10) + '...', client_id, redirect_uri, code_verifier: code_verifier?.substring(0, 10) + '...' })
+
     if (grant_type !== 'authorization_code') {
       return NextResponse.json({
         error: 'unsupported_grant_type',
@@ -95,6 +97,8 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
+    console.log(`[MCP Auth] Verifying code: ${code.substring(0, 10)}... for client: ${client_id}`)
+
     // Verify the authorization code
     const { data: authData, error: authError } = await supabase
       .from('mcp_auth_codes')
@@ -102,6 +106,8 @@ export async function POST(request: NextRequest) {
       .eq('code', code)
       .eq('client_id', client_id)
       .single()
+
+    console.log(`[MCP Auth] Query result:`, { authData, authError })
 
     if (authError || !authData) {
       return NextResponse.json({
