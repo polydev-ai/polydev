@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import crypto from 'crypto'
+import { randomBytes } from 'crypto'
 
 // Handle OAuth authorization request (GET)
 export async function GET(request: NextRequest) {
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate authorization code
-    const code = crypto.randomBytes(32).toString('base64url')
+    const code = randomBytes(32).toString('base64url')
     const expiresAt = new Date(Date.now() + 600000) // 10 minutes
 
     console.log(`[MCP Authorize] Generating code: ${code.substring(0, 10)}... for client: ${client_id}`)
