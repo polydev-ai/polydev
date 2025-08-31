@@ -91,18 +91,28 @@ function buildRequestConfig(
   switch (provider) {
     case 'openai':
     case 'openai-native':
+      const isGPT5Model = model.startsWith('gpt-5')
+      const body: any = {
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature,
+        max_tokens: maxTokens,
+      }
+      
+      // Add GPT-5 specific parameters
+      if (isGPT5Model) {
+        body.reasoning_effort = 'low'  // Good balance of performance and speed
+        body.verbosity = 'medium'      // Standard verbosity
+        console.log(`[MCP] Adding GPT-5 parameters: reasoning_effort=low, verbosity=medium`)
+      }
+      
       return {
         url: `${baseUrl}/chat/completions`,
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: {
-          model,
-          messages: [{ role: 'user', content: prompt }],
-          temperature,
-          max_tokens: maxTokens,
-        },
+        body,
       }
     
     case 'anthropic':
