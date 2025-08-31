@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { createHash } from 'crypto'
 
-// MCP Server Implementation - Similar to Vercel's approach
+// Vercel configuration for MCP server
+export const dynamic = 'force-dynamic'
+export const maxDuration = 300
+
+// MCP Server Implementation with Bearer Token Authentication
 export async function POST(request: NextRequest) {
   try {
     const requestBody = await request.json()
@@ -40,7 +44,27 @@ export async function POST(request: NextRequest) {
         return handleToolsList(id)
       
       case 'tools/call':
-        return await handleToolCall(params, id, request)
+        // tools/call requires authentication
+        const authResult = await authenticateBearerToken(request)
+        if (!authResult.success) {
+          return NextResponse.json({
+            jsonrpc: '2.0',
+            id,
+            error: {
+              code: -32602,
+              message: authResult.error
+            }
+          }, {
+            status: 401,
+            headers: {
+              'WWW-Authenticate': 'Bearer realm="mcp", error="invalid_token"',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+              'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            }
+          })
+        }
+        return await handleToolCall(params, id, request, authResult.user)
       
       case 'resources/list':
         // We don't implement resources, but return empty list to avoid errors
@@ -196,35 +220,15 @@ function handleToolsList(id: string) {
   })
 }
 
-async function handleToolCall(params: any, id: string, request: NextRequest) {
+async function handleToolCall(params: any, id: string, request: NextRequest, user: any) {
   const { name, arguments: args } = params
-  
-  // Authenticate the request
-  const authResult = await authenticateRequest(request)
-  if (!authResult.success) {
-    return NextResponse.json({
-      jsonrpc: '2.0',
-      id,
-      error: {
-        code: -32602,
-        message: authResult.error
-      }
-    }, {
-      status: 401,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      }
-    })
-  }
 
   try {
     let result
     
     switch (name) {
       case 'get_perspectives':
-        result = await callPerspectivesAPI(args, authResult.user)
+        result = await callPerspectivesAPI(args, user)
         break
       
       case 'search_documentation':
@@ -285,6 +289,83 @@ async function handleToolCall(params: any, id: string, request: NextRequest) {
   }
 }
 
+// New function for Bearer token authentication (used by MCP tools/call)
+async function authenticateBearerToken(request: NextRequest): Promise<{ success: boolean; user?: any; error?: string }> {
+  const authorization = request.headers.get('authorization')
+  
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    return { success: false, error: 'Missing or invalid Authorization header. Use Bearer token.' }
+  }
+
+  const token = authorization.replace('Bearer ', '')
+  
+  // Use service role for validation to bypass RLS
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  let supabase = await createClient()
+  
+  if (serviceRoleKey && serviceRoleKey !== 'your_service_role_key') {
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+    supabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey
+    )
+  }
+  
+  // Check if it's an OAuth access token (starts with polydev_)
+  if (token.startsWith('polydev_')) {
+    const { data: tokenData, error } = await supabase
+      .from('mcp_access_tokens')
+      .select('user_id, expires_at, revoked')
+      .eq('token', token)
+      .eq('revoked', false)
+      .single()
+    
+    if (error || !tokenData) {
+      return { success: false, error: 'Invalid or expired OAuth token' }
+    }
+
+    // Check if token is expired
+    if (new Date(tokenData.expires_at) < new Date()) {
+      return { success: false, error: 'OAuth token has expired' }
+    }
+
+    // Update last used timestamp
+    await supabase
+      .from('mcp_access_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('token', token)
+
+    return { success: true, user: { id: tokenData.user_id } }
+  }
+
+  // Check if it's an MCP token (starts with pd_)
+  if (token.startsWith('pd_')) {
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    
+    const { data: tokenData, error } = await supabase
+      .from('mcp_user_tokens')
+      .select('user_id, active, last_used_at')
+      .eq('token_hash', tokenHash)
+      .eq('active', true)
+      .single()
+    
+    if (error || !tokenData) {
+      return { success: false, error: 'Invalid or expired MCP token' }
+    }
+
+    // Update last used timestamp
+    await supabase
+      .from('mcp_user_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('token_hash', tokenHash)
+
+    return { success: true, user: { id: tokenData.user_id } }
+  }
+
+  return { success: false, error: 'Unsupported token format. Use OAuth tokens (polydev_) or MCP tokens (pd_)' }
+}
+
+// Legacy function for backward compatibility (keeping existing behavior)
 async function authenticateRequest(request: NextRequest): Promise<{ success: boolean; user?: any; error?: string }> {
   const authorization = request.headers.get('authorization')
   

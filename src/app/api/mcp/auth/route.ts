@@ -3,6 +3,10 @@ import { createClient } from '@/app/utils/supabase/server'
 import { cookies } from 'next/headers'
 import { createHash } from 'crypto'
 
+// Vercel configuration
+export const dynamic = 'force-dynamic'
+export const maxDuration = 30
+
 // OAuth-style authentication for MCP clients
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)

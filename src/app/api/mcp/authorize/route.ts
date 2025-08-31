@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { randomBytes } from 'crypto'
 
+// Vercel configuration
+export const dynamic = 'force-dynamic'
+export const maxDuration = 30
+
 // Handle OAuth authorization request (GET)
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
