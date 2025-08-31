@@ -8,84 +8,252 @@ import { createHash } from 'crypto'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-// LLM API Functions
-async function callOpenAI(model: string, prompt: string, apiKey: string, temperature?: number, maxTokens?: number) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+// Provider Configuration Interface
+interface ProviderConfig {
+  id: string
+  provider_name: string
+  display_name: string
+  base_url: string
+  api_key_required: boolean
+  supports_streaming: boolean
+  supports_tools: boolean
+  supports_images: boolean
+  supports_prompt_cache: boolean
+  authentication_method: string
+  models: any[]
+  created_at: string
+  updated_at: string
+}
+
+// API Response Interface
+interface APIResponse {
+  content: string
+  tokens_used: number
+}
+
+// Universal LLM API caller
+async function callLLMAPI(
+  model: string, 
+  prompt: string, 
+  apiKey: string, 
+  providerConfig: ProviderConfig,
+  temperature?: number, 
+  maxTokens?: number
+): Promise<APIResponse> {
+  const temp = temperature || 0.7
+  const tokens = maxTokens || 1000
+  
+  // Build request configuration based on provider
+  const requestConfig = buildRequestConfig(
+    providerConfig.provider_name,
+    providerConfig.base_url,
+    model,
+    prompt,
+    apiKey,
+    temp,
+    tokens
+  )
+  
+  // Make the API call
+  const response = await fetch(requestConfig.url, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: temperature || 0.7,
-      max_tokens: maxTokens || 1000,
-    }),
+    headers: requestConfig.headers,
+    body: JSON.stringify(requestConfig.body),
   })
   
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`)
+    throw new Error(`${providerConfig.display_name} API error: ${response.status} ${response.statusText}`)
   }
   
   const data = await response.json()
-  return {
-    content: data.choices[0]?.message?.content || 'No response',
-    tokens_used: data.usage?.total_tokens || 0
+  
+  // Parse response based on provider format
+  return parseResponse(providerConfig.provider_name, data)
+}
+
+// Request configuration interface
+interface RequestConfig {
+  url: string
+  headers: Record<string, string>
+  body: any
+}
+
+// Build request configuration for different providers
+function buildRequestConfig(
+  provider: string,
+  baseUrl: string,
+  model: string,
+  prompt: string,
+  apiKey: string,
+  temperature: number,
+  maxTokens: number
+): RequestConfig {
+  switch (provider) {
+    case 'openai':
+    case 'openai-native':
+      return {
+        url: `${baseUrl}/chat/completions`,
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: {
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature,
+          max_tokens: maxTokens,
+        },
+      }
+    
+    case 'anthropic':
+      return {
+        url: `${baseUrl}/v1/messages`,
+        headers: {
+          'x-api-key': apiKey,
+          'Content-Type': 'application/json',
+          'anthropic-version': '2023-06-01',
+        },
+        body: {
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature,
+          max_tokens: maxTokens,
+        },
+      }
+    
+    case 'gemini':
+    case 'google':
+      return {
+        url: `${baseUrl}/models/${model}:generateContent?key=${apiKey}`,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens,
+          },
+        },
+      }
+    
+    case 'openrouter':
+    case 'groq':
+    case 'perplexity':
+    case 'deepseek':
+    case 'mistral':
+      // OpenAI-compatible format
+      return {
+        url: `${baseUrl}/chat/completions`,
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: {
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature,
+          max_tokens: maxTokens,
+        },
+      }
+    
+    default:
+      // Default to OpenAI-compatible format for unknown providers
+      return {
+        url: `${baseUrl}/chat/completions`,
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: {
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature,
+          max_tokens: maxTokens,
+        },
+      }
   }
+}
+
+// Parse response based on provider format
+function parseResponse(provider: string, data: any): APIResponse {
+  switch (provider) {
+    case 'openai':
+    case 'openai-native':
+    case 'openrouter':
+    case 'groq':
+    case 'perplexity':
+    case 'deepseek':
+    case 'mistral':
+      return {
+        content: data.choices?.[0]?.message?.content || 'No response',
+        tokens_used: data.usage?.total_tokens || 0
+      }
+    
+    case 'anthropic':
+      return {
+        content: data.content?.[0]?.text || 'No response',
+        tokens_used: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+      }
+    
+    case 'gemini':
+    case 'google':
+      return {
+        content: data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response',
+        tokens_used: data.usageMetadata?.totalTokenCount || 0
+      }
+    
+    default:
+      // Default to OpenAI format
+      return {
+        content: data.choices?.[0]?.message?.content || data.content || 'No response',
+        tokens_used: data.usage?.total_tokens || 0
+      }
+  }
+}
+
+// Get provider configuration from database
+async function getProviderConfig(providerName: string): Promise<ProviderConfig | null> {
+  const supabase = await createClient()
+  
+  const { data: config, error } = await supabase
+    .from('provider_configurations')
+    .select('*')
+    .eq('provider_name', providerName)
+    .eq('active', true)
+    .single()
+  
+  if (error || !config) {
+    console.warn(`No configuration found for provider: ${providerName}`)
+    return null
+  }
+  
+  return config
+}
+
+// Legacy helper functions (keeping for backward compatibility)
+async function callOpenAI(model: string, prompt: string, apiKey: string, temperature?: number, maxTokens?: number) {
+  const config = await getProviderConfig('openai')
+  if (!config) {
+    throw new Error('OpenAI provider configuration not found')
+  }
+  return callLLMAPI(model, prompt, apiKey, config, temperature, maxTokens)
 }
 
 async function callAnthropic(model: string, prompt: string, apiKey: string, temperature?: number, maxTokens?: number) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: temperature || 0.7,
-      max_tokens: maxTokens || 1000,
-    }),
-  })
-  
-  if (!response.ok) {
-    throw new Error(`Anthropic API error: ${response.status} ${response.statusText}`)
+  const config = await getProviderConfig('anthropic')
+  if (!config) {
+    throw new Error('Anthropic provider configuration not found')
   }
-  
-  const data = await response.json()
-  return {
-    content: data.content[0]?.text || 'No response',
-    tokens_used: data.usage?.input_tokens + data.usage?.output_tokens || 0
-  }
+  return callLLMAPI(model, prompt, apiKey, config, temperature, maxTokens)
 }
 
 async function callGoogle(model: string, prompt: string, apiKey: string, temperature?: number, maxTokens?: number) {
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: temperature || 0.7,
-        maxOutputTokens: maxTokens || 1000,
-      },
-    }),
-  })
-  
-  if (!response.ok) {
-    throw new Error(`Google API error: ${response.status} ${response.statusText}`)
+  const config = await getProviderConfig('gemini')
+  if (!config) {
+    throw new Error('Google/Gemini provider configuration not found')
   }
-  
-  const data = await response.json()
-  return {
-    content: data.candidates[0]?.content?.parts[0]?.text || 'No response',
-    tokens_used: data.usageMetadata?.totalTokenCount || 0
-  }
+  return callLLMAPI(model, prompt, apiKey, config, temperature, maxTokens)
 }
 
 // MCP Server Implementation with Bearer Token Authentication
@@ -555,27 +723,41 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
 
   console.log(`[MCP] Found ${apiKeys?.length || 0} API keys for user ${user.id}`)
 
+  // Get all provider configurations
+  const { data: providerConfigs } = await supabase
+    .from('provider_configurations')
+    .select('*')
+    .eq('active', true)
+
+  // Create provider lookup map
+  const configMap = new Map<string, ProviderConfig>()
+  providerConfigs?.forEach(config => {
+    configMap.set(config.provider_name, config)
+  })
+
   // Call actual LLM APIs
   const responses = await Promise.all(
     models.map(async (model: string) => {
       const startTime = Date.now()
       try {
-        // Determine provider from model name
-        let provider = 'unknown'
-        if (model.includes('gpt') || model.includes('o1')) {
-          provider = 'openai'
-        } else if (model.includes('claude')) {
-          provider = 'anthropic'
-        } else if (model.includes('gemini')) {
-          provider = 'google'
+        // Determine provider from model name or use intelligent matching
+        const provider = determineProvider(model, configMap)
+        if (!provider) {
+          return {
+            model,
+            error: `No provider configuration found for model: ${model}`
+          }
         }
 
         // Find API key for this provider
-        const apiKey = apiKeys?.find(key => key.provider === provider)
+        const apiKey = apiKeys?.find(key => 
+          key.provider === provider.provider_name || 
+          key.provider === provider.id
+        )
         if (!apiKey) {
           return {
             model,
-            error: `No API key found for provider: ${provider}. Please add your ${provider} API key in the dashboard.`
+            error: `No API key found for provider: ${provider.display_name}. Please add your ${provider.display_name} API key in the dashboard.`
           }
         }
 
@@ -583,24 +765,20 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
         // For now, let's assume it's stored as plaintext for testing
         const decryptedKey = apiKey.encrypted_key
 
-        let response
-        switch (provider) {
-          case 'openai':
-            response = await callOpenAI(model, args.prompt, decryptedKey, args.temperature, args.max_tokens)
-            break
-          case 'anthropic':
-            response = await callAnthropic(model, args.prompt, decryptedKey, args.temperature, args.max_tokens)
-            break
-          case 'google':
-            response = await callGoogle(model, args.prompt, decryptedKey, args.temperature, args.max_tokens)
-            break
-          default:
-            throw new Error(`Unsupported provider: ${provider}`)
-        }
+        // Use the unified API caller
+        const response = await callLLMAPI(
+          model, 
+          args.prompt, 
+          decryptedKey, 
+          provider,
+          args.temperature, 
+          args.max_tokens
+        )
 
         const latency = Date.now() - startTime
         return {
           model,
+          provider: provider.display_name,
           content: response.content,
           tokens_used: response.tokens_used,
           latency_ms: latency
@@ -618,19 +796,21 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
 
   const totalTokens = responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0)
   const totalLatency = Math.max(...responses.map(r => r.latency_ms || 0))
+  const successCount = responses.filter(r => !r.error).length
 
   // Format the response
   let formatted = `# Multiple AI Perspectives\n\n`
-  formatted += `Got ${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.\n\n`
+  formatted += `Got ${successCount}/${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.\n\n`
 
   responses.forEach((response, index) => {
     const modelName = response.model.toUpperCase()
+    const providerName = response.provider ? ` (${response.provider})` : ''
     
     if (response.error) {
-      formatted += `## ${modelName} - ERROR\n`
+      formatted += `## ${modelName}${providerName} - ERROR\n`
       formatted += `❌ ${response.error}\n\n`
     } else {
-      formatted += `## ${modelName} Perspective\n`
+      formatted += `## ${modelName}${providerName}\n`
       formatted += `${response.content}\n\n`
       if (response.tokens_used) {
         formatted += `*Tokens: ${response.tokens_used}, Latency: ${response.latency_ms}ms*\n\n`
@@ -643,6 +823,46 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
   })
 
   return formatted
+}
+
+// Intelligent provider determination based on model name
+function determineProvider(model: string, configMap: Map<string, ProviderConfig>): ProviderConfig | null {
+  // Direct model name matching first
+  for (const [providerName, config] of configMap) {
+    if (config.models?.some((m: any) => m.id === model || m.name === model)) {
+      return config
+    }
+  }
+  
+  // Pattern matching based on model name
+  const modelLower = model.toLowerCase()
+  
+  if (modelLower.includes('gpt') || modelLower.includes('o1') || modelLower.includes('o3') || modelLower.includes('o4')) {
+    return configMap.get('openai') || configMap.get('openai-native') || null
+  }
+  
+  if (modelLower.includes('claude')) {
+    return configMap.get('anthropic') || null
+  }
+  
+  if (modelLower.includes('gemini')) {
+    return configMap.get('gemini') || configMap.get('google') || null
+  }
+  
+  if (modelLower.includes('llama') || modelLower.includes('mistral') || modelLower.includes('mixtral')) {
+    return configMap.get('openrouter') || configMap.get('groq') || null
+  }
+  
+  if (modelLower.includes('deepseek')) {
+    return configMap.get('deepseek') || null
+  }
+  
+  if (modelLower.includes('sonar')) {
+    return configMap.get('perplexity') || null
+  }
+  
+  // Default fallback to first available OpenAI-compatible provider
+  return configMap.get('openai') || configMap.get('openrouter') || null
 }
 
 async function searchDocumentation(args: any): Promise<string> {
