@@ -64,13 +64,10 @@ function MCPAuthorizeContent() {
 
   async function handleAuthorize() {
     if (!user) {
-      // Redirect to login
-      await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-          redirectTo: `${window.location.origin}/auth/mcp-authorize?${searchParams.toString()}`
-        }
-      })
+      // Redirect to Polydev sign in page
+      const signInUrl = new URL('/auth', window.location.origin)
+      signInUrl.searchParams.set('redirectTo', `/auth/mcp-authorize?${searchParams.toString()}`)
+      window.location.href = signInUrl.toString()
       return
     }
 
