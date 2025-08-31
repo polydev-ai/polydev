@@ -101,6 +101,7 @@ function buildRequestConfig(
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
+            'OpenAI-Beta': 'responses=v1',  // Required header for Responses API
           },
           body: {
             model,
