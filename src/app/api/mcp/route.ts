@@ -957,6 +957,22 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
   const totalLatency = Math.max(...responses.map(r => r.latency_ms || 0))
   const successCount = responses.filter(r => !r.error).length
 
+  // Log MCP tool call to chat_logs for dashboard statistics
+  try {
+    await serviceRoleSupabase
+      .from('chat_logs')
+      .insert({
+        user_id: user.id,
+        models_used: models,
+        message_count: 1, // One MCP tool call
+        total_tokens: totalTokens,
+        created_at: new Date().toISOString()
+      })
+    console.log(`[MCP] Logged tool call to chat_logs: ${models.length} models, ${totalTokens} tokens`)
+  } catch (logError) {
+    console.warn('[MCP] Failed to log tool call to chat_logs:', logError)
+  }
+
   // Format the response
   let formatted = `# Multiple AI Perspectives\n\n`
   formatted += `Got ${successCount}/${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.\n\n`
