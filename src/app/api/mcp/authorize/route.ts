@@ -160,7 +160,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code })
 
   } catch (error) {
-    console.error('Authorization error:', error)
+    console.error('[MCP Authorize] FATAL ERROR:', error)
+    console.error('[MCP Authorize] Error stack:', error instanceof Error ? error.stack : 'No stack')
     return NextResponse.json({
       error: 'server_error',
       error_description: 'Internal server error'
