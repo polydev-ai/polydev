@@ -98,6 +98,18 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     console.log(`[MCP Auth] Verifying code: ${code.substring(0, 10)}... for client: ${client_id}`)
+    console.log(`[MCP Auth] Full code: ${code}`)
+    console.log(`[MCP Auth] Full client_id: ${client_id}`)
+
+    // First, let's see if any codes exist for this client
+    const { data: clientCodes, error: clientCodesError } = await supabase
+      .from('mcp_auth_codes')
+      .select('code, client_id, created_at, used, expires_at')
+      .eq('client_id', client_id)
+      .order('created_at', { ascending: false })
+      .limit(5)
+
+    console.log(`[MCP Auth] Recent codes for client:`, { clientCodes, clientCodesError })
 
     // Verify the authorization code
     const { data: authData, error: authError } = await supabase

@@ -122,6 +122,8 @@ export async function POST(request: NextRequest) {
     const code = crypto.randomBytes(32).toString('base64url')
     const expiresAt = new Date(Date.now() + 600000) // 10 minutes
 
+    console.log(`[MCP Authorize] Generating code: ${code.substring(0, 10)}... for client: ${client_id}`)
+
     // Store the authorization code
     const { error: insertError } = await supabase
       .from('mcp_auth_codes')
@@ -136,6 +138,8 @@ export async function POST(request: NextRequest) {
         expires_at: expiresAt.toISOString(),
         used: false
       })
+
+    console.log(`[MCP Authorize] Insert result:`, { insertError })
 
     if (insertError) {
       console.error('Error storing auth code:', insertError)
