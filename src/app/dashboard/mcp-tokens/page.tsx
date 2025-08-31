@@ -194,7 +194,7 @@ export default function MCPTokensPage() {
                 Connect your MCP clients to Polydev's hosted server for breakthrough insights from multiple AI models. Supports both OAuth and API token authentication.
               </p>
               <div className="bg-blue-100 dark:bg-blue-800 rounded px-3 py-2 font-mono text-sm">
-                <strong>Server URL:</strong> https://polydev.ai/api/mcp
+                <strong>Server URL:</strong> https://www.polydev.ai/api/mcp
               </div>
             </div>
           </div>
@@ -430,7 +430,7 @@ export default function MCPTokensPage() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "oauth",
@@ -455,7 +455,7 @@ export default function MCPTokensPage() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "bearer",

@@ -17,7 +17,8 @@ Advanced Model Context Protocol platform with comprehensive multi-LLM integratio
 - **GitHub Copilot**: VS Code Language Model API integration
 
 ### 🛠 **Advanced Tooling**
-- **Model Context Protocol (MCP)**: Comprehensive tooling integration
+- **Model Context Protocol (MCP)**: Hosted MCP server with OAuth authentication (like Vercel)
+- **Multi-Authentication**: Both OAuth and API token support for maximum flexibility
 - **Process Execution**: Cross-platform CLI management with timeout handling
 - **Path Auto-Discovery**: Smart detection of CLI installations across Windows, macOS, Linux
 - **Real-time Status**: Live CLI availability and authentication checking

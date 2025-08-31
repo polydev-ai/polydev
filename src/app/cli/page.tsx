@@ -38,7 +38,7 @@ export default function CLIIntegrationPage() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "oauth",
@@ -84,7 +84,7 @@ export default function CLIIntegrationPage() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "bearer",
@@ -127,7 +127,7 @@ export default function CLIIntegrationPage() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "bearer", 
@@ -170,7 +170,7 @@ export default function CLIIntegrationPage() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "bearer",

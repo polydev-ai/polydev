@@ -830,7 +830,7 @@ export default function Home() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "oauth",
@@ -864,7 +864,7 @@ export default function Home() {
       "remote": {
         "transport": {
           "type": "sse", 
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         }
       }
     }

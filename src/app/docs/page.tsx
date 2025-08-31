@@ -114,11 +114,11 @@ export default function Documentation() {
             
             <h3>Step 1: Connect to Hosted MCP Server</h3>
             <p>Connect directly to our hosted MCP server - no downloads or npm packages required.</p>
-            <pre className="bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto text-sm font-mono border"><code>{`Server URL: https://polydev.ai/api/mcp`}</code></pre>
+            <pre className="bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto text-sm font-mono border"><code>{`Server URL: https://www.polydev.ai/api/mcp`}</code></pre>
             
             <h3>Step 2: Configure Your Authentication</h3>
             <p>Set up your authentication for accessing the hosted MCP server:</p>
-            <pre className="bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto text-sm font-mono border"><code>{`Hosted Server: https://polydev.ai/api/mcp
+            <pre className="bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto text-sm font-mono border"><code>{`Hosted Server: https://www.polydev.ai/api/mcp
 Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
             
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 my-6">
@@ -158,7 +158,7 @@ Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "oauth",
@@ -180,7 +180,7 @@ Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "bearer",
@@ -203,7 +203,7 @@ Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
         "remote": {
           "transport": {
             "type": "sse",
-            "url": "https://polydev.ai/api/mcp"
+            "url": "https://www.polydev.ai/api/mcp"
           },
           "auth": {
             "type": "oauth",
@@ -224,7 +224,7 @@ Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
   "remote": {
     "transport": {
       "type": "sse",
-      "url": "https://polydev.ai/api/mcp"
+      "url": "https://www.polydev.ai/api/mcp"
     },
     "auth": {
       "type": "bearer",
@@ -1140,7 +1140,7 @@ func main() {
             
             <div className="bg-gray-50 border rounded-lg p-4 mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">1. Get Server URL</h3>
-              <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>Server URL: https://polydev.ai/api/mcp</code></pre>
+              <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>Server URL: https://www.polydev.ai/api/mcp</code></pre>
             </div>
             
             <div className="bg-gray-50 border rounded-lg p-4 mb-6">
@@ -1156,7 +1156,7 @@ func main() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "oauth",
@@ -1206,7 +1206,7 @@ func main() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "oauth",
@@ -1227,7 +1227,7 @@ func main() {
       "remote": {
         "transport": {
           "type": "sse",
-          "url": "https://polydev.ai/api/mcp"
+          "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
           "type": "bearer",
@@ -1242,7 +1242,7 @@ func main() {
               <div className="bg-white rounded-lg p-4 border border-purple-200 mt-4">
                 <h4 className="font-semibold text-gray-900 mb-2">Cursor / Cline</h4>
                 <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`# Configure remote MCP server connection
-Server URL: https://polydev.ai/api/mcp
+Server URL: https://www.polydev.ai/api/mcp
 Transport: Server-Sent Events (SSE)
 Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
               </div>

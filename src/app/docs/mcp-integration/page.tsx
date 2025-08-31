@@ -18,33 +18,69 @@ export default function MCPIntegrationPage() {
 
   const configs = {
     claude: {
-      title: 'Claude Desktop',
+      title: 'Claude Desktop (OAuth)',
       config: `{
   "mcpServers": {
     "polydev": {
-      "command": "npx",
-      "args": ["-y", "@polydev/mcp-client"],
-      "env": {
-        "POLYDEV_API_KEY": "pd_your_token_here",
-        "POLYDEV_BASE_URL": "https://www.polydev.ai/api/chat/completions"
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://www.polydev.ai/api/mcp"
+        }
       }
     }
   }
 }`,
       configPath: '~/Library/Application Support/Claude/claude_desktop_config.json'
     },
-    continue: {
-      title: 'Continue VS Code Extension',
+    claudeToken: {
+      title: 'Claude Desktop (API Token)',
       config: `{
-  "models": [
-    {
-      "title": "Polydev Multi-Model",
-      "provider": "openai",
-      "model": "gpt-4o",
-      "apiBase": "https://www.polydev.ai/api/chat/completions",
-      "apiKey": "pd_your_token_here"
+  "mcpServers": {
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://www.polydev.ai/api/mcp"
+        },
+        "headers": {
+          "Authorization": "Bearer pd_your_token_here"
+        }
+      }
     }
-  ]
+  }
+}`,
+      configPath: '~/Library/Application Support/Claude/claude_desktop_config.json'
+    },
+    cursor: {
+      title: 'Cursor (OAuth)',
+      config: `{
+  "mcpServers": {
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse", 
+          "url": "https://www.polydev.ai/api/mcp"
+        }
+      }
+    }
+  }
+}`,
+      configPath: 'Cursor Settings → Extensions → MCP'
+    },
+    continue: {
+      title: 'Continue VS Code (OAuth)',
+      config: `{
+  "mcpServers": {
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://www.polydev.ai/api/mcp"
+        }
+      }
+    }
+  }
 }`,
       configPath: '~/.continue/config.json'
     },
@@ -96,27 +132,63 @@ const completion = await client.chat.completions.create({
           Connect your favorite MCP clients to Polydev and route requests through your configured providers with intelligent model selection.
         </p>
         
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 mb-8">
+          <div className="flex items-start space-x-4">
+            <Zap className="w-8 h-8 text-green-600 dark:text-green-400 mt-1" />
+            <div>
+              <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-2">
+                ✨ New: Hosted MCP Server (Like Vercel)
+              </h3>
+              <p className="text-green-800 dark:text-green-200 mb-3">
+                Connect directly to our hosted MCP server at <code className="bg-green-100 dark:bg-green-800 px-2 py-1 rounded text-sm">https://www.polydev.ai/api/mcp</code> 
+                with OAuth authentication - no downloads required!
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 rounded-full">
+                  🔐 OAuth Authentication
+                </span>
+                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded-full">
+                  🚀 Instant Setup
+                </span>
+                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded-full">
+                  🔄 Auto-Updates
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 mb-8">
           <div className="flex items-start space-x-4">
             <Key className="w-8 h-8 text-blue-600 dark:text-blue-400 mt-1" />
             <div>
               <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                Before You Start
+                Two Authentication Methods
               </h3>
-              <ol className="text-blue-800 dark:text-blue-200 space-y-2">
-                <li className="flex items-center space-x-2">
-                  <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
-                  <span><strong>Configure your API keys</strong> for providers like OpenAI, Anthropic, Google in the <a href="/dashboard/api-keys" className="underline font-medium">API Keys</a> section</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
-                  <span><strong>Generate an MCP token</strong> in the <a href="/dashboard/mcp-tokens" className="underline font-medium">MCP Tokens</a> section</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
-                  <span><strong>Set your preferences</strong> for default models in the <a href="/dashboard/preferences" className="underline font-medium">Preferences</a> section</span>
-                </li>
-              </ol>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">🔐 OAuth (Recommended)</h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                    One-click authorization, similar to Vercel MCP. Most secure and user-friendly.
+                  </p>
+                  <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                    <li>• Add Polydev MCP URL to your client</li>
+                    <li>• Authorize through OAuth flow</li>
+                    <li>• Start using instantly</li>
+                  </ol>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">🔑 API Tokens</h4>
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                    Generate tokens manually for programmatic access or custom integrations.
+                  </p>
+                  <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                    <li>• Generate token in dashboard</li>
+                    <li>• Configure your providers</li>
+                    <li>• Use token in MCP config</li>
+                  </ol>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -202,29 +274,68 @@ const completion = await client.chat.completions.create({
       {/* API Reference */}
       <div className="mt-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-          API Reference
+          MCP Server Reference
         </h2>
         
         <div className="space-y-6">
           <div>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              Base URL
+              MCP Server URL
             </h3>
             <code className="bg-gray-100 dark:bg-gray-900 px-3 py-2 rounded text-sm">
-              https://www.polydev.ai/api/chat/completions
+              https://www.polydev.ai/api/mcp
             </code>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mt-2">
+              Connect directly to our hosted MCP server - no downloads or npm packages required.
+            </p>
           </div>
           
           <div>
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              Authentication
+              Authentication Methods
             </h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-2">
-              Include your MCP token in the Authorization header:
-            </p>
-            <code className="bg-gray-100 dark:bg-gray-900 px-3 py-2 rounded text-sm block">
-              Authorization: Bearer pd_your_token_here
-            </code>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 dark:text-white mb-2">OAuth (Recommended)</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                  Automatic browser-based authorization flow
+                </p>
+                <code className="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded block">
+                  No manual configuration required
+                </code>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 dark:text-white mb-2">API Token</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                  Manual token-based authentication
+                </p>
+                <code className="text-xs bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded block">
+                  Authorization: Bearer pd_your_token
+                </code>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              Available Tools
+            </h3>
+            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">get_perspectives</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Get multiple AI perspectives on a prompt using your configured providers
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">search_documentation</h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Search Polydev documentation and guides
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div>

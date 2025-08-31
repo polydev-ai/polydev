@@ -1,0 +1,131 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/app/utils/supabase/server'
+import { cookies } from 'next/headers'
+
+// OAuth-style authentication for MCP clients
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const clientId = searchParams.get('client_id')
+  const redirectUri = searchParams.get('redirect_uri')
+  const state = searchParams.get('state')
+  
+  // Validate required parameters
+  if (!clientId || !redirectUri) {
+    return NextResponse.json({
+      error: 'invalid_request',
+      error_description: 'Missing required parameters: client_id and redirect_uri are required'
+    }, { status: 400 })
+  }
+
+  // For now, we'll support a basic OAuth flow
+  // In production, you'd validate the client_id against registered MCP clients
+  const validClientIds = [
+    'claude-desktop',
+    'cursor',
+    'continue',
+    'vscode-copilot',
+    'custom-mcp-client'
+  ]
+
+  if (!validClientIds.includes(clientId)) {
+    return NextResponse.json({
+      error: 'invalid_client',
+      error_description: 'Unknown or invalid client_id'
+    }, { status: 400 })
+  }
+
+  // Create authorization URL with state
+  const authUrl = new URL('/auth/mcp-authorize', request.nextUrl.origin)
+  authUrl.searchParams.set('client_id', clientId)
+  authUrl.searchParams.set('redirect_uri', redirectUri)
+  if (state) authUrl.searchParams.set('state', state)
+
+  // Redirect to authorization page
+  return NextResponse.redirect(authUrl)
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { grant_type, code, client_id, client_secret, redirect_uri } = body
+
+    if (grant_type !== 'authorization_code') {
+      return NextResponse.json({
+        error: 'unsupported_grant_type',
+        error_description: 'Only authorization_code grant type is supported'
+      }, { status: 400 })
+    }
+
+    if (!code || !client_id || !redirect_uri) {
+      return NextResponse.json({
+        error: 'invalid_request',
+        error_description: 'Missing required parameters'
+      }, { status: 400 })
+    }
+
+    const supabase = await createClient()
+
+    // Verify the authorization code
+    const { data: authData, error: authError } = await supabase
+      .from('mcp_auth_codes')
+      .select('user_id, expires_at, used')
+      .eq('code', code)
+      .eq('client_id', client_id)
+      .single()
+
+    if (authError || !authData) {
+      return NextResponse.json({
+        error: 'invalid_grant',
+        error_description: 'Invalid or expired authorization code'
+      }, { status: 400 })
+    }
+
+    if (authData.used) {
+      return NextResponse.json({
+        error: 'invalid_grant',
+        error_description: 'Authorization code has already been used'
+      }, { status: 400 })
+    }
+
+    if (new Date(authData.expires_at) < new Date()) {
+      return NextResponse.json({
+        error: 'invalid_grant',
+        error_description: 'Authorization code has expired'
+      }, { status: 400 })
+    }
+
+    // Mark the code as used
+    await supabase
+      .from('mcp_auth_codes')
+      .update({ used: true })
+      .eq('code', code)
+
+    // Generate access token
+    const accessToken = `polydev_${Buffer.from(`${authData.user_id}_${Date.now()}_${Math.random()}`).toString('base64url')}`
+
+    // Store the access token
+    const expiresAt = new Date(Date.now() + 3600000) // 1 hour
+    await supabase
+      .from('mcp_access_tokens')
+      .insert({
+        token: accessToken,
+        user_id: authData.user_id,
+        client_id,
+        expires_at: expiresAt.toISOString()
+      })
+
+    return NextResponse.json({
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: 3600,
+      scope: 'mcp:tools'
+    })
+
+  } catch (error) {
+    console.error('MCP OAuth error:', error)
+    return NextResponse.json({
+      error: 'server_error',
+      error_description: 'Internal server error'
+    }, { status: 500 })
+  }
+}

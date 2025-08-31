@@ -8,12 +8,31 @@ export async function GET() {
     // Test basic connection
     console.log('Testing database connection...')
     
-    // Test if tables exist
-    const { data: tables, error: tablesError } = await supabase
-      .from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', 'public')
-      .in('table_name', ['mcp_user_tokens', 'user_preferences'])
+    // Test if tables exist by attempting to select from them
+    const tableChecks = []
+    
+    // Check mcp_user_tokens table
+    const { error: mcpError } = await supabase
+      .from('mcp_user_tokens')
+      .select('id')
+      .limit(1)
+    
+    if (!mcpError) {
+      tableChecks.push('mcp_user_tokens')
+    }
+    
+    // Check user_preferences table  
+    const { error: prefsError } = await supabase
+      .from('user_preferences')
+      .select('id')
+      .limit(1)
+      
+    if (!prefsError) {
+      tableChecks.push('user_preferences')
+    }
+    
+    const tables = tableChecks.map(name => ({ table_name: name }))
+    const tablesError = mcpError && prefsError ? mcpError : null
     
     if (tablesError) {
       console.error('Error checking tables:', tablesError)
