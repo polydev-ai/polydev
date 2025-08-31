@@ -296,6 +296,7 @@ export async function POST(request: NextRequest) {
       case 'tools/call':
         // tools/call requires authentication
         const authResult = await authenticateBearerToken(request)
+        console.log(`[MCP] Authentication result for tools/call:`, authResult)
         if (!authResult.success) {
           return NextResponse.json({
             jsonrpc: '2.0',
@@ -569,6 +570,7 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
   }
 
   const token = authorization.replace('Bearer ', '')
+  console.log(`[MCP Auth] Token received:`, token.substring(0, 20) + '...')
   
   // Use service role for validation to bypass RLS
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -584,6 +586,7 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
   
   // Check if it's an OAuth access token (starts with polydev_)
   if (token.startsWith('polydev_')) {
+    console.log(`[MCP Auth] OAuth token detected, validating...`)
     const { data: tokenData, error } = await supabase
       .from('mcp_access_tokens')
       .select('user_id, expires_at, revoked')
@@ -591,12 +594,19 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
       .eq('revoked', false)
       .single()
     
+    console.log(`[MCP Auth] Token query result:`, { tokenData, error })
+    
     if (error || !tokenData) {
+      console.log(`[MCP Auth] Token validation failed:`, error?.message || 'No token data')
       return { success: false, error: 'Invalid or expired OAuth token' }
     }
 
     // Check if token is expired
-    if (new Date(tokenData.expires_at) < new Date()) {
+    const tokenExpiry = new Date(tokenData.expires_at)
+    const now = new Date()
+    console.log(`[MCP Auth] Token expiry check:`, { expires_at: tokenExpiry, now, expired: tokenExpiry < now })
+    
+    if (tokenExpiry < now) {
       return { success: false, error: 'OAuth token has expired' }
     }
 
@@ -707,10 +717,24 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
     throw new Error('prompt is required and must be a string')
   }
 
-  const supabase = await createClient()
+  // Use service role client for all database operations since we already validated OAuth
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  console.log(`[MCP] Service role key available:`, !!serviceRoleKey)
   
-  // Get user preferences with comprehensive settings
-  const { data: preferences } = await supabase
+  if (!serviceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY not found in environment')
+  }
+  
+  const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+  const serviceRoleSupabase = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey
+  )
+  
+  console.log(`[MCP] Service role client created successfully`)
+  
+  // Get user preferences with comprehensive settings using service role
+  const { data: preferences } = await serviceRoleSupabase
     .from('user_preferences')
     .select('*')
     .eq('user_id', user.id)
@@ -740,17 +764,22 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
   console.log(`[MCP] Getting perspectives for user ${user.id}: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`)
   console.log(`[MCP] Models: ${models.join(', ')}`)
 
-  // Get user API keys from database
-  const { data: apiKeys } = await supabase
+  // Get user API keys from database using service role (bypasses RLS since we already validated OAuth)
+  console.log(`[MCP] Authenticated user: ${user.id}`)
+  console.log(`[MCP] Querying API keys for user_id: ${user.id}`)
+  const { data: apiKeys, error: apiKeysError } = await serviceRoleSupabase
     .from('user_api_keys')
     .select('provider, encrypted_key, key_preview, api_base, default_model')
     .eq('user_id', user.id)
-    .eq('active', true)
 
+  console.log(`[MCP] API Keys Query Result:`, { apiKeys, error: apiKeysError })
   console.log(`[MCP] Found ${apiKeys?.length || 0} API keys for user ${user.id}`)
+  if (apiKeys?.length > 0) {
+    console.log(`[MCP] API Keys:`, apiKeys.map(k => ({ provider: k.provider, preview: k.key_preview })))
+  }
 
-  // Get all provider configurations
-  const { data: providerConfigs } = await supabase
+  // Get all provider configurations using service role
+  const { data: providerConfigs } = await serviceRoleSupabase
     .from('provider_configurations')
     .select('*')
 
@@ -774,12 +803,28 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
           }
         }
 
-        // Find API key for this provider  
+        // Find API key for this provider with fallback matching
         console.log(`[MCP] Looking for API key - Provider: ${provider.provider_name}/${provider.id}, Available keys: ${apiKeys?.map(k => k.provider).join(', ')}`)
-        const apiKey = apiKeys?.find(key => 
-          key.provider === provider.provider_name || 
-          key.provider === provider.id
-        )
+        
+        // Enhanced provider matching to handle variations like openai <-> openai-native
+        const findApiKeyForProvider = (providerName: string) => {
+          return apiKeys?.find(key => {
+            // Direct match
+            if (key.provider === providerName || key.provider === provider.id) return true
+            
+            // Handle OpenAI variations
+            if ((providerName === 'openai' && key.provider === 'openai-native') ||
+                (providerName === 'openai-native' && key.provider === 'openai')) return true
+                
+            // Handle Google/Gemini variations  
+            if ((providerName === 'google' && key.provider === 'gemini') ||
+                (providerName === 'gemini' && key.provider === 'google')) return true
+                
+            return false
+          })
+        }
+        
+        const apiKey = findApiKeyForProvider(provider.provider_name)
         if (!apiKey) {
           return {
             model,
