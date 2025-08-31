@@ -67,8 +67,9 @@ async function callLLMAPI(
   
   const data = await response.json()
   
-  // Parse response based on provider format
-  return parseResponse(providerConfig.provider_name, data, model)
+  // Parse response based on provider format (use actualModel if available)
+  const modelForParsing = requestConfig.actualModel || model
+  return parseResponse(providerConfig.provider_name, data, modelForParsing)
 }
 
 // Request configuration interface
@@ -76,6 +77,7 @@ interface RequestConfig {
   url: string
   headers: Record<string, string>
   body: any
+  actualModel?: string  // Track the actual model used (for fallbacks)
 }
 
 // Build request configuration for different providers
@@ -109,6 +111,7 @@ function buildRequestConfig(
             temperature,
             max_tokens: maxTokens,
           },
+          actualModel: fallbackModel,
         }
       }
       
