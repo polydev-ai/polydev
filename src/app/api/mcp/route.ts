@@ -774,7 +774,7 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
 
   console.log(`[MCP] API Keys Query Result:`, { apiKeys, error: apiKeysError })
   console.log(`[MCP] Found ${apiKeys?.length || 0} API keys for user ${user.id}`)
-  if (apiKeys?.length > 0) {
+  if (apiKeys && apiKeys.length > 0) {
     console.log(`[MCP] API Keys:`, apiKeys.map(k => ({ provider: k.provider, preview: k.key_preview })))
   }
 
