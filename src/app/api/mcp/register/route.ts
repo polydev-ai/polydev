@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import crypto from 'crypto'
+import { randomBytes } from 'crypto'
 
 // Dynamic Client Registration for MCP OAuth
 export async function POST(request: NextRequest) {
@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate client credentials
-    const client_id = `mcp_${crypto.randomBytes(16).toString('hex')}`
-    const client_secret = crypto.randomBytes(32).toString('hex')
-    const registration_access_token = crypto.randomBytes(32).toString('hex')
+    const client_id = `mcp_${randomBytes(16).toString('hex')}`
+    const client_secret = randomBytes(32).toString('hex')
+    const registration_access_token = randomBytes(32).toString('hex')
 
     const supabase = await createClient()
 

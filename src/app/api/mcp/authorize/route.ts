@@ -82,7 +82,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log(`[MCP Authorize] POST request received`)
+    const requestId = Math.random().toString(36).substring(7)
+    console.log(`[MCP Authorize v2.0] POST request received - ID: ${requestId} - Time: ${new Date().toISOString()}`)
     
     const supabase = await createClient()
     

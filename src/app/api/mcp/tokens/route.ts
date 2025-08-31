@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import crypto from 'crypto'
+import { randomBytes, createHash } from 'crypto'
 
 export async function GET() {
   try {
@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
     }
     
     // Generate a secure token
-    const token = `pd_${crypto.randomBytes(32).toString('hex')}`
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+    const token = `pd_${randomBytes(32).toString('hex')}`
+    const tokenHash = createHash('sha256').update(token).digest('hex')
     const tokenPreview = `${token.slice(0, 12)}...${token.slice(-8)}`
     
     // Insert the token
