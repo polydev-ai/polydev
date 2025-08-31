@@ -2,6 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import crypto from 'crypto'
 
+// Handle OAuth authorization request (GET)
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const client_id = searchParams.get('client_id')
+  const redirect_uri = searchParams.get('redirect_uri')
+  const state = searchParams.get('state')
+  const response_type = searchParams.get('response_type')
+
+  if (!client_id || !redirect_uri || response_type !== 'code') {
+    return NextResponse.json({
+      error: 'invalid_request',
+      error_description: 'Missing or invalid parameters'
+    }, { status: 400 })
+  }
+
+  // Redirect to authorization page
+  const authUrl = new URL('/auth/mcp-authorize', request.url)
+  authUrl.searchParams.set('client_id', client_id)
+  authUrl.searchParams.set('redirect_uri', redirect_uri)
+  if (state) authUrl.searchParams.set('state', state)
+
+  return NextResponse.redirect(authUrl)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()

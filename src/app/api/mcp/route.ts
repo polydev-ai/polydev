@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
             status: 401,
             headers: {
               'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Methods': 'POST, OPTIONS',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
               'Access-Control-Allow-Headers': 'Content-Type, Authorization',
             }
           })
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         }, {
           headers: {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           }
         })
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       status: 500,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       }
     })
@@ -93,7 +93,7 @@ function handleInitialize(params: any, id: string) {
   }, {
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     }
   })
@@ -155,7 +155,7 @@ function handleToolsList(id: string) {
   }, {
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     }
   })
@@ -178,7 +178,7 @@ async function handleToolCall(params: any, id: string, request: NextRequest) {
       status: 401,
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       }
     })
@@ -207,7 +207,7 @@ async function handleToolCall(params: any, id: string, request: NextRequest) {
         }, {
           headers: {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           }
         })
@@ -227,7 +227,7 @@ async function handleToolCall(params: any, id: string, request: NextRequest) {
     }, {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       }
     })
@@ -243,7 +243,7 @@ async function handleToolCall(params: any, id: string, request: NextRequest) {
     }, {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       }
     })
@@ -433,13 +433,33 @@ async function searchDocumentation(args: any): Promise<string> {
   return formatted
 }
 
+// Handle OAuth discovery (GET requests)
+export async function GET(request: NextRequest) {
+  // Return OAuth server configuration like Vercel MCP does
+  return NextResponse.json({
+    issuer: 'https://www.polydev.ai',
+    authorization_endpoint: 'https://www.polydev.ai/api/mcp/authorize',
+    token_endpoint: 'https://www.polydev.ai/api/mcp/auth',
+    supported_grant_types: ['authorization_code'],
+    supported_response_types: ['code'],
+    supported_scopes: ['mcp'],
+    jwks_uri: 'https://www.polydev.ai/api/mcp/jwks'
+  }, {
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    }
+  })
+}
+
 // Handle CORS preflight
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400',
     },
