@@ -157,7 +157,7 @@ Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
@@ -179,7 +179,7 @@ Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
@@ -202,7 +202,7 @@ Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
       "polydev": {
         "remote": {
           "transport": {
-            "type": "sse",
+            "type": "http",
             "url": "https://www.polydev.ai/api/mcp"
           },
           "auth": {
@@ -223,7 +223,7 @@ Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
                 <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`{
   "remote": {
     "transport": {
-      "type": "sse",
+      "type": "http",
       "url": "https://www.polydev.ai/api/mcp"
     },
     "auth": {
@@ -237,7 +237,7 @@ Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
 
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
               <h4 className="font-semibold text-green-900 mb-2">💡 Pro Tip</h4>
-              <p className="text-green-800 text-sm">The hosted server approach means no local installation needed! Connect directly from any MCP-compatible client using Server-Sent Events (SSE) transport.</p>
+              <p className="text-green-800 text-sm">The hosted server approach means no local installation needed! Connect directly from any MCP-compatible client using HTTP JSON-RPC transport.</p>
             </div>
 
             <h3>Step 4: Test the Integration</h3>
@@ -1155,7 +1155,7 @@ func main() {
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
@@ -1205,7 +1205,7 @@ func main() {
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
@@ -1226,7 +1226,7 @@ func main() {
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
@@ -1243,7 +1243,7 @@ func main() {
                 <h4 className="font-semibold text-gray-900 mb-2">Cursor / Cline</h4>
                 <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`# Configure remote MCP server connection
 Server URL: https://www.polydev.ai/api/mcp
-Transport: Server-Sent Events (SSE)
+Transport: HTTP JSON-RPC
 Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
               </div>
             </div>

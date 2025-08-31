@@ -429,7 +429,7 @@ export default function MCPTokensPage() {
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {
@@ -454,7 +454,7 @@ export default function MCPTokensPage() {
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         },
         "auth": {

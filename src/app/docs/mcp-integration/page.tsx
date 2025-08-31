@@ -24,7 +24,7 @@ export default function MCPIntegrationPage() {
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         }
       }
@@ -40,7 +40,7 @@ export default function MCPIntegrationPage() {
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         },
         "headers": {
@@ -59,7 +59,7 @@ export default function MCPIntegrationPage() {
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse", 
+          "type": "http", 
           "url": "https://www.polydev.ai/api/mcp"
         }
       }
@@ -75,7 +75,7 @@ export default function MCPIntegrationPage() {
     "polydev": {
       "remote": {
         "transport": {
-          "type": "sse",
+          "type": "http",
           "url": "https://www.polydev.ai/api/mcp"
         }
       }
