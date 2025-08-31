@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// OAuth 2.0 Authorization Server Metadata
+// OAuth 2.0 Authorization Server Metadata with PKCE Support
 export async function GET(request: NextRequest) {
   return NextResponse.json({
     issuer: 'https://www.polydev.ai',
