@@ -1,3 +1,5 @@
+// Import crypto polyfill first
+import '@/lib/crypto-polyfill'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { createHash } from 'crypto'
@@ -5,6 +7,86 @@ import { createHash } from 'crypto'
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
+
+// LLM API Functions
+async function callOpenAI(model: string, prompt: string, apiKey: string, temperature?: number, maxTokens?: number) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: temperature || 0.7,
+      max_tokens: maxTokens || 1000,
+    }),
+  })
+  
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`)
+  }
+  
+  const data = await response.json()
+  return {
+    content: data.choices[0]?.message?.content || 'No response',
+    tokens_used: data.usage?.total_tokens || 0
+  }
+}
+
+async function callAnthropic(model: string, prompt: string, apiKey: string, temperature?: number, maxTokens?: number) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: temperature || 0.7,
+      max_tokens: maxTokens || 1000,
+    }),
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Anthropic API error: ${response.status} ${response.statusText}`)
+  }
+  
+  const data = await response.json()
+  return {
+    content: data.content[0]?.text || 'No response',
+    tokens_used: data.usage?.input_tokens + data.usage?.output_tokens || 0
+  }
+}
+
+async function callGoogle(model: string, prompt: string, apiKey: string, temperature?: number, maxTokens?: number) {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: temperature || 0.7,
+        maxOutputTokens: maxTokens || 1000,
+      },
+    }),
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Google API error: ${response.status} ${response.statusText}`)
+  }
+  
+  const data = await response.json()
+  return {
+    content: data.candidates[0]?.content?.parts[0]?.text || 'No response',
+    tokens_used: data.usageMetadata?.totalTokenCount || 0
+  }
+}
 
 // MCP Server Implementation with Bearer Token Authentication
 export async function POST(request: NextRequest) {
@@ -464,21 +546,71 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
   console.log(`[MCP] Getting perspectives for user ${user.id}: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`)
   console.log(`[MCP] Models: ${models.join(', ')}`)
 
-  // Simulate multi-model response (in a real implementation, you'd call your LLM service)
+  // Get user API keys from database
+  const { data: apiKeys } = await supabase
+    .from('user_api_keys')
+    .select('provider, encrypted_key, key_preview, api_base, default_model')
+    .eq('user_id', user.id)
+    .eq('active', true)
+
+  console.log(`[MCP] Found ${apiKeys?.length || 0} API keys for user ${user.id}`)
+
+  // Call actual LLM APIs
   const responses = await Promise.all(
     models.map(async (model: string) => {
+      const startTime = Date.now()
       try {
-        // This is a placeholder - you'd replace with actual LLM API calls
+        // Determine provider from model name
+        let provider = 'unknown'
+        if (model.includes('gpt') || model.includes('o1')) {
+          provider = 'openai'
+        } else if (model.includes('claude')) {
+          provider = 'anthropic'
+        } else if (model.includes('gemini')) {
+          provider = 'google'
+        }
+
+        // Find API key for this provider
+        const apiKey = apiKeys?.find(key => key.provider === provider)
+        if (!apiKey) {
+          return {
+            model,
+            error: `No API key found for provider: ${provider}. Please add your ${provider} API key in the dashboard.`
+          }
+        }
+
+        // Decrypt the API key (in a real implementation, you'd decrypt properly)
+        // For now, let's assume it's stored as plaintext for testing
+        const decryptedKey = apiKey.encrypted_key
+
+        let response
+        switch (provider) {
+          case 'openai':
+            response = await callOpenAI(model, args.prompt, decryptedKey, args.temperature, args.max_tokens)
+            break
+          case 'anthropic':
+            response = await callAnthropic(model, args.prompt, decryptedKey, args.temperature, args.max_tokens)
+            break
+          case 'google':
+            response = await callGoogle(model, args.prompt, decryptedKey, args.temperature, args.max_tokens)
+            break
+          default:
+            throw new Error(`Unsupported provider: ${provider}`)
+        }
+
+        const latency = Date.now() - startTime
         return {
           model,
-          content: `This is a perspective from ${model} on: "${args.prompt}"\n\nThis would contain the actual AI response in a real implementation.`,
-          tokens_used: Math.floor(Math.random() * 500) + 100,
-          latency_ms: Math.floor(Math.random() * 2000) + 500
+          content: response.content,
+          tokens_used: response.tokens_used,
+          latency_ms: latency
         }
       } catch (error) {
+        const latency = Date.now() - startTime
         return {
           model,
-          error: `Failed to get response from ${model}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          error: `Failed to get response from ${model}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          latency_ms: latency
         }
       }
     })

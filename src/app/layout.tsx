@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import '@/lib/crypto-polyfill'
 import { PostHogProvider } from '@/components/posthog-provider'
 import Navigation from '../components/Navigation'
 
