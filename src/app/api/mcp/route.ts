@@ -433,19 +433,30 @@ function handleToolsList(id: string) {
           models: {
             type: 'array',
             items: { type: 'string' },
-            description: 'Array of model names to use (optional, defaults to user preferences)'
+            description: 'Array of model names to use (optional, defaults to user preferred providers)'
           },
           temperature: {
             type: 'number',
-            description: 'Temperature for response generation (0.0-2.0, default: 0.7)',
+            description: 'Temperature for response generation (0.0-2.0, default from user preferences)',
             minimum: 0,
             maximum: 2
           },
           max_tokens: {
             type: 'number',
-            description: 'Maximum tokens per response (default: 2000)',
+            description: 'Maximum tokens per response (default from user preferences)',
             minimum: 1,
-            maximum: 8000
+            maximum: 32000
+          },
+          provider_settings: {
+            type: 'object',
+            description: 'Per-provider settings for temperature and token limits',
+            additionalProperties: {
+              type: 'object',
+              properties: {
+                temperature: { type: 'number', minimum: 0, maximum: 2 },
+                max_tokens: { type: 'number', minimum: 1, maximum: 32000 }
+              }
+            }
           }
         },
         required: ['prompt']
@@ -698,18 +709,34 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
 
   const supabase = await createClient()
   
-  // Get user preferences
+  // Get user preferences with comprehensive settings
   const { data: preferences } = await supabase
     .from('user_preferences')
     .select('*')
     .eq('user_id', user.id)
     .single()
 
-  const models = args.models || Object.values(preferences?.model_preferences || {
-    'openai': 'gpt-4o',
-    'anthropic': 'claude-3-5-sonnet-20241022',
-    'google': 'gemini-2.0-flash-exp'
-  })
+  console.log(`[MCP] User preferences:`, preferences)
+
+  // Use models from args, or user preferences, or fallback defaults
+  const models = args.models || 
+    (preferences?.preferred_providers?.length > 0 
+      ? preferences.preferred_providers.map((provider: string) => {
+          const modelPref = preferences?.model_preferences?.[provider]
+          return modelPref || getDefaultModelForProvider(provider)
+        })
+      : Object.values(preferences?.model_preferences || {
+          'openai': 'gpt-4o',
+          'anthropic': 'claude-3-5-sonnet-20241022',
+          'gemini': 'gemini-2.0-flash-exp'
+        })
+    )
+
+  // Use temperature and max_tokens from args, or user preferences, or defaults
+  const temperature = args.temperature ?? preferences?.default_temperature ?? 0.7
+  const maxTokens = args.max_tokens ?? preferences?.default_max_tokens ?? 1000
+
+  console.log(`[MCP] Using temperature: ${temperature}, maxTokens: ${maxTokens}`)
 
   console.log(`[MCP] Getting perspectives for user ${user.id}: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`)
   console.log(`[MCP] Models: ${models.join(', ')}`)
@@ -765,14 +792,21 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
         // For now, let's assume it's stored as plaintext for testing
         const decryptedKey = apiKey.encrypted_key
 
-        // Use the unified API caller
+        // Use provider-specific settings if provided, otherwise use global settings
+        const providerSettings = args.provider_settings?.[provider.provider_name] || {}
+        const providerTemperature = providerSettings.temperature ?? temperature
+        const providerMaxTokens = providerSettings.max_tokens ?? maxTokens
+
+        console.log(`[MCP] ${provider.display_name} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens}`)
+
+        // Use the unified API caller with provider-specific preferences
         const response = await callLLMAPI(
           model, 
           args.prompt, 
           decryptedKey, 
           provider,
-          args.temperature, 
-          args.max_tokens
+          providerTemperature, 
+          providerMaxTokens
         )
 
         const latency = Date.now() - startTime
@@ -823,6 +857,23 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
   })
 
   return formatted
+}
+
+// Helper function to get default model for a provider
+function getDefaultModelForProvider(provider: string): string {
+  const defaults: Record<string, string> = {
+    'openai': 'gpt-4o',
+    'openai-native': 'gpt-4o', 
+    'anthropic': 'claude-3-5-sonnet-20241022',
+    'gemini': 'gemini-2.0-flash-exp',
+    'google': 'gemini-2.0-flash-exp',
+    'openrouter': 'meta-llama/llama-3.2-90b-vision-instruct',
+    'groq': 'llama-3.1-70b-versatile',
+    'perplexity': 'llama-3.1-sonar-large-128k-online',
+    'deepseek': 'deepseek-chat',
+    'mistral': 'mistral-large-latest'
+  }
+  return defaults[provider] || 'gpt-4o'
 }
 
 // Intelligent provider determination based on model name
