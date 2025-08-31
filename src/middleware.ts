@@ -31,6 +31,11 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Skip middleware for MCP API routes (before auth check)
+  if (request.nextUrl.pathname.startsWith('/api/mcp')) {
+    return response
+  }
+
   // Refresh session if expired - required for Server Components
   await supabase.auth.getUser()
 
