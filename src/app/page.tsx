@@ -172,7 +172,7 @@ export default function Home() {
           <div className="text-center">
             <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-full text-sm font-medium mb-8 border border-slate-200 dark:border-slate-700">
               <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-              Model Context Protocol (MCP) Server
+              Hosted MCP Server • OAuth & API Token Auth • Like Vercel MCP
             </div>
             
             <h1 className="text-5xl md:text-7xl font-bold text-slate-900 dark:text-white mb-8 tracking-tight leading-tight">
@@ -822,15 +822,20 @@ export default function Home() {
                       <h4 className="font-semibold text-slate-900 dark:text-white">Claude Desktop</h4>
                     </div>
                     <div className="bg-slate-900 rounded-lg p-4 text-sm">
-                      <div className="text-slate-400 text-xs mb-2">config.json</div>
+                      <div className="text-slate-400 text-xs mb-2">claude_desktop_config.json</div>
                       <pre className="text-gray-100 font-mono text-xs overflow-x-auto">
 {`{
   "mcpServers": {
     "polydev": {
-      "command": "node",
-      "args": ["path/to/polydev-server.js"],
-      "env": {
-        "POLYDEV_API_URL": "https://polydev.ai/api"
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "oauth",
+          "provider": "polydev"
+        }
       }
     }
   }
@@ -856,8 +861,12 @@ export default function Home() {
   },
   "mcpServers": {
     "polydev": {
-      "command": "node",
-      "args": ["./polydev-mcp-server.js"]
+      "remote": {
+        "transport": {
+          "type": "sse", 
+          "url": "https://polydev.ai/api/mcp"
+        }
+      }
     }
   }
 }`}
@@ -865,36 +874,47 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Usage Example */}
+                  {/* Authentication Options */}
                   <div className="md:col-span-2 bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700">
-                    <h4 className="font-semibold text-slate-900 dark:text-white mb-4">Usage in Agent</h4>
-                    <div className="bg-slate-900 rounded-lg p-4">
-                      <div className="text-slate-400 text-xs mb-2">Tool Call Example</div>
-                      <pre className="text-gray-100 font-mono text-sm overflow-x-auto">
-{`// When your agent gets stuck:
-const result = await callTool({
-  name: "get_breakthroughs",
-  arguments: {
-    prompt: "React component re-renders excessively, can't find root cause",
-    user_token: "poly_your_token_here",
-    models: ["gpt-4", "claude-3-sonnet", "gemini-pro"]
-  }
-});
+                    <h4 className="font-semibold text-slate-900 dark:text-white mb-4">Authentication Options</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* OAuth Flow */}
+                      <div className="bg-slate-900 rounded-lg p-4">
+                        <div className="text-slate-400 text-xs mb-2">OAuth (Recommended)</div>
+                        <pre className="text-gray-100 font-mono text-xs overflow-x-auto">
+{`// Visit in browser:
+https://polydev.ai/auth/mcp-authorize
+?client_id=claude-desktop
+&response_type=code
+&redirect_uri=https://localhost:8080
 
-// Process multiple breakthrough insights
-const breakthrough = analyzeCommonPatterns(result.insights);
-return implementSolution(breakthrough);`}
-                      </pre>
+// OAuth flow handled automatically`}
+                        </pre>
+                      </div>
+
+                      {/* API Token */}
+                      <div className="bg-slate-900 rounded-lg p-4">
+                        <div className="text-slate-400 text-xs mb-2">API Token</div>
+                        <pre className="text-gray-100 font-mono text-xs overflow-x-auto">
+{`// In MCP server config:
+"env": {
+  "POLYDEV_TOKEN": "pd_your_api_token_here"
+}
+
+// Or in Authorization header:
+Authorization: Bearer pd_token`}
+                        </pre>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="text-center mt-8">
                   <Link
-                    href="/docs"
+                    href="/docs/mcp-integration"
                     className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                   >
-                    View full documentation →
+                    View full integration guide →
                   </Link>
                 </div>
               </div>

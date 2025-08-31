@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Terminal, Zap, Settings, Command, GitBranch, FileText, Users, Sparkles, ArrowRight, Code, Cpu, Network, Link, Download, Copy, Check, ExternalLink } from 'lucide-react'
 
 export default function CLIIntegrationPage() {
-  const [activeTab, setActiveTab] = useState('claude-code')
+  const [activeTab, setActiveTab] = useState('claude-desktop')
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null)
 
   const copyToClipboard = async (text: string, id: string) => {
@@ -18,119 +18,148 @@ export default function CLIIntegrationPage() {
   }
 
   const cliIntegrations = {
-    'claude-code': {
-      name: 'Claude Code',
-      description: 'Anthropic\'s official CLI with advanced MCP support and August 2025 features',
+    'claude-desktop': {
+      name: 'Claude Desktop',
+      description: 'Anthropic\'s official desktop app with native MCP support and seamless Polydev integration',
       logo: '🤖',
       features: [
-        'Customizable status line with real-time metrics',
-        'Claude Opus 4.1 integration',
-        'Advanced MCP server management',
-        'Cross-platform native performance',
-        'Custom slash commands and agents'
+        'Native MCP protocol support',
+        'Hosted server connectivity via SSE',
+        'OAuth and API token authentication',
+        'Real-time multi-model insights',
+        'Seamless context management'
       ],
       setup: {
-        install: 'npm install -g @anthropic/claude-code',
-        config: `# Add to ~/.claude/mcp_servers.json
-{
-  "polydev": {
-    "command": "npx",
-    "args": ["-y", "@polydev/mcp-server"],
-    "env": {
-      "POLYDEV_API_KEY": "pd_your_token_here"
-    }
-  }
-}`,
-        usage: [
-          'claude mcp add polydev',
-          'claude chat "Route this through my best model"',
-          '@polydev help'
-        ]
-      },
-      latestFeatures: [
-        'August 2025: Customizable status line',
-        'Opus 4.1 with 74.5% SWE-bench performance',
-        'Enhanced Windows native support',
-        'MCP server hot-reloading'
-      ]
-    },
-    'gemini-cli': {
-      name: 'Gemini CLI',
-      description: 'Google\'s open-source AI agent with Agent Mode and reason-and-act capabilities',
-      logo: '💎',
-      features: [
-        'Agent Mode with multi-step reasoning',
-        'Real-time inline diff editing',
-        'Batched tool call approvals',
-        'Cross-IDE integration (VS Code, IntelliJ)',
-        'Custom slash commands'
-      ],
-      setup: {
-        install: 'npm install -g @google/gemini-cli',
-        config: `# Add to gemini.config.json
+        install: 'Download Claude Desktop from claude.ai',
+        config: `# Add to claude_desktop_config.json
 {
   "mcpServers": {
     "polydev": {
-      "command": "npx @polydev/mcp-server",
-      "env": {
-        "POLYDEV_API_KEY": "pd_your_token_here"
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "oauth",
+          "provider": "polydev"
+        }
       }
     }
   }
 }`,
         usage: [
-          'gemini mcp install polydev',
-          'gemini agent-mode "Implement authentication"',
-          'gemini chat --with-polydev'
+          'Use get_perspectives tool in chat',
+          'Ask for multi-model insights on any topic',
+          'Automatic breakthrough routing'
         ]
       },
       latestFeatures: [
-        'August 2025: Agent Mode GA release',
-        'Gemini 2.5 Pro/Flash integration',
-        'Real-time shell command output',
-        'Enhanced IDE integration'
+        'Hosted MCP server integration',
+        'OAuth authentication flow',
+        'Real-time breakthrough insights',
+        'Native MCP tool support'
       ]
     },
-    'codex-cli': {
-      name: 'Codex CLI',
-      description: 'OpenAI\'s powerful coding agent with native Rust performance and GPT-5 integration',
-      logo: '⚡',
+    'continue': {
+      name: 'Continue.dev',
+      description: 'Open-source AI code assistant with extensive MCP support for VS Code and JetBrains',
+      logo: '💎',
       features: [
-        'Complete Rust rewrite for native performance',
-        'IDE integration with context sharing',
-        '90% faster container caching',
-        'Voice dictation support',
-        'Internet access during execution'
+        'Deep codebase understanding',
+        'Real-time code suggestions',
+        'Multi-model routing capability',
+        'Cross-IDE integration (VS Code, IntelliJ)',
+        'Custom slash commands'
       ],
       setup: {
-        install: 'curl -fsSL https://cli.openai.com/install | sh',
-        config: `# Add to ~/.codex/config.toml
-[mcp_servers.polydev]
-command = "npx @polydev/mcp-server"
-env = { POLYDEV_API_KEY = "pd_your_token_here" }`,
+        install: 'Install Continue extension in VS Code/JetBrains',
+        config: `# Add to .continue/config.json
+{
+  "experimental": {
+    "modelContextProtocol": true
+  },
+  "mcpServers": {
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "bearer",
+          "token": "pd_your_token_here"
+        }
+      }
+    }
+  }
+}`,
         usage: [
-          'codex mcp add polydev',
-          'codex task "Build user dashboard with Polydev"',
-          'codex --voice "Create API endpoints"'
+          'Use @polydev in chat for multi-model insights',
+          'Get breakthrough insights on coding problems',
+          'Route complex queries through multiple models'
         ]
       },
       latestFeatures: [
-        'August 2025: Complete Rust rewrite',
-        'GPT-5 agentic coding capabilities',
-        'Zero-dependency installation',
-        'Native IDE extensions'
+        'Hosted MCP server support',
+        'Bearer token authentication',
+        'Real-time model switching',
+        'Enhanced context awareness'
+      ]
+    },
+    'cursor': {
+      name: 'Cursor',
+      description: 'AI-first code editor with built-in chat and MCP integration for enhanced coding workflows',
+      logo: '⚡',
+      features: [
+        'AI-first editing experience',
+        'Built-in chat with MCP support',
+        'Multi-file context understanding',
+        'Real-time code suggestions',
+        'Custom model routing'
+      ],
+      setup: {
+        install: 'Download Cursor from cursor.com',
+        config: `# Add to Cursor MCP settings
+{
+  "mcpServers": {
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "bearer", 
+          "token": "pd_your_token_here"
+        }
+      }
+    }
+  }
+}`,
+        usage: [
+          'Use get_perspectives tool in Cursor chat',
+          'Route complex coding questions through multiple models',
+          'Get breakthrough insights on architecture decisions'
+        ]
+      },
+      latestFeatures: [
+        'Native MCP server connectivity',
+        'Bearer token authentication',
+        'Multi-model breakthrough routing',
+        'Enhanced AI chat interface'
       ]
     },
     'cline': {
       name: 'Cline (Claude in VSCode)',
-      description: 'Popular VS Code extension bringing Claude directly into your editor',
+      description: 'Popular VS Code extension bringing Claude directly into your editor with MCP support',
       logo: '📝',
       features: [
         'Seamless VS Code integration',
         'File system access and editing',
         'Terminal command execution',
-        'Git workflow integration',
-        'Custom model configurations'
+        'MCP server connectivity',
+        'Multi-model breakthrough insights'
       ],
       setup: {
         install: 'Install Cline extension in VS Code',
@@ -138,63 +167,30 @@ env = { POLYDEV_API_KEY = "pd_your_token_here" }`,
 {
   "cline.mcpServers": {
     "polydev": {
-      "command": "npx @polydev/mcp-server",
-      "args": [],
-      "env": {
-        "POLYDEV_API_KEY": "pd_your_token_here"
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "bearer",
+          "token": "pd_your_token_here"
+        }
       }
     }
   }
 }`,
         usage: [
-          'Open Command Palette: "Cline: Add MCP Server"',
-          'Select Polydev from available servers',
-          'Chat with @polydev prefix for routing'
+          'Use get_perspectives tool in Cline chat',
+          'Route coding challenges through multiple models',
+          'Get breakthrough insights on complex problems'
         ]
       },
       latestFeatures: [
-        'Enhanced MCP integration',
-        'Real-time file monitoring',
-        'Improved context management',
-        'Better error handling'
-      ]
-    },
-    'cursor': {
-      name: 'Cursor',
-      description: 'AI-first code editor with built-in chat and editing capabilities',
-      logo: '🎯',
-      features: [
-        'AI-first editing experience',
-        'Inline code suggestions',
-        'Multi-file context understanding',
-        'Git integration',
-        'Custom model support'
-      ],
-      setup: {
-        install: 'Download Cursor from cursor.so',
-        config: `# Add to Cursor settings
-{
-  "cursor.mcp.servers": {
-    "polydev": {
-      "command": "npx",
-      "args": ["@polydev/mcp-server"],
-      "env": {
-        "POLYDEV_API_KEY": "pd_your_token_here"
-      }
-    }
-  }
-}`,
-        usage: [
-          'Open MCP settings in Cursor',
-          'Add Polydev server configuration',
-          'Use @polydev in chat for multi-model routing'
-        ]
-      },
-      latestFeatures: [
-        'Enhanced MCP support',
-        'Improved AI chat interface',
-        'Better code understanding',
-        'Faster response times'
+        'Hosted MCP server integration',
+        'Bearer token authentication',
+        'Multi-model routing capability',
+        'Real-time breakthrough insights'
       ]
     }
   }
@@ -216,8 +212,8 @@ env = { POLYDEV_API_KEY = "pd_your_token_here" }`,
               Polydev MCP Integration
             </h1>
             <p className="text-xl text-blue-100 max-w-4xl mx-auto mb-8">
-              Enhance your favorite CLI tools with Polydev's multi-model routing and intelligent provider selection. 
-              Works seamlessly with Claude Code, Gemini CLI, Codex CLI, Cline, Cursor, and any MCP-compatible client.
+              Connect your favorite CLI tools to Polydev's hosted MCP server for breakthrough insights from multiple AI models. 
+              Works with Claude Desktop, Cursor, Continue, Cline, and any MCP-compatible client through OAuth or API tokens.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
               <a 

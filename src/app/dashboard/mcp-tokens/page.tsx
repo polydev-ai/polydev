@@ -182,19 +182,19 @@ export default function MCPTokensPage() {
           MCP API Tokens
         </h1>
         <p className="text-gray-600 dark:text-gray-300 mb-6">
-          Generate API tokens for MCP (Model Context Protocol) clients to connect to Polydev and route requests through your configured providers.
+          Generate API tokens to authenticate with Polydev's hosted MCP server. Use OAuth for the best experience or API tokens for programmatic access.
         </p>
         
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
           <div className="flex items-start space-x-3">
             <Key className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">MCP Integration</h3>
+              <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Hosted MCP Server</h3>
               <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
-                Use these tokens in MCP clients like Claude Desktop, Continue, or custom MCP tools. Requests will route through your configured API keys and model preferences.
+                Connect your MCP clients to Polydev's hosted server for breakthrough insights from multiple AI models. Supports both OAuth and API token authentication.
               </p>
               <div className="bg-blue-100 dark:bg-blue-800 rounded px-3 py-2 font-mono text-sm">
-                <strong>Base URL:</strong> https://www.polydev.ai/api/chat/completions
+                <strong>Server URL:</strong> https://polydev.ai/api/mcp
               </div>
             </div>
           </div>
@@ -421,17 +421,21 @@ export default function MCPTokensPage() {
         </h3>
         <div className="space-y-4 text-sm text-gray-600 dark:text-gray-300">
           <div>
-            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Claude Desktop</h4>
-            <p>Add to your Claude Desktop MCP configuration:</p>
+            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Claude Desktop (OAuth - Recommended)</h4>
+            <p>Connect using OAuth for the best experience:</p>
             <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2 text-xs overflow-x-auto">
 {`{
   "mcpServers": {
     "polydev": {
-      "command": "npx",
-      "args": ["-y", "@polydev/mcp-client"],
-      "env": {
-        "POLYDEV_API_KEY": "your_token_here",
-        "POLYDEV_BASE_URL": "https://www.polydev.ai/api/chat/completions"
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "oauth",
+          "provider": "polydev"
+        }
       }
     }
   }
@@ -439,16 +443,28 @@ export default function MCPTokensPage() {
             </pre>
           </div>
           <div>
-            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Direct API Calls</h4>
-            <p>Use as a drop-in replacement for OpenAI API:</p>
+            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Continue.dev (API Token)</h4>
+            <p>Use API token authentication for programmatic access:</p>
             <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2 text-xs overflow-x-auto">
-{`curl -X POST https://www.polydev.ai/api/chat/completions \\
-  -H "Authorization: Bearer your_token_here" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "model": "gpt-4o",
-    "messages": [{"role": "user", "content": "Hello!"}]
-  }'`}
+{`{
+  "experimental": {
+    "modelContextProtocol": true
+  },
+  "mcpServers": {
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "bearer",
+          "token": "pd_your_token_here"
+        }
+      }
+    }
+  }
+}`}
             </pre>
           </div>
         </div>

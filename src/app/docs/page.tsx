@@ -112,13 +112,14 @@ export default function Documentation() {
 
             <h2 id="quick-start">Quick Start Guide</h2>
             
-            <h3>Step 1: Install the MCP Server</h3>
-            <p>Install Polydev Perspectives globally via npm:</p>
-            <pre className="bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto text-sm font-mono border"><code>{`npm install -g @polydev/breakthroughs-mcp`}</code></pre>
+            <h3>Step 1: Connect to Hosted MCP Server</h3>
+            <p>Connect directly to our hosted MCP server - no downloads or npm packages required.</p>
+            <pre className="bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto text-sm font-mono border"><code>{`Server URL: https://polydev.ai/api/mcp`}</code></pre>
             
             <h3>Step 2: Configure Your Authentication</h3>
-            <p>Set up your authentication using the configuration wizard:</p>
-            <pre className="bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto text-sm font-mono border"><code>{`polydev-breakthroughs --config`}</code></pre>
+            <p>Set up your authentication for accessing the hosted MCP server:</p>
+            <pre className="bg-gray-100 text-gray-800 p-4 rounded-lg overflow-x-auto text-sm font-mono border"><code>{`Hosted Server: https://polydev.ai/api/mcp
+Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
             
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 my-6">
               <h4 className="font-semibold text-blue-900 mb-3">🔐 Authentication Options</h4>
@@ -144,7 +145,7 @@ export default function Documentation() {
             </div>
 
             <h3>Step 3: Add to Your MCP Client</h3>
-            <p>Configure your MCP client to use the installed server:</p>
+            <p>Configure your MCP client to connect to the hosted server:</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="bg-white border-2 border-gray-200 rounded-lg p-4">
@@ -153,8 +154,17 @@ export default function Documentation() {
                 <code className="text-sm text-gray-500 block mb-2">~/.config/claude/claude_desktop_config.json</code>
                 <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`{
   "mcpServers": {
-    "polydev-breakthroughs": {
-      "command": "polydev-breakthroughs"
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "oauth",
+          "provider": "polydev"
+        }
+      }
     }
   }
 }`}</code></pre>
@@ -166,8 +176,17 @@ export default function Documentation() {
                 <code className="text-sm text-gray-500 block mb-2">.continue/config.json</code>
                 <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`{
   "mcpServers": {
-    "polydev-breakthroughs": {
-      "command": "polydev-breakthroughs"
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "bearer",
+          "token": "pd_your_token_here"
+        }
+      }
     }
   }
 }`}</code></pre>
@@ -180,8 +199,17 @@ export default function Documentation() {
                 <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`{
   "mcp": {
     "servers": {
-      "polydev-breakthroughs": {
-        "command": "polydev-breakthroughs"
+      "polydev": {
+        "remote": {
+          "transport": {
+            "type": "sse",
+            "url": "https://polydev.ai/api/mcp"
+          },
+          "auth": {
+            "type": "oauth",
+            "provider": "polydev"
+          }
+        }
       }
     }
   }
@@ -193,14 +221,23 @@ export default function Documentation() {
                 <p className="text-sm text-gray-600 mb-3">Extension settings:</p>
                 <code className="text-sm text-gray-500 block mb-2">MCP Server Configuration</code>
                 <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`{
-  "command": "polydev-breakthroughs"
+  "remote": {
+    "transport": {
+      "type": "sse",
+      "url": "https://polydev.ai/api/mcp"
+    },
+    "auth": {
+      "type": "bearer",
+      "token": "pd_your_token_here"
+    }
+  }
 }`}</code></pre>
               </div>
             </div>
 
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
               <h4 className="font-semibold text-green-900 mb-2">💡 Pro Tip</h4>
-              <p className="text-green-800 text-sm">The global installation approach means no path configuration needed! The <code>polydev-breakthroughs</code> command is available system-wide after installation.</p>
+              <p className="text-green-800 text-sm">The hosted server approach means no local installation needed! Connect directly from any MCP-compatible client using Server-Sent Events (SSE) transport.</p>
             </div>
 
             <h3>Step 4: Test the Integration</h3>
@@ -1099,24 +1136,33 @@ func main() {
             </div>
 
             <h2 id="quick-setup">Quick Setup Guide</h2>
-            <p>All MCP clients follow the same setup pattern after installing Polydev Perspectives:</p>
+            <p>All MCP clients follow the same setup pattern for connecting to the hosted Polydev server:</p>
             
             <div className="bg-gray-50 border rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">1. Install Globally</h3>
-              <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>npm install -g @polydev/breakthroughs-mcp</code></pre>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">1. Get Server URL</h3>
+              <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>Server URL: https://polydev.ai/api/mcp</code></pre>
             </div>
             
             <div className="bg-gray-50 border rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">2. Configure Authentication</h3>
-              <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>polydev-breakthroughs --config</code></pre>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">2. Choose Authentication</h3>
+              <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>OAuth 2.0 (Recommended) or Bearer Token</code></pre>
             </div>
             
             <div className="bg-gray-50 border rounded-lg p-4 mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">3. Add to MCP Client Config</h3>
               <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`{
   "servers": {
-    "polydev-breakthroughs": {
-      "command": "polydev-breakthroughs"
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "oauth",
+          "provider": "polydev"
+        }
+      }
     }
   }
 }`}</code></pre>
@@ -1156,11 +1202,16 @@ func main() {
                 <h4 className="font-semibold text-gray-900 mb-2">Claude Desktop</h4>
                 <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`{
   "mcpServers": {
-    "polydev-breakthroughs": {
-      "command": "npx",
-      "args": ["@polydev/mcp-server"],
-      "env": {
-        "POLYDEV_API_URL": "https://polydev.ai/api/breakthroughs"
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "oauth",
+          "provider": "polydev"
+        }
       }
     }
   }
@@ -1171,21 +1222,29 @@ func main() {
                 <h4 className="font-semibold text-gray-900 mb-2">Continue.dev</h4>
                 <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`// In your .continue/config.json
 {
-  "mcpServers": [
-    {
-      "name": "polydev-breakthroughs",
-      "command": "npx",
-      "args": ["@polydev/mcp-server"]
+  "mcpServers": {
+    "polydev": {
+      "remote": {
+        "transport": {
+          "type": "sse",
+          "url": "https://polydev.ai/api/mcp"
+        },
+        "auth": {
+          "type": "bearer",
+          "token": "pd_your_token_here"
+        }
+      }
     }
-  ]
+  }
 }`}</code></pre>
               </div>
 
               <div className="bg-white rounded-lg p-4 border border-purple-200 mt-4">
                 <h4 className="font-semibold text-gray-900 mb-2">Cursor / Cline</h4>
-                <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`# Add to MCP server configuration
-npm install -g @polydev/mcp-server
-# Then configure in your MCP settings`}</code></pre>
+                <pre className="bg-gray-100 text-gray-800 p-3 rounded text-sm font-mono border overflow-x-auto"><code>{`# Configure remote MCP server connection
+Server URL: https://polydev.ai/api/mcp
+Transport: Server-Sent Events (SSE)
+Authentication: OAuth 2.0 or Bearer Token`}</code></pre>
               </div>
             </div>
 
