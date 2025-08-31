@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     grant_types_supported: ['authorization_code'],
     token_endpoint_auth_methods_supported: ['none'],
     scopes_supported: ['mcp'],
-    code_challenge_methods_supported: [],
+    code_challenge_methods_supported: ['S256', 'plain'],
     // Support dynamic client registration
     registration_endpoint_auth_methods_supported: ['none'],
     client_registration_types_supported: ['dynamic']

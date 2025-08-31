@@ -9,11 +9,28 @@ export async function GET(request: NextRequest) {
   const redirect_uri = searchParams.get('redirect_uri')
   const state = searchParams.get('state')
   const response_type = searchParams.get('response_type')
+  const code_challenge = searchParams.get('code_challenge')
+  const code_challenge_method = searchParams.get('code_challenge_method')
 
   if (!client_id || !redirect_uri || response_type !== 'code') {
     return NextResponse.json({
       error: 'invalid_request',
       error_description: 'Missing or invalid parameters'
+    }, { status: 400 })
+  }
+
+  // Validate PKCE parameters if provided
+  if (code_challenge && !code_challenge_method) {
+    return NextResponse.json({
+      error: 'invalid_request',
+      error_description: 'code_challenge_method is required when code_challenge is provided'
+    }, { status: 400 })
+  }
+
+  if (code_challenge_method && !['S256', 'plain'].includes(code_challenge_method)) {
+    return NextResponse.json({
+      error: 'invalid_request',
+      error_description: 'Unsupported code_challenge_method. Supported methods: S256, plain'
     }, { status: 400 })
   }
 
@@ -57,6 +74,8 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set('client_id', client_id)
   authUrl.searchParams.set('redirect_uri', redirect_uri)
   if (state) authUrl.searchParams.set('state', state)
+  if (code_challenge) authUrl.searchParams.set('code_challenge', code_challenge)
+  if (code_challenge_method) authUrl.searchParams.set('code_challenge_method', code_challenge_method)
 
   return NextResponse.redirect(authUrl)
 }
@@ -75,12 +94,27 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    const { client_id, redirect_uri, state } = await request.json()
+    const { client_id, redirect_uri, state, code_challenge, code_challenge_method } = await request.json()
 
     if (!client_id || !redirect_uri) {
       return NextResponse.json({
         error: 'invalid_request',
         error_description: 'Missing required parameters'
+      }, { status: 400 })
+    }
+
+    // Validate PKCE parameters if provided
+    if (code_challenge && !code_challenge_method) {
+      return NextResponse.json({
+        error: 'invalid_request',
+        error_description: 'code_challenge_method is required when code_challenge is provided'
+      }, { status: 400 })
+    }
+
+    if (code_challenge_method && !['S256', 'plain'].includes(code_challenge_method)) {
+      return NextResponse.json({
+        error: 'invalid_request',
+        error_description: 'Unsupported code_challenge_method. Supported methods: S256, plain'
       }, { status: 400 })
     }
 
@@ -97,6 +131,8 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         redirect_uri,
         state,
+        code_challenge,
+        code_challenge_method,
         expires_at: expiresAt.toISOString(),
         used: false
       })

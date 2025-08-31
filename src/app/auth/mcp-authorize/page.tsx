@@ -14,6 +14,8 @@ function MCPAuthorizeContent() {
   const clientId = searchParams.get('client_id')
   const redirectUri = searchParams.get('redirect_uri')
   const state = searchParams.get('state')
+  const codeChallenge = searchParams.get('code_challenge')
+  const codeChallengeMethod = searchParams.get('code_challenge_method')
 
   const supabase = createClient()
 
@@ -85,7 +87,9 @@ function MCPAuthorizeContent() {
         body: JSON.stringify({
           client_id: clientId,
           redirect_uri: redirectUri,
-          state
+          state,
+          code_challenge: codeChallenge,
+          code_challenge_method: codeChallengeMethod
         })
       })
 

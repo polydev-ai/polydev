@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { grant_type, code, client_id, client_secret, redirect_uri } = body
+    const { grant_type, code, client_id, client_secret, redirect_uri, code_verifier } = body
 
     if (grant_type !== 'authorization_code') {
       return NextResponse.json({
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Verify the authorization code
     const { data: authData, error: authError } = await supabase
       .from('mcp_auth_codes')
-      .select('user_id, expires_at, used')
+      .select('user_id, expires_at, used, code_challenge, code_challenge_method')
       .eq('code', code)
       .eq('client_id', client_id)
       .single()
@@ -110,6 +110,38 @@ export async function POST(request: NextRequest) {
         error: 'invalid_grant',
         error_description: 'Authorization code has expired'
       }, { status: 400 })
+    }
+
+    // Verify PKCE if code_challenge was provided
+    if (authData.code_challenge) {
+      if (!code_verifier) {
+        return NextResponse.json({
+          error: 'invalid_request',
+          error_description: 'code_verifier is required when PKCE was used'
+        }, { status: 400 })
+      }
+
+      let expectedChallenge: string
+      if (authData.code_challenge_method === 'S256') {
+        // For S256, hash the code_verifier with SHA256 and base64url encode
+        const hash = crypto.createHash('sha256').update(code_verifier).digest()
+        expectedChallenge = Buffer.from(hash).toString('base64url')
+      } else if (authData.code_challenge_method === 'plain') {
+        // For plain, the code_verifier should match the code_challenge exactly
+        expectedChallenge = code_verifier
+      } else {
+        return NextResponse.json({
+          error: 'invalid_request',
+          error_description: 'Unsupported code_challenge_method'
+        }, { status: 400 })
+      }
+
+      if (expectedChallenge !== authData.code_challenge) {
+        return NextResponse.json({
+          error: 'invalid_grant',
+          error_description: 'Code verifier does not match code challenge'
+        }, { status: 400 })
+      }
     }
 
     // Mark the code as used
