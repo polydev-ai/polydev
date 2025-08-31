@@ -147,9 +147,8 @@ function handleInitialize(params: any, id: string) {
     result: {
       protocolVersion: clientProtocolVersion, // Match client's protocol version
       capabilities: {
-        tools: true,
-        resources: false,
-        prompts: false
+        tools: {}  // MCP 2025-06-18 requires objects, not booleans
+        // Only include supported capabilities - omit resources and prompts
       },
       serverInfo: {
         name: 'polydev-mcp-server',
