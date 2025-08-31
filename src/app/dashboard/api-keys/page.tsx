@@ -245,9 +245,11 @@ export default function ApiKeysPage() {
         ? `${formData.api_key.slice(0, 4)}***`
         : `${provider?.authType === 'cli' ? 'CLI' : 'Cloud'} Auth`
 
+      const providerInfo = PROVIDERS[formData.provider]
       const keyData = {
         user_id: user?.id,
         provider: formData.provider,
+        key_name: `${providerInfo?.name || formData.provider} Key`,
         encrypted_key: encryptedKey,
         key_preview: keyPreview,
         api_base: formData.api_base || null,
