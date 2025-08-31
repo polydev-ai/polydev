@@ -82,6 +82,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log(`[MCP Authorize] POST request received`)
+    
     const supabase = await createClient()
     
     // Check authentication
@@ -94,7 +96,10 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    const { client_id, redirect_uri, state, code_challenge, code_challenge_method } = await request.json()
+    const requestBody = await request.json()
+    const { client_id, redirect_uri, state, code_challenge, code_challenge_method } = requestBody
+    
+    console.log(`[MCP Authorize] Request body:`, { client_id, redirect_uri, state, code_challenge: code_challenge?.substring(0, 10) + '...', code_challenge_method })
 
     if (!client_id || !redirect_uri) {
       return NextResponse.json({
