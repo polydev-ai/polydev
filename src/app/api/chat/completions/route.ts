@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { apiManager } from '@/lib/api'
-import crypto from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 
 async function authenticateRequest(request: NextRequest): Promise<{ user: any; preferences: any } | null> {
@@ -11,7 +11,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
   const authorization = request.headers.get('Authorization')
   if (authorization?.startsWith('Bearer pd_')) {
     const apiKey = authorization.replace('Bearer ', '')
-    const tokenHash = crypto.createHash('sha256').update(apiKey).digest('hex')
+    const tokenHash = createHash('sha256').update(apiKey).digest('hex')
     
     // Find user by token hash
     const { data: token, error } = await supabase
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
       }
       
       return NextResponse.json({
-        id: `chatcmpl-${crypto.randomBytes(16).toString('hex')}`,
+        id: `chatcmpl-${randomBytes(16).toString('hex')}`,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
         model: response.model,
