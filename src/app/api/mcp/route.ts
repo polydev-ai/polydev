@@ -754,7 +754,6 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
   const { data: providerConfigs } = await supabase
     .from('provider_configurations')
     .select('*')
-    .eq('active', true)
 
   // Create provider lookup map
   const configMap = new Map<string, ProviderConfig>()
