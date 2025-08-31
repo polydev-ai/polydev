@@ -75,6 +75,8 @@ function MCPAuthorizeContent() {
     setError(null)
 
     try {
+      console.log('[MCP Frontend] Making authorization request for client:', clientId)
+      
       // Generate authorization code
       const response = await fetch('/api/mcp/authorize', {
         method: 'POST',
@@ -92,8 +94,11 @@ function MCPAuthorizeContent() {
 
       const result = await response.json()
 
+      console.log('[MCP Frontend] Authorization response:', { status: response.status, result })
+
       if (!response.ok) {
-        throw new Error(result.error_description || 'Authorization failed')
+        console.error('[MCP Frontend] Authorization failed:', { status: response.status, result })
+        throw new Error(result.error_description || `Authorization failed: ${response.status}`)
       }
 
       // Redirect back to the client with the authorization code
