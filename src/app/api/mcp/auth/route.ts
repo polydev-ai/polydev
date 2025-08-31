@@ -65,7 +65,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const contentType = request.headers.get('content-type') || ''
+    
+    let body: any
+    if (contentType.includes('application/json')) {
+      body = await request.json()
+    } else {
+      // OAuth 2.0 token requests are typically sent as application/x-www-form-urlencoded
+      const text = await request.text()
+      const searchParams = new URLSearchParams(text)
+      body = Object.fromEntries(searchParams)
+    }
+    
     const { grant_type, code, client_id, client_secret, redirect_uri, code_verifier } = body
 
     if (grant_type !== 'authorization_code') {
