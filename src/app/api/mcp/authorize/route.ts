@@ -90,10 +90,27 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     console.log(`[MCP Authorize] Supabase client created successfully - ID: ${requestId}`)
     
-    // Check authentication
+    // Check authentication with detailed context
     const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
-    console.log(`[MCP Authorize] Auth check:`, { user: user ? { id: user.id, email: user.email } : null, userError })
+    console.log(`[MCP Authorize] Auth check:`, { 
+      user: user ? { id: user.id, email: user.email, aud: user.aud, role: user.role } : null, 
+      userError,
+      session: session ? { 
+        user_id: session.user.id, 
+        token_type: session.token_type,
+        access_token_preview: session.access_token?.substring(0, 20) + '...'
+      } : null,
+      sessionError
+    })
+    
+    // Test RLS context
+    const { data: authTest, error: authTestError } = await supabase
+      .rpc('get_auth_uid')
+      .single()
+    
+    console.log(`[MCP Authorize] RLS auth.uid() test:`, { authTest, authTestError })
     
     if (userError || !user) {
       console.error(`[MCP Authorize] Authentication failed:`, { userError, user })
