@@ -332,17 +332,37 @@ export async function POST(request: NextRequest) {
         const authResult = await authenticateBearerToken(request)
         console.log(`[MCP] Authentication result for tools/call:`, authResult)
         if (!authResult.success) {
-          return NextResponse.json({
+          console.log(`[MCP Server] Authentication failed for tools/call: ${authResult.error}`)
+          
+          // Check if this is a token expiration error for better UX
+          const isTokenExpired = authResult.errorCode === 'TOKEN_EXPIRED'
+          const errorResponse = {
             jsonrpc: '2.0',
             id,
             error: {
-              code: -32602,
-              message: authResult.error
+              code: isTokenExpired ? -32001 : -32602, // Custom code for token expiration
+              message: authResult.error,
+              data: isTokenExpired ? {
+                errorType: 'TOKEN_EXPIRED',
+                reAuthUrl: authResult.reAuthUrl,
+                instructions: [
+                  '🔑 Your Polydev MCP authentication has expired (renews every 30 days)',
+                  '🌐 Visit the re-authentication URL to sign in again',
+                  '✅ Complete the OAuth flow in your browser', 
+                  '🚀 Your MCP tools will work immediately after re-authentication',
+                  '💡 Alternative: Restart Claude Code to auto-trigger authentication'
+                ],
+                quickFix: 'Restart Claude Code or visit the re-authentication URL to continue using Polydev MCP tools.'
+              } : { details: authResult.error }
             }
-          }, {
+          }
+          
+          return NextResponse.json(errorResponse, {
             status: 401,
             headers: {
-              'WWW-Authenticate': 'Bearer realm="mcp", error="invalid_token"',
+              'WWW-Authenticate': isTokenExpired 
+                ? 'Bearer realm="mcp", error="invalid_token", error_description="Token expired - re-authentication required"'
+                : 'Bearer realm="mcp", error="invalid_token"',
               'Access-Control-Allow-Origin': '*',
               'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
               'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -641,7 +661,13 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
     console.log(`[MCP Auth] Token expiry check:`, { expires_at: tokenExpiry, now, expired: tokenExpiry < now })
     
     if (tokenExpiry < now) {
-      return { success: false, error: 'OAuth token has expired' }
+      console.log(`[MCP Auth] Token expired on: ${tokenExpiry.toISOString()}, current time: ${now.toISOString()}`)
+      return { 
+        success: false, 
+        error: 'Your authentication has expired. Please re-authenticate to continue using Polydev MCP.',
+        errorCode: 'TOKEN_EXPIRED',
+        reAuthUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://api.polydev.ai'}/api/mcp/auth?client_id=claude-desktop&redirect_uri=http://localhost:8080/oauth/callback&response_type=code`
+      }
     }
 
     // Update last used timestamp
@@ -730,7 +756,12 @@ async function authenticateRequest(request: NextRequest): Promise<{ success: boo
 
     // Check if token is expired
     if (new Date(tokenData.expires_at) < new Date()) {
-      return { success: false, error: 'OAuth token has expired' }
+      return { 
+        success: false, 
+        error: 'Your authentication has expired. Please re-authenticate to continue using Polydev MCP.',
+        errorCode: 'TOKEN_EXPIRED',
+        reAuthUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://api.polydev.ai'}/api/mcp/auth?client_id=claude-desktop&redirect_uri=http://localhost:8080/oauth/callback&response_type=code`
+      }
     }
 
     // Update last used timestamp
