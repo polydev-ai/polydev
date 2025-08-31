@@ -107,7 +107,7 @@ function buildRequestConfig(
             messages: [{ role: 'user', content: prompt }],
             temperature,
             max_tokens: maxTokens,
-            reasoning_effort: 'high',     // High reasoning like codex CLI
+            reasoning_effort: 'minimal',  // Try minimal reasoning effort first
             verbosity: 'medium',          // Medium verbosity
           },
         }
