@@ -94,19 +94,19 @@ function buildRequestConfig(
       const isGPT5Model = model.startsWith('gpt-5')
       
       if (isGPT5Model) {
-        // GPT-5 without special parameters to test basic functionality
-        console.log(`[MCP] Testing GPT-5 with basic parameters: ${model}`)
+        // GPT-5 uses the Responses API endpoint (not Chat Completions)
+        console.log(`[MCP] Using GPT-5 with Responses API: ${model}`)
         return {
-          url: `${baseUrl}/chat/completions`,
+          url: `${baseUrl}/responses`,
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
           body: {
             model,
-            messages: [{ role: 'user', content: prompt }],
+            input: prompt,  // Use 'input' instead of 'messages'
             temperature,
-            max_tokens: maxTokens,
+            max_output_tokens: maxTokens,  // Use 'max_output_tokens' instead of 'max_tokens'
           },
         }
       }
@@ -201,8 +201,15 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
   switch (provider) {
     case 'openai':
     case 'openai-native':
-      // Use standard OpenAI format for all models (including GPT-5 for now)
-      console.log(`[MCP] Parsing OpenAI response for model: ${model}`)
+      // Handle GPT-5 Responses API format vs standard Chat Completions
+      if (model?.startsWith('gpt-5')) {
+        console.log(`[MCP] Parsing GPT-5 Responses API response`)
+        return {
+          content: data.output || 'No response',
+          tokens_used: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+        }
+      }
+      console.log(`[MCP] Parsing standard OpenAI response for model: ${model}`)
       // Fall through to standard OpenAI format
     case 'openrouter':
     case 'groq':
