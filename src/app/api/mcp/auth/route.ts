@@ -129,3 +129,58 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
   }
 }
+
+// Handle unsupported methods with proper JSON responses
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400',
+    },
+  })
+}
+
+export async function PUT(request: NextRequest) {
+  return NextResponse.json({
+    error: 'method_not_allowed',
+    error_description: 'PUT method not supported'
+  }, { 
+    status: 405,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    }
+  })
+}
+
+export async function PATCH(request: NextRequest) {
+  return NextResponse.json({
+    error: 'method_not_allowed',
+    error_description: 'PATCH method not supported'
+  }, { 
+    status: 405,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    }
+  })
+}
+
+export async function DELETE(request: NextRequest) {
+  return NextResponse.json({
+    error: 'method_not_allowed',
+    error_description: 'DELETE method not supported'
+  }, { 
+    status: 405,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    }
+  })
+}
