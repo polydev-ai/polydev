@@ -102,10 +102,13 @@ function MCPAuthorizeContent() {
       }
 
       // Redirect back to the client with the authorization code
+      console.log('[MCP Frontend] Got authorization code:', result.code?.substring(0, 10) + '...')
+      
       const callbackUrl = new URL(redirectUri!)
       callbackUrl.searchParams.set('code', result.code)
       if (state) callbackUrl.searchParams.set('state', state)
 
+      console.log('[MCP Frontend] Redirecting to:', callbackUrl.toString())
       window.location.href = callbackUrl.toString()
 
     } catch (error) {

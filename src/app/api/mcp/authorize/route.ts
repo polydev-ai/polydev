@@ -89,7 +89,10 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
+    console.log(`[MCP Authorize] Auth check:`, { user: user ? { id: user.id, email: user.email } : null, userError })
+    
     if (userError || !user) {
+      console.error(`[MCP Authorize] Authentication failed:`, { userError, user })
       return NextResponse.json({
         error: 'unauthorized',
         error_description: 'User must be authenticated'
