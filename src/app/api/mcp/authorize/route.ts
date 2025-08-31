@@ -81,11 +81,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = Math.random().toString(36).substring(7)
+  console.log(`[MCP Authorize v3.0] POST request START - ID: ${requestId} - Time: ${new Date().toISOString()}`)
+  
   try {
-    const requestId = Math.random().toString(36).substring(7)
-    console.log(`[MCP Authorize v2.0] POST request received - ID: ${requestId} - Time: ${new Date().toISOString()}`)
+    console.log(`[MCP Authorize] Request headers:`, Object.fromEntries([...request.headers.entries()]))
     
     const supabase = await createClient()
+    console.log(`[MCP Authorize] Supabase client created successfully - ID: ${requestId}`)
     
     // Check authentication
     const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -161,11 +164,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code })
 
   } catch (error) {
-    console.error('[MCP Authorize] FATAL ERROR:', error)
-    console.error('[MCP Authorize] Error stack:', error instanceof Error ? error.stack : 'No stack')
+    console.error(`[MCP Authorize] FATAL ERROR - ID: ${requestId}:`, error)
+    console.error(`[MCP Authorize] Error stack - ID: ${requestId}:`, error instanceof Error ? error.stack : 'No stack')
+    console.error(`[MCP Authorize] Error name - ID: ${requestId}:`, error instanceof Error ? error.name : 'Unknown error type')
     return NextResponse.json({
       error: 'server_error',
-      error_description: 'Internal server error'
+      error_description: 'Internal server error',
+      debug_id: requestId
     }, { status: 500 })
   }
 }
