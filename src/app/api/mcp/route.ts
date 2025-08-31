@@ -94,20 +94,20 @@ function buildRequestConfig(
       const isGPT5Model = model.startsWith('gpt-5')
       
       if (isGPT5Model) {
-        // GPT-5 uses the Responses API endpoint (not Chat Completions)
-        console.log(`[MCP] Using GPT-5 with Responses API: ${model}`)
+        // GPT-5 is not yet publicly available - fallback to GPT-4o
+        console.log(`[MCP] GPT-5 requested but not available - falling back to GPT-4o`)
+        const fallbackModel = 'gpt-4o'
         return {
-          url: `${baseUrl}/responses`,
+          url: `${baseUrl}/chat/completions`,
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
-            'OpenAI-Beta': 'responses=v1',  // Required header for Responses API
           },
           body: {
-            model,
-            input: prompt,  // Use 'input' instead of 'messages'
+            model: fallbackModel,
+            messages: [{ role: 'user', content: prompt }],
             temperature,
-            max_output_tokens: maxTokens,  // Use 'max_output_tokens' instead of 'max_tokens'
+            max_tokens: maxTokens,
           },
         }
       }
@@ -202,13 +202,9 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
   switch (provider) {
     case 'openai':
     case 'openai-native':
-      // Handle GPT-5 Responses API format vs standard Chat Completions
+      // GPT-5 fallback is handled in buildRequestConfig, so parse as standard OpenAI
       if (model?.startsWith('gpt-5')) {
-        console.log(`[MCP] Parsing GPT-5 Responses API response`)
-        return {
-          content: data.output || 'No response',
-          tokens_used: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
-        }
+        console.log(`[MCP] Parsing GPT-5 fallback response (using GPT-4o)`)
       }
       console.log(`[MCP] Parsing standard OpenAI response for model: ${model}`)
       // Fall through to standard OpenAI format
