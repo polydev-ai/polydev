@@ -774,7 +774,8 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
           }
         }
 
-        // Find API key for this provider
+        // Find API key for this provider  
+        console.log(`[MCP] Looking for API key - Provider: ${provider.provider_name}/${provider.id}, Available keys: ${apiKeys?.map(k => k.provider).join(', ')}`)
         const apiKey = apiKeys?.find(key => 
           key.provider === provider.provider_name || 
           key.provider === provider.id
@@ -782,7 +783,7 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
         if (!apiKey) {
           return {
             model,
-            error: `No API key found for provider: ${provider.display_name}. Please add your ${provider.display_name} API key in the dashboard.`
+            error: `No API key found for provider: ${provider.display_name} (${provider.provider_name}). Available: ${apiKeys?.map(k => k.provider).join(', ')}. Please add your ${provider.display_name} API key in the dashboard.`
           }
         }
 
