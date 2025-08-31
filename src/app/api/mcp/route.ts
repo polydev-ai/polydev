@@ -769,7 +769,7 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
   console.log(`[MCP] Querying API keys for user_id: ${user.id}`)
   const { data: apiKeys, error: apiKeysError } = await serviceRoleSupabase
     .from('user_api_keys')
-    .select('provider, encrypted_key, key_preview, api_base, default_model')
+    .select('provider, encrypted_key, key_preview, api_base, default_model, monthly_budget, current_usage, max_tokens')
     .eq('user_id', user.id)
 
   console.log(`[MCP] API Keys Query Result:`, { apiKeys, error: apiKeysError })
@@ -832,6 +832,15 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
           }
         }
 
+        // Check provider budget before making API call
+        if (apiKey.monthly_budget && apiKey.current_usage && 
+            parseFloat(apiKey.current_usage.toString()) >= parseFloat(apiKey.monthly_budget.toString())) {
+          return {
+            model,
+            error: `Monthly budget of $${apiKey.monthly_budget} exceeded for ${provider.display_name}. Current usage: $${apiKey.current_usage}`
+          }
+        }
+
         // Decode the Base64 encoded API key
         const decryptedKey = Buffer.from(apiKey.encrypted_key, 'base64').toString('utf-8')
         console.log(`[MCP] Decoded key for ${provider.display_name}: ${decryptedKey.substring(0, 10)}...`)
@@ -839,9 +848,16 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
         // Use provider-specific settings if provided, otherwise use global settings
         const providerSettings = args.provider_settings?.[provider.provider_name] || {}
         const providerTemperature = providerSettings.temperature ?? temperature
-        const providerMaxTokens = providerSettings.max_tokens ?? maxTokens
+        
+        // Max tokens priority: provider_settings > API key config > user preferences > global default
+        const preferencesMaxTokens = preferences?.model_preferences?.[`${provider.provider_name}_max_tokens`] || 
+                                    preferences?.model_preferences?.[`${provider.id}_max_tokens`]
+        const providerMaxTokens = providerSettings.max_tokens ?? 
+                                 apiKey.max_tokens ?? 
+                                 preferencesMaxTokens ?? 
+                                 maxTokens
 
-        console.log(`[MCP] ${provider.display_name} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens}`)
+        console.log(`[MCP] ${provider.display_name} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens} (API budget: $${apiKey.monthly_budget || 'unlimited'}, used: $${apiKey.current_usage || '0'})`)
 
         // Use the unified API caller with provider-specific preferences
         const response = await callLLMAPI(
