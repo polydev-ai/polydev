@@ -5,13 +5,32 @@ import { createHash } from 'crypto'
 // MCP Server Implementation - Similar to Vercel's approach
 export async function POST(request: NextRequest) {
   try {
-    const { method, params, id } = await request.json()
+    const requestBody = await request.json()
+    const { method, params, id } = requestBody
+    
+    // Log all MCP requests for debugging reconnection issues
+    console.log(`[MCP Server] Method: ${method}, ID: ${id}`)
+    console.log(`[MCP Server] Params:`, params)
+    console.log(`[MCP Server] Auth header:`, request.headers.get('authorization') ? 'Present' : 'Missing')
     
     // Handle MCP protocol requests
     switch (method) {
       case 'initialize':
         // Initialize doesn't require authentication - similar to Vercel's OAuth flow
         return handleInitialize(params, id)
+      
+      case 'initialized':
+        // Handle initialized notification - Claude Code sends this after initialize
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id
+        }, {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          }
+        })
       
       case 'tools/list':
         // Allow tools/list without authentication for initial handshake

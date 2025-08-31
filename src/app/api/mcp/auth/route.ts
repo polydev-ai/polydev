@@ -98,12 +98,21 @@ export async function POST(request: NextRequest) {
     // Use service role for token exchange operations to bypass RLS
     const supabase = await createClient()
     
-    // Also create service role client for privileged operations
-    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
-    const supabaseService = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Check if service role key is available
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    let supabaseService = supabase // Fallback to regular client
+    
+    if (serviceRoleKey && serviceRoleKey !== 'your_service_role_key') {
+      // Use service role if properly configured
+      const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+      supabaseService = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        serviceRoleKey
+      )
+      console.log('[MCP Auth] Using service role for database operations')
+    } else {
+      console.log('[MCP Auth] Service role not configured, using anonymous client with RLS policies')
+    }
 
     console.log(`[MCP Auth] Verifying code: ${code.substring(0, 10)}... for client: ${client_id}`)
     console.log(`[MCP Auth] Full code: ${code}`)
