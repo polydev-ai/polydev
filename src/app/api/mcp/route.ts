@@ -616,7 +616,7 @@ async function handleToolCall(params: any, id: string, request: NextRequest, use
 }
 
 // New function for Bearer token authentication (used by MCP tools/call)
-async function authenticateBearerToken(request: NextRequest): Promise<{ success: boolean; user?: any; error?: string }> {
+async function authenticateBearerToken(request: NextRequest): Promise<{ success: boolean; user?: any; error?: string; errorCode?: string; reAuthUrl?: string }> {
   const authorization = request.headers.get('authorization')
   
   if (!authorization || !authorization.startsWith('Bearer ')) {
@@ -707,7 +707,7 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
 }
 
 // Legacy function for backward compatibility (keeping existing behavior)
-async function authenticateRequest(request: NextRequest): Promise<{ success: boolean; user?: any; error?: string }> {
+async function authenticateRequest(request: NextRequest): Promise<{ success: boolean; user?: any; error?: string; errorCode?: string; reAuthUrl?: string }> {
   const authorization = request.headers.get('authorization')
   
   if (!authorization || !authorization.startsWith('Bearer ')) {
