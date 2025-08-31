@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/app/utils/supabase/client'
 import { Shield, ExternalLink, Key, AlertCircle } from 'lucide-react'
 
-export default function MCPAuthorizePage() {
+function MCPAuthorizeContent() {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState<any>(null)
@@ -245,5 +245,17 @@ export default function MCPAuthorizePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function MCPAuthorizePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    }>
+      <MCPAuthorizeContent />
+    </Suspense>
   )
 }
