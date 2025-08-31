@@ -95,14 +95,22 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Use service role for token exchange operations to bypass RLS
     const supabase = await createClient()
+    
+    // Also create service role client for privileged operations
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+    const supabaseService = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     console.log(`[MCP Auth] Verifying code: ${code.substring(0, 10)}... for client: ${client_id}`)
     console.log(`[MCP Auth] Full code: ${code}`)
     console.log(`[MCP Auth] Full client_id: ${client_id}`)
 
-    // First, let's see if any codes exist for this client
-    const { data: clientCodes, error: clientCodesError } = await supabase
+    // First, let's see if any codes exist for this client (using service role)
+    const { data: clientCodes, error: clientCodesError } = await supabaseService
       .from('mcp_auth_codes')
       .select('code, client_id, created_at, used, expires_at')
       .eq('client_id', client_id)
@@ -111,8 +119,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`[MCP Auth] Recent codes for client:`, { clientCodes, clientCodesError })
 
-    // Verify the authorization code
-    const { data: authData, error: authError } = await supabase
+    // Verify the authorization code (using service role)
+    const { data: authData, error: authError } = await supabaseService
       .from('mcp_auth_codes')
       .select('user_id, expires_at, used, code_challenge, code_challenge_method')
       .eq('code', code)
@@ -174,8 +182,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Mark the code as used
-    await supabase
+    // Mark the code as used (using service role)
+    await supabaseService
       .from('mcp_auth_codes')
       .update({ used: true })
       .eq('code', code)
@@ -183,9 +191,9 @@ export async function POST(request: NextRequest) {
     // Generate access token
     const accessToken = `polydev_${Buffer.from(`${authData.user_id}_${Date.now()}_${Math.random()}`).toString('base64url')}`
 
-    // Store the access token
+    // Store the access token (using service role)
     const expiresAt = new Date(Date.now() + 3600000) // 1 hour
-    await supabase
+    await supabaseService
       .from('mcp_access_tokens')
       .insert({
         token: accessToken,
