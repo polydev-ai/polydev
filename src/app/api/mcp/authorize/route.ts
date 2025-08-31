@@ -17,6 +17,41 @@ export async function GET(request: NextRequest) {
     }, { status: 400 })
   }
 
+  const supabase = await createClient()
+
+  // Validate client_id exists (either dynamic or static)
+  const { data: registeredClient } = await supabase
+    .from('mcp_registered_clients')
+    .select('client_id, redirect_uris')
+    .eq('client_id', client_id)
+    .single()
+
+  if (!registeredClient) {
+    // Check static client list
+    const validClientIds = [
+      'claude-desktop',
+      'cursor', 
+      'continue',
+      'vscode-copilot',
+      'custom-mcp-client'
+    ]
+
+    if (!validClientIds.includes(client_id)) {
+      return NextResponse.json({
+        error: 'invalid_client',
+        error_description: 'Unknown or invalid client_id'
+      }, { status: 400 })
+    }
+  } else {
+    // Validate redirect_uri for dynamic clients
+    if (!registeredClient.redirect_uris.includes(redirect_uri)) {
+      return NextResponse.json({
+        error: 'invalid_request', 
+        error_description: 'redirect_uri does not match registered redirect URIs'
+      }, { status: 400 })
+    }
+  }
+
   // Redirect to authorization page
   const authUrl = new URL('/auth/mcp-authorize', request.url)
   authUrl.searchParams.set('client_id', client_id)

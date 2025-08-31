@@ -17,21 +17,39 @@ export async function GET(request: NextRequest) {
     }, { status: 400 })
   }
 
-  // For now, we'll support a basic OAuth flow
-  // In production, you'd validate the client_id against registered MCP clients
-  const validClientIds = [
-    'claude-desktop',
-    'cursor',
-    'continue',
-    'vscode-copilot',
-    'custom-mcp-client'
-  ]
+  const supabase = await createClient()
 
-  if (!validClientIds.includes(clientId)) {
-    return NextResponse.json({
-      error: 'invalid_client',
-      error_description: 'Unknown or invalid client_id'
-    }, { status: 400 })
+  // Check if it's a dynamically registered client
+  const { data: registeredClient } = await supabase
+    .from('mcp_registered_clients')
+    .select('client_id, redirect_uris')
+    .eq('client_id', clientId)
+    .single()
+
+  if (!registeredClient) {
+    // Fall back to static client list for backward compatibility
+    const validClientIds = [
+      'claude-desktop',
+      'cursor',
+      'continue',
+      'vscode-copilot',
+      'custom-mcp-client'
+    ]
+
+    if (!validClientIds.includes(clientId)) {
+      return NextResponse.json({
+        error: 'invalid_client',
+        error_description: 'Unknown or invalid client_id. Please register your client first.'
+      }, { status: 400 })
+    }
+  } else {
+    // Validate redirect_uri against registered URIs
+    if (!registeredClient.redirect_uris.includes(redirectUri)) {
+      return NextResponse.json({
+        error: 'invalid_request',
+        error_description: 'redirect_uri does not match registered redirect URIs'
+      }, { status: 400 })
+    }
   }
 
   // Create authorization URL with state

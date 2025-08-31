@@ -6,12 +6,16 @@ export async function GET(request: NextRequest) {
     issuer: 'https://www.polydev.ai',
     authorization_endpoint: 'https://www.polydev.ai/api/mcp/authorize',
     token_endpoint: 'https://www.polydev.ai/api/mcp/auth',
+    registration_endpoint: 'https://www.polydev.ai/api/mcp/register',
     jwks_uri: 'https://www.polydev.ai/api/mcp/jwks',
     response_types_supported: ['code'],
     grant_types_supported: ['authorization_code'],
     token_endpoint_auth_methods_supported: ['none'],
     scopes_supported: ['mcp'],
-    code_challenge_methods_supported: []
+    code_challenge_methods_supported: [],
+    // Support dynamic client registration
+    registration_endpoint_auth_methods_supported: ['none'],
+    client_registration_types_supported: ['dynamic']
   }, {
     headers: {
       'Access-Control-Allow-Origin': '*',
