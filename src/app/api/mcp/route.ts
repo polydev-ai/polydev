@@ -14,25 +14,8 @@ export async function POST(request: NextRequest) {
         return handleInitialize(params, id)
       
       case 'tools/list':
-        // Tools/list requires authentication
-        const listAuthResult = await authenticateRequest(request)
-        if (!listAuthResult.success) {
-          return NextResponse.json({
-            jsonrpc: '2.0',
-            id,
-            error: {
-              code: -32602,
-              message: listAuthResult.error
-            }
-          }, { 
-            status: 401,
-            headers: {
-              'Access-Control-Allow-Origin': '*',
-              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-              'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-            }
-          })
-        }
+        // Allow tools/list without authentication for initial handshake
+        // Authentication will be required for actual tool calls
         return handleToolsList(id)
       
       case 'tools/call':
