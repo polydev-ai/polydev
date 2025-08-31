@@ -725,11 +725,10 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
           const modelPref = preferences?.model_preferences?.[provider]
           return modelPref || getDefaultModelForProvider(provider)
         })
-      : Object.values(preferences?.model_preferences || {
-          'openai': 'gpt-4o',
-          'anthropic': 'claude-3-5-sonnet-20241022',
-          'gemini': 'gemini-2.0-flash-exp'
-        })
+      : (preferences?.default_model 
+          ? [preferences.default_model]  // Use user's default model (GPT-5)
+          : ['gpt-5-2025-08-07']        // System fallback to GPT-5
+        )
     )
 
   // Use temperature and max_tokens from args, or user preferences, or defaults
