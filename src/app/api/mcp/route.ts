@@ -94,8 +94,8 @@ function buildRequestConfig(
       const isGPT5Model = model.startsWith('gpt-5')
       
       if (isGPT5Model) {
-        // Try GPT-5 with Chat Completions API first to test endpoint
-        console.log(`[MCP] Testing GPT-5 with Chat Completions API: ${model}`)
+        // GPT-5 with proper thinking parameters (based on codex CLI analysis)
+        console.log(`[MCP] Testing GPT-5 with thinking parameters: ${model}`)
         return {
           url: `${baseUrl}/chat/completions`,
           headers: {
@@ -107,8 +107,8 @@ function buildRequestConfig(
             messages: [{ role: 'user', content: prompt }],
             temperature,
             max_tokens: maxTokens,
-            reasoning_effort: 'low',     // GPT-5 reasoning effort
-            verbosity: 'medium',         // GPT-5 verbosity
+            reasoning_effort: 'high',     // High reasoning like codex CLI
+            verbosity: 'medium',          // Medium verbosity
           },
         }
       }
