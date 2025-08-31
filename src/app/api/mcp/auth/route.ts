@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
     const accessToken = `polydev_${Buffer.from(`${authData.user_id}_${Date.now()}_${Math.random()}`).toString('base64url')}`
 
     // Store the access token (using service role)
-    const expiresAt = new Date(Date.now() + 3600000) // 1 hour
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
     await supabaseService
       .from('mcp_access_tokens')
       .insert({
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       access_token: accessToken,
       token_type: 'Bearer',
-      expires_in: 3600,
+      expires_in: 30 * 24 * 60 * 60, // 30 days in seconds
       scope: 'mcp:tools'
     })
 

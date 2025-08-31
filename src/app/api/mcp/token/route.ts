@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     // Generate access token
     const accessToken = `polydev_${randomBytes(32).toString('base64url')}`
-    const expiresAt = new Date(Date.now() + 3600000) // 1 hour
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
 
     console.log(`[MCP Token Exchange] Generating access token: ${accessToken.substring(0, 20)}... for user: ${authCode.user_id}`)
 
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       access_token: accessToken,
       token_type: 'Bearer',
-      expires_in: 3600, // 1 hour in seconds
+      expires_in: 30 * 24 * 60 * 60, // 30 days in seconds
       scope: 'mcp:tools'
     })
 
