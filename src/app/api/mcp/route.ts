@@ -68,7 +68,7 @@ async function callLLMAPI(
   const data = await response.json()
   
   // Parse response based on provider format
-  return parseResponse(providerConfig.provider_name, data)
+  return parseResponse(providerConfig.provider_name, data, model)
 }
 
 // Request configuration interface
@@ -92,27 +92,40 @@ function buildRequestConfig(
     case 'openai':
     case 'openai-native':
       const isGPT5Model = model.startsWith('gpt-5')
-      const body: any = {
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature,
-        max_tokens: maxTokens,
-      }
       
-      // Add GPT-5 specific parameters
       if (isGPT5Model) {
-        body.reasoning_effort = 'low'  // Good balance of performance and speed
-        body.verbosity = 'medium'      // Standard verbosity
-        console.log(`[MCP] Adding GPT-5 parameters: reasoning_effort=low, verbosity=medium`)
+        // GPT-5 uses the Responses API with different structure
+        console.log(`[MCP] Using Responses API for GPT-5 model: ${model}`)
+        return {
+          url: `${baseUrl}/responses`,
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: {
+            model,
+            input: prompt,
+            reasoning: { effort: 'low' },     // GPT-5 reasoning effort
+            text: { verbosity: 'medium' },    // GPT-5 verbosity
+            temperature,
+            max_tokens: maxTokens,
+          },
+        }
       }
       
+      // Non-GPT-5 models use Chat Completions API
       return {
         url: `${baseUrl}/chat/completions`,
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body,
+        body: {
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature,
+          max_tokens: maxTokens,
+        },
       }
     
     case 'anthropic':
@@ -186,10 +199,19 @@ function buildRequestConfig(
 }
 
 // Parse response based on provider format
-function parseResponse(provider: string, data: any): APIResponse {
+function parseResponse(provider: string, data: any, model?: string): APIResponse {
   switch (provider) {
     case 'openai':
     case 'openai-native':
+      // Handle GPT-5 Responses API format
+      if (model?.startsWith('gpt-5')) {
+        console.log(`[MCP] Parsing GPT-5 Responses API response for model: ${model}`)
+        return {
+          content: data.output_text || data.output || 'No response',
+          tokens_used: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+        }
+      }
+      // Fall through to standard OpenAI format for non-GPT-5 models
     case 'openrouter':
     case 'groq':
     case 'perplexity':
