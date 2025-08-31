@@ -12,6 +12,8 @@ export async function POST(request: NextRequest) {
     console.log(`[MCP Server] Method: ${method}, ID: ${id}`)
     console.log(`[MCP Server] Params:`, params)
     console.log(`[MCP Server] Auth header:`, request.headers.get('authorization') ? 'Present' : 'Missing')
+    console.log(`[MCP Server] Request URL:`, request.url)
+    console.log(`[MCP Server] Request headers:`, Object.fromEntries(request.headers.entries()))
     
     // Handle MCP protocol requests
     switch (method) {
@@ -21,10 +23,10 @@ export async function POST(request: NextRequest) {
       
       case 'initialized':
         // Handle initialized notification - Claude Code sends this after initialize
-        return NextResponse.json({
-          jsonrpc: '2.0',
-          id
-        }, {
+        // Notifications don't expect a response, but we'll return 200 OK
+        console.log(`[MCP Server] Initialized notification received from client`)
+        return new NextResponse(null, {
+          status: 200,
           headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -40,13 +42,44 @@ export async function POST(request: NextRequest) {
       case 'tools/call':
         return await handleToolCall(params, id, request)
       
+      case 'resources/list':
+        // We don't implement resources, but return empty list to avoid errors
+        console.log(`[MCP Server] Resources list requested - returning empty list`)
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id,
+          result: { resources: [] }
+        }, {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          }
+        })
+      
+      case 'prompts/list':
+        // We don't implement prompts, but return empty list to avoid errors
+        console.log(`[MCP Server] Prompts list requested - returning empty list`)
+        return NextResponse.json({
+          jsonrpc: '2.0',
+          id,
+          result: { prompts: [] }
+        }, {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          }
+        })
+      
       default:
+        console.log(`[MCP Server] Unknown method: ${method}`)
         return NextResponse.json({
           jsonrpc: '2.0',
           id,
           error: {
             code: -32601,
-            message: 'Method not found'
+            message: `Method not found: ${method}`
           }
         }, {
           headers: {
