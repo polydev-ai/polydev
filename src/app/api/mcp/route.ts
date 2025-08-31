@@ -134,11 +134,18 @@ export async function POST(request: NextRequest) {
 }
 
 function handleInitialize(params: any, id: string) {
-  return NextResponse.json({
+  // Support the protocol version that Claude Code is using
+  const clientProtocolVersion = params?.protocolVersion || '2024-11-05'
+  
+  console.log(`[MCP Server] Initialize - client protocol: ${clientProtocolVersion}`)
+  console.log(`[MCP Server] Initialize - client capabilities:`, params?.capabilities)
+  console.log(`[MCP Server] Initialize - client info:`, params?.clientInfo)
+  
+  const response = {
     jsonrpc: '2.0',
     id,
     result: {
-      protocolVersion: '2024-11-05',
+      protocolVersion: clientProtocolVersion, // Match client's protocol version
       capabilities: {
         tools: true,
         resources: false,
@@ -149,7 +156,11 @@ function handleInitialize(params: any, id: string) {
         version: '1.0.0'
       }
     }
-  }, {
+  }
+  
+  console.log(`[MCP Server] Initialize response:`, response)
+  
+  return NextResponse.json(response, {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
