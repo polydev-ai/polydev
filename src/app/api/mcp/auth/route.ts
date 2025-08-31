@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { cookies } from 'next/headers'
+import { createHash } from 'crypto'
 
 // OAuth-style authentication for MCP clients
 export async function GET(request: NextRequest) {
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
       let expectedChallenge: string
       if (authData.code_challenge_method === 'S256') {
         // For S256, hash the code_verifier with SHA256 and base64url encode
-        const hash = crypto.createHash('sha256').update(code_verifier).digest()
+        const hash = createHash('sha256').update(code_verifier).digest()
         expectedChallenge = Buffer.from(hash).toString('base64url')
       } else if (authData.code_challenge_method === 'plain') {
         // For plain, the code_verifier should match the code_challenge exactly

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import crypto from 'crypto'
+import { createHash } from 'crypto'
 
 // MCP Server Implementation - Similar to Vercel's approach
 export async function POST(request: NextRequest) {
@@ -262,7 +262,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ success: boo
   
   // Check if it's an MCP token (starts with pd_)
   if (token.startsWith('pd_')) {
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+    const tokenHash = createHash('sha256').update(token).digest('hex')
     
     const { data: tokenData, error } = await supabase
       .from('mcp_user_tokens')
