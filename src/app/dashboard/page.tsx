@@ -31,7 +31,13 @@ export default function Dashboard() {
     totalRequests: 0,
     totalCost: 0,
     activeConnections: 0,
-    uptime: '99.9%'
+    uptime: '99.9%',
+    responseTime: 245,
+    totalApiKeys: 0,
+    activeProviders: 0,
+    totalMcpTokens: 0,
+    providerStats: [],
+    recentActivity: []
   })
   const [isConnected, setIsConnected] = useState(false)
   
@@ -46,40 +52,53 @@ export default function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // Simulate API call for dashboard data
+      console.log('[Dashboard] Loading real stats for user:', user?.id)
       const response = await fetch('/api/dashboard/stats', {
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${user?.id}`
-        }
+        credentials: 'include'
       })
       
       if (response.ok) {
         const data = await response.json()
-        setRealTimeData(data)
+        console.log('[Dashboard] Received real stats:', data)
+        setRealTimeData({
+          totalRequests: data.totalRequests || 0,
+          totalCost: data.totalCost || 0,
+          activeConnections: data.activeConnections || 0,
+          uptime: data.uptime || '99.9%',
+          responseTime: data.responseTime || 245,
+          totalApiKeys: data.totalApiKeys || 0,
+          activeProviders: data.activeProviders || 0,
+          totalMcpTokens: data.totalMcpTokens || 0,
+          providerStats: data.providerStats || [],
+          recentActivity: data.recentActivity || []
+        })
+      } else {
+        console.error('[Dashboard] Stats API error:', response.status, response.statusText)
+        throw new Error(`API returned ${response.status}`)
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error)
-      // Use mock data as fallback
+      // Use basic fallback data
       setRealTimeData({
-        totalRequests: 2929,
-        totalCost: 57.85,
-        activeConnections: 4,
-        uptime: '99.9%'
+        totalRequests: 0,
+        totalCost: 0.00,
+        activeConnections: 0,
+        uptime: '99.9%',
+        responseTime: 245,
+        totalApiKeys: 0,
+        activeProviders: 0,
+        totalMcpTokens: 0,
+        providerStats: [],
+        recentActivity: []
       })
     }
   }
 
   const setupRealTimeUpdates = () => {
-    // Simulate real-time updates
+    // Refresh real data periodically instead of simulating random updates
     const interval = setInterval(() => {
-      setRealTimeData(prev => ({
-        ...prev,
-        totalRequests: prev.totalRequests + Math.floor(Math.random() * 3),
-        totalCost: parseFloat((prev.totalCost + Math.random() * 0.1).toFixed(2)),
-        activeConnections: Math.max(1, prev.activeConnections + (Math.random() > 0.5 ? 1 : -1))
-      }))
-    }, 5000)
+      loadDashboardData() // Fetch real data every 30 seconds
+    }, 30000)
 
     setIsConnected(true)
     return () => {
@@ -96,219 +115,76 @@ export default function Dashboard() {
     )
   }
   
-  const mcpClients: MCPClient[] = [
-    {
-      id: 'claude-code',
-      name: 'Claude Code',
-      description: 'Anthropic\'s official CLI for Claude - connected via MCP',
-      status: 'connected',
-      toolCalls: 247,
-      lastActivity: '2 mins ago',
-      connectionTime: '2 hours ago'
-    },
-    {
-      id: 'cursor',
-      name: 'Cursor AI',
-      description: 'AI-first code editor using our perspectives MCP tool',
-      status: 'connected',
-      toolCalls: 156,
-      lastActivity: '15 mins ago',
-      connectionTime: '4 hours ago'
-    },
-    {
-      id: 'codex-cli',
-      name: 'Codex CLI',
-      description: 'Command-line interface connected to Polydev MCP server',
-      status: 'idle',
-      toolCalls: 89,
-      lastActivity: '1 hour ago',
-      connectionTime: '6 hours ago'
-    },
-    {
-      id: 'continue-dev',
-      name: 'Continue.dev',
-      description: 'VS Code extension using our multi-model perspectives',
-      status: 'disconnected',
-      toolCalls: 34,
-      lastActivity: '3 hours ago',
-      connectionTime: '1 day ago'
+  // Generate MCP clients from recent activity data
+  const generateMCPClientsFromActivity = () => {
+    const clientMap = new Map()
+    
+    // Process recent activity to determine connected clients
+    if (realTimeData.recentActivity && Array.isArray(realTimeData.recentActivity)) {
+      realTimeData.recentActivity.forEach((activity: any) => {
+        if (activity && activity.provider) {
+          const clientId = activity.provider.toLowerCase().replace(/\s+/g, '-')
+          
+          if (!clientMap.has(clientId)) {
+            clientMap.set(clientId, {
+              id: clientId,
+              name: activity.provider,
+              description: getClientDescription(activity.provider),
+              status: 'connected',
+              toolCalls: 0,
+              lastActivity: formatTimeAgo(activity.timestamp || new Date().toISOString()),
+              connectionTime: formatTimeAgo(activity.timestamp || new Date().toISOString())
+            })
+          }
+          
+          const client = clientMap.get(clientId)
+          if (client) {
+            client.toolCalls += 1
+            
+            // Update last activity if more recent
+            const activityTime = activity.timestamp || new Date().toISOString()
+            if (new Date(activityTime) > new Date(client.lastActivity)) {
+              client.lastActivity = formatTimeAgo(activityTime)
+            }
+          }
+        }
+      })
     }
-  ]
+    
+    return Array.from(clientMap.values())
+  }
 
-  const llmProviders: LLMProvider[] = [
-    // API-based providers
-    {
-      id: 'anthropic',
-      name: 'Anthropic',
-      model: 'claude-opus-4-1-20250805',
-      status: 'active',
-      requests: 892,
-      cost: '$18.90'
-    },
-    {
-      id: 'anthropic-sonnet',
-      name: 'Anthropic',
-      model: 'claude-3-5-sonnet-20241022',
-      status: 'active',
-      requests: 634,
-      cost: '$15.30'
-    },
-    {
-      id: 'anthropic-haiku',
-      name: 'Anthropic',
-      model: 'claude-3-5-haiku-20241022',
-      status: 'active',
-      requests: 423,
-      cost: '$8.45'
-    },
-    {
-      id: 'openai',
-      name: 'OpenAI',
-      model: 'gpt-4o',
-      status: 'active',
-      requests: 1247,
-      cost: '$23.45'
-    },
-    {
-      id: 'openai-mini',
-      name: 'OpenAI',
-      model: 'gpt-4o-mini',
-      status: 'active',
-      requests: 892,
-      cost: '$5.20'
-    },
-    {
-      id: 'openai-o1',
-      name: 'OpenAI',
-      model: 'o1-preview',
-      status: 'active',
-      requests: 156,
-      cost: '$45.80'
-    },
-    {
-      id: 'google',
-      name: 'Google AI',
-      model: 'gemini-2.0-flash-exp',
-      status: 'active',
-      requests: 534,
-      cost: '$8.20'
-    },
-    {
-      id: 'google-pro',
-      name: 'Google AI',
-      model: 'gemini-1.5-pro-002',
-      status: 'active',
-      requests: 298,
-      cost: '$12.45'
-    },
-    {
-      id: 'deepseek',
-      name: 'DeepSeek',
-      model: 'deepseek-chat',
-      status: 'active',
-      requests: 423,
-      cost: '$2.15'
-    },
-    {
-      id: 'xai',
-      name: 'xAI',
-      model: 'grok-beta',
-      status: 'active',
-      requests: 312,
-      cost: '$6.80'
-    },
-    {
-      id: 'groq',
-      name: 'Groq',
-      model: 'llama-3.1-70b-versatile',
-      status: 'active',
-      requests: 567,
-      cost: '$3.25'
-    },
-    {
-      id: 'openrouter',
-      name: 'OpenRouter',
-      model: 'anthropic/claude-3.5-sonnet',
-      status: 'active',
-      requests: 234,
-      cost: '$9.80'
-    },
-    // CLI-based providers (subscription)
-    {
-      id: 'codex-cli',
-      name: 'Codex CLI',
-      model: 'gpt-4o (CLI)',
-      status: 'active',
-      requests: 245,
-      cost: 'Subscription'
-    },
-    {
-      id: 'claude-code',
-      name: 'Claude Code',
-      model: 'claude-opus-4-1-20250805 (CLI)',
-      status: 'active',
-      requests: 198,
-      cost: 'Subscription'
-    },
-    {
-      id: 'github-copilot',
-      name: 'GitHub Copilot',
-      model: 'gpt-4o (GitHub)',
-      status: 'active',
-      requests: 156,
-      cost: 'Subscription'
-    },
-    {
-      id: 'gemini-cli',
-      name: 'Gemini CLI',
-      model: 'gemini-2.0-flash-exp (Cloud)',
-      status: 'active',
-      requests: 89,
-      cost: 'Cloud Credits'
-    },
-    // Cloud-based providers
-    {
-      id: 'vertex',
-      name: 'Google Vertex AI',
-      model: 'gemini-1.5-pro-002',
-      status: 'active',
-      requests: 123,
-      cost: 'Cloud Credits'
-    },
-    {
-      id: 'bedrock',
-      name: 'AWS Bedrock',
-      model: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
-      status: 'active',
-      requests: 78,
-      cost: 'AWS Credits'
-    },
-    {
-      id: 'azure',
-      name: 'Azure OpenAI',
-      model: 'gpt-4o',
-      status: 'active',
-      requests: 167,
-      cost: 'Azure Credits'
-    },
-    // Local providers
-    {
-      id: 'ollama',
-      name: 'Ollama',
-      model: 'llama3.2',
-      status: 'active',
-      requests: 445,
-      cost: 'Local/Free'
-    },
-    {
-      id: 'lmstudio',
-      name: 'LM Studio',
-      model: 'local-model',
-      status: 'inactive',
-      requests: 23,
-      cost: 'Local/Free'
+  const getClientDescription = (clientName: string) => {
+    switch (clientName) {
+      case 'Claude Code':
+        return 'Official Claude desktop application with MCP integration'
+      case 'Cursor':
+        return 'AI-powered code editor with Polydev perspectives integration'
+      case 'Unknown Client':
+        return 'Custom client connected via MCP protocol'
+      default:
+        return `${clientName} connected via MCP protocol`
     }
-  ]
+  }
+
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date()
+    const time = new Date(timestamp)
+    const diffMs = now.getTime() - time.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    
+    if (diffMins < 1) return 'just now'
+    if (diffMins < 60) return `${diffMins} mins ago`
+    
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours} hours ago`
+    
+    const diffDays = Math.floor(diffHours / 24)
+    return `${diffDays} days ago`
+  }
+
+  const mcpClients: MCPClient[] = generateMCPClientsFromActivity()
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -411,7 +287,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500">Response Time</p>
-                <p className="text-2xl font-bold text-gray-900">245ms</p>
+                <p className="text-2xl font-bold text-gray-900">{realTimeData.responseTime}ms</p>
               </div>
               <div className="p-3 bg-yellow-100 rounded-full">
                 <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -420,7 +296,9 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="mt-2">
-              <span className="text-sm text-green-600">Excellent</span>
+              <span className="text-sm text-green-600">
+                {realTimeData.responseTime < 300 ? 'Excellent' : realTimeData.responseTime < 500 ? 'Good' : 'Slow'}
+              </span>
             </div>
           </div>
         </div>
@@ -460,7 +338,7 @@ export default function Dashboard() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Connected MCP Clients</p>
-                    <p className="text-2xl font-semibold text-gray-900">3</p>
+                    <p className="text-2xl font-semibold text-gray-900">{realTimeData.activeConnections}</p>
                   </div>
                 </div>
               </div>
@@ -476,7 +354,7 @@ export default function Dashboard() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total API Calls</p>
-                    <p className="text-2xl font-semibold text-gray-900">2,929</p>
+                    <p className="text-2xl font-semibold text-gray-900">{realTimeData.totalRequests.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -492,7 +370,7 @@ export default function Dashboard() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Monthly Cost</p>
-                    <p className="text-2xl font-semibold text-gray-900">$57.85</p>
+                    <p className="text-2xl font-semibold text-gray-900">${realTimeData.totalCost.toFixed(2)}</p>
                   </div>
                 </div>
               </div>
@@ -502,13 +380,13 @@ export default function Dashboard() {
                   <div className="flex-shrink-0">
                     <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                       <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                       </svg>
                     </div>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">System Health</p>
-                    <p className="text-2xl font-semibold text-green-600">98.9%</p>
+                    <p className="text-sm font-medium text-gray-600">API Keys Configured</p>
+                    <p className="text-2xl font-semibold text-gray-900">{realTimeData.totalApiKeys}</p>
                   </div>
                 </div>
               </div>
@@ -678,30 +556,31 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {llmProviders.map((provider) => (
-                    <tr key={provider.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm mr-3">
-                            {provider.name.charAt(0)}
+                  {realTimeData.providerStats && Array.isArray(realTimeData.providerStats) ? 
+                    realTimeData.providerStats.map((provider: any, index: number) => (
+                      <tr key={`${provider.name || 'provider'}-${index}`} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm mr-3">
+                              {provider.name ? provider.name.charAt(0) : 'P'}
+                            </div>
+                            <div className="text-sm font-medium text-gray-900">{provider.name || 'Unknown Provider'}</div>
                           </div>
-                          <div className="text-sm font-medium text-gray-900">{provider.name}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{provider.model}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(provider.status)}`}>
-                          {provider.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {provider.requests.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {provider.cost}
-                      </td>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">Multiple Models Available</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(provider.status || 'inactive')}`}>
+                            {provider.status || 'inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {provider.requests ? provider.requests.toLocaleString() : '0'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {provider.cost || '$0.00'}
+                        </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
                           <Link
@@ -717,9 +596,16 @@ export default function Dashboard() {
                             Analytics
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                          No provider configurations found. Add API keys to see your providers here.
+                        </td>
+                      </tr>
+                    )
+                  }
                 </tbody>
               </table>
             </div>
