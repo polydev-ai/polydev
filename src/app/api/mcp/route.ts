@@ -832,9 +832,9 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
           }
         }
 
-        // Decrypt the API key (in a real implementation, you'd decrypt properly)
-        // For now, let's assume it's stored as plaintext for testing
-        const decryptedKey = apiKey.encrypted_key
+        // Decode the Base64 encoded API key
+        const decryptedKey = Buffer.from(apiKey.encrypted_key, 'base64').toString('utf-8')
+        console.log(`[MCP] Decoded key for ${provider.display_name}: ${decryptedKey.substring(0, 10)}...`)
 
         // Use provider-specific settings if provided, otherwise use global settings
         const providerSettings = args.provider_settings?.[provider.provider_name] || {}
