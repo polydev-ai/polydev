@@ -96,20 +96,20 @@ function buildRequestConfig(
       const isGPT5Model = model.startsWith('gpt-5')
       
       if (isGPT5Model) {
-        // Try GPT-5 with proper Responses API (based on GPT-5's expert guidance)
-        console.log(`[MCP] Using GPT-5 with corrected Responses API: ${model}`)
+        // GPT-5 is not available through standard OpenAI API, try chat completions with fallback model
+        console.log(`[MCP] GPT-5 not available through API, using GPT-4o as fallback for: ${model}`)
+        const fallbackModel = 'gpt-4o'
         return {
-          url: `${baseUrl}/responses`,
+          url: `${baseUrl}/chat/completions`,
           headers: {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
-            // No OpenAI-Beta header unless specifically required
           },
           body: {
-            model,  // Use exact model name from user
-            input: prompt,  // Use 'input' for responses endpoint
+            model: fallbackModel,  // Use GPT-4o as fallback
+            messages: [{ role: 'user', content: prompt }],
             temperature,
-            max_output_tokens: maxTokens,  // Use max_output_tokens for responses
+            max_tokens: maxTokens,
           },
         }
       }
@@ -204,12 +204,12 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
   switch (provider) {
     case 'openai':
     case 'openai-native':
-      // Handle GPT-5 Responses API format
+      // Handle GPT-5 models (now using fallback to GPT-4o format)
       if (model?.startsWith('gpt-5')) {
-        console.log(`[MCP] Parsing GPT-5 Responses API response`)
+        console.log(`[MCP] Parsing GPT-5 response (using GPT-4o fallback format)`)
         return {
-          content: data.output || 'No response',
-          tokens_used: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+          content: data.choices?.[0]?.message?.content || 'No response',
+          tokens_used: data.usage?.total_tokens || 0
         }
       }
       console.log(`[MCP] Parsing standard OpenAI response for model: ${model}`)
