@@ -45,7 +45,13 @@ export async function GET() {
           mcp_settings: {
             default_temperature: 0.7,
             default_max_tokens: 4000,
-            auto_select_model: true
+            auto_select_model: true,
+            memory_settings: {
+              enable_conversation_memory: true,
+              enable_project_memory: true,
+              max_conversation_history: 10,
+              auto_extract_patterns: true
+            }
           }
         }
         

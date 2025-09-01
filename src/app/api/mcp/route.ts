@@ -3,6 +3,7 @@ import '@/lib/crypto-polyfill'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { createHash } from 'crypto'
+import { MCPMemoryManager } from '@/lib/mcpMemory'
 
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
@@ -838,6 +839,39 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   )
   
   console.log(`[MCP] Service role client created successfully`)
+
+  // Initialize memory manager and get relevant context
+  const memoryManager = new MCPMemoryManager()
+  const requestId = createHash('md5').update(args.prompt + Date.now()).digest('hex').substring(0, 16)
+  
+  console.log(`[MCP] Memory - Request ID: ${requestId}`)
+  
+  // Get memory preferences
+  const memoryPreferences = await memoryManager.getMemoryPreferences(user.id)
+  console.log(`[MCP] Memory preferences:`, memoryPreferences)
+  
+  // Search for relevant context if enabled
+  let contextualPrompt = args.prompt
+  let relevantContext = null
+  
+  if (memoryPreferences.enable_conversation_memory || memoryPreferences.enable_project_memory) {
+    relevantContext = await memoryManager.searchRelevantContext(
+      user.id,
+      args.prompt,
+      args.project_context
+    )
+    
+    console.log(`[MCP] Found relevant context:`, {
+      conversations: relevantContext.conversations.length,
+      projectMemories: relevantContext.projectMemories.length
+    })
+
+    // Enhance prompt with context if available
+    if (relevantContext.relevantContext && relevantContext.relevantContext.trim()) {
+      contextualPrompt = `${relevantContext.relevantContext}\n\n# Current Request\n${args.prompt}`
+      console.log(`[MCP] Enhanced prompt with context (${relevantContext.relevantContext.length} chars)`)
+    }
+  }
   
   // Get user preferences with comprehensive settings using service role
   const { data: preferences } = await serviceRoleSupabase
@@ -968,7 +1002,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Use the unified API caller with provider-specific preferences
         const response = await callLLMAPI(
           model, 
-          args.prompt, 
+          contextualPrompt, 
           decryptedKey, 
           provider,
           providerTemperature, 
@@ -1179,6 +1213,49 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       formatted += '---\n\n'
     }
   })
+
+  // Store conversation in memory system if enabled
+  if (memoryPreferences.enable_conversation_memory) {
+    try {
+      const totalTokensUsed = responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0)
+      const primaryModel = responses.find(r => !r.error)?.model || models[0] || 'unknown'
+      
+      await memoryManager.storeConversation(user.id, {
+        user_message: args.prompt,
+        assistant_response: formatted,
+        model_used: primaryModel,
+        tokens_used: totalTokensUsed,
+        session_id: args.session_id,
+        project_context: args.project_context
+      })
+      
+      console.log(`[MCP] Memory - Stored conversation for user ${user.id}`)
+    } catch (memoryError) {
+      console.warn('[MCP] Memory - Failed to store conversation:', memoryError)
+    }
+  }
+
+  // Sync dynamic project memories if enabled and context provided
+  if (memoryPreferences.enable_project_memory && args.project_context) {
+    try {
+      // Extract project information from context and responses for memory sync
+      const projectId = args.project_identifier || 'current-project'
+      
+      // Sync current project state
+      await memoryManager.bulkSyncProjectState(user.id, requestId, {
+        project_identifier: projectId,
+        current_context: `Current request: ${args.prompt}\n\nResponses:\n${formatted.substring(0, 2000)}...`,
+        tech_stack: args.tech_stack,
+        recent_changes: args.recent_changes,
+        file_structure: args.file_structure,
+        dependencies: args.dependencies
+      })
+      
+      console.log(`[MCP] Memory - Synced project state for ${projectId}`)
+    } catch (memoryError) {
+      console.warn('[MCP] Memory - Failed to sync project state:', memoryError)
+    }
+  }
 
   return formatted
 }
