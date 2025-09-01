@@ -42,7 +42,11 @@ export default function Dashboard() {
   const [requestLogs, setRequestLogs] = useState([])
   const [requestLogsLoading, setRequestLogsLoading] = useState(false)
   const [selectedLog, setSelectedLog] = useState(null)
-  const [logsFilter, setLogsFilter] = useState('all') // all, success, error
+  const [logsFilter, setLogsFilter] = useState('all')
+  const [providerFilter, setProviderFilter] = useState('all')
+  const [modelFilter, setModelFilter] = useState('all')
+  const [providerAnalytics, setProviderAnalytics] = useState(null)
+  const [modelAnalytics, setModelAnalytics] = useState(null) // all, success, error
   const [isConnected, setIsConnected] = useState(false)
   
   const supabase = createClient()
@@ -60,6 +64,21 @@ export default function Dashboard() {
       loadRequestLogs()
     }
   }, [activeTab, logsFilter])
+
+  useEffect(() => {
+    if (requestLogs.length > 0) {
+      loadProviderAnalytics()
+      loadModelAnalytics()
+    }
+  }, [requestLogs])
+
+  useEffect(() => {
+    if (user && (activeTab === 'provider-analytics' || activeTab === 'model-analytics')) {
+      if (requestLogs.length === 0) {
+        loadRequestLogs()
+      }
+    }
+  }, [user, activeTab])
 
   const loadDashboardData = async () => {
     try {
@@ -136,6 +155,107 @@ export default function Dashboard() {
     } finally {
       setRequestLogsLoading(false)
     }
+  }
+
+  const loadProviderAnalytics = async () => {
+    if (!user || !requestLogs.length) return
+    
+    // Analyze provider performance from request logs
+    const providerStats = {}
+    
+    requestLogs.forEach(log => {
+      if (log.providers && Array.isArray(log.providers)) {
+        log.providers.forEach(provider => {
+          if (!providerStats[provider.provider]) {
+            providerStats[provider.provider] = {
+              name: provider.provider,
+              requests: 0,
+              totalCost: 0,
+              totalTokens: 0,
+              totalLatency: 0,
+              successCount: 0,
+              errorCount: 0,
+              models: new Set()
+            }
+          }
+          
+          const stats = providerStats[provider.provider]
+          stats.requests++
+          stats.totalCost += provider.cost || 0
+          stats.totalTokens += provider.tokens || 0
+          stats.totalLatency += provider.latency || 0
+          if (provider.success) {
+            stats.successCount++
+          } else {
+            stats.errorCount++
+          }
+          if (provider.model) {
+            stats.models.add(provider.model)
+          }
+        })
+      }
+    })
+
+    // Calculate averages and format data
+    const analytics = Object.values(providerStats).map(stats => ({
+      ...stats,
+      avgLatency: stats.requests > 0 ? Math.round(stats.totalLatency / stats.requests) : 0,
+      avgCost: stats.requests > 0 ? (stats.totalCost / stats.requests) : 0,
+      successRate: stats.requests > 0 ? ((stats.successCount / stats.requests) * 100).toFixed(1) : 0,
+      models: Array.from(stats.models)
+    })).sort((a, b) => b.requests - a.requests)
+
+    setProviderAnalytics(analytics)
+  }
+
+  const loadModelAnalytics = async () => {
+    if (!user || !requestLogs.length) return
+    
+    // Analyze model performance from request logs
+    const modelStats = {}
+    
+    requestLogs.forEach(log => {
+      if (log.providers && Array.isArray(log.providers)) {
+        log.providers.forEach(provider => {
+          const modelKey = `${provider.provider}:${provider.model}`
+          if (!modelStats[modelKey]) {
+            modelStats[modelKey] = {
+              provider: provider.provider,
+              model: provider.model,
+              requests: 0,
+              totalCost: 0,
+              totalTokens: 0,
+              totalLatency: 0,
+              successCount: 0,
+              errorCount: 0
+            }
+          }
+          
+          const stats = modelStats[modelKey]
+          stats.requests++
+          stats.totalCost += provider.cost || 0
+          stats.totalTokens += provider.tokens || 0
+          stats.totalLatency += provider.latency || 0
+          if (provider.success) {
+            stats.successCount++
+          } else {
+            stats.errorCount++
+          }
+        })
+      }
+    })
+
+    // Calculate averages and format data
+    const analytics = Object.values(modelStats).map(stats => ({
+      ...stats,
+      avgLatency: stats.requests > 0 ? Math.round(stats.totalLatency / stats.requests) : 0,
+      avgCost: stats.requests > 0 ? (stats.totalCost / stats.requests) : 0,
+      tokensPerSecond: stats.totalLatency > 0 ? Math.round((stats.totalTokens * 1000) / stats.totalLatency) : 0,
+      successRate: stats.requests > 0 ? ((stats.successCount / stats.requests) * 100).toFixed(1) : 0,
+      costPerToken: stats.totalTokens > 0 ? (stats.totalCost / stats.totalTokens).toFixed(6) : 0
+    })).sort((a, b) => b.requests - a.requests)
+
+    setModelAnalytics(analytics)
   }
 
   const setupRealTimeUpdates = () => {
@@ -350,7 +470,7 @@ export default function Dashboard() {
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-8">
           <nav className="-mb-px flex space-x-8">
-            {['overview', 'request-logs', 'mcp-clients', 'llm-providers', 'analytics'].map((tab) => (
+            {['overview', 'request-logs', 'provider-analytics', 'model-analytics', 'mcp-clients', 'analytics'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -692,6 +812,348 @@ export default function Dashboard() {
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Provider Analytics Tab */}
+        {activeTab === 'provider-analytics' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Provider Analytics</h2>
+                <p className="text-gray-600 mt-1">Performance comparison and analytics by AI provider</p>
+              </div>
+              <div className="text-sm text-gray-500">
+                Based on {requestLogs.length} requests
+              </div>
+            </div>
+
+            {/* Provider Performance Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Active Providers</p>
+                    <p className="text-lg font-semibold text-gray-900">{providerAnalytics ? providerAnalytics.length : 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Best Success Rate</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {providerAnalytics && providerAnalytics.length > 0 
+                        ? Math.max(...providerAnalytics.map(p => parseFloat(p.successRate))).toFixed(1) 
+                        : '0'}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Fastest Provider</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {providerAnalytics && providerAnalytics.length > 0 
+                        ? Math.min(...providerAnalytics.map(p => p.avgLatency || 9999))
+                        : 0}ms
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Lowest Cost</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      ${providerAnalytics && providerAnalytics.length > 0 
+                        ? Math.min(...providerAnalytics.map(p => p.avgCost || 999)).toFixed(4)
+                        : '0.0000'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Provider Comparison Table */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Provider Performance Comparison</h3>
+                <p className="text-sm text-gray-600 mt-1">Detailed breakdown of each provider's performance metrics</p>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requests</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Latency</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Cost</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Cost</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Models</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {providerAnalytics && providerAnalytics.length > 0 ? providerAnalytics.map((provider, index) => (
+                      <tr key={provider.name} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                              <span className="text-white text-xs font-bold">{provider.name.charAt(0).toUpperCase()}</span>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{provider.name}</div>
+                              <div className="text-sm text-gray-500">#{index + 1} by requests</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{provider.requests.toLocaleString()}</div>
+                          <div className="text-sm text-gray-500">{provider.successCount}✓ {provider.errorCount}✗</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="text-sm font-medium text-gray-900">{provider.successRate}%</div>
+                            <div className={`ml-2 w-16 bg-gray-200 rounded-full h-2`}>
+                              <div 
+                                className={`h-2 rounded-full ${parseFloat(provider.successRate) > 95 ? 'bg-green-500' : parseFloat(provider.successRate) > 80 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                style={{ width: `${provider.successRate}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{provider.avgLatency}ms</div>
+                          <div className="text-sm text-gray-500">
+                            {provider.avgLatency < 200 ? 'Excellent' : 
+                             provider.avgLatency < 500 ? 'Good' : 
+                             provider.avgLatency < 1000 ? 'Fair' : 'Slow'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">${provider.totalCost.toFixed(4)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">${provider.avgCost.toFixed(4)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{provider.models.length}</div>
+                          <div className="text-sm text-gray-500">
+                            {provider.models.slice(0, 2).join(', ')}
+                            {provider.models.length > 2 && ` +${provider.models.length - 2}`}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{provider.totalTokens.toLocaleString()}</div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                          No provider analytics available. Make some API requests to see data here.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Model Analytics Tab */}
+        {activeTab === 'model-analytics' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Model Analytics</h2>
+                <p className="text-gray-600 mt-1">Performance comparison and analytics by specific AI models</p>
+              </div>
+              <div className="text-sm text-gray-500">
+                Based on {requestLogs.length} requests
+              </div>
+            </div>
+
+            {/* Model Performance Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Total Models</p>
+                    <p className="text-lg font-semibold text-gray-900">{modelAnalytics ? modelAnalytics.length : 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Fastest Model</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {modelAnalytics && modelAnalytics.length > 0 
+                        ? Math.max(...modelAnalytics.map(m => m.tokensPerSecond || 0))
+                        : 0} t/s
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Cheapest per Token</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      ${modelAnalytics && modelAnalytics.length > 0 
+                        ? Math.min(...modelAnalytics.filter(m => parseFloat(m.costPerToken) > 0).map(m => parseFloat(m.costPerToken))).toFixed(6)
+                        : '0.000000'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center mr-3">
+                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Best Reliability</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {modelAnalytics && modelAnalytics.length > 0 
+                        ? Math.max(...modelAnalytics.map(m => parseFloat(m.successRate))).toFixed(1)
+                        : '0'}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Model Comparison Table */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Model Performance Comparison</h3>
+                <p className="text-sm text-gray-600 mt-1">Detailed breakdown of each model's performance metrics</p>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requests</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Speed (t/s)</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latency</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost/Token</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Cost</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {modelAnalytics && modelAnalytics.length > 0 ? modelAnalytics.map((model, index) => (
+                      <tr key={`${model.provider}:${model.model}`} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                              <span className="text-white text-xs font-bold">{model.model?.charAt(0).toUpperCase() || 'M'}</span>
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{model.model || 'Unknown Model'}</div>
+                              <div className="text-sm text-gray-500">{model.provider}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{model.requests}</div>
+                          <div className="text-sm text-gray-500">{model.successCount}✓ {model.errorCount}✗</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="text-sm font-medium text-gray-900">{model.successRate}%</div>
+                            <div className={`ml-2 w-16 bg-gray-200 rounded-full h-2`}>
+                              <div 
+                                className={`h-2 rounded-full ${parseFloat(model.successRate) > 95 ? 'bg-green-500' : parseFloat(model.successRate) > 80 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                style={{ width: `${model.successRate}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{model.tokensPerSecond}</div>
+                          <div className="text-sm text-gray-500">
+                            {model.tokensPerSecond > 50 ? 'Very Fast' : 
+                             model.tokensPerSecond > 20 ? 'Fast' : 
+                             model.tokensPerSecond > 10 ? 'Average' : 'Slow'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{model.avgLatency}ms</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">${model.costPerToken}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">${model.totalCost.toFixed(4)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{model.totalTokens.toLocaleString()}</div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                          No model analytics available. Make some API requests to see data here.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
