@@ -835,10 +835,18 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   const { createClient: createServiceClient } = await import('@supabase/supabase-js')
   const serviceRoleSupabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceRoleKey
+    serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
   )
   
   console.log(`[MCP] Service role client created successfully`)
+  console.log(`[MCP] Service role client auth status:`, await serviceRoleSupabase.auth.getSession())
+  console.log(`[MCP] Service role key starts with:`, serviceRoleKey.substring(0, 20))
 
   // Initialize memory manager with service role client and get relevant context
   const memoryManager = new MCPMemoryManager({}, serviceRoleSupabase)

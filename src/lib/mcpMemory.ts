@@ -70,6 +70,13 @@ export class MCPMemoryManager {
     console.log(`[MCPMemory] getSupabaseClient - this.supabase exists:`, !!this.supabase)
     if (this.supabase) {
       console.log(`[MCPMemory] getSupabaseClient - using provided service client`)
+      // Test the client to see what role it's using
+      try {
+        const { data, error } = await this.supabase.from('mcp_conversation_memory').select('count').limit(1)
+        console.log(`[MCPMemory] Service client test query result:`, { data, error })
+      } catch (testError) {
+        console.error(`[MCPMemory] Service client test query failed:`, testError)
+      }
       return this.supabase
     }
     console.log(`[MCPMemory] getSupabaseClient - falling back to regular createClient()`)
