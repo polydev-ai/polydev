@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useAuth } from '../../../hooks/useAuth'
 import { PROVIDERS } from '../../../types/providers'
 import { Settings, Save, RefreshCw, Check, AlertCircle } from 'lucide-react'
