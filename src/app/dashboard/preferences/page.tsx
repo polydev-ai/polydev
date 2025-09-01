@@ -325,78 +325,131 @@ export default function PreferencesPage() {
 
         {/* Memory Settings */}
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-            Memory & Context Settings
-          </h2>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              Memory & Context Settings
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Control how Polydev remembers and uses conversation history and project context to provide better responses.
+            </p>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={preferences.mcp_settings.memory_settings?.enable_conversation_memory !== false}
-                  onChange={(e) => updateMemorySetting('enable_conversation_memory', e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Enable Conversation Memory
-                </span>
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Remember recent conversations for better context
-              </p>
+          {/* Conversation Memory Section */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Conversation Memory
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={preferences.mcp_settings.memory_settings?.enable_conversation_memory !== false}
+                      onChange={(e) => updateMemorySetting('enable_conversation_memory', e.target.checked)}
+                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Enable Conversation Memory
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+                    Remember recent conversations across MCP sessions for better context continuity
+                  </p>
+                </div>
+              </div>
+              
+              <div className="ml-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Max Conversation History
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={preferences.mcp_settings.memory_settings?.max_conversation_history || 10}
+                    onChange={(e) => updateMemorySetting('max_conversation_history', parseInt(e.target.value))}
+                    disabled={preferences.mcp_settings.memory_settings?.enable_conversation_memory === false}
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[3ch]">
+                    {preferences.mcp_settings.memory_settings?.max_conversation_history || 10}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <span>Less memory</span>
+                  <span>More context, higher costs</span>
+                </div>
+              </div>
             </div>
+          </div>
 
-            <div>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={preferences.mcp_settings.memory_settings?.enable_project_memory !== false}
-                  onChange={(e) => updateMemorySetting('enable_project_memory', e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Enable Project Memory
-                </span>
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Keep dynamic project context and patterns
-              </p>
-            </div>
+          {/* Project Memory Section */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-6 mb-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Project Memory
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={preferences.mcp_settings.memory_settings?.enable_project_memory !== false}
+                    onChange={(e) => updateMemorySetting('enable_project_memory', e.target.checked)}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Enable Project Memory
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+                  Dynamically sync and remember project structure, dependencies, and context
+                </p>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Max Conversation History
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={preferences.mcp_settings.memory_settings?.max_conversation_history || 10}
-                onChange={(e) => updateMemorySetting('max_conversation_history', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Number of recent conversations to remember
-              </p>
+              <div className="ml-6">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={preferences.mcp_settings.memory_settings?.auto_extract_patterns !== false}
+                    onChange={(e) => updateMemorySetting('auto_extract_patterns', e.target.checked)}
+                    disabled={preferences.mcp_settings.memory_settings?.enable_project_memory === false}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Auto-extract Patterns & Decisions
+                  </span>
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+                  Automatically identify and remember coding patterns, architectural decisions, and preferences
+                </p>
+              </div>
             </div>
+          </div>
 
-            <div>
-              <label className="flex items-center space-x-2 mt-6">
-                <input
-                  type="checkbox"
-                  checked={preferences.mcp_settings.memory_settings?.auto_extract_patterns !== false}
-                  onChange={(e) => updateMemorySetting('auto_extract_patterns', e.target.checked)}
-                  className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Auto-extract Patterns
-                </span>
-              </label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Automatically identify and remember coding patterns
-              </p>
+          {/* Memory Management */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Memory Management
+            </h3>
+            <div className="flex flex-wrap gap-3">
+              <Link 
+                href="/dashboard/memory" 
+                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                View Stored Memories
+              </Link>
+              <button 
+                onClick={() => {/* TODO: Implement clear memories */}}
+                className="inline-flex items-center px-4 py-2 border border-red-300 dark:border-red-600 rounded-md shadow-sm text-sm font-medium text-red-700 dark:text-red-300 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Clear All Memories
+              </button>
             </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              Manage your stored conversation history and project memories
+            </p>
           </div>
         </div>
 

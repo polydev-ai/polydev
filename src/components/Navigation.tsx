@@ -35,6 +35,7 @@ export default function Navigation() {
   const authenticatedNavigation = [
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Chat', href: '/chat' },
+    { name: 'API Keys', href: '/dashboard/api-keys' },
     { name: 'Documentation', href: '/docs' },
     { name: 'CLI Integration', href: '/cli' },
   ]
