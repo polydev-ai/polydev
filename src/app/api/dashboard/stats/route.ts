@@ -119,14 +119,14 @@ export async function GET(request: NextRequest) {
       // Calculate requests for this provider from usage data
       const providerRequests = usageData?.filter(log => {
         // Check detailed logs format first
-        if (log.provider_costs) {
+        if ('provider_costs' in log && log.provider_costs) {
           return Object.keys(log.provider_costs).some((key: string) => 
             key.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
             key.toLowerCase().includes((provider.display_name || '').toLowerCase())
           )
         }
         // Fallback to simple logs format
-        if (log.models_used && typeof log.models_used === 'object') {
+        if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
           const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
           return modelsUsed.some((model: string) => 
             model.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
@@ -170,14 +170,14 @@ export async function GET(request: NextRequest) {
         let providerName = 'Multiple Models'
         
         // Extract provider name from detailed logs
-        if (log.provider_responses && typeof log.provider_responses === 'object') {
+        if ('provider_responses' in log && log.provider_responses && typeof log.provider_responses === 'object') {
           const firstProvider = Object.keys(log.provider_responses)[0]
           if (firstProvider) {
             providerName = firstProvider.split(':')[1] || firstProvider // Get model name
           }
         }
         // Fallback to simple logs format
-        else if (log.models_used && typeof log.models_used === 'object') {
+        else if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
           providerName = Object.keys(log.models_used)[0] || 'Unknown Model'
         }
 

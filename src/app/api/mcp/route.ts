@@ -999,10 +999,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   const successCount = responses.filter(r => !r.error).length
 
   // Log MCP tool call to mcp_usage_logs for dashboard statistics
+  // Get the access token for this request from the auth header
+  let accessTokenId = null
+  let clientId = 'unknown'
+  
   try {
-    // Get the access token for this request from the auth header
-    let accessTokenId = null
-    let clientId = 'unknown'
     
     if (request) {
       const authHeader = request.headers.get('authorization')
