@@ -112,8 +112,8 @@ function buildRequestConfig(
           body: {
             model,  // Use exact model name from user
             input: prompt,  // Use 'input' for responses endpoint
-            temperature,
             max_output_tokens: maxTokens,  // Use max_output_tokens for responses
+            // Note: GPT-5 doesn't support temperature parameter
           },
         }
       }
