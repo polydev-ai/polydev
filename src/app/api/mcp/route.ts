@@ -54,18 +54,37 @@ async function callLLMAPI(
     tokens
   )
   
-  // Make the API call
-  const response = await fetch(requestConfig.url, {
-    method: 'POST',
-    headers: requestConfig.headers,
-    body: JSON.stringify(requestConfig.body),
-  })
+  // Make the API call - handle Codex CLI separately
+  let response: Response
+  let data: any
   
-  if (!response.ok) {
-    throw new Error(`${providerConfig.display_name} API error: ${response.status} ${response.statusText}`)
+  if (requestConfig.url === 'codex-cli') {
+    // Use Codex CLI for GPT-5
+    const { CodexCLIHandler } = await import('../../../lib/api/providers/codex-cli')
+    const codexHandler = new CodexCLIHandler()
+    
+    response = await codexHandler.createMessage({
+      messages: requestConfig.body.messages,
+      model: requestConfig.body.model,
+      maxTokens: requestConfig.body.maxTokens,
+      temperature: requestConfig.body.temperature
+    })
+    
+    data = await response.json()
+  } else {
+    // Standard API call
+    response = await fetch(requestConfig.url, {
+      method: 'POST',
+      headers: requestConfig.headers,
+      body: JSON.stringify(requestConfig.body),
+    })
+    
+    if (!response.ok) {
+      throw new Error(`${providerConfig.display_name} API error: ${response.status} ${response.statusText}`)
+    }
+    
+    data = await response.json()
   }
-  
-  const data = await response.json()
   
   // Parse response based on provider format (use actualModel if available)
   const modelForParsing = requestConfig.actualModel || model
@@ -96,21 +115,18 @@ function buildRequestConfig(
       const isGPT5Model = model.startsWith('gpt-5')
       
       if (isGPT5Model) {
-        // GPT-5 is not available through standard OpenAI API, try chat completions with fallback model
-        console.log(`[MCP] GPT-5 not available through API, using GPT-4o as fallback for: ${model}`)
-        const fallbackModel = 'gpt-4o'
+        // GPT-5 requires Codex CLI access, not standard API
+        console.log(`[MCP] Using Codex CLI for real GPT-5 access: ${model}`)
         return {
-          url: `${baseUrl}/chat/completions`,
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
+          url: 'codex-cli', // Special marker for Codex CLI usage
+          headers: {},
           body: {
-            model: fallbackModel,  // Use GPT-4o as fallback
+            model,
             messages: [{ role: 'user', content: prompt }],
             temperature,
-            max_tokens: maxTokens,
+            maxTokens,
           },
+          actualModel: model, // Preserve original GPT-5 model name
         }
       }
       
@@ -204,9 +220,9 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
   switch (provider) {
     case 'openai':
     case 'openai-native':
-      // Handle GPT-5 models (now using fallback to GPT-4o format)
+      // Handle GPT-5 models (now using real GPT-5 via Codex CLI)
       if (model?.startsWith('gpt-5')) {
-        console.log(`[MCP] Parsing GPT-5 response (using GPT-4o fallback format)`)
+        console.log(`[MCP] Parsing GPT-5 response from Codex CLI`)
         return {
           content: data.choices?.[0]?.message?.content || 'No response',
           tokens_used: data.usage?.total_tokens || 0
