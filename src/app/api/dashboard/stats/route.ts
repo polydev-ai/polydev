@@ -218,7 +218,9 @@ export async function GET(request: NextRequest) {
       totalCost: totalCost,
       activeConnections: activeConnections,
       uptime: systemUptime,
-      responseTime: 245, // Could be calculated from actual API response times
+      responseTime: usageData && usageData.length > 0 
+        ? Math.round(usageData.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / usageData.length)
+        : 245
       
       // Additional detailed stats - calculate today's usage from actual data
       requestsToday: usageData?.filter(log => {
