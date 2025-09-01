@@ -7,6 +7,7 @@ import { createHash } from 'crypto'
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
+// Trigger deployment
 
 // Provider Configuration Interface
 interface ProviderConfig {
