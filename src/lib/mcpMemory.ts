@@ -1,6 +1,5 @@
 import { createClient } from '@/app/utils/supabase/server'
 import { SupabaseClient } from '@supabase/supabase-js'
-import { ClaudeMemorySync, ClaudeMemoryExtract } from './claudeMemorySync'
 
 export interface MemoryConfig {
   maxConversationHistory?: number
@@ -49,7 +48,6 @@ export interface ContextSearchResult {
 export class MCPMemoryManager {
   private config: MemoryConfig
   private supabase: SupabaseClient | null
-  private claudeMemorySync: ClaudeMemorySync
   
   constructor(config: MemoryConfig = {}, supabaseClient?: SupabaseClient) {
     this.config = {
@@ -60,7 +58,6 @@ export class MCPMemoryManager {
       ...config
     }
     this.supabase = supabaseClient || null
-    this.claudeMemorySync = new ClaudeMemorySync()
     console.log(`[MCPMemory] Constructor - supabaseClient provided:`, !!supabaseClient)
     if (supabaseClient) {
       console.log(`[MCPMemory] Constructor - client type:`, typeof supabaseClient)
@@ -466,25 +463,14 @@ export class MCPMemoryManager {
     return [...new Set(words)].slice(0, 5)
   }
 
-  private async buildRelevantContext(
+  private buildRelevantContext(
     conversations: ConversationMemory[], 
     memories: ProjectMemory[],
     currentQuery: string
-  ): Promise<string> {
+  ): string {
     let context = ''
 
-    // Add Claude Code conversation history first (most recent context)
-    try {
-      const claudeMemoryExtract = await this.claudeMemorySync.extractRecentConversations(5)
-      if (claudeMemoryExtract && claudeMemoryExtract.conversations.length > 0) {
-        context += '# Recent Claude Code Session Context\n\n'
-        context += this.claudeMemorySync.generateContextSummary(claudeMemoryExtract)
-      }
-    } catch (error) {
-      console.log(`[MCPMemory] Could not extract Claude conversation history:`, error)
-    }
-
-    // Add relevant project memories (cached content)
+    // Add relevant project memories first (cached content)
     if (memories.length > 0) {
       context += '# Relevant Project Knowledge\n\n'
       memories.forEach(memory => {

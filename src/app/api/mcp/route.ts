@@ -876,6 +876,24 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   let contextualPrompt = args.prompt
   let relevantContext = null
   
+  // Check if client provided context (from context bridge)
+  let clientContext = ''
+  if (args.client_context) {
+    console.log(`[MCP] Client context received - status: ${args.client_context.contextStatus}`)
+    
+    if (args.client_context.summary) {
+      clientContext += `# Recent Claude Code Session\n${args.client_context.summary}\n\n`
+    }
+    
+    if (args.client_context.recentTurns && args.client_context.recentTurns.length > 0) {
+      clientContext += `## Recent Conversation:\n`
+      args.client_context.recentTurns.slice(-4).forEach((turn, idx) => {
+        clientContext += `**${turn.role.toUpperCase()}**: ${turn.text.substring(0, 150)}...\n`
+      })
+      clientContext += '\n'
+    }
+  }
+  
   if (memoryPreferences.enable_conversation_memory || memoryPreferences.enable_project_memory) {
     relevantContext = await memoryManager.searchRelevantContext(
       user.id,
@@ -893,6 +911,12 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       contextualPrompt = `${relevantContext.relevantContext}\n\n# Current Request\n${args.prompt}`
       console.log(`[MCP] Enhanced prompt with context (${relevantContext.relevantContext.length} chars)`)
     }
+  }
+  
+  // Add client context from context bridge (higher priority than stored context)
+  if (clientContext) {
+    contextualPrompt = `${clientContext}${contextualPrompt}`
+    console.log(`[MCP] Added client context from bridge (${clientContext.length} chars)`)
   }
   
   // Get user preferences with comprehensive settings using service role
