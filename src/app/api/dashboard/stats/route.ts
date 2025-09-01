@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
       uptime: systemUptime,
       responseTime: usageData && usageData.length > 0 
         ? Math.round(usageData.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / usageData.length)
-        : 245
+        : 245,
       
       // Additional detailed stats - calculate today's usage from actual data
       requestsToday: usageData?.filter(log => {
