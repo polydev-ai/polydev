@@ -1242,7 +1242,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       console.log(`[MCP] Memory - Successfully stored conversation for user ${user.id}`)
     } catch (memoryError) {
       console.error('[MCP] Memory - Failed to store conversation:', memoryError)
-      console.error('[MCP] Memory - Error stack:', memoryError.stack)
+      console.error('[MCP] Memory - Error stack:', (memoryError as Error).stack)
     }
   } else {
     console.log(`[MCP] Memory - Conversation memory disabled`)
