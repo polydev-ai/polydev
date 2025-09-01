@@ -496,7 +496,7 @@ export class MCPMemoryManager {
     if (conversations.length > 0) {
       context += '# Recent Conversation History\n\n'
       conversations.slice(0, 5).forEach(conv => {
-        context += `**${conv.timestamp}** (${conv.model_used}):\n`
+        context += `**${conv.created_at}** (${conv.model_used}):\n`
         context += `User: ${conv.user_message.substring(0, 200)}...\n`
         context += `Assistant: ${conv.assistant_response.substring(0, 200)}...\n\n`
       })
