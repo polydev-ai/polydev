@@ -840,8 +840,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   
   console.log(`[MCP] Service role client created successfully`)
 
-  // Initialize memory manager and get relevant context
-  const memoryManager = new MCPMemoryManager()
+  // Initialize memory manager with service role client and get relevant context
+  const memoryManager = new MCPMemoryManager({}, serviceRoleSupabase)
   const requestId = createHash('md5').update(args.prompt + Date.now()).digest('hex').substring(0, 16)
   
   console.log(`[MCP] Memory - Request ID: ${requestId}`)
@@ -1215,10 +1215,20 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   })
 
   // Store conversation in memory system if enabled
+  console.log(`[MCP] Memory - Checking conversation storage. Enabled: ${memoryPreferences.enable_conversation_memory}`)
+  
   if (memoryPreferences.enable_conversation_memory) {
     try {
       const totalTokensUsed = responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0)
       const primaryModel = responses.find(r => !r.error)?.model || models[0] || 'unknown'
+      
+      console.log(`[MCP] Memory - About to store conversation:`, {
+        user_id: user.id,
+        prompt_length: args.prompt?.length,
+        response_length: formatted?.length,
+        model: primaryModel,
+        tokens: totalTokensUsed
+      })
       
       await memoryManager.storeConversation(user.id, {
         user_message: args.prompt,
@@ -1229,10 +1239,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         project_context: args.project_context
       })
       
-      console.log(`[MCP] Memory - Stored conversation for user ${user.id}`)
+      console.log(`[MCP] Memory - Successfully stored conversation for user ${user.id}`)
     } catch (memoryError) {
-      console.warn('[MCP] Memory - Failed to store conversation:', memoryError)
+      console.error('[MCP] Memory - Failed to store conversation:', memoryError)
+      console.error('[MCP] Memory - Error stack:', memoryError.stack)
     }
+  } else {
+    console.log(`[MCP] Memory - Conversation memory disabled`)
   }
 
   // Sync dynamic project memories if enabled and context provided

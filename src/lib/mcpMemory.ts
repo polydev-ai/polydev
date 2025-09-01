@@ -1,4 +1,5 @@
 import { createClient } from '@/app/utils/supabase/server'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 export interface MemoryConfig {
   maxConversationHistory?: number
@@ -45,8 +46,9 @@ export interface ContextSearchResult {
  */
 export class MCPMemoryManager {
   private config: MemoryConfig
+  private supabase: SupabaseClient | null
   
-  constructor(config: MemoryConfig = {}) {
+  constructor(config: MemoryConfig = {}, supabaseClient?: SupabaseClient) {
     this.config = {
       maxConversationHistory: 10,
       maxProjectMemories: 50,
@@ -54,6 +56,24 @@ export class MCPMemoryManager {
       minTokensForCache: 1024,
       ...config
     }
+    this.supabase = supabaseClient || null
+    console.log(`[MCPMemory] Constructor - supabaseClient provided:`, !!supabaseClient)
+    if (supabaseClient) {
+      console.log(`[MCPMemory] Constructor - client type:`, typeof supabaseClient)
+    }
+  }
+
+  /**
+   * Get Supabase client - uses provided service client or falls back to regular client
+   */
+  private async getSupabaseClient(): Promise<SupabaseClient> {
+    console.log(`[MCPMemory] getSupabaseClient - this.supabase exists:`, !!this.supabase)
+    if (this.supabase) {
+      console.log(`[MCPMemory] getSupabaseClient - using provided service client`)
+      return this.supabase
+    }
+    console.log(`[MCPMemory] getSupabaseClient - falling back to regular createClient()`)
+    return await createClient()
   }
 
   /**
@@ -67,35 +87,53 @@ export class MCPMemoryManager {
     session_id?: string
     project_context?: string
   }): Promise<void> {
+    console.log(`[MCPMemory] storeConversation called for userId: ${userId}`)
     try {
-      const supabase = await createClient()
+      console.log(`[MCPMemory] Getting Supabase client...`)
+      const supabase = await this.getSupabaseClient()
+      console.log(`[MCPMemory] Supabase client obtained`)
       
       // Create conversation hash for deduplication
+      console.log(`[MCPMemory] Creating conversation hash...`)
       const conversationHash = this.generateConversationHash(
         conversation.user_message, 
         conversation.assistant_response
       )
+      console.log(`[MCPMemory] Conversation hash: ${conversationHash}`)
 
       // Extract project identifier from context or message
+      console.log(`[MCPMemory] Extracting project identifier...`)
       const projectIdentifier = this.extractProjectIdentifier(
         conversation.user_message, 
         conversation.project_context
       )
+      console.log(`[MCPMemory] Project identifier: ${projectIdentifier}`)
+
+      const recordToInsert = {
+        user_id: userId,
+        user_message: conversation.user_message,
+        assistant_response: conversation.assistant_response,
+        model_used: conversation.model_used,
+        tokens_used: conversation.tokens_used,
+        conversation_hash: conversationHash,
+        session_id: conversation.session_id,
+        project_identifier: projectIdentifier,
+        created_at: new Date().toISOString()
+      }
+      
+      console.log(`[MCPMemory] About to insert record:`, JSON.stringify(recordToInsert, null, 2))
 
       // Store conversation
-      await supabase
+      const { data, error } = await supabase
         .from('mcp_conversation_memory')
-        .upsert({
-          user_id: userId,
-          user_message: conversation.user_message,
-          assistant_response: conversation.assistant_response,
-          model_used: conversation.model_used,
-          tokens_used: conversation.tokens_used,
-          conversation_hash: conversationHash,
-          session_id: conversation.session_id,
-          project_identifier: projectIdentifier,
-          created_at: new Date().toISOString()
-        })
+        .upsert(recordToInsert)
+        
+      if (error) {
+        console.error(`[MCPMemory] Database insert error:`, error)
+        throw error
+      }
+      
+      console.log(`[MCPMemory] Insert successful, data:`, data)
 
       // Auto-extract and store project memories if patterns detected
       await this.extractProjectMemories(userId, conversation, projectIdentifier)
@@ -118,7 +156,7 @@ export class MCPMemoryManager {
     projectContext?: string
   ): Promise<ContextSearchResult> {
     try {
-      const supabase = await createClient()
+      const supabase = await this.getSupabaseClient()
       
       // Extract keywords and project hints from query
       const keywords = this.extractKeywords(currentQuery)
@@ -191,7 +229,7 @@ export class MCPMemoryManager {
     tags?: string[]
   }): Promise<void> {
     try {
-      const supabase = await createClient()
+      const supabase = await this.getSupabaseClient()
       
       const relevanceScore = this.calculateRelevanceScore(memory.content)
 
@@ -226,7 +264,7 @@ export class MCPMemoryManager {
     tags?: string[]
   }): Promise<void> {
     try {
-      const supabase = await createClient()
+      const supabase = await this.getSupabaseClient()
       
       // Calculate relevance score based on content depth and recency
       const relevanceScore = this.calculateRelevanceScore(memory.content)
@@ -331,7 +369,7 @@ export class MCPMemoryManager {
     auto_extract_patterns: boolean
   }> {
     try {
-      const supabase = await createClient()
+      const supabase = await this.getSupabaseClient()
       
       const { data: preferences } = await supabase
         .from('user_preferences')
@@ -507,7 +545,7 @@ export class MCPMemoryManager {
 
   private async cleanupOldConversations(userId: string): Promise<void> {
     try {
-      const supabase = await createClient()
+      const supabase = await this.getSupabaseClient()
       
       // Keep only the most recent conversations within limit
       const { data: oldConversations } = await supabase
