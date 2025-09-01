@@ -45,8 +45,8 @@ export default function Dashboard() {
   const [logsFilter, setLogsFilter] = useState('all')
   const [providerFilter, setProviderFilter] = useState('all')
   const [modelFilter, setModelFilter] = useState('all')
-  const [providerAnalytics, setProviderAnalytics] = useState(null)
-  const [modelAnalytics, setModelAnalytics] = useState(null) // all, success, error
+  const [providerAnalytics, setProviderAnalytics] = useState<any[] | null>(null)
+  const [modelAnalytics, setModelAnalytics] = useState<any[] | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   
   const supabase = createClient()
