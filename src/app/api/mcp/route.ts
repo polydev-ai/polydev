@@ -887,7 +887,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     
     if (args.client_context.recentTurns && args.client_context.recentTurns.length > 0) {
       clientContext += `## Recent Conversation:\n`
-      args.client_context.recentTurns.slice(-4).forEach((turn, idx) => {
+      args.client_context.recentTurns.slice(-4).forEach((turn: any, idx: number) => {
         clientContext += `**${turn.role.toUpperCase()}**: ${turn.text.substring(0, 150)}...\n`
       })
       clientContext += '\n'
