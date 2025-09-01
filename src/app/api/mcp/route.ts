@@ -840,13 +840,27 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       auth: {
         autoRefreshToken: false,
         persistSession: false
+      },
+      global: {
+        headers: {
+          'Authorization': `Bearer ${serviceRoleKey}`
+        }
       }
     }
   )
   
   console.log(`[MCP] Service role client created successfully`)
-  console.log(`[MCP] Service role client auth status:`, await serviceRoleSupabase.auth.getSession())
   console.log(`[MCP] Service role key starts with:`, serviceRoleKey.substring(0, 20))
+  console.log(`[MCP] Testing service role client with simple query...`)
+  
+  try {
+    const { count, error } = await serviceRoleSupabase
+      .from('mcp_conversation_memory')
+      .select('*', { count: 'exact', head: true })
+    console.log(`[MCP] Service role test query result - count: ${count}, error:`, error)
+  } catch (testError) {
+    console.error(`[MCP] Service role test query failed:`, testError)
+  }
 
   // Initialize memory manager with service role client and get relevant context
   const memoryManager = new MCPMemoryManager({}, serviceRoleSupabase)
