@@ -1060,6 +1060,101 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.warn('[MCP] Failed to log usage to mcp_usage_logs:', logError)
   }
 
+  // Enhanced logging to detailed request logs table
+  try {
+    // Get accurate pricing for each model
+    const { data: modelPricing } = await serviceRoleSupabase
+      .from('model_pricing')
+      .select('*')
+    
+    const pricingMap = new Map<string, any>()
+    modelPricing?.forEach(price => {
+      const key = `${price.provider_name}:${price.model_name}`
+      pricingMap.set(key, price)
+    })
+
+    // Calculate accurate costs per provider
+    let totalAccurateCost = 0
+    const providerCosts: Record<string, number> = {}
+    const providerRequests: Record<string, any> = {}
+    const providerResponses: Record<string, any> = {}
+    const providerLatencies: Record<string, number> = {}
+
+    responses.forEach(response => {
+      const provider = determineProvider(response.model, configMap)?.provider_name || 'unknown'
+      const pricingKey = `${provider}:${response.model}`
+      const pricing = pricingMap.get(pricingKey)
+      
+      let cost = 0
+      if (pricing && response.tokens_used && !response.error) {
+        // Estimate input/output split (typically 1:3 ratio for responses)
+        const estimatedInputTokens = Math.floor(response.tokens_used * 0.25)
+        const estimatedOutputTokens = response.tokens_used - estimatedInputTokens
+        
+        cost = (estimatedInputTokens * pricing.input_cost_per_token) + 
+               (estimatedOutputTokens * pricing.output_cost_per_token)
+      } else if (response.tokens_used) {
+        // Fallback to generic pricing if no specific pricing found
+        cost = response.tokens_used * 0.00002
+      }
+
+      providerCosts[`${provider}:${response.model}`] = cost
+      totalAccurateCost += cost
+
+      providerRequests[`${provider}:${response.model}`] = {
+        model: response.model,
+        provider: response.provider,
+        tokens_requested: maxTokens,
+        temperature: temperature
+      }
+
+      if (!response.error) {
+        providerResponses[`${provider}:${response.model}`] = {
+          content: response.content.substring(0, 2000), // Limit content size
+          tokens_used: response.tokens_used,
+          finish_reason: 'stop'
+        }
+      }
+
+      providerLatencies[`${provider}:${response.model}`] = response.latency_ms || 0
+    })
+
+    // Insert comprehensive log
+    await serviceRoleSupabase
+      .from('mcp_request_logs')
+      .insert({
+        user_id: user.id,
+        access_token_id: accessTokenId,
+        client_id: clientId,
+        prompt: args.prompt,
+        prompt_tokens: Math.floor(args.prompt.length / 4), // Rough token estimate
+        max_tokens_requested: maxTokens,
+        temperature: temperature,
+        models_requested: models,
+        provider_requests: providerRequests,
+        total_completion_tokens: responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0),
+        total_prompt_tokens: Math.floor(args.prompt.length / 4) * responses.filter(r => !r.error).length,
+        total_tokens: totalTokens,
+        provider_costs: providerCosts,
+        total_cost: totalAccurateCost,
+        response_time_ms: totalLatency,
+        first_token_time_ms: Math.min(...responses.map(r => r.latency_ms || totalLatency)),
+        provider_latencies: providerLatencies,
+        status: successCount === responses.length ? 'success' : 
+                successCount > 0 ? 'partial_success' : 'error',
+        error_message: responses.filter(r => r.error).map(r => r.error).join('; ') || null,
+        successful_providers: successCount,
+        failed_providers: responses.length - successCount,
+        store_responses: true,
+        provider_responses: providerResponses,
+        created_at: new Date().toISOString()
+      })
+
+    console.log(`[MCP] Logged detailed request: ${models.length} models, ${totalTokens} tokens, accurate cost: $${totalAccurateCost.toFixed(6)}`)
+  } catch (detailedLogError) {
+    console.warn('[MCP] Failed to log to detailed request logs:', detailedLogError)
+  }
+
   // Format the response
   let formatted = `# Multiple AI Perspectives\n\n`
   formatted += `Got ${successCount}/${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.\n\n`

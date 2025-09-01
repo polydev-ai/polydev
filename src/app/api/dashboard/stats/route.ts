@@ -79,22 +79,33 @@ export async function GET(request: NextRequest) {
 
     console.log('[Dashboard Stats] Providers:', { count: providers?.length, error: providersError })
 
-    // 7. Get actual usage data from MCP usage logs
+    // 7. Get actual usage data from detailed request logs (more accurate)
+    const { data: requestLogs, error: requestLogsError } = await supabase
+      .from('mcp_request_logs')
+      .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs')
+      .eq('user_id', user.id)
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
+
+    console.log('[Dashboard Stats] Request logs:', { count: requestLogs?.length, error: requestLogsError })
+    
+    // Fallback to simple usage logs if detailed logs not available
     const { data: usageLogs, error: usageLogsError } = await supabase
       .from('mcp_usage_logs')
       .select('total_tokens, total_cost, created_at, models_used, response_time_ms, status')
       .eq('user_id', user.id)
       .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
 
-    console.log('[Dashboard Stats] Usage logs:', { count: usageLogs?.length, error: usageLogsError })
+    // Use detailed logs if available, otherwise fallback to simple logs
+    const usageData = requestLogs && requestLogs.length > 0 ? requestLogs : usageLogs
+    console.log('[Dashboard Stats] Using data source:', requestLogs && requestLogs.length > 0 ? 'detailed request logs' : 'simple usage logs')
 
     // Calculate real statistics
     const totalTokens = (allTokens?.length || 0) + (userTokens?.length || 0)
     const activeConnections = activeTokens.length
     
-    // Calculate real API requests from usage logs
-    const totalRequests = usageLogs?.length || 0
-    const totalUsageTokens = usageLogs?.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    // Calculate real API requests from usage data
+    const totalRequests = usageData?.length || 0
+    const totalUsageTokens = usageData?.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
 
     // Calculate uptime based on system health
     const systemUptime = '99.9%' // This could be calculated from system logs
@@ -105,14 +116,24 @@ export async function GET(request: NextRequest) {
       const provider = providers?.find(p => p.id === apiKey.provider_id) || 
                       { display_name: apiKey.provider || 'Unknown Provider' }
       
-      // Calculate requests for this provider from usage logs
-      const providerRequests = usageLogs?.filter(log => {
-        if (!log.models_used || typeof log.models_used !== 'object') return false
-        const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
-        return modelsUsed.some((model: string) => 
-          model.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
-          model.toLowerCase().includes((provider.display_name || '').toLowerCase())
-        )
+      // Calculate requests for this provider from usage data
+      const providerRequests = usageData?.filter(log => {
+        // Check detailed logs format first
+        if (log.provider_costs) {
+          return Object.keys(log.provider_costs).some((key: string) => 
+            key.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
+            key.toLowerCase().includes((provider.display_name || '').toLowerCase())
+          )
+        }
+        // Fallback to simple logs format
+        if (log.models_used && typeof log.models_used === 'object') {
+          const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
+          return modelsUsed.some((model: string) => 
+            model.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
+            model.toLowerCase().includes((provider.display_name || '').toLowerCase())
+          )
+        }
+        return false
       }).length || 0
 
       // Use real current_usage if available
@@ -134,24 +155,36 @@ export async function GET(request: NextRequest) {
       }
     }).filter(provider => provider.status === 'active' || provider.requests > 0 || parseFloat(provider.cost.replace('$', '')) > 0) || []
 
-    // Calculate total cost from usage logs
-    const totalCost = usageLogs?.reduce((sum, log) => sum + (log.total_cost || 0), 0) || 0
+    // Calculate total cost from usage data
+    const totalCost = usageData?.reduce((sum, log) => sum + (log.total_cost || 0), 0) || 0
 
-    // Generate recent activity from usage logs
+    // Generate recent activity from usage data
     const recentActivity: any[] = []
-    if (usageLogs && usageLogs.length > 0) {
-      // Get the most recent 5 usage logs
-      const sortedLogs = usageLogs
+    if (usageData && usageData.length > 0) {
+      // Get the most recent 5 usage entries
+      const sortedLogs = usageData
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 5)
 
       sortedLogs.forEach(log => {
+        let providerName = 'Multiple Models'
+        
+        // Extract provider name from detailed logs
+        if (log.provider_responses && typeof log.provider_responses === 'object') {
+          const firstProvider = Object.keys(log.provider_responses)[0]
+          if (firstProvider) {
+            providerName = firstProvider.split(':')[1] || firstProvider // Get model name
+          }
+        }
+        // Fallback to simple logs format
+        else if (log.models_used && typeof log.models_used === 'object') {
+          providerName = Object.keys(log.models_used)[0] || 'Unknown Model'
+        }
+
         recentActivity.push({
           timestamp: log.created_at,
           action: 'API Request',
-          provider: log.models_used && typeof log.models_used === 'object' 
-            ? Object.keys(log.models_used)[0] || 'Unknown Model'
-            : 'Multiple Models',
+          provider: providerName,
           tool: 'get_perspectives',
           cost: parseFloat((log.total_cost || 0).toFixed(4)),
           duration: log.response_time_ms || 0
@@ -188,16 +221,16 @@ export async function GET(request: NextRequest) {
       responseTime: 245, // Could be calculated from actual API response times
       
       // Additional detailed stats - calculate today's usage from actual data
-      requestsToday: usageLogs?.filter(log => {
+      requestsToday: usageData?.filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
       }).length || 0,
-      costToday: parseFloat((usageLogs?.filter(log => {
+      costToday: parseFloat((usageData?.filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
       }).reduce((sum, log) => sum + (log.total_cost || 0), 0) || 0).toFixed(2)),
-      avgResponseTime: usageLogs && usageLogs.length > 0 
-        ? Math.round(usageLogs.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / usageLogs.length)
+      avgResponseTime: usageData && usageData.length > 0 
+        ? Math.round(usageData.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / usageData.length)
         : 245,
       
       // Real provider breakdown
