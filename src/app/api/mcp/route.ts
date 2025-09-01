@@ -55,6 +55,9 @@ async function callLLMAPI(
   )
   
   // Make the API call
+  console.log(`[MCP] Making API call to: ${requestConfig.url}`)
+  console.log(`[MCP] Request body:`, JSON.stringify(requestConfig.body, null, 2))
+  
   const response = await fetch(requestConfig.url, {
     method: 'POST',
     headers: requestConfig.headers,
@@ -62,7 +65,9 @@ async function callLLMAPI(
   })
   
   if (!response.ok) {
-    throw new Error(`${providerConfig.display_name} API error: ${response.status} ${response.statusText}`)
+    const errorText = await response.text()
+    console.error(`[MCP] API error details:`, errorText)
+    throw new Error(`${providerConfig.display_name} API error: ${response.status} ${response.statusText} - ${errorText}`)
   }
   
   const data = await response.json()
