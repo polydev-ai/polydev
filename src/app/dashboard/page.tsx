@@ -631,7 +631,7 @@ export default function Dashboard() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">API Keys Configured</p>
-                    <p className="text-2xl font-semibold text-gray-900">{realTimeData.totalApiKeys || 3}</p>
+                    <p className="text-2xl font-semibold text-gray-900">{realTimeData.totalApiKeys || 0}</p>
                   </div>
                 </div>
               </div>
@@ -1532,8 +1532,8 @@ export default function Dashboard() {
                 <div className="h-64">
                   <div className="flex items-end justify-between h-48 border-b border-l border-gray-200 px-4 py-2">
                     {[...Array(7)].map((_, i) => {
-                      const height = Math.max(20, Math.random() * 180);
-                      const requests = Math.floor(realTimeData.totalRequests / 7) + Math.floor(Math.random() * 50);
+                      const requests = Math.floor(realTimeData.totalRequests / 7);
+                      const height = Math.max(20, requests > 0 ? (requests / Math.max(1, realTimeData.totalRequests / 7)) * 180 : 20);
                       return (
                         <div key={i} className="flex flex-col items-center">
                           <div 
@@ -1636,8 +1636,8 @@ export default function Dashboard() {
                 <div className="h-64">
                   <div className="flex items-end justify-between h-48 border-b border-l border-gray-200">
                     {['<100ms', '100-200ms', '200-300ms', '300-500ms', '500ms+'].map((label, i) => {
-                      const height = Math.max(20, Math.random() * 160);
                       const count = Math.floor(realTimeData.totalRequests * (i === 1 ? 0.4 : i === 2 ? 0.3 : 0.1));
+                      const height = Math.max(20, count > 0 ? (count / Math.max(1, realTimeData.totalRequests)) * 160 : 20);
                       return (
                         <div key={i} className="flex flex-col items-center w-16">
                           <div 
@@ -1674,7 +1674,7 @@ export default function Dashboard() {
                     <p className="text-sm text-gray-600">Active Connections</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-orange-600">{realTimeData.totalApiKeys || 3}</p>
+                    <p className="text-2xl font-bold text-orange-600">{realTimeData.totalApiKeys || 0}</p>
                     <p className="text-sm text-gray-600">API Keys Configured</p>
                   </div>
                 </div>

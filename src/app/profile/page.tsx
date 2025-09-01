@@ -22,6 +22,13 @@ interface UserStats {
   favoriteModel: string
   joinedDays: number
   lastActive: string
+  recentActivity: Array<{
+    timestamp: string
+    action: string
+    model: string
+    tokens: number
+    cost: number
+  }>
 }
 
 export default function Profile() {
@@ -61,18 +68,13 @@ export default function Profile() {
 
   const loadStats = async () => {
     try {
-      // Simulate loading user stats
-      // In production, these would come from actual usage data
-      const joinedDate = user?.created_at ? new Date(user.created_at) : new Date()
-      const daysSinceJoined = Math.floor((Date.now() - joinedDate.getTime()) / (1000 * 60 * 60 * 24))
-      
-      setStats({
-        totalChats: Math.floor(Math.random() * 100) + 25,
-        totalTokens: Math.floor(Math.random() * 50000) + 10000,
-        favoriteModel: ['GPT-4', 'Claude 3 Sonnet', 'Gemini Pro'][Math.floor(Math.random() * 3)],
-        joinedDays: Math.max(daysSinceJoined, 0),
-        lastActive: 'Just now'
-      })
+      const response = await fetch('/api/profile/stats')
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      } else {
+        console.error('Failed to load profile stats:', response.statusText)
+      }
     } catch (error) {
       console.error('Error loading stats:', error)
     }
@@ -214,29 +216,42 @@ export default function Profile() {
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">Recent Activity</h3>
               </div>
               <div className="px-6 py-4">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="h-2 w-2 bg-green-400 rounded-full"></div>
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-white">Started a new chat session</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">2 hours ago</p>
-                    </div>
+                {stats?.recentActivity && stats.recentActivity.length > 0 ? (
+                  <div className="space-y-4">
+                    {stats.recentActivity.map((activity, index) => (
+                      <div key={index} className="flex items-center space-x-3">
+                        <div className="h-2 w-2 bg-blue-400 rounded-full"></div>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-900 dark:text-white">
+                            {activity.action} - {activity.model}
+                          </p>
+                          <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{new Date(activity.timestamp).toLocaleDateString()}</span>
+                            {activity.tokens > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{activity.tokens.toLocaleString()} tokens</span>
+                              </>
+                            )}
+                            {activity.cost > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>${activity.cost.toFixed(4)}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="h-2 w-2 bg-blue-400 rounded-full"></div>
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-white">Updated profile settings</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">1 day ago</p>
-                    </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 dark:text-gray-400">No recent activity found</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+                      Start using the API to see your activity here
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="h-2 w-2 bg-purple-400 rounded-full"></div>
-                    <div>
-                      <p className="text-sm text-gray-900 dark:text-white">Explored new model comparisons</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">3 days ago</p>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

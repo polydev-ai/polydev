@@ -141,9 +141,18 @@ export async function GET(request: NextRequest) {
         parseFloat(apiKey.current_usage.toString()) : 
         0
 
-      // Calculate average latency based on last usage (simulate realistic values)
-      const avgLatency = apiKey.last_used_at ? 
-        Math.floor(Math.random() * 50) + 180 : // 180-230ms for active providers
+      // Calculate average latency from usage data
+      const providerUsageData = usageData?.filter(log => {
+        if ('provider_costs' in log && log.provider_costs) {
+          return Object.keys(log.provider_costs).some((key: string) => 
+            key.toLowerCase().includes(apiKey.provider.toLowerCase())
+          )
+        }
+        return false
+      }) || []
+      
+      const avgLatency = providerUsageData.length > 0 ? 
+        Math.round(providerUsageData.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / providerUsageData.length) :
         0
 
       return {

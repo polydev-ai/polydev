@@ -234,12 +234,44 @@ export default function Navigation() {
                   </div>
                 ) : isAuthenticated ? (
                   <>
+                    <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 mb-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.email}</p>
+                    </div>
                     <Link
                       href="/profile"
                       onClick={() => setIsOpen(false)}
                       className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
-                      {user?.email}
+                      Profile
+                    </Link>
+                    <Link
+                      href="/dashboard/api-keys"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      API Keys
+                    </Link>
+                    <Link
+                      href="/dashboard/mcp-tokens"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      MCP Tokens
+                    </Link>
+                    <Link
+                      href="/dashboard/preferences"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Preferences
+                    </Link>
+                    <Link
+                      href="/settings"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Settings
                     </Link>
                     <button
                       onClick={() => {
