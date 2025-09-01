@@ -35,18 +35,19 @@ export default function MemoryPage() {
     conversations: ConversationMemory[]
     projectMemories: ProjectMemory[]
   }>({ conversations: [], projectMemories: [] })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Disabled by default
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'conversations' | 'projects'>('conversations')
   const [error, setError] = useState<string | null>(null)
   const [selectedMemory, setSelectedMemory] = useState<ConversationMemory | ProjectMemory | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [isFeatureDisabled] = useState(true) // Feature flag to disable memory features
 
   useEffect(() => {
-    if (user) {
+    if (user && !isFeatureDisabled) {
       fetchMemories()
     }
-  }, [user])
+  }, [user, isFeatureDisabled])
 
   const fetchMemories = async () => {
     try {
@@ -144,6 +145,68 @@ export default function MemoryPage() {
       <div className="max-w-7xl mx-auto p-8">
         <div className="text-center text-gray-500 dark:text-gray-400">
           Please log in to view your memories.
+        </div>
+      </div>
+    )
+  }
+
+  if (isFeatureDisabled) {
+    return (
+      <div className="max-w-7xl mx-auto p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Memory Management
+          </h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400">
+            View and manage your stored conversation history and project memories
+          </p>
+        </div>
+
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                Feature Temporarily Disabled
+              </h3>
+              <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                <p>
+                  The memory management feature is currently disabled due to Claude Code architectural limitations. 
+                  Claude Code does not automatically include conversation history or project memory in MCP requests, 
+                  making server-side memory synchronization impossible without local components.
+                </p>
+                <p className="mt-2">
+                  <strong>Technical Issue:</strong> Vercel's serverless environment cannot access local Claude Code files 
+                  (stored in <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">~/.claude/projects/*.jsonl</code>).
+                </p>
+                <p className="mt-2">
+                  <strong>Future Solution:</strong> This feature may be re-enabled if local context bridge components 
+                  are implemented or if Claude Code adds automatic context transmission to MCP servers.
+                </p>
+              </div>
+              <div className="mt-4">
+                <div className="text-sm">
+                  <p className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">To reactivate (for developers):</p>
+                  <ol className="list-decimal list-inside text-yellow-700 dark:text-yellow-300 space-y-1">
+                    <li>Set <code className="bg-yellow-100 dark:bg-yellow-800 px-1 rounded">isFeatureDisabled = false</code> in this component</li>
+                    <li>Ensure proper backend memory infrastructure is in place</li>
+                    <li>Test with actual Claude Code integration</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            For more technical details, see the comprehensive analysis in 
+            <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded ml-1">CLAUDE_CODE_MCP_CONTEXT_ANALYSIS.md</code>
+          </p>
         </div>
       </div>
     )

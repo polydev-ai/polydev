@@ -177,13 +177,6 @@ export default function Navigation() {
                         MCP Tokens
                       </Link>
                       <Link
-                        href="/dashboard/memory"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        Memory
-                      </Link>
-                      <Link
                         href="/dashboard/preferences"
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setUserDropdownOpen(false)}
@@ -310,13 +303,6 @@ export default function Navigation() {
                       className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                       MCP Tokens
-                    </Link>
-                    <Link
-                      href="/dashboard/memory"
-                      onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      Memory
                     </Link>
                     <Link
                       href="/dashboard/preferences"
