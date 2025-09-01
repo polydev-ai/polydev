@@ -204,6 +204,38 @@ function buildRequestConfig(
   }
 }
 
+// Extract text content from GPT-5 Responses API object structure
+function extractGPT5Text(data: any): string {
+  if (!data) return '';
+  
+  // 1) Use convenience field if present
+  if (typeof data.output_text === 'string' && data.output_text.length > 0) {
+    return data.output_text;
+  }
+  
+  // 2) Collect text from output[].content[].text
+  const texts: string[] = [];
+  const outputs = Array.isArray(data.output) ? data.output : [];
+  for (const out of outputs) {
+    const parts = Array.isArray(out?.content) ? out.content : [];
+    for (const part of parts) {
+      // Most common cases
+      if (typeof part === 'string') {
+        texts.push(part);
+      } else if (part?.type === 'output_text' && typeof part.text === 'string') {
+        texts.push(part.text);
+      } else if (part?.type === 'text' && typeof part.text === 'string') {
+        texts.push(part.text); // fallback
+      }
+    }
+  }
+  
+  if (texts.length > 0) return texts.join('');
+  
+  // 3) Last resort: stringify for debugging
+  return JSON.stringify(data);
+}
+
 // Parse response based on provider format
 function parseResponse(provider: string, data: any, model?: string): APIResponse {
   switch (provider) {
@@ -212,9 +244,13 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
       // Handle GPT-5 Responses API format
       if (model?.startsWith('gpt-5')) {
         console.log(`[MCP] Parsing GPT-5 Responses API response`)
+        console.log(`[MCP] Raw GPT-5 response structure:`, JSON.stringify(data, null, 2))
+        const content = extractGPT5Text(data) || 'No response'
+        const tokens_used = data?.usage?.total_tokens ?? 
+          ((data?.usage?.input_tokens || 0) + (data?.usage?.output_tokens || 0))
         return {
-          content: data.output || 'No response',
-          tokens_used: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
+          content,
+          tokens_used
         }
       }
       console.log(`[MCP] Parsing standard OpenAI response for model: ${model}`)
