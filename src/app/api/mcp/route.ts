@@ -595,7 +595,7 @@ async function handleToolCall(params: any, id: string, request: NextRequest, use
     
     switch (name) {
       case 'get_perspectives':
-        result = await callPerspectivesAPI(args, user)
+        result = await callPerspectivesAPI(args, user, request)
         break
       
       case 'search_documentation':
@@ -817,7 +817,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ success: boo
   return { success: false, error: 'Unsupported authentication method. Use either MCP tokens (pd_) or OAuth tokens (polydev_)' }
 }
 
-async function callPerspectivesAPI(args: any, user: any): Promise<string> {
+async function callPerspectivesAPI(args: any, user: any, request?: NextRequest): Promise<string> {
   // Validate required arguments
   if (!args.prompt || typeof args.prompt !== 'string') {
     throw new Error('prompt is required and must be a string')
@@ -998,20 +998,66 @@ async function callPerspectivesAPI(args: any, user: any): Promise<string> {
   const totalLatency = Math.max(...responses.map(r => r.latency_ms || 0))
   const successCount = responses.filter(r => !r.error).length
 
-  // Log MCP tool call to chat_logs for dashboard statistics
+  // Log MCP tool call to mcp_usage_logs for dashboard statistics
   try {
+    // Get the access token for this request from the auth header
+    let accessTokenId = null
+    let clientId = 'unknown'
+    
+    if (request) {
+      const authHeader = request.headers.get('authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.replace('Bearer ', '')
+        if (token.startsWith('polydev_')) {
+          const { data: tokenData } = await serviceRoleSupabase
+            .from('mcp_access_tokens')
+            .select('id, client_id')
+            .eq('token', token)
+            .single()
+          accessTokenId = tokenData?.id
+          clientId = tokenData?.client_id || 'unknown'
+        } else if (token.startsWith('pd_')) {
+          clientId = 'mcp-token' // Legacy pd_ token
+        }
+      }
+    }
+    
+    console.log(`[MCP] Logging usage for user ${user.id}, client: ${clientId}`)
+
+    // Calculate total cost (simplified estimation - could be more accurate with provider-specific pricing)
+    const estimatedCost = totalTokens * 0.00002 // $0.00002 per token rough estimate
+    
+    // Create models used object with response details
+    const modelsUsed: Record<string, any> = {}
+    responses.forEach(response => {
+      if (!response.error) {
+        modelsUsed[response.model] = {
+          provider: response.provider,
+          tokens: response.tokens_used,
+          latency_ms: response.latency_ms
+        }
+      }
+    })
+
     await serviceRoleSupabase
-      .from('chat_logs')
+      .from('mcp_usage_logs')
       .insert({
         user_id: user.id,
-        models_used: models,
-        message_count: 1, // One MCP tool call
+        access_token_id: accessTokenId,
+        client_id: clientId,
+        prompt: args.prompt.substring(0, 1000), // Truncate long prompts
+        models_requested: models,
+        models_used: modelsUsed,
         total_tokens: totalTokens,
+        total_cost: estimatedCost,
+        response_time_ms: totalLatency,
+        status: successCount > 0 ? 'success' : 'error',
+        error_message: successCount === 0 ? 'All providers failed' : null,
         created_at: new Date().toISOString()
       })
-    console.log(`[MCP] Logged tool call to chat_logs: ${models.length} models, ${totalTokens} tokens`)
+    console.log(`[MCP] Logged usage to mcp_usage_logs: ${models.length} models, ${totalTokens} tokens, $${estimatedCost.toFixed(6)}`)
   } catch (logError) {
-    console.warn('[MCP] Failed to log tool call to chat_logs:', logError)
+    console.warn('[MCP] Failed to log usage to mcp_usage_logs:', logError)
   }
 
   // Format the response
