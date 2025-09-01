@@ -161,11 +161,11 @@ export default function Dashboard() {
     if (!user || !requestLogs.length) return
     
     // Analyze provider performance from request logs
-    const providerStats = {}
+    const providerStats: Record<string, any> = {}
     
-    requestLogs.forEach(log => {
+    requestLogs.forEach((log: any) => {
       if (log.providers && Array.isArray(log.providers)) {
-        log.providers.forEach(provider => {
+        log.providers.forEach((provider: any) => {
           if (!providerStats[provider.provider]) {
             providerStats[provider.provider] = {
               name: provider.provider,
@@ -212,11 +212,11 @@ export default function Dashboard() {
     if (!user || !requestLogs.length) return
     
     // Analyze model performance from request logs
-    const modelStats = {}
+    const modelStats: Record<string, any> = {}
     
-    requestLogs.forEach(log => {
+    requestLogs.forEach((log: any) => {
       if (log.providers && Array.isArray(log.providers)) {
-        log.providers.forEach(provider => {
+        log.providers.forEach((provider: any) => {
           const modelKey = `${provider.provider}:${provider.model}`
           if (!modelStats[modelKey]) {
             modelStats[modelKey] = {
