@@ -53,19 +53,27 @@ export default function MemoryPage() {
       setLoading(true)
       setError(null)
       
+      console.log('[Frontend] Fetching memories...')
       const response = await fetch(`/api/memory?query=${encodeURIComponent(searchQuery || 'all')}`)
       const result = await response.json()
+      
+      console.log('[Frontend] API response:', result)
       
       if (!response.ok) {
         throw new Error(result.error || 'Failed to fetch memories')
       }
       
+      console.log('[Frontend] Setting memories:', {
+        conversations: result.data.conversations?.length || 0,
+        projectMemories: result.data.projectMemories?.length || 0
+      })
+      
       setMemories({
-        conversations: result.data.conversations,
-        projectMemories: result.data.projectMemories
+        conversations: result.data.conversations || [],
+        projectMemories: result.data.projectMemories || []
       })
     } catch (err: any) {
-      console.error('Error fetching memories:', err)
+      console.error('[Frontend] Error fetching memories:', err)
       setError(err.message || 'Failed to fetch memories')
     } finally {
       setLoading(false)

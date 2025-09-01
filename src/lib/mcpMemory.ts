@@ -10,13 +10,14 @@ export interface MemoryConfig {
 
 export interface ConversationMemory {
   id: string
-  timestamp: string
+  created_at: string
   user_message: string
   assistant_response: string
   model_used: string
   tokens_used: number
   conversation_hash: string
   session_id?: string
+  project_identifier?: string
 }
 
 export interface ProjectMemory {
