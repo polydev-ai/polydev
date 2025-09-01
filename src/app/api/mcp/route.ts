@@ -54,37 +54,18 @@ async function callLLMAPI(
     tokens
   )
   
-  // Make the API call - handle Codex CLI separately
-  let response: Response
-  let data: any
+  // Make the API call
+  const response = await fetch(requestConfig.url, {
+    method: 'POST',
+    headers: requestConfig.headers,
+    body: JSON.stringify(requestConfig.body),
+  })
   
-  if (requestConfig.url === 'codex-cli') {
-    // Use Codex CLI for GPT-5
-    const { CodexCLIHandler } = await import('../../../lib/api/providers/codex-cli')
-    const codexHandler = new CodexCLIHandler()
-    
-    response = await codexHandler.createMessage({
-      messages: requestConfig.body.messages,
-      model: requestConfig.body.model,
-      maxTokens: requestConfig.body.maxTokens,
-      temperature: requestConfig.body.temperature
-    })
-    
-    data = await response.json()
-  } else {
-    // Standard API call
-    response = await fetch(requestConfig.url, {
-      method: 'POST',
-      headers: requestConfig.headers,
-      body: JSON.stringify(requestConfig.body),
-    })
-    
-    if (!response.ok) {
-      throw new Error(`${providerConfig.display_name} API error: ${response.status} ${response.statusText}`)
-    }
-    
-    data = await response.json()
+  if (!response.ok) {
+    throw new Error(`${providerConfig.display_name} API error: ${response.status} ${response.statusText}`)
   }
+  
+  const data = await response.json()
   
   // Parse response based on provider format (use actualModel if available)
   const modelForParsing = requestConfig.actualModel || model
@@ -115,18 +96,20 @@ function buildRequestConfig(
       const isGPT5Model = model.startsWith('gpt-5')
       
       if (isGPT5Model) {
-        // GPT-5 requires Codex CLI access, not standard API
-        console.log(`[MCP] Using Codex CLI for real GPT-5 access: ${model}`)
+        // Use GPT-5 with proper Responses API (this was working before)
+        console.log(`[MCP] Using GPT-5 with Responses API: ${model}`)
         return {
-          url: 'codex-cli', // Special marker for Codex CLI usage
-          headers: {},
-          body: {
-            model,
-            messages: [{ role: 'user', content: prompt }],
-            temperature,
-            maxTokens,
+          url: `${baseUrl}/responses`,
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
           },
-          actualModel: model, // Preserve original GPT-5 model name
+          body: {
+            model,  // Use exact model name from user
+            input: prompt,  // Use 'input' for responses endpoint
+            temperature,
+            max_output_tokens: maxTokens,  // Use max_output_tokens for responses
+          },
         }
       }
       
@@ -220,12 +203,12 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
   switch (provider) {
     case 'openai':
     case 'openai-native':
-      // Handle GPT-5 models (now using real GPT-5 via Codex CLI)
+      // Handle GPT-5 Responses API format
       if (model?.startsWith('gpt-5')) {
-        console.log(`[MCP] Parsing GPT-5 response from Codex CLI`)
+        console.log(`[MCP] Parsing GPT-5 Responses API response`)
         return {
-          content: data.choices?.[0]?.message?.content || 'No response',
-          tokens_used: data.usage?.total_tokens || 0
+          content: data.output || 'No response',
+          tokens_used: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
         }
       }
       console.log(`[MCP] Parsing standard OpenAI response for model: ${model}`)
