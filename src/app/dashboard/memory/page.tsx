@@ -6,13 +6,14 @@ import { Clock, MessageSquare, Folder, Tag, Search, Trash2, RefreshCw } from 'lu
 
 interface ConversationMemory {
   id: string
-  timestamp: string
+  created_at: string
   user_message: string
   assistant_response: string
   model_used: string
   tokens_used: number
   conversation_hash: string
   session_id?: string
+  project_identifier: string
 }
 
 interface ProjectMemory {
@@ -38,6 +39,8 @@ export default function MemoryPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState<'conversations' | 'projects'>('conversations')
   const [error, setError] = useState<string | null>(null)
+  const [selectedMemory, setSelectedMemory] = useState<ConversationMemory | ProjectMemory | null>(null)
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -89,13 +92,22 @@ export default function MemoryPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    if (!dateString) return 'Invalid Date'
+    
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return 'Invalid Date'
+      
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch (error) {
+      return 'Invalid Date'
+    }
   }
 
   const truncateText = (text: string, maxLength: number = 200) => {
@@ -219,11 +231,18 @@ export default function MemoryPage() {
             </div>
           ) : (
             memories.conversations.map((conv) => (
-              <div key={conv.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div 
+                key={conv.id} 
+                className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => {
+                  setSelectedMemory(conv)
+                  setShowModal(true)
+                }}
+              >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                     <Clock className="w-4 h-4" />
-                    <span>{formatDate(conv.timestamp)}</span>
+                    <span>{formatDate(conv.created_at)}</span>
                     <span>•</span>
                     <span>{conv.model_used}</span>
                     <span>•</span>
@@ -262,7 +281,14 @@ export default function MemoryPage() {
             </div>
           ) : (
             memories.projectMemories.map((memory) => (
-              <div key={memory.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+              <div 
+                key={memory.id} 
+                className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => {
+                  setSelectedMemory(memory)
+                  setShowModal(true)
+                }}
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="font-medium text-gray-900 dark:text-white text-sm mb-1">
@@ -318,6 +344,109 @@ export default function MemoryPage() {
               </div>
             ))
           )}
+        </div>
+      )}
+      {/* Memory Detail Modal */}
+      {showModal && selectedMemory && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                {'user_message' in selectedMemory ? 'Conversation Memory' : 'Project Memory'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowModal(false)
+                  setSelectedMemory(null)
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {'user_message' in selectedMemory ? (
+                <div className="space-y-6">
+                  <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                    <Clock className="w-4 h-4" />
+                    <span>{formatDate(selectedMemory.created_at)}</span>
+                    <span>•</span>
+                    <span>{selectedMemory.model_used}</span>
+                    <span>•</span>
+                    <span>{selectedMemory.tokens_used} tokens</span>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-white mb-3">User Message:</h3>
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-4 text-sm whitespace-pre-wrap">
+                      {selectedMemory.user_message}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-white mb-3">Assistant Response:</h3>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md p-4 text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
+                      {selectedMemory.assistant_response}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900 dark:text-white text-lg mb-2">
+                        {selectedMemory.title}
+                      </h3>
+                      <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          selectedMemory.memory_type === 'context' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                          selectedMemory.memory_type === 'pattern' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                          selectedMemory.memory_type === 'decision' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' :
+                          'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>
+                          {selectedMemory.memory_type}
+                        </span>
+                        <span>•</span>
+                        <span>Relevance: {Math.round(selectedMemory.relevance_score * 100)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Content:</h4>
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-4 text-sm whitespace-pre-wrap">
+                      {selectedMemory.content}
+                    </div>
+                  </div>
+                  
+                  {selectedMemory.tags && selectedMemory.tags.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-2">Tags:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedMemory.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-2 py-1 rounded text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
+                          >
+                            <Tag className="w-3 h-3 mr-1" />
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                    <div>Project: {selectedMemory.project_identifier}</div>
+                    <div>Updated: {formatDate(selectedMemory.updated_at)}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

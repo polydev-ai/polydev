@@ -4,13 +4,57 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '../hooks/useAuth'
+import { createClient } from '../app/utils/supabase/client'
+
+interface UserProfile {
+  id: string
+  email: string
+  display_name?: string
+  company?: string
+  role?: string
+  timezone?: string
+  avatar_url?: string
+  created_at: string
+  updated_at?: string
+}
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const { user, loading, signOut, isAuthenticated } = useAuth()
+  
+  const supabase = createClient()
+
+  // Load user profile
+  useEffect(() => {
+    if (user && isAuthenticated) {
+      loadProfile()
+    } else {
+      setProfile(null)
+    }
+  }, [user, isAuthenticated])
+
+  const loadProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single()
+
+      if (data) {
+        setProfile({
+          ...data,
+          email: user?.email || data.email
+        })
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    }
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -91,9 +135,9 @@ export default function Navigation() {
                   className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                    {(profile?.display_name || user?.email)?.charAt(0).toUpperCase() || 'U'}
                   </div>
-                  <span className="max-w-32 truncate">{user?.email}</span>
+                  <span className="max-w-32 truncate">{profile?.display_name || user?.email}</span>
                   <svg
                     className={`w-4 h-4 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`}
                     fill="none"
@@ -131,6 +175,13 @@ export default function Navigation() {
                         onClick={() => setUserDropdownOpen(false)}
                       >
                         MCP Tokens
+                      </Link>
+                      <Link
+                        href="/dashboard/memory"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        Memory
                       </Link>
                       <Link
                         href="/dashboard/preferences"
@@ -237,7 +288,7 @@ export default function Navigation() {
                   <>
                     <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 mb-2">
                       <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.email}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{profile?.display_name || user?.email}</p>
                     </div>
                     <Link
                       href="/profile"
@@ -259,6 +310,13 @@ export default function Navigation() {
                       className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                       MCP Tokens
+                    </Link>
+                    <Link
+                      href="/dashboard/memory"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Memory
                     </Link>
                     <Link
                       href="/dashboard/preferences"
