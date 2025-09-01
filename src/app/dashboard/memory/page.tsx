@@ -2,8 +2,31 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
-import { MCPMemoryManager, ConversationMemory, ProjectMemory } from '../../../lib/mcpMemory'
 import { Clock, MessageSquare, Folder, Tag, Search, Trash2, RefreshCw } from 'lucide-react'
+
+interface ConversationMemory {
+  id: string
+  timestamp: string
+  user_message: string
+  assistant_response: string
+  model_used: string
+  tokens_used: number
+  conversation_hash: string
+  session_id?: string
+}
+
+interface ProjectMemory {
+  id: string
+  user_id: string
+  project_identifier: string
+  memory_type: 'context' | 'pattern' | 'decision' | 'issue' | 'preference'
+  title: string
+  content: string
+  relevance_score: number
+  tags: string[]
+  created_at: string
+  updated_at: string
+}
 
 export default function MemoryPage() {
   const { user, loading: authLoading } = useAuth()
@@ -27,14 +50,16 @@ export default function MemoryPage() {
       setLoading(true)
       setError(null)
       
-      const memoryManager = new MCPMemoryManager()
+      const response = await fetch(`/api/memory?query=${encodeURIComponent(searchQuery || 'all')}`)
+      const result = await response.json()
       
-      // Fetch relevant context which includes both conversations and project memories
-      const context = await memoryManager.searchRelevantContext(user.id, searchQuery || 'all')
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch memories')
+      }
       
       setMemories({
-        conversations: context.conversations,
-        projectMemories: context.projectMemories
+        conversations: result.data.conversations,
+        projectMemories: result.data.projectMemories
       })
     } catch (err: any) {
       console.error('Error fetching memories:', err)
@@ -47,12 +72,19 @@ export default function MemoryPage() {
   const handleSearch = async (query: string) => {
     setSearchQuery(query)
     if (user) {
-      const memoryManager = new MCPMemoryManager()
-      const context = await memoryManager.searchRelevantContext(user.id, query || 'all')
-      setMemories({
-        conversations: context.conversations,
-        projectMemories: context.projectMemories
-      })
+      try {
+        const response = await fetch(`/api/memory?query=${encodeURIComponent(query || 'all')}`)
+        const result = await response.json()
+        
+        if (response.ok) {
+          setMemories({
+            conversations: result.data.conversations,
+            projectMemories: result.data.projectMemories
+          })
+        }
+      } catch (err) {
+        console.error('Search error:', err)
+      }
     }
   }
 
