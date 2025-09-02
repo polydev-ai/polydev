@@ -39,14 +39,21 @@ export interface UserCredits {
 }
 
 export class SubscriptionManager {
-  private async getSupabase() {
+  private async getSupabase(useServiceRole: boolean = false) {
+    if (useServiceRole && process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your_service_role_key') {
+      const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+      return createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+    }
     return await createClient()
   }
 
   // Get user subscription status
-  async getUserSubscription(userId: string): Promise<UserSubscription | null> {
+  async getUserSubscription(userId: string, useServiceRole: boolean = false): Promise<UserSubscription | null> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase(useServiceRole)
       const { data, error } = await supabase
         .from('user_subscriptions')
         .select('*')
@@ -66,9 +73,9 @@ export class SubscriptionManager {
   }
 
   // Get or create user message usage for current month
-  async getUserMessageUsage(userId: string): Promise<UserMessageUsage> {
+  async getUserMessageUsage(userId: string, useServiceRole: boolean = false): Promise<UserMessageUsage> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase(useServiceRole)
       const currentMonth = new Date().toISOString().substring(0, 7) // YYYY-MM
       
       // Try to get existing usage
@@ -81,12 +88,12 @@ export class SubscriptionManager {
 
       if (error && error.code === 'PGRST116') {
         // Create new usage record
-        const subscription = await this.getUserSubscription(userId)
+        const subscription = await this.getUserSubscription(userId, useServiceRole)
         const isPro = subscription?.plan_type === 'pro' && subscription?.status === 'active'
         
         // Get base limit (50 free) + referral bonuses
         const baseLimit = isPro ? 999999 : 50 // Unlimited for pro users
-        const referralBonus = await this.getReferralBonus(userId)
+        const referralBonus = await this.getReferralBonus(userId, useServiceRole)
         
         const { data: newUsage, error: createError } = await supabase
           .from('user_message_usage')
@@ -117,9 +124,9 @@ export class SubscriptionManager {
   }
 
   // Get referral bonus messages
-  async getReferralBonus(userId: string): Promise<number> {
+  async getReferralBonus(userId: string, useServiceRole: boolean = false): Promise<number> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase(useServiceRole)
       const { data: referrals, error } = await supabase
         .from('user_referrals')
         .select('bonus_messages')
@@ -139,9 +146,9 @@ export class SubscriptionManager {
   }
 
   // Check if user can send message
-  async canSendMessage(userId: string): Promise<{ canSend: boolean; reason?: string; usage?: UserMessageUsage }> {
+  async canSendMessage(userId: string, useServiceRole: boolean = false): Promise<{ canSend: boolean; reason?: string; usage?: UserMessageUsage }> {
     try {
-      const usage = await this.getUserMessageUsage(userId)
+      const usage = await this.getUserMessageUsage(userId, useServiceRole)
       
       if (usage.messages_sent >= usage.messages_limit) {
         return {
@@ -178,9 +185,9 @@ export class SubscriptionManager {
   }
 
   // Increment message count
-  async incrementMessageCount(userId: string): Promise<void> {
+  async incrementMessageCount(userId: string, useServiceRole: boolean = false): Promise<void> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase(useServiceRole)
       const currentMonth = new Date().toISOString().substring(0, 7)
       
       await supabase.rpc('increment_message_count', {

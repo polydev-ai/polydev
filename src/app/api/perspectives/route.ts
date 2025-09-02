@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '../../utils/supabase/server'
+import { subscriptionManager } from '@/lib/subscriptionManager'
 
 interface GetPerspectivesRequest {
   prompt: string
@@ -216,7 +217,16 @@ async function getPolynDevManagedKeys() {
 }
 
 async function getUserApiKeys(userId: string): Promise<Record<string, { key: string, config: any }>> {
-  const supabase = await createClient()
+  // Use service role for backend operations
+  let supabase = await createClient()
+  
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your_service_role_key') {
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+    supabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
   
   const { data: keys, error } = await supabase
     .from('user_api_keys')
@@ -225,6 +235,7 @@ async function getUserApiKeys(userId: string): Promise<Record<string, { key: str
     .eq('active', true)
   
   if (error || !keys) {
+    console.error('Error getting user API keys:', error)
     return {}
   }
   
@@ -254,7 +265,16 @@ async function getUserApiKeys(userId: string): Promise<Record<string, { key: str
 }
 
 async function validateUserToken(userToken: string) {
-  const supabase = await createClient()
+  // Use service role for backend token validation
+  let supabase = await createClient()
+  
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your_service_role_key') {
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+    supabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
   
   // Verify the MCP user token
   const { data, error } = await supabase
@@ -265,6 +285,7 @@ async function validateUserToken(userToken: string) {
     .single()
 
   if (error || !data) {
+    console.error('Token validation error:', error)
     return null
   }
 
@@ -327,6 +348,23 @@ export async function POST(request: NextRequest) {
       }
       
       userId = user.id
+      
+      // Check message limits for authenticated user
+      try {
+        const messageCheck = await subscriptionManager.canSendMessage(userId, true)
+        if (!messageCheck.canSend) {
+          return NextResponse.json({ 
+            error: messageCheck.reason || 'Message limit exceeded' 
+          }, { status: 429 })
+        }
+      } catch (error: any) {
+        console.error('Error checking message limits (user_keys mode):', error)
+        return NextResponse.json({ 
+          error: 'Error checking message limits',
+          details: error.message
+        }, { status: 500 })
+      }
+      
       const userKeys = await getUserApiKeys(userId)
       
       // Convert user keys to simple format for compatibility
@@ -349,7 +387,25 @@ export async function POST(request: NextRequest) {
           }, { status: 401 })
         }
         userId = tokenData.user_id
+        
+        // Check message limits for MCP token user
+        try {
+          const messageCheck = await subscriptionManager.canSendMessage(userId, true)
+          if (!messageCheck.canSend) {
+            return NextResponse.json({ 
+              error: messageCheck.reason || 'Message limit exceeded' 
+            }, { status: 429 })
+          }
+        } catch (error: any) {
+          console.error('Error checking message limits (managed mode):', error)
+          return NextResponse.json({ 
+            error: 'Error checking message limits',
+            details: error.message
+          }, { status: 500 })
+        }
       }
+      // If no user_token is provided in managed mode, skip message limits 
+      // (this is for Polydev's own managed API keys without user restrictions)
       
       // Use Polydev managed API keys
       const managedKeys = await getPolynDevManagedKeys()
@@ -408,6 +464,16 @@ export async function POST(request: NextRequest) {
       total_tokens: responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0),
       total_latency_ms: totalLatency,
       cached: false
+    }
+
+    // Increment message count for successful requests (only if user is tracked)
+    if (userId) {
+      try {
+        await subscriptionManager.incrementMessageCount(userId, true)
+      } catch (error) {
+        console.error('Failed to increment message count:', error)
+        // Don't fail the request, just log the error
+      }
     }
 
     // Log I/O for persistence
