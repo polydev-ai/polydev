@@ -203,7 +203,55 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    const response = {
+    type SessionDetail = {
+      id: string
+      session_type: string
+      tool_name: string | null
+      model_name: string | null
+      provider: string | null
+      message_count: number
+      total_tokens: number
+      cost_credits: string | null
+      cost_usd: string | null
+      created_at: string
+      metadata: any
+    }
+
+    const response: {
+      timeframe: string
+      period: {
+        start: string
+        end: string
+      }
+      summary: {
+        total_messages: number
+        total_tokens: number
+        total_cost_usd: number
+        total_credits_used: number
+        promotional_credits_used: number
+        usage_paths: {
+          api_key_messages: number
+          credit_messages: number
+          cli_tool_messages: number
+        }
+        unique_models: unknown[]
+        unique_providers: unknown[]
+        unique_tools: unknown[]
+      }
+      current_balance: {
+        total: number
+        purchased: number
+        promotional: number
+        lifetime_purchased: number
+        lifetime_spent: number
+        promotional_total: number
+      }
+      breakdown: BreakdownData
+      time_series: Record<string, TimeSeriesItem>
+      monthly_summary: any
+      active_promotional_credits: any[]
+      sessions?: SessionDetail[]
+    } = {
       timeframe,
       period: {
         start: startDate.toISOString(),
