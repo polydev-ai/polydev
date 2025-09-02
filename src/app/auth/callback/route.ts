@@ -4,7 +4,19 @@ import { createClient } from '../../utils/supabase/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  let next = searchParams.get('next') ?? '/dashboard'
+
+  // Ensure next parameter is valid
+  if (!next || next === 'undefined' || next === 'null') {
+    next = '/dashboard'
+  }
+
+  // Ensure next starts with /
+  if (!next.startsWith('/')) {
+    next = '/dashboard'
+  }
+
+  console.log('[Auth Callback] Redirect parameters:', { code: !!code, next })
 
   if (code) {
     const supabase = await createClient()
@@ -15,7 +27,10 @@ export async function GET(request: Request) {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin
       const redirectUrl = `${siteUrl}${next}`
       
+      console.log('[Auth Callback] Redirecting to:', redirectUrl)
       return NextResponse.redirect(redirectUrl)
+    } else {
+      console.error('[Auth Callback] Session exchange error:', error)
     }
   }
 

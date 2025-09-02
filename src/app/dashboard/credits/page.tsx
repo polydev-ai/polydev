@@ -246,10 +246,10 @@ export default function CreditsPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue="purchase" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="purchase">Purchase Credits</TabsTrigger>
+          <TabsTrigger value="overview">Recent Purchases</TabsTrigger>
           <TabsTrigger value="budget">Budget Settings</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>

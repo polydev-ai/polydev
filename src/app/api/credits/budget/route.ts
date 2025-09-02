@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import CreditManager from '@/lib/creditManager'
+import { createClient as createServerClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const creditManager = new CreditManager()
+    const serviceSupabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -14,7 +17,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's budget settings
-    const budget = await creditManager.getUserBudget(user.id)
+    const { data: budget } = await serviceSupabase
+      .from('user_budgets')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
     
     // Calculate current spending for different periods
     const now = new Date()
@@ -22,17 +29,17 @@ export async function GET(request: NextRequest) {
     // Daily spending (today)
     const startOfDay = new Date(now)
     startOfDay.setHours(0, 0, 0, 0)
-    const dailySpending = await creditManager['getSpendingInPeriod'](user.id, startOfDay, now)
+    const dailySpending = await getSpendingInPeriod(serviceSupabase, user.id, startOfDay, now)
     
     // Weekly spending
     const startOfWeek = new Date(now)
     startOfWeek.setDate(now.getDate() - now.getDay())
     startOfWeek.setHours(0, 0, 0, 0)
-    const weeklySpending = await creditManager['getSpendingInPeriod'](user.id, startOfWeek, now)
+    const weeklySpending = await getSpendingInPeriod(serviceSupabase, user.id, startOfWeek, now)
     
     // Monthly spending
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const monthlySpending = await creditManager['getSpendingInPeriod'](user.id, startOfMonth, now)
+    const monthlySpending = await getSpendingInPeriod(serviceSupabase, user.id, startOfMonth, now)
 
     return NextResponse.json({
       budget: budget || {
@@ -83,7 +90,10 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const creditManager = new CreditManager()
+    const serviceSupabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -131,7 +141,17 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update budget
-    const updatedBudget = await creditManager.updateUserBudget(user.id, validatedBudget)
+    const { data: updatedBudget, error } = await serviceSupabase
+      .from('user_budgets')
+      .upsert({
+        user_id: user.id,
+        ...validatedBudget,
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) throw error
     
     return NextResponse.json({
       success: true,
@@ -151,7 +171,10 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const creditManager = new CreditManager()
+    const serviceSupabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -164,13 +187,13 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'check_limits':
         const { estimatedCost } = data
-        const canMake = await creditManager.canMakeRequest(user.id, estimatedCost)
+        const canMake = await canMakeRequest(serviceSupabase, user.id, estimatedCost)
         
         return NextResponse.json(canMake)
       
       case 'get_spending_trend':
         const { days = 7 } = data
-        const analytics = await creditManager.getSpendingAnalytics(user.id, days)
+        const analytics = await getSpendingAnalytics(serviceSupabase, user.id, days)
         
         return NextResponse.json({
           totalSpent: analytics.totalSpent,
@@ -189,5 +212,163 @@ export async function POST(request: NextRequest) {
       { error: 'Failed to process budget request' },
       { status: 500 }
     )
+  }
+}
+
+// Helper functions
+async function getSpendingInPeriod(
+  supabase: any, 
+  userId: string, 
+  startDate: Date, 
+  endDate: Date
+): Promise<number> {
+  try {
+    const { data, error } = await supabase
+      .from('model_usage')
+      .select('total_cost')
+      .eq('user_id', userId)
+      .gte('request_timestamp', startDate.toISOString())
+      .lte('request_timestamp', endDate.toISOString())
+
+    if (error) throw error
+
+    return (data || []).reduce((sum: number, usage: any) => sum + usage.total_cost, 0)
+  } catch (error) {
+    console.error('[Budget] Error calculating spending:', error)
+    return 0
+  }
+}
+
+async function canMakeRequest(supabase: any, userId: string, estimatedCost: number): Promise<{
+  canMake: boolean
+  reason?: string
+}> {
+  try {
+    // Check credit balance
+    const { data: credits } = await supabase
+      .from('user_credits')
+      .select('balance')
+      .eq('user_id', userId)
+      .single()
+
+    if (!credits || credits.balance < estimatedCost) {
+      return {
+        canMake: false,
+        reason: 'Insufficient credits'
+      }
+    }
+
+    // Check budget limits
+    const { data: budget } = await supabase
+      .from('user_budgets')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
+
+    if (budget) {
+      const now = new Date()
+      
+      // Check daily limit
+      if (budget.daily_limit) {
+        const startOfDay = new Date(now.setHours(0, 0, 0, 0))
+        const todaySpending = await getSpendingInPeriod(supabase, userId, startOfDay, now)
+        
+        if (todaySpending + estimatedCost > budget.daily_limit) {
+          return {
+            canMake: false,
+            reason: 'Daily spending limit exceeded'
+          }
+        }
+      }
+
+      // Check weekly limit
+      if (budget.weekly_limit) {
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()))
+        const weekSpending = await getSpendingInPeriod(supabase, userId, startOfWeek, now)
+        
+        if (weekSpending + estimatedCost > budget.weekly_limit) {
+          return {
+            canMake: false,
+            reason: 'Weekly spending limit exceeded'
+          }
+        }
+      }
+
+      // Check monthly limit
+      if (budget.monthly_limit) {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+        const monthSpending = await getSpendingInPeriod(supabase, userId, startOfMonth, now)
+        
+        if (monthSpending + estimatedCost > budget.monthly_limit) {
+          return {
+            canMake: false,
+            reason: 'Monthly spending limit exceeded'
+          }
+        }
+      }
+    }
+
+    return { canMake: true }
+  } catch (error) {
+    console.error('[Budget] Error checking request permission:', error)
+    return {
+      canMake: false,
+      reason: 'Unable to verify budget limits'
+    }
+  }
+}
+
+async function getSpendingAnalytics(supabase: any, userId: string, days: number = 30) {
+  try {
+    const startDate = new Date()
+    startDate.setDate(startDate.getDate() - days)
+
+    const { data, error } = await supabase
+      .from('model_usage')
+      .select(`
+        total_cost,
+        model_id,
+        prompt_tokens,
+        completion_tokens,
+        request_timestamp
+      `)
+      .eq('user_id', userId)
+      .gte('request_timestamp', startDate.toISOString())
+      .order('request_timestamp', { ascending: false })
+
+    if (error) throw error
+
+    const usage = data || []
+    
+    // Calculate analytics
+    const totalSpent = usage.reduce((sum: number, u: any) => sum + u.total_cost, 0)
+    const totalRequests = usage.length
+    const avgCostPerRequest = totalRequests > 0 ? totalSpent / totalRequests : 0
+    
+    // Group by model
+    const modelBreakdown = usage.reduce((acc: any, u: any) => {
+      if (!acc[u.model_id]) {
+        acc[u.model_id] = {
+          requests: 0,
+          cost: 0,
+          tokens: 0
+        }
+      }
+      acc[u.model_id].requests += 1
+      acc[u.model_id].cost += u.total_cost
+      acc[u.model_id].tokens += u.prompt_tokens + u.completion_tokens
+      return acc
+    }, {})
+
+    return {
+      totalSpent,
+      totalRequests,
+      avgCostPerRequest,
+      modelBreakdown,
+      usage
+    }
+  } catch (error) {
+    console.error('[Budget] Error fetching analytics:', error)
+    throw error
   }
 }
