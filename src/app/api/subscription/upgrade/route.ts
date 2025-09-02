@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
           },
         ],
         mode: 'subscription',
-        success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?success=true`,
-        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?canceled=true`,
+        success_url: `https://www.polydev.ai/dashboard/subscription?success=true`,
+        cancel_url: `https://www.polydev.ai/dashboard/subscription?canceled=true`,
         metadata: {
           userId: user.id,
           planKey: 'pro',

@@ -51,8 +51,8 @@ export async function POST(request: NextRequest) {
           },
         ],
         mode: 'payment',
-        success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/credits?success=true`,
-        cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/credits?canceled=true`,
+        success_url: successUrl || `https://www.polydev.ai/dashboard/credits?success=true`,
+        cancel_url: cancelUrl || `https://www.polydev.ai/dashboard/credits?canceled=true`,
         metadata: {
           userId: user.id,
           packageId: packageId,
