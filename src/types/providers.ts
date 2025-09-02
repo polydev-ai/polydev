@@ -5623,12 +5623,152 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     setupInstructions: 'Get your API key from https://openrouter.ai/keys',
     iconUrl: 'https://github.com/gryphe.png',
     clickable: true
+  },
+
+  'fireworks': {
+    id: 'fireworks',
+    name: 'Fireworks AI',
+    description: 'Fast inference for open-source models',
+    category: 'api',
+    authType: 'api_key',
+    tags: ['open-source', 'fast', 'tools', 'vision'],
+    tier: 'premium',
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+    defaultModel: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
+    modelCount: 50,
+    supportedModels: {
+      'accounts/fireworks/models/llama-v3p1-70b-instruct': {
+        maxTokens: 4096,
+        contextWindow: 131072,
+        inputPrice: 0.900000,
+        outputPrice: 0.900000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.1 70B Instruct optimized for fast inference'
+      }
+    },
+    pricing: {
+      type: 'token_based',
+      currency: 'USD'
+    },
+    documentation: 'https://docs.fireworks.ai/',
+    setupInstructions: 'Get your API key from https://fireworks.ai/api-keys',
+    iconUrl: 'https://docs.fireworks.ai/img/logo.svg',
+    clickable: true
+  },
+
+  'together': {
+    id: 'together',
+    name: 'Together AI',
+    description: 'Leading platform for open-source model inference',
+    category: 'api',
+    authType: 'api_key',
+    tags: ['open-source', 'inference', 'tools', 'vision'],
+    tier: 'premium',
+    baseUrl: 'https://api.together.xyz/v1',
+    defaultModel: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
+    modelCount: 60,
+    supportedModels: {
+      'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo': {
+        maxTokens: 4096,
+        contextWindow: 131072,
+        inputPrice: 0.880000,
+        outputPrice: 0.880000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.1 70B Instruct optimized for high throughput'
+      }
+    },
+    pricing: {
+      type: 'token_based',
+      currency: 'USD'
+    },
+    documentation: 'https://docs.together.ai/',
+    setupInstructions: 'Get your API key from https://api.together.xyz/settings/api-keys',
+    iconUrl: 'https://assets.together.ai/logo/together-logomark-color.svg',
+    clickable: true
+  },
+
+  'groq': {
+    id: 'groq',
+    name: 'Groq',
+    description: 'Ultra-fast LLM inference with GroqChip technology',
+    category: 'api',
+    authType: 'api_key',
+    tags: ['fast', 'inference', 'tools', 'low-latency'],
+    tier: 'premium',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    defaultModel: 'llama-3.1-70b-versatile',
+    modelCount: 8,
+    supportedModels: {
+      'llama-3.1-70b-versatile': {
+        maxTokens: 8000,
+        contextWindow: 131072,
+        inputPrice: 0.590000,
+        outputPrice: 0.790000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.1 70B optimized for ultra-fast inference on Groq chips'
+      }
+    },
+    pricing: {
+      type: 'token_based',
+      currency: 'USD'
+    },
+    documentation: 'https://console.groq.com/docs/quickstart',
+    setupInstructions: 'Get your API key from https://console.groq.com/keys',
+    iconUrl: 'https://groq.com/wp-content/uploads/2024/03/PBG-mark1-color.svg',
+    clickable: true
+  },
+
+  'cerebras': {
+    id: 'cerebras',
+    name: 'Cerebras',
+    description: 'Fastest inference powered by Cerebras CS-3 chips',
+    category: 'api',
+    authType: 'api_key',
+    tags: ['fast', 'inference', 'tools', 'reasoning'],
+    tier: 'premium',
+    baseUrl: 'https://api.cerebras.ai/v1',
+    defaultModel: 'llama3.1-70b',
+    modelCount: 6,
+    supportedModels: {
+      'llama3.1-70b': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.600000,
+        outputPrice: 0.600000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.1 70B optimized for Cerebras CS-3 chip architecture'
+      }
+    },
+    pricing: {
+      type: 'token_based',
+      currency: 'USD'
+    },
+    documentation: 'https://docs.cerebras.ai/',
+    setupInstructions: 'Get your API key from https://cloud.cerebras.ai/platform',
+    iconUrl: 'https://cerebras.ai/wp-content/uploads/2021/06/Cerebras_Logomark_Icon_FullColor.svg',
+    clickable: true
   }
 }
 
 // Provider statistics
 export const PROVIDER_STATS = {
-  totalProviders: 52,
+  totalProviders: 56,
   totalModels: 323,
   lastUpdated: new Date().toISOString()
 }

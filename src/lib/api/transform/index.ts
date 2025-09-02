@@ -330,6 +330,9 @@ export function getTransformer(providerId: string): MessageTransformer {
     case 'deepseek':
     case 'xai':
     case 'groq':
+    case 'fireworks':
+    case 'together':
+    case 'cerebras':
     case 'codex-cli':
     case 'github-copilot':
     default:
