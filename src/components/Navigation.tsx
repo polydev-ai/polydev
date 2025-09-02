@@ -177,6 +177,20 @@ export default function Navigation() {
                         MCP Tokens
                       </Link>
                       <Link
+                        href="/dashboard/credits"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        Credits & Billing
+                      </Link>
+                      <Link
+                        href="/dashboard/usage"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        Usage & Analytics
+                      </Link>
+                      <Link
                         href="/dashboard/preferences"
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setUserDropdownOpen(false)}
@@ -303,6 +317,20 @@ export default function Navigation() {
                       className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                       MCP Tokens
+                    </Link>
+                    <Link
+                      href="/dashboard/credits"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Credits & Billing
+                    </Link>
+                    <Link
+                      href="/dashboard/usage"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Usage & Analytics
                     </Link>
                     <Link
                       href="/dashboard/preferences"

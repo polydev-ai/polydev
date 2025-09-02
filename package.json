@@ -9,15 +9,20 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-progress": "^1.1.7",
+    "@radix-ui/react-tabs": "^1.1.13",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.45.0",
     "@upstash/redis": "^1.34.0",
+    "date-fns": "^4.1.0",
     "dotenv": "^17.2.1",
     "lucide-react": "^0.542.0",
     "next": "15.0.0",
     "posthog-js": "^1.157.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "sonner": "^2.0.7",
+    "stripe": "^18.5.0"
   },
   "devDependencies": {
     "@types/node": "^20.16.1",

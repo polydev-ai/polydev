@@ -1045,6 +1045,95 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
         console.log(`[MCP] ${provider.display_name} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens} (API budget: $${apiKey.monthly_budget || 'unlimited'}, used: $${apiKey.current_usage || '0'})`)
 
+        // Determine usage path: Check if user has API keys for this provider first
+        let usagePath = 'credits' // Default to credits path
+        let sessionType = 'credits'
+        
+        if (apiKey && decryptedKey && decryptedKey !== 'demo_key') {
+          usagePath = 'api_key'
+          sessionType = 'api_key'
+        }
+        
+        console.log(`[MCP Usage] Usage path: ${usagePath} for ${provider.display_name}`)
+
+        // Check credits only if using credits path
+        let userCredits = null
+        if (usagePath === 'credits') {
+          try {
+            const { data: balanceResults } = await serviceRoleSupabase
+              .from('user_credits')
+              .select('balance, promotional_balance, total_purchased, total_spent')
+              .eq('user_id', user.id)
+              .single()
+            userCredits = balanceResults
+          } catch (creditError) {
+            console.warn(`[MCP Credit] Failed to check credits, allowing request:`, creditError)
+          }
+
+          const totalBalance = (userCredits?.balance || 0) + (userCredits?.promotional_balance || 0)
+          if (totalBalance <= 0) {
+            return {
+              model,
+              error: `Insufficient credits. Current balance: ${totalBalance} credits (${userCredits?.balance || 0} purchased + ${userCredits?.promotional_balance || 0} promotional). Please purchase more credits to continue using AI models.`,
+              requiresCredits: true
+            }
+          }
+        }
+
+        // Simple cost estimation based on model and tokens
+        const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
+        const estimatedOutputTokens = Math.min(providerMaxTokens, 1000)
+        let estimatedCost = 0.1 // Default fallback cost
+        
+        // Basic cost estimation for common models
+        if (model.includes('gpt-4') || model.includes('claude-3')) {
+          estimatedCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10 // Convert to credits
+        } else if (model.includes('gpt-3.5') || model.includes('claude-haiku')) {
+          estimatedCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
+        } else {
+          estimatedCost = 0.05 // Very conservative estimate for other models
+        }
+
+        console.log(`[MCP Credit] Estimated cost for ${model}: ${estimatedCost} credits`)
+
+        // Check if user has enough credits for this specific request
+        if (userCredits && userCredits.balance < estimatedCost) {
+          return {
+            model,
+            error: `Insufficient credits for this request. Estimated cost: ${estimatedCost} credits, available: ${userCredits.balance} credits. Please purchase more credits.`,
+            requiresCredits: true,
+            estimatedCost
+          }
+        }
+
+        // Check user's budget limits using direct query
+        let budgetExceeded = false
+        try {
+          const { data: budgetData } = await serviceRoleSupabase
+            .from('user_budgets')
+            .select('daily_limit, weekly_limit, monthly_limit, daily_spent, weekly_spent, monthly_spent')
+            .eq('user_id', user.id)
+            .single()
+          
+          if (budgetData) {
+            if ((budgetData.daily_limit && budgetData.daily_spent >= budgetData.daily_limit) ||
+                (budgetData.weekly_limit && budgetData.weekly_spent >= budgetData.weekly_limit) ||
+                (budgetData.monthly_limit && budgetData.monthly_spent >= budgetData.monthly_limit)) {
+              budgetExceeded = true
+            }
+          }
+        } catch (budgetError) {
+          console.warn(`[MCP Credit] Budget check failed, allowing request:`, budgetError)
+        }
+
+        if (budgetExceeded) {
+          return {
+            model,
+            error: `Daily, weekly, or monthly budget limit exceeded. Please adjust your budget limits or wait for the next period.`,
+            budgetExceeded: true
+          }
+        }
+
         // Use the unified API caller with provider-specific preferences
         const response = await callLLMAPI(
           model, 
@@ -1054,6 +1143,83 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           providerTemperature, 
           providerMaxTokens
         )
+
+        // Track usage and deduct costs based on usage path
+        try {
+          const actualInputTokens = Math.ceil(contextualPrompt.length / 4)
+          const actualOutputTokens = response.tokens_used || estimatedOutputTokens
+          const actualCost = usagePath === 'credits' ? Math.min(estimatedCost, actualOutputTokens / 1000) : 0
+          const costUSD = usagePath === 'api_key' ? estimatedCost * 0.1 : 0 // Rough USD estimate for API key usage
+          
+          // Track comprehensive usage session
+          await serviceRoleSupabase.rpc('track_usage_session', {
+            p_user_id: user.id,
+            p_session_type: sessionType,
+            p_tool_name: 'polydev_mcp',
+            p_model_name: model,
+            p_provider: provider.display_name,
+            p_message_count: 1,
+            p_input_tokens: actualInputTokens,
+            p_output_tokens: actualOutputTokens,
+            p_cost_usd: costUSD,
+            p_cost_credits: actualCost,
+            p_metadata: JSON.stringify({
+              estimated_cost: estimatedCost,
+              usage_path: usagePath,
+              api_key_provider: usagePath === 'api_key' ? provider.display_name : null,
+              request_source: 'mcp_api'
+            })
+          })
+          
+          // Deduct credits only if using credits path
+          if (usagePath === 'credits' && actualCost > 0) {
+            // Try promotional credits first, then regular credits
+            const promotionalUsed = Math.min(actualCost, userCredits?.promotional_balance || 0)
+            const regularUsed = actualCost - promotionalUsed
+            
+            if (promotionalUsed > 0) {
+              await serviceRoleSupabase
+                .from('user_credits')
+                .update({ 
+                  promotional_balance: (userCredits?.promotional_balance || 0) - promotionalUsed,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('user_id', user.id)
+            }
+            
+            if (regularUsed > 0) {
+              await serviceRoleSupabase.rpc('deduct_user_credits', {
+                p_user_id: user.id,
+                p_amount: regularUsed
+              })
+            }
+            
+            console.log(`[MCP Credit] Deducted ${actualCost} credits (${promotionalUsed} promotional + ${regularUsed} regular) for ${model} request`)
+          } else {
+            console.log(`[MCP Usage] Tracked API key usage for ${model} request`)
+          }
+          
+          // Record in legacy model_usage table for backwards compatibility
+          await serviceRoleSupabase
+            .from('model_usage')
+            .insert({
+              user_id: user.id,
+              model_name: model,
+              provider: provider.display_name,
+              input_tokens: actualInputTokens,
+              output_tokens: actualOutputTokens,
+              total_tokens: actualInputTokens + actualOutputTokens,
+              cost_credits: actualCost,
+              request_timestamp: new Date().toISOString()
+            })
+            .catch(legacyError => {
+              console.warn('[MCP] Legacy model_usage insert failed:', legacyError)
+            })
+            
+        } catch (trackingError) {
+          console.error(`[MCP] Failed to track usage:`, trackingError)
+          // Continue with response even if tracking fails to avoid user disruption
+        }
 
         const latency = Date.now() - startTime
         return {
