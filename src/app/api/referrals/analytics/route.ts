@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
+import { createClient as createServerClient } from '@supabase/supabase-js'
 import { referralSystem } from '@/lib/referralSystem'
 
 export async function GET(request: NextRequest) {
@@ -47,7 +48,10 @@ export async function GET(request: NextRequest) {
 }
 
 async function getTopPerformingCodes(userId: string) {
-  const supabase = await createClient('service_role')
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   try {
     const { data, error } = await supabase
@@ -67,7 +71,10 @@ async function getTopPerformingCodes(userId: string) {
 }
 
 async function getMonthlyTrends(userId: string) {
-  const supabase = await createClient('service_role')
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
 
   try {
     // Get last 6 months of referral data
