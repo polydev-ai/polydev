@@ -2,6 +2,11 @@
 import { createClient } from '@/app/utils/supabase/server'
 import { createClient as createServerClient } from '@supabase/supabase-js'
 import { CREDIT_PACKAGES, SUBSCRIPTION_PLANS, getCreditPackageByPriceId } from './stripeConfig'
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-12-18.acacia',
+})
 
 export class StripeManager {
   constructor() {}
@@ -14,6 +19,97 @@ export class StripeManager {
       )
     } else {
       return await createClient()
+    }
+  }
+
+  /**
+   * Get or create a Stripe customer for a user
+   */
+  private async getOrCreateCustomer(userId: string) {
+    const supabase = await this.getSupabase(true)
+    
+    // Get user info
+    const { data: user, error: userError } = await supabase
+      .from('profiles')
+      .select('email, full_name')
+      .eq('id', userId)
+      .single()
+
+    if (userError || !user) {
+      throw new Error('User not found')
+    }
+
+    // Check if customer already exists in our DB
+    const { data: existingCustomer } = await supabase
+      .from('stripe_customers')
+      .select('stripe_customer_id')
+      .eq('user_id', userId)
+      .single()
+
+    if (existingCustomer) {
+      return { id: existingCustomer.stripe_customer_id }
+    }
+
+    // Create new customer using Stripe MCP
+    const customer = await this.createStripeCustomer(user.email, user.full_name || user.email)
+    
+    // Store customer ID in our DB
+    await supabase
+      .from('stripe_customers')
+      .insert({
+        user_id: userId,
+        stripe_customer_id: customer.id,
+        email: user.email
+      })
+
+    return customer
+  }
+
+  /**
+   * Create Stripe customer using Stripe SDK
+   */
+  private async createStripeCustomer(email: string, name: string) {
+    try {
+      return await stripe.customers.create({
+        name,
+        email
+      })
+    } catch (error) {
+      console.error('[StripeManager] Failed to create customer:', error)
+      throw new Error('Failed to create Stripe customer')
+    }
+  }
+
+  /**
+   * Create Stripe checkout session using Stripe SDK
+   */
+  private async createStripeCheckoutSession(params: {
+    customer: string
+    priceId: string
+    quantity: number
+    mode: 'payment' | 'subscription'
+    successUrl: string
+    cancelUrl: string
+    metadata: Record<string, string>
+  }) {
+    try {
+      return await stripe.checkout.sessions.create({
+        customer: params.customer,
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: params.priceId,
+            quantity: params.quantity,
+          },
+        ],
+        mode: params.mode,
+        success_url: params.successUrl,
+        cancel_url: params.cancelUrl,
+        metadata: params.metadata
+      })
+    } catch (error) {
+      console.error('[StripeManager] Failed to create checkout session:', error)
+      throw new Error('Failed to create Stripe checkout session')
     }
   }
 
@@ -31,20 +127,31 @@ export class StripeManager {
       throw new Error('Invalid credit package selected')
     }
 
-    const session = {
-      priceId: creditPackage.priceId,
-      quantity: 1,
-      successUrl: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/credits?success=true`,
-      cancelUrl: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/credits?canceled=true`,
-      metadata: {
-        userId,
-        packageId,
-        creditsAmount: creditPackage.totalCredits.toString(),
-        type: 'credit_purchase'
-      }
-    }
+    // First ensure the user exists as a Stripe customer
+    let customer = await this.getOrCreateCustomer(userId)
 
-    return session
+    // Create the checkout session using Stripe MCP
+    try {
+      const sessionData = await this.createStripeCheckoutSession({
+        customer: customer.id,
+        priceId: creditPackage.priceId,
+        quantity: 1,
+        mode: 'payment',
+        successUrl: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/credits?success=true`,
+        cancelUrl: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/credits?canceled=true`,
+        metadata: {
+          userId,
+          packageId,
+          creditsAmount: creditPackage.totalCredits.toString(),
+          type: 'credit_purchase'
+        }
+      })
+
+      return sessionData
+    } catch (error) {
+      console.error('[StripeManager] Failed to create checkout session:', error)
+      throw new Error('Failed to create checkout session')
+    }
   }
 
   /**
