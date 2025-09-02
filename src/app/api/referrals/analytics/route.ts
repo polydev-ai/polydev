@@ -28,12 +28,9 @@ export async function GET(request: NextRequest) {
           conversionRate: analytics.conversionRate,
           recentReferrals: analytics.referrals.slice(0, 10), // Last 10 referrals
           topPerformingCodes: await getTopPerformingCodes(user.id),
-          monthlyTrends: await getMonthlyTrends(user.id)
+          monthlyTrends: await getMonthlyTrends(user.id),
+          ...(includeChart && { dailyStats: analytics.dailyStats })
         }
-      }
-
-      if (includeChart) {
-        response.analytics.dailyStats = analytics.dailyStats
       }
 
       return NextResponse.json(response)

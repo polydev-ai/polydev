@@ -1484,37 +1484,26 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     const messageUsage = await subscriptionManager.getUserMessageUsage(user.id)
     
     // Determine which usage method was primarily used for this request
+    // Since we already tracked the usage paths during processing, we can derive this from successful responses
+    const successfulResponses = responses.filter(r => !r.error)
     let primaryUsageMethod = 'api_keys'
-    let apiKeyProviders: string[] = []
-    let creditProviders: string[] = []
     
-    // Check each provider's usage method
-    for (const response of responses.filter(r => !r.error)) {
-      const provider = availableProviders.find(p => 
-        p.models.some(m => m.id === response.model) ||
-        p.display_name.toLowerCase().includes(response.model.split('-')[0].toLowerCase())
-      )
-      
-      if (provider) {
-        const apiKey = await getDecryptedApiKey(user.id, provider.id)
-        if (apiKey && apiKey !== 'demo_key') {
-          apiKeyProviders.push(provider.display_name)
-        } else {
-          creditProviders.push(provider.display_name)
-        }
-      }
+    // Simple heuristic: if we have successful responses, assume API keys were primarily used
+    // unless user preference was explicitly set to credits
+    const userUsagePreference = preferences?.usage_preference || 'auto'
+    if (userUsagePreference === 'credits') {
+      primaryUsageMethod = 'credits'
+    } else if (successfulResponses.length > 0) {
+      primaryUsageMethod = 'api_keys'
+    } else {
+      primaryUsageMethod = 'credits'
     }
-    
-    primaryUsageMethod = apiKeyProviders.length > creditProviders.length ? 'api_keys' : 'credits'
     
     // Display usage method clearly
     if (primaryUsageMethod === 'api_keys') {
       statusDisplay += `\n🔑 **Usage Method**: Own API Keys`
-      if (apiKeyProviders.length > 0) {
-        statusDisplay += ` (${apiKeyProviders.join(', ')})`
-      }
-      if (creditProviders.length > 0) {
-        statusDisplay += ` | Credits used for: ${creditProviders.join(', ')}`
+      if (successfulResponses.length > 0) {
+        statusDisplay += ` (${successfulResponses.length} model${successfulResponses.length > 1 ? 's' : ''})`
       }
     } else {
       // Get credit balance for credits usage
