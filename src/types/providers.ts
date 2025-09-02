@@ -5634,6 +5634,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     tags: ['open-source', 'fast', 'tools', 'vision'],
     tier: 'premium',
     baseUrl: 'https://api.fireworks.ai/inference/v1',
+    openRouterUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
     modelCount: 50,
     supportedModels: {
@@ -5649,6 +5650,14 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
         supportsReasoning: false,
         description: 'Llama 3.1 70B Instruct optimized for fast inference'
       }
+    },
+    features: {
+      streaming: true,
+      tools: true,
+      images: false,
+      audio: false,
+      reasoning: false,
+      caching: false
     },
     pricing: {
       type: 'token_based',
@@ -5669,6 +5678,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     tags: ['open-source', 'inference', 'tools', 'vision'],
     tier: 'premium',
     baseUrl: 'https://api.together.xyz/v1',
+    openRouterUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
     modelCount: 60,
     supportedModels: {
@@ -5684,6 +5694,14 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
         supportsReasoning: false,
         description: 'Llama 3.1 70B Instruct optimized for high throughput'
       }
+    },
+    features: {
+      streaming: true,
+      tools: true,
+      images: true,
+      audio: false,
+      reasoning: false,
+      caching: false
     },
     pricing: {
       type: 'token_based',
@@ -5704,6 +5722,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     tags: ['fast', 'inference', 'tools', 'low-latency'],
     tier: 'premium',
     baseUrl: 'https://api.groq.com/openai/v1',
+    openRouterUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'llama-3.1-70b-versatile',
     modelCount: 8,
     supportedModels: {
@@ -5719,6 +5738,14 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
         supportsReasoning: false,
         description: 'Llama 3.1 70B optimized for ultra-fast inference on Groq chips'
       }
+    },
+    features: {
+      streaming: true,
+      tools: true,
+      images: false,
+      audio: false,
+      reasoning: false,
+      caching: false
     },
     pricing: {
       type: 'token_based',
@@ -5739,6 +5766,15 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     tags: ['fast', 'inference', 'tools', 'reasoning'],
     tier: 'premium',
     baseUrl: 'https://api.cerebras.ai/v1',
+    openRouterUrl: 'https://openrouter.ai/api/v1/cerebras',
+    features: {
+      streaming: true,
+      tools: true,
+      images: false,
+      audio: false,
+      reasoning: false,
+      caching: false
+    },
     defaultModel: 'llama3.1-70b',
     modelCount: 6,
     supportedModels: {
