@@ -390,7 +390,7 @@ export async function POST(request: NextRequest) {
         
         // Check message limits for MCP token user
         try {
-          const messageCheck = await subscriptionManager.canSendMessage(userId, true)
+          const messageCheck = await subscriptionManager.canSendMessage(userId!, true)
           if (!messageCheck.canSend) {
             return NextResponse.json({ 
               error: messageCheck.reason || 'Message limit exceeded' 
