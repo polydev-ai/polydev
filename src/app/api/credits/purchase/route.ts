@@ -19,12 +19,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { packageId, successUrl, cancelUrl } = await request.json()
+    const { packageId, packageIndex, successUrl, cancelUrl } = await request.json()
     
-    // Find the credit package
-    const creditPackage = CREDIT_PACKAGES.find(pkg => pkg.id === packageId)
+    // Find the credit package by either ID or index
+    let creditPackage = null
+    if (packageId) {
+      creditPackage = CREDIT_PACKAGES.find(pkg => pkg.id === packageId)
+    } else if (packageIndex !== undefined) {
+      creditPackage = CREDIT_PACKAGES[packageIndex]
+    }
+    
     if (!creditPackage) {
-      return NextResponse.json({ error: 'Invalid credit package' }, { status: 400 })
+      return NextResponse.json({ 
+        error: 'Invalid credit package',
+        debug: { packageId, packageIndex, availablePackages: CREDIT_PACKAGES.length }
+      }, { status: 400 })
     }
     
     // Get or create Stripe customer
