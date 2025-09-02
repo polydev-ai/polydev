@@ -117,8 +117,8 @@ export default function CreditsPage() {
         throw new Error('Failed to create checkout session')
       }
 
-      const { checkoutUrl } = await response.json()
-      window.location.href = checkoutUrl
+      const { url } = await response.json()
+      window.location.href = url
       
     } catch (error) {
       console.error('Error purchasing credits:', error)
