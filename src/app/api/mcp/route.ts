@@ -1403,9 +1403,51 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.warn('[MCP] Failed to log to detailed request logs:', detailedLogError)
   }
 
+  // Get updated credit balance for display
+  let creditStatus = ''
+  try {
+    const { data: currentCredits } = await serviceRoleSupabase
+      .from('user_credits')
+      .select('balance, promotional_balance, total_purchased, total_spent')
+      .eq('user_id', user.id)
+      .single()
+    
+    if (currentCredits) {
+      const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
+      const lifetimeSpent = currentCredits.total_spent || 0
+      
+      // Calculate cost for this specific request
+      const requestCosts = responses
+        .filter(r => !r.error && r.tokens_used)
+        .map(r => {
+          const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
+          const estimatedOutputTokens = r.tokens_used || 0
+          let cost = 0.05 // Conservative fallback
+          
+          if (r.model.includes('gpt-4') || r.model.includes('claude-3')) {
+            cost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10
+          } else if (r.model.includes('gpt-3.5') || r.model.includes('claude-haiku')) {
+            cost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
+          }
+          
+          return cost
+        })
+      
+      const totalRequestCost = requestCosts.reduce((sum, cost) => sum + cost, 0)
+      
+      creditStatus = `\n💰 **Credit Status**: ${totalBalance.toFixed(3)} credits remaining (${currentCredits.balance?.toFixed(3) || 0} purchased + ${currentCredits.promotional_balance?.toFixed(3) || 0} promotional)`
+      if (totalRequestCost > 0) {
+        creditStatus += ` | Request cost: ~${totalRequestCost.toFixed(4)} credits`
+      }
+      creditStatus += ` | Lifetime spent: ${lifetimeSpent.toFixed(3)} credits\n`
+    }
+  } catch (creditError) {
+    console.warn('[MCP] Failed to get updated credit balance:', creditError)
+  }
+
   // Format the response
   let formatted = `# Multiple AI Perspectives\n\n`
-  formatted += `Got ${successCount}/${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.\n\n`
+  formatted += `Got ${successCount}/${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.${creditStatus}\n`
 
   responses.forEach((response, index) => {
     const modelName = response.model.toUpperCase()
