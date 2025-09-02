@@ -1,5 +1,6 @@
 // Production-grade referral tracking system
 import { createClient } from '@/app/utils/supabase/server'
+import { createClient as createServerClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
 export interface ReferralTier {
@@ -76,7 +77,14 @@ export class ReferralSystem {
   constructor() {}
 
   private async getSupabase(useServiceRole: boolean = false) {
-    return await createClient(useServiceRole ? 'service_role' : 'authenticated')
+    if (useServiceRole) {
+      return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+    } else {
+      return await createClient()
+    }
   }
 
   /**

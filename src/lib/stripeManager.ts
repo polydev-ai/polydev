@@ -1,12 +1,20 @@
 // Production-grade Stripe integration manager
 import { createClient } from '@/app/utils/supabase/server'
+import { createClient as createServerClient } from '@supabase/supabase-js'
 import { CREDIT_PACKAGES, SUBSCRIPTION_PLANS, getCreditPackageByPriceId } from './stripeConfig'
 
 export class StripeManager {
   constructor() {}
 
   private async getSupabase(useServiceRole: boolean = false) {
-    return await createClient(useServiceRole ? 'service_role' : 'authenticated')
+    if (useServiceRole) {
+      return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+    } else {
+      return await createClient()
+    }
   }
 
   /**
