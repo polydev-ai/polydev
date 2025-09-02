@@ -5,7 +5,7 @@ export interface UserSubscription {
   user_id: string
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
-  plan_type: 'free' | 'pro'
+  tier: 'free' | 'pro'
   status: 'active' | 'canceled' | 'past_due' | 'unpaid' | 'trialing'
   current_period_start: string | null
   current_period_end: string | null
@@ -89,7 +89,7 @@ export class SubscriptionManager {
       if (error && error.code === 'PGRST116') {
         // Create new usage record
         const subscription = await this.getUserSubscription(userId, useServiceRole)
-        const isPro = subscription?.plan_type === 'pro' && subscription?.status === 'active'
+        const isPro = subscription?.tier === 'pro' && subscription?.status === 'active'
         
         // Get base limit (50 free) + referral bonuses
         const baseLimit = isPro ? 999999 : 50 // Unlimited for pro users
@@ -170,7 +170,7 @@ export class SubscriptionManager {
     try {
       const subscription = await this.getUserSubscription(userId)
       
-      if (!subscription || subscription.plan_type !== 'pro' || subscription.status !== 'active') {
+      if (!subscription || subscription.tier !== 'pro' || subscription.status !== 'active') {
         return {
           canUse: false,
           reason: 'CLI access requires Polydev Pro subscription ($20/month)'
@@ -215,7 +215,7 @@ export class SubscriptionManager {
       if (error && error.code === 'PGRST116') {
         // Create new credits record
         const subscription = await this.getUserSubscription(userId)
-        const monthlyAllocation = subscription?.plan_type === 'pro' && subscription?.status === 'active' ? 5.0 : 0.0
+        const monthlyAllocation = subscription?.tier === 'pro' && subscription?.status === 'active' ? 5.0 : 0.0
         
         const { data: newCredits, error: createError } = await supabase
           .from('user_credits')
@@ -226,7 +226,7 @@ export class SubscriptionManager {
             monthly_allocation: monthlyAllocation,
             total_purchased: 0.0,
             total_spent: 0.0,
-            last_monthly_reset: subscription?.plan_type === 'pro' ? new Date().toISOString() : null
+            last_monthly_reset: subscription?.tier === 'pro' ? new Date().toISOString() : null
           })
           .select()
           .single()
@@ -243,7 +243,7 @@ export class SubscriptionManager {
       // Check if we need to allocate monthly credits for pro users
       if (credits) {
         const subscription = await this.getUserSubscription(userId)
-        if (subscription?.plan_type === 'pro' && subscription?.status === 'active') {
+        if (subscription?.tier === 'pro' && subscription?.status === 'active') {
           const lastReset = credits.last_monthly_reset ? new Date(credits.last_monthly_reset) : null
           const now = new Date()
           const shouldReset = !lastReset || 
@@ -326,7 +326,7 @@ export class SubscriptionManager {
         .from('user_subscriptions')
         .upsert({
           user_id: userId,
-          plan_type: 'free',
+          tier: 'free',
           status: 'active'
         })
 
