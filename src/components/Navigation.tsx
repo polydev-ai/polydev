@@ -191,6 +191,20 @@ export default function Navigation() {
                         Usage & Analytics
                       </Link>
                       <Link
+                        href="/dashboard/subscription"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        👑 Subscription
+                      </Link>
+                      <Link
+                        href="/dashboard/referrals"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        🎁 Referrals
+                      </Link>
+                      <Link
                         href="/dashboard/preferences"
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setUserDropdownOpen(false)}
@@ -331,6 +345,20 @@ export default function Navigation() {
                       className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                       Usage & Analytics
+                    </Link>
+                    <Link
+                      href="/dashboard/subscription"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      👑 Subscription
+                    </Link>
+                    <Link
+                      href="/dashboard/referrals"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      🎁 Referrals
                     </Link>
                     <Link
                       href="/dashboard/preferences"

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { createHash } from 'crypto'
 import { MCPMemoryManager } from '@/lib/mcpMemory'
+import { subscriptionManager } from '@/lib/subscriptionManager'
 
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
@@ -824,6 +825,24 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     throw new Error('prompt is required and must be a string')
   }
 
+  // Check message limits and subscription status
+  const messageCheck = await subscriptionManager.canSendMessage(user.id)
+  if (!messageCheck.canSend) {
+    throw new Error(messageCheck.reason || 'Message limit exceeded')
+  }
+
+  // Check CLI usage restrictions (detect if request is from CLI)
+  const isCliRequest = request?.headers.get('user-agent')?.includes('cli') || 
+                      request?.headers.get('x-request-source') === 'cli' ||
+                      args.source === 'cli'
+  
+  if (isCliRequest) {
+    const cliCheck = await subscriptionManager.canUseCLI(user.id)
+    if (!cliCheck.canUse) {
+      throw new Error(cliCheck.reason || 'CLI access requires Pro subscription')
+    }
+  }
+
   // Use service role client for all database operations since we already validated OAuth
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   console.log(`[MCP] Service role key available:`, !!serviceRoleKey)
@@ -1083,28 +1102,31 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Simple cost estimation based on model and tokens
         const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
         const estimatedOutputTokens = Math.min(providerMaxTokens, 1000)
-        let estimatedCost = 0.1 // Default fallback cost
+        let baseCost = 0.1 // Default fallback cost
         
         // Basic cost estimation for common models
         if (model.includes('gpt-4') || model.includes('claude-3')) {
-          estimatedCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10 // Convert to credits
+          baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10 // Convert to credits
         } else if (model.includes('gpt-3.5') || model.includes('claude-haiku')) {
-          estimatedCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
+          baseCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
         } else {
-          estimatedCost = 0.05 // Very conservative estimate for other models
+          baseCost = 0.05 // Very conservative estimate for other models
         }
 
-        console.log(`[MCP Credit] Estimated cost for ${model}: ${estimatedCost} credits`)
+        console.log(`[MCP Credit] Base cost for ${model}: ${baseCost} credits`)
 
-        // Check if user has enough credits for this specific request
-        if (userCredits && userCredits.balance < estimatedCost) {
+        // Check credit sufficiency with 10% markup
+        const creditCheck = await subscriptionManager.checkCreditSufficiency(user.id, baseCost)
+        if (!creditCheck.sufficient) {
           return {
             model,
-            error: `Insufficient credits for this request. Estimated cost: ${estimatedCost} credits, available: ${userCredits.balance} credits. Please purchase more credits.`,
+            error: creditCheck.reason,
             requiresCredits: true,
-            estimatedCost
+            estimatedCost: creditCheck.markedUpCost
           }
         }
+
+        const estimatedCost = creditCheck.markedUpCost
 
         // Check user's budget limits using direct query
         let budgetExceeded = false
@@ -1148,8 +1170,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         try {
           const actualInputTokens = Math.ceil(contextualPrompt.length / 4)
           const actualOutputTokens = response.tokens_used || estimatedOutputTokens
-          const actualCost = usagePath === 'credits' ? Math.min(estimatedCost, actualOutputTokens / 1000) : 0
-          const costUSD = usagePath === 'api_key' ? estimatedCost * 0.1 : 0 // Rough USD estimate for API key usage
+          
+          // Calculate actual cost with 10% markup for credits
+          let actualCost = 0
+          if (usagePath === 'credits') {
+            // Use the marked-up cost we already calculated
+            actualCost = estimatedCost // This already includes the 10% markup
+          }
+          const costUSD = usagePath === 'api_key' ? estimatedCost / 1.1 * 0.1 : 0 // Rough USD estimate for API key usage
           
           // Track comprehensive usage session
           await serviceRoleSupabase.rpc('track_usage_session', {
@@ -1220,6 +1248,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         } catch (trackingError) {
           console.error(`[MCP] Failed to track usage:`, trackingError)
           // Continue with response even if tracking fails to avoid user disruption
+        }
+
+        // Increment message count for successful requests
+        try {
+          await subscriptionManager.incrementMessageCount(user.id)
+        } catch (messageError) {
+          console.warn('[MCP] Failed to increment message count:', messageError)
         }
 
         const latency = Date.now() - startTime
@@ -1403,51 +1438,83 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.warn('[MCP] Failed to log to detailed request logs:', detailedLogError)
   }
 
-  // Get updated credit balance for display
-  let creditStatus = ''
+  // Get updated credit balance and subscription status for display
+  let statusDisplay = ''
   try {
+    // Get credit balance
     const { data: currentCredits } = await serviceRoleSupabase
       .from('user_credits')
       .select('balance, promotional_balance, total_purchased, total_spent')
       .eq('user_id', user.id)
       .single()
     
+    // Get subscription and message usage info
+    const subscription = await subscriptionManager.getUserSubscription(user.id)
+    const messageUsage = await subscriptionManager.getUserMessageUsage(user.id)
+    
     if (currentCredits) {
       const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
       const lifetimeSpent = currentCredits.total_spent || 0
       
-      // Calculate cost for this specific request
+      // Calculate cost for this specific request with 10% markup
       const requestCosts = responses
         .filter(r => !r.error && r.tokens_used)
         .map(r => {
           const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
           const estimatedOutputTokens = r.tokens_used || 0
-          let cost = 0.05 // Conservative fallback
+          let baseCost = 0.05 // Conservative fallback
           
           if (r.model.includes('gpt-4') || r.model.includes('claude-3')) {
-            cost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10
+            baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10
           } else if (r.model.includes('gpt-3.5') || r.model.includes('claude-haiku')) {
-            cost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
+            baseCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
           }
           
-          return cost
+          return subscriptionManager.applyMarkup(baseCost) // Apply 10% markup
         })
       
       const totalRequestCost = requestCosts.reduce((sum, cost) => sum + cost, 0)
       
-      creditStatus = `\n💰 **Credit Status**: ${totalBalance.toFixed(3)} credits remaining (${currentCredits.balance?.toFixed(3) || 0} purchased + ${currentCredits.promotional_balance?.toFixed(3) || 0} promotional)`
+      statusDisplay = `\n💰 **Credit Status**: ${totalBalance.toFixed(3)} credits remaining (${currentCredits.balance?.toFixed(3) || 0} purchased + ${currentCredits.promotional_balance?.toFixed(3) || 0} promotional)`
       if (totalRequestCost > 0) {
-        creditStatus += ` | Request cost: ~${totalRequestCost.toFixed(4)} credits`
+        statusDisplay += ` | Request cost: ~${totalRequestCost.toFixed(4)} credits (includes 10% markup)`
       }
-      creditStatus += ` | Lifetime spent: ${lifetimeSpent.toFixed(3)} credits\n`
+      statusDisplay += ` | Lifetime spent: ${lifetimeSpent.toFixed(3)} credits`
     }
-  } catch (creditError) {
-    console.warn('[MCP] Failed to get updated credit balance:', creditError)
+    
+    // Add subscription status
+    const planType = subscription?.plan_type || 'free'
+    const planStatus = subscription?.status || 'N/A'
+    statusDisplay += `\n📋 **Plan**: ${planType === 'pro' ? 'Polydev Pro ($20/month)' : 'Free'} (${planStatus})`
+    
+    // Add message usage status
+    if (messageUsage) {
+      const messagesLeft = messageUsage.messages_limit - messageUsage.messages_sent
+      statusDisplay += `\n📨 **Messages**: ${messageUsage.messages_sent}/${messageUsage.messages_limit} used this month`
+      
+      if (planType === 'free' && messagesLeft <= 10) {
+        statusDisplay += ` | ⚠️ ${messagesLeft} messages left - upgrade to Pro for unlimited messages!`
+      } else if (planType === 'pro') {
+        statusDisplay += ` | ✅ Unlimited messages available`
+      }
+    }
+    
+    // Add CLI status
+    if (planType === 'pro') {
+      statusDisplay += `\n🖥️ **CLI Access**: ✅ Available`
+    } else {
+      statusDisplay += `\n🖥️ **CLI Access**: ❌ Requires Pro subscription`
+    }
+    
+    statusDisplay += '\n'
+    
+  } catch (statusError) {
+    console.warn('[MCP] Failed to get account status:', statusError)
   }
 
   // Format the response
   let formatted = `# Multiple AI Perspectives\n\n`
-  formatted += `Got ${successCount}/${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.${creditStatus}\n`
+  formatted += `Got ${successCount}/${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.${statusDisplay}\n`
 
   responses.forEach((response, index) => {
     const modelName = response.model.toUpperCase()
