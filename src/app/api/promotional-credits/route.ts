@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Automatic promotional credit granting for new users
-export async function grantWelcomeCredits(userId: string): Promise<boolean> {
+async function grantWelcomeCredits(userId: string): Promise<boolean> {
   try {
     const welcomeCreditsAmount = 10 // $10 worth of credits for new users
     
