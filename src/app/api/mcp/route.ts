@@ -1483,7 +1483,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     }
     
     // Add subscription status
-    const planType = subscription?.plan_type || 'free'
+    const planType = subscription?.tier || 'free'
     const planStatus = subscription?.status || 'N/A'
     statusDisplay += `\n📋 **Plan**: ${planType === 'pro' ? 'Polydev Pro ($20/month)' : 'Free'} (${planStatus})`
     
