@@ -1200,7 +1200,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           }
           
           // Record in legacy model_usage table for backwards compatibility
-          await serviceRoleSupabase
+          const legacyResult = await serviceRoleSupabase
             .from('model_usage')
             .insert({
               user_id: user.id,
@@ -1212,9 +1212,10 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               cost_credits: actualCost,
               request_timestamp: new Date().toISOString()
             })
-            .catch(legacyError => {
-              console.warn('[MCP] Legacy model_usage insert failed:', legacyError)
-            })
+          
+          if (legacyResult.error) {
+            console.warn('[MCP] Legacy model_usage insert failed:', legacyResult.error)
+          }
             
         } catch (trackingError) {
           console.error(`[MCP] Failed to track usage:`, trackingError)
