@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../../hooks/useAuth'
-import { PROVIDERS } from '../../../types/providers'
+import { COMPREHENSIVE_PROVIDERS } from '../../../types/providers'
 import { Settings, Save, RefreshCw, Check, AlertCircle } from 'lucide-react'
 
 interface UserPreferences {
@@ -236,7 +236,7 @@ export default function PreferencesPage() {
                 onChange={(e) => updatePreference('default_provider', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               >
-                {Object.entries(PROVIDERS).map(([id, config]) => (
+                {Object.entries(COMPREHENSIVE_PROVIDERS).map(([id, config]) => (
                   <option key={id} value={id}>
                     {config.name} ({config.authType === 'api_key' ? 'API Key' : config.authType})
                   </option>
@@ -256,7 +256,7 @@ export default function PreferencesPage() {
                 onChange={(e) => updatePreference('default_model', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               >
-                {Object.entries(PROVIDERS[preferences.default_provider]?.supportedModels || {}).map(([modelId, model]) => (
+                {Object.entries(COMPREHENSIVE_PROVIDERS[preferences.default_provider]?.supportedModels || {}).map(([modelId, model]) => (
                   <option key={modelId} value={modelId}>
                     {modelId}
                   </option>
@@ -537,7 +537,7 @@ export default function PreferencesPage() {
           </h2>
           
           <div className="space-y-4">
-            {Object.entries(PROVIDERS).map(([providerId, config]) => (
+            {Object.entries(COMPREHENSIVE_PROVIDERS).map(([providerId, config]) => (
               <div key={providerId} className="flex items-center space-x-4 p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
                 <div className="flex-shrink-0">
                   <label className="flex items-center space-x-2">

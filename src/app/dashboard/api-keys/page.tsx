@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter } from 'lucide-react'
-import { PROVIDERS, ProviderTag, getProviderSetupUrl } from '../../../types/providers'
+import { COMPREHENSIVE_PROVIDERS, ProviderConfiguration, getAllProviders } from '../../../types/providers'
 
 interface ApiKey {
   id: string
@@ -181,8 +181,8 @@ export default function ApiKeysPage() {
 
       if (keysError) throw keysError
 
-      // Convert PROVIDERS to the format expected by the component
-      const providersData = Object.values(PROVIDERS).map(provider => ({
+      // Convert COMPREHENSIVE_PROVIDERS to the format expected by the component
+      const providersData = Object.values(COMPREHENSIVE_PROVIDERS).map(provider => ({
         id: provider.id,
         provider_name: provider.id,
         display_name: provider.name,
@@ -215,7 +215,7 @@ export default function ApiKeysPage() {
   // Removed old handleProviderChange - using new one below
 
   const saveApiKey = async () => {
-    const provider = PROVIDERS[formData.provider]
+    const provider = COMPREHENSIVE_PROVIDERS[formData.provider]
     
     // Remove key name validation
     
@@ -243,9 +243,9 @@ export default function ApiKeysPage() {
         ? `${formData.api_key.slice(0, 8)}...${formData.api_key.slice(-4)}`
         : formData.api_key 
         ? `${formData.api_key.slice(0, 4)}***`
-        : `${provider?.authType === 'cli' ? 'CLI' : 'Cloud'} Auth`
+        : 'No API Key'
 
-      const providerInfo = PROVIDERS[formData.provider]
+      const providerInfo = COMPREHENSIVE_PROVIDERS[formData.provider]
       const keyData = {
         user_id: user?.id,
         provider: formData.provider,
@@ -330,14 +330,14 @@ export default function ApiKeysPage() {
   }
 
   const getProviderInfo = (provider: string) => {
-    return PROVIDERS[provider] || {
+    return COMPREHENSIVE_PROVIDERS[provider] || {
       name: provider.charAt(0).toUpperCase() + provider.slice(1),
       authType: 'api_key'
     }
   }
 
   const handleProviderChange = (providerId: string) => {
-    const providerConfig = PROVIDERS[providerId]
+    const providerConfig = COMPREHENSIVE_PROVIDERS[providerId]
     setFormData(prev => ({
       ...prev,
       provider: providerId,
@@ -356,18 +356,11 @@ export default function ApiKeysPage() {
   }
 
   const handleProviderClick = (provider: any) => {
-    // If provider has a setup URL, open it
-    const setupUrl = getProviderSetupUrl(provider.id)
-    if (setupUrl) {
-      window.open(setupUrl, '_blank')
-      return
-    }
-
-    // Otherwise, open the add API key form with the provider pre-selected
+    // Always open the add API key form with the provider pre-selected (no external links)
     setFormData(prev => ({
       ...prev,
       provider: provider.id,
-      api_base: provider.baseUrl || '',
+      api_base: provider.baseUrl || provider.openRouterUrl || '',
       default_model: provider.defaultModel || ''
     }))
     setShowAddForm(true)
@@ -553,11 +546,11 @@ export default function ApiKeysPage() {
                   onChange={(e) => handleProviderChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                 >
-                  {Object.entries(PROVIDERS).filter(([id, config]) => {
+                  {Object.entries(COMPREHENSIVE_PROVIDERS).filter(([id, config]) => {
                     if (categoryFilter !== 'all' && config.category !== categoryFilter) return false
                     if (tierFilter !== 'all' && config.tier !== tierFilter) return false
                     if (authFilter !== 'all' && config.authType !== authFilter) return false
-                    if (tagFilter !== 'all' && !config.tags?.includes(tagFilter as ProviderTag)) return false
+                    if (tagFilter !== 'all' && !config.tags?.includes(tagFilter)) return false
                     return true
                   }).map(([id, config]) => (
                     <option key={id} value={id}>
@@ -571,7 +564,7 @@ export default function ApiKeysPage() {
             </div>
 
             {/* API Key - only show for providers that require it */}
-            {PROVIDERS[formData.provider]?.authType === 'api_key' && (
+            {COMPREHENSIVE_PROVIDERS[formData.provider]?.authType === 'api_key' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -599,7 +592,7 @@ export default function ApiKeysPage() {
             )}
             
             {/* CLI/Cloud Provider Info */}
-            {PROVIDERS[formData.provider]?.authType !== 'api_key' && (
+            {COMPREHENSIVE_PROVIDERS[formData.provider]?.authType !== 'api_key' && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -648,7 +641,7 @@ export default function ApiKeysPage() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white text-sm"
                 >
                   <option value="">Select model (optional)</option>
-                  {Object.entries(PROVIDERS[formData.provider]?.supportedModels || {}).map(([modelId, modelInfo]) => (
+                  {Object.entries(COMPREHENSIVE_PROVIDERS[formData.provider]?.supportedModels || {}).map(([modelId, modelInfo]) => (
                     <option key={modelId} value={modelId}>
                       {modelId}
                     </option>
@@ -777,7 +770,7 @@ export default function ApiKeysPage() {
       {/* Provider Support Info */}
       <div className="mt-8 bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
         {(() => {
-          let filteredProviders = Object.values(PROVIDERS).filter(provider => {
+          let filteredProviders = Object.values(COMPREHENSIVE_PROVIDERS).filter(provider => {
             // Category filter
             if (categoryFilter !== 'all' && provider.category !== categoryFilter) {
               return false;
@@ -794,7 +787,7 @@ export default function ApiKeysPage() {
             }
             
             // Tag filter
-            if (tagFilter !== 'all' && !provider.tags?.includes(tagFilter as ProviderTag)) {
+            if (tagFilter !== 'all' && !provider.tags?.includes(tagFilter)) {
               return false;
             }
             
@@ -903,8 +896,20 @@ export default function ApiKeysPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 flex items-center justify-center text-lg">
-                    {provider.icon || '🤖'}
+                  <div className="w-6 h-6 flex items-center justify-center">
+                    <img 
+                      src={provider.iconUrl} 
+                      alt={`${provider.name} logo`}
+                      className="w-6 h-6 object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                        if (fallback) fallback.style.display = 'flex'
+                      }}
+                    />
+                    <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs hidden">
+                      {provider.name.charAt(0)}
+                    </div>
                   </div>
                   <h4 className="font-medium text-gray-900 dark:text-white text-sm">
                     {provider.name}
@@ -927,8 +932,7 @@ export default function ApiKeysPage() {
                   {/* Category badge */}
                   <span className={`px-1.5 py-0.5 text-xs rounded font-medium ${
                     provider.category === 'api' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' :
-                    provider.category === 'cli' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                    provider.category === 'local' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
+                    provider.category === 'openrouter' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
                     'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200'
                   }`}>
                     {provider.category}
@@ -936,13 +940,7 @@ export default function ApiKeysPage() {
                 </div>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
-                {provider.description || (
-                  provider.authType === 'cli' ? 'CLI Authentication' : 
-                  provider.authType === 'api_key' ? 'API Key Authentication' :
-                  provider.authType === 'oauth' ? 'OAuth Authentication' :
-                  provider.authType === 'local' ? 'Local Authentication' :
-                  'API Key Authentication'
-                )}
+                {provider.description || 'API Key Authentication'}
                 {provider.clickable && (
                   <span className="block text-blue-500 text-xs mt-1">
                     Click to add API key or configure →
@@ -977,12 +975,6 @@ export default function ApiKeysPage() {
                 {/* TODO: Add caching feature support */}
                 {provider.features?.reasoning === true && (
                   <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 text-xs rounded">Reasoning</span>
-                )}
-                {provider.authType === 'cli' && (
-                  <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs rounded">CLI</span>
-                )}
-                {provider.authType === 'local' && (
-                  <span className="px-1.5 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs rounded">Local</span>
                 )}
                 <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 text-xs rounded">
                   {Object.keys(provider.supportedModels).length} models
