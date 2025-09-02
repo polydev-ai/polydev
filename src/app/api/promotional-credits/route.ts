@@ -155,7 +155,7 @@ async function grantWelcomeCredits(userId: string): Promise<boolean> {
 }
 
 // Bulk promotional credit campaigns
-export async function POST_BULK(request: NextRequest) {
+async function POST_BULK(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
