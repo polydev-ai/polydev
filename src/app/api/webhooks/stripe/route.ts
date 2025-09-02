@@ -43,6 +43,12 @@ export async function POST(request: NextRequest) {
 
     // Handle the event
     switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        await handleCheckoutSessionCompleted(session, supabase)
+        break
+      }
+
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
@@ -86,6 +92,100 @@ export async function POST(request: NextRequest) {
       { error: 'Webhook handler failed' }, 
       { status: 500 }
     )
+  }
+}
+
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, supabase: any) {
+  try {
+    console.log(`[Stripe Webhook] Processing checkout session: ${session.id}`)
+    
+    // Find pending purchase
+    const { data: pendingPurchase, error: findError } = await supabase
+      .from('pending_purchases')
+      .select('*')
+      .eq('payment_link_id', session.id)
+      .eq('status', 'pending')
+      .single()
+
+    if (findError || !pendingPurchase) {
+      console.error('[Stripe Webhook] Pending purchase not found:', findError)
+      return
+    }
+
+    // Get the line items to determine what was purchased
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 })
+    if (!lineItems.data.length) {
+      console.error('[Stripe Webhook] No line items found for session')
+      return
+    }
+
+    const priceId = lineItems.data[0].price?.id
+    if (!priceId) {
+      console.error('[Stripe Webhook] No price ID found in line items')
+      return
+    }
+
+    // Import credit package config
+    const { getCreditPackageByPriceId } = await import('@/lib/stripeConfig')
+    const creditPackage = getCreditPackageByPriceId(priceId)
+    
+    if (!creditPackage) {
+      console.error('[Stripe Webhook] Credit package not found for price ID:', priceId)
+      return
+    }
+
+    // Add credits to user account using RPC function
+    const { error: creditsError } = await supabase.rpc('add_user_credits', {
+      p_user_id: pendingPurchase.user_id,
+      p_amount: creditPackage.totalCredits,
+      p_transaction_type: 'purchase',
+      p_description: `Purchased ${creditPackage.name} package`
+    })
+
+    if (creditsError) {
+      console.error('[Stripe Webhook] Failed to add credits:', creditsError)
+      return
+    }
+
+    // Record completed purchase
+    const { error: purchaseError } = await supabase
+      .from('purchase_history')
+      .insert({
+        user_id: pendingPurchase.user_id,
+        item_type: 'credits',
+        item_id: creditPackage.id,
+        amount_paid: session.amount_total || 0,
+        credits_purchased: creditPackage.totalCredits,
+        stripe_session_id: session.id,
+        status: 'completed',
+        metadata: {
+          package_name: creditPackage.name,
+          base_credits: creditPackage.credits,
+          bonus_credits: creditPackage.bonusCredits
+        }
+      })
+
+    if (purchaseError) {
+      console.error('[Stripe Webhook] Failed to record purchase:', purchaseError)
+    }
+
+    // Update pending purchase status
+    const { error: updateError } = await supabase
+      .from('pending_purchases')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', pendingPurchase.id)
+
+    if (updateError) {
+      console.error('[Stripe Webhook] Failed to update pending purchase:', updateError)
+    }
+
+    console.log(`[Stripe Webhook] Successfully processed credit purchase for user: ${pendingPurchase.user_id}`)
+
+  } catch (error) {
+    console.error('[Stripe Webhook] Error handling checkout session completed:', error)
   }
 }
 

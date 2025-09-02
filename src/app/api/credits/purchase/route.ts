@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import Stripe from 'stripe'
-import CreditManager, { CREDIT_PACKAGES } from '@/lib/creditManager'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-08-27.basil'
-})
+import { CREDIT_PACKAGES } from '@/lib/stripeConfig'
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const creditManager = new CreditManager()
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -19,55 +13,57 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { packageIndex, successUrl, cancelUrl } = await request.json()
+    const { packageId } = await request.json()
     
-    // Validate package index
-    if (typeof packageIndex !== 'number' || packageIndex < 0 || packageIndex >= CREDIT_PACKAGES.length) {
+    // Validate package ID
+    const selectedPackage = CREDIT_PACKAGES.find(pkg => pkg.id === packageId)
+    if (!selectedPackage) {
       return NextResponse.json({ error: 'Invalid package selected' }, { status: 400 })
     }
 
-    const selectedPackage = CREDIT_PACKAGES[packageIndex]
-    const totalCredits = selectedPackage.amount + selectedPackage.bonus
+    // Create customer first
+    let customer
+    try {
+      customer = await mcp__stripe__create_customer(user.email || 'no-email@polydev.ai', `${user.id}-${Date.now()}`)
+    } catch (customerError) {
+      console.error('[Credits] Customer creation failed:', customerError)
+      return NextResponse.json({ error: 'Failed to create customer' }, { status: 500 })
+    }
 
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: `Polydev Credits - ${selectedPackage.description}`,
-              description: `${selectedPackage.amount} credits${selectedPackage.bonus > 0 ? ` + ${selectedPackage.bonus} bonus credits` : ''} = ${totalCredits} total credits`,
-              images: ['https://polydev.ai/logo.png'] // Update with actual logo URL
-            },
-            unit_amount: selectedPackage.price, // Amount in cents
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: successUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/credits?success=true`,
-      cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard/credits?canceled=true`,
-      client_reference_id: user.id,
-      metadata: {
-        userId: user.id,
-        packageIndex: packageIndex.toString(),
-        creditsAmount: totalCredits.toString(),
-        packageDescription: selectedPackage.description
-      }
-    })
+    // Create payment link using Stripe MCP
+    let paymentLink
+    try {
+      paymentLink = await mcp__stripe__create_payment_link(
+        selectedPackage.priceId,
+        1
+      )
+    } catch (linkError) {
+      console.error('[Credits] Payment link creation failed:', linkError)
+      return NextResponse.json({ error: 'Failed to create payment link' }, { status: 500 })
+    }
 
-    // Note: We'll record the purchase when the webhook confirms payment
-    // The session.payment_intent is null at creation time
+    // Store pending purchase for tracking
+    const { error: sessionError } = await supabase
+      .from('pending_purchases')
+      .insert({
+        user_id: user.id,
+        payment_link_id: paymentLink.id,
+        package_id: packageId,
+        customer_id: customer.id,
+        amount: selectedPackage.price,
+        credits: selectedPackage.totalCredits,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      })
+
+    if (sessionError) {
+      console.error('[Credits] Failed to store pending purchase:', sessionError)
+    }
 
     return NextResponse.json({
-      sessionId: session.id,
-      checkoutUrl: session.url,
-      package: {
-        ...selectedPackage,
-        totalCredits
-      }
+      checkoutUrl: paymentLink.url,
+      paymentLinkId: paymentLink.id,
+      package: selectedPackage
     })
 
   } catch (error) {
@@ -91,11 +87,9 @@ export async function GET(request: NextRequest) {
 
     // Return available credit packages
     return NextResponse.json({
-      packages: CREDIT_PACKAGES.map((pkg, index) => ({
+      packages: CREDIT_PACKAGES.map((pkg) => ({
         ...pkg,
-        index,
-        totalCredits: pkg.amount + pkg.bonus,
-        savings: pkg.bonus > 0 ? Math.round((pkg.bonus / pkg.amount) * 100) : 0
+        savings: pkg.bonusCredits > 0 ? Math.round((pkg.bonusCredits / pkg.credits) * 100) : 0
       }))
     })
 

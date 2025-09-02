@@ -8,6 +8,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'your_stripe_secret_key') {
+      return NextResponse.json({ 
+        error: 'Stripe payment system is not configured. Please contact support.' 
+      }, { status: 503 })
+    }
+
     const supabase = await createClient()
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
 import { 
   Users, 
   Gift, 
@@ -13,8 +14,21 @@ import {
   TrendingUp,
   Calendar,
   Share2,
-  Award
+  Award,
+  Crown,
+  BarChart3,
+  DollarSign,
+  Star
 } from 'lucide-react'
+
+interface ReferralTier {
+  id: string
+  name: string
+  minReferrals: number
+  bonusMultiplier: number
+  creditsBonus: number
+  features: string[]
+}
 
 interface ReferralStats {
   totalReferrals: number
@@ -22,6 +36,9 @@ interface ReferralStats {
   completedReferrals: number
   bonusMessages: number
   thisMonthReferrals: number
+  currentTier: ReferralTier
+  nextTier?: ReferralTier
+  lifetime_value: number
 }
 
 interface ReferralCode {
@@ -37,7 +54,9 @@ export default function ReferralsPage() {
     pendingReferrals: 0,
     completedReferrals: 0,
     bonusMessages: 0,
-    thisMonthReferrals: 0
+    thisMonthReferrals: 0,
+    currentTier: { id: 'bronze', name: 'Bronze Referrer', minReferrals: 0, bonusMultiplier: 1.0, creditsBonus: 100, features: ['Basic referral tracking', '100 credits per referral'] },
+    lifetime_value: 0
   })
   const [referralCodes, setReferralCodes] = useState<ReferralCode[]>([])
   const [redeemCode, setRedeemCode] = useState('')
@@ -54,8 +73,41 @@ export default function ReferralsPage() {
       const response = await fetch('/api/referrals')
       if (response.ok) {
         const data = await response.json()
-        setStats(data.stats)
-        setReferralCodes(data.codes)
+        
+        // Map API response to expected stats format
+        const mappedStats = {
+          totalReferrals: data.stats?.totalReferrals || data.totalReferrals || 0,
+          pendingReferrals: data.stats?.pendingReferrals || (data.referrals || []).filter((r: any) => r.status === 'pending').length,
+          completedReferrals: data.stats?.completedReferrals || data.completedReferrals || 0,
+          bonusMessages: data.stats?.bonusMessages || data.totalBonusMessages || 0,
+          thisMonthReferrals: data.stats?.thisMonthReferrals || (data.referrals || []).filter((r: any) => {
+            const referralMonth = new Date(r.created_at).toISOString().substring(0, 7)
+            const currentMonth = new Date().toISOString().substring(0, 7)
+            return referralMonth === currentMonth
+          }).length,
+          currentTier: data.stats?.currentTier || { 
+            id: 'bronze', 
+            name: 'Bronze Referrer', 
+            minReferrals: 0, 
+            bonusMultiplier: 1.0, 
+            creditsBonus: 100, 
+            features: ['Basic referral tracking', '100 credits per referral'] 
+          },
+          nextTier: data.stats?.nextTier,
+          lifetime_value: data.stats?.lifetime_value || 0
+        }
+        
+        setStats(mappedStats)
+        
+        // Map referrals to expected code format
+        const codes = (data.codes || data.referrals || []).map((referral: any) => ({
+          code: referral.code || referral.referral_code,
+          created_at: referral.created_at,
+          uses_remaining: referral.uses_remaining || (referral.status === 'pending' ? 1 : 0),
+          total_uses: referral.total_uses || (referral.status === 'completed' ? 1 : 0)
+        }))
+        
+        setReferralCodes(codes)
       }
     } catch (error) {
       console.error('Failed to fetch referral data:', error)
@@ -73,7 +125,7 @@ export default function ReferralsPage() {
 
       if (response.ok) {
         const data = await response.json()
-        setMessage({ type: 'success', text: `Generated new referral code: ${data.code}` })
+        setMessage({ type: 'success', text: `Generated new referral code: ${data.referralCode}` })
         fetchReferralData()
       } else {
         const error = await response.json()
@@ -94,12 +146,12 @@ export default function ReferralsPage() {
       const response = await fetch('/api/referrals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'redeem', code: redeemCode.trim() })
+        body: JSON.stringify({ action: 'redeem', referralCode: redeemCode.trim() })
       })
 
       if (response.ok) {
         const data = await response.json()
-        setMessage({ type: 'success', text: `Successfully redeemed! You received ${data.bonusMessages} bonus messages.` })
+        setMessage({ type: 'success', text: data.message || 'Successfully redeemed referral code!' })
         setRedeemCode('')
         fetchReferralData()
       } else {
@@ -159,6 +211,68 @@ export default function ReferralsPage() {
         </div>
       )}
 
+      {/* Tier Progress Card */}
+      <Card className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Crown className="h-5 w-5 text-blue-600" />
+            Current Tier: {stats.currentTier.name}
+            <Badge variant="secondary" className="ml-auto bg-blue-100 text-blue-700">
+              {stats.completedReferrals} / {stats.nextTier?.minReferrals || stats.currentTier.minReferrals + '+'}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <div className="flex justify-between text-sm mb-2">
+              <span>Progress to {stats.nextTier?.name || 'Max Level'}</span>
+              <span>{Math.round(((stats.completedReferrals - stats.currentTier.minReferrals) / ((stats.nextTier?.minReferrals || stats.completedReferrals + 1) - stats.currentTier.minReferrals)) * 100)}%</span>
+            </div>
+            <Progress 
+              value={stats.nextTier ? 
+                ((stats.completedReferrals - stats.currentTier.minReferrals) / (stats.nextTier.minReferrals - stats.currentTier.minReferrals)) * 100 
+                : 100
+              }
+              className="h-2"
+            />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 text-yellow-500" />
+              <span>{stats.currentTier.creditsBonus} credits per referral</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-green-500" />
+              <span>{Math.round((stats.currentTier.bonusMultiplier - 1) * 100)}% bonus multiplier</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-blue-500" />
+              <span>${stats.lifetime_value.toFixed(2)} lifetime value</span>
+            </div>
+          </div>
+
+          <div>
+            <p className="font-medium text-sm mb-2">Tier Benefits:</p>
+            <div className="flex flex-wrap gap-1">
+              {stats.currentTier.features.map((feature, index) => (
+                <Badge key={index} variant="outline" className="text-xs">
+                  {feature}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          {stats.nextTier && (
+            <div className="pt-2 border-t">
+              <p className="text-sm text-muted-foreground">
+                <strong>Next tier ({stats.nextTier.name}):</strong> {stats.nextTier.minReferrals - stats.completedReferrals} more referrals needed
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -210,6 +324,7 @@ export default function ReferralsPage() {
         <TabsList>
           <TabsTrigger value="generate">My Referral Codes</TabsTrigger>
           <TabsTrigger value="redeem">Redeem Code</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="generate" className="space-y-4">
@@ -302,6 +417,126 @@ export default function ReferralsPage() {
                 >
                   {isRedeeming ? 'Redeeming...' : 'Redeem'}
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Referral Analytics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Quick Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="text-2xl font-bold text-green-600">{stats.completedReferrals}</div>
+                  <div className="text-sm text-green-700">Successful Referrals</div>
+                </div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-600">{stats.bonusMessages}</div>
+                  <div className="text-sm text-blue-700">Credits Earned</div>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="text-2xl font-bold text-purple-600">{stats.thisMonthReferrals}</div>
+                  <div className="text-sm text-purple-700">This Month</div>
+                </div>
+                <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="text-2xl font-bold text-yellow-600">${stats.lifetime_value.toFixed(2)}</div>
+                  <div className="text-sm text-yellow-700">Lifetime Value</div>
+                </div>
+              </div>
+
+              {/* Conversion Rate */}
+              {stats.totalReferrals > 0 && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">Conversion Rate</span>
+                    <span className="text-lg font-bold">
+                      {Math.round((stats.completedReferrals / stats.totalReferrals) * 100)}%
+                    </span>
+                  </div>
+                  <Progress 
+                    value={(stats.completedReferrals / stats.totalReferrals) * 100} 
+                    className="h-2"
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {stats.completedReferrals} completed out of {stats.totalReferrals} total referrals
+                  </div>
+                </div>
+              )}
+
+              {/* Tier Progress */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Award className="h-4 w-4" />
+                  Tier Progression
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Current: {stats.currentTier.name}</span>
+                    <span>Next: {stats.nextTier?.name || 'Max Level Reached!'}</span>
+                  </div>
+                  <Progress 
+                    value={stats.nextTier ? 
+                      Math.max(0, ((stats.completedReferrals - stats.currentTier.minReferrals) / (stats.nextTier.minReferrals - stats.currentTier.minReferrals)) * 100)
+                      : 100
+                    }
+                    className="h-3"
+                  />
+                  <div className="text-xs text-muted-foreground">
+                    {stats.nextTier 
+                      ? `${stats.nextTier.minReferrals - stats.completedReferrals} more referrals to reach ${stats.nextTier.name}`
+                      : 'Congratulations! You have reached the highest tier.'
+                    }
+                  </div>
+                </div>
+              </div>
+
+              {/* Earnings Breakdown */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Earnings Breakdown
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="flex justify-between py-1">
+                      <span>Credits per referral:</span>
+                      <span className="font-medium">{stats.currentTier.creditsBonus}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span>Bonus multiplier:</span>
+                      <span className="font-medium">{stats.currentTier.bonusMultiplier}x</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span>Effective per referral:</span>
+                      <span className="font-medium text-green-600">
+                        {Math.floor(stats.currentTier.creditsBonus * stats.currentTier.bonusMultiplier)} credits
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between py-1">
+                      <span>Total earned:</span>
+                      <span className="font-medium">{stats.bonusMessages} credits</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span>Lifetime value:</span>
+                      <span className="font-medium">${stats.lifetime_value.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span>Average per referral:</span>
+                      <span className="font-medium">
+                        ${stats.completedReferrals > 0 ? (stats.lifetime_value / stats.completedReferrals).toFixed(2) : '0.00'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
