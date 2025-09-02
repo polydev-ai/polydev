@@ -4,12 +4,12 @@ import Stripe from 'stripe'
 import CreditManager, { CREDIT_PACKAGES } from '@/lib/creditManager'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20'
+  apiVersion: '2025-08-27.basil'
 })
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const creditManager = new CreditManager()
     
     // Get authenticated user
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
