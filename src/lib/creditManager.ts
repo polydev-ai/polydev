@@ -102,15 +102,19 @@ export const CREDIT_PACKAGES = [
 ]
 
 export class CreditManager {
-  private supabase = createClient()
   private openrouter = new OpenRouterClient()
+  
+  private async getSupabase() {
+    return await createClient()
+  }
 
   /**
    * Get user's current credit balance
    */
   async getUserCredits(userId: string): Promise<UserCredits | null> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('user_credits')
         .select('*')
         .eq('user_id', userId)
@@ -136,7 +140,8 @@ export class CreditManager {
    */
   private async initializeUserCredits(userId: string): Promise<UserCredits> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('user_credits')
         .insert({
           user_id: userId,
@@ -165,7 +170,8 @@ export class CreditManager {
       if (!currentCredits) throw new Error('User credits not found')
 
       // Update balance
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('user_credits')
         .update({
           balance: currentCredits.balance + amount,
@@ -198,7 +204,8 @@ export class CreditManager {
         throw new Error('Insufficient credits')
       }
 
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('user_credits')
         .update({
           balance: currentCredits.balance - amount,
@@ -228,7 +235,8 @@ export class CreditManager {
     stripePaymentIntentId?: string
   ): Promise<CreditPurchase> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('credit_purchases')
         .insert({
           user_id: userId,
@@ -255,7 +263,8 @@ export class CreditManager {
     status: CreditPurchase['status']
   ): Promise<CreditPurchase> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('credit_purchases')
         .update({ status })
         .eq('id', purchaseId)
@@ -275,7 +284,8 @@ export class CreditManager {
    */
   async getPurchaseHistory(userId: string): Promise<CreditPurchase[]> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('credit_purchases')
         .select('*')
         .eq('user_id', userId)
@@ -294,8 +304,9 @@ export class CreditManager {
    */
   async createUserOpenRouterKey(userId: string, spendingLimit?: number): Promise<OpenRouterKey> {
     try {
+      const supabase = await this.getSupabase()
       // Check if user already has a key
-      const { data: existingKey } = await this.supabase
+      const { data: existingKey } = await supabase
         .from('openrouter_keys')
         .select('*')
         .eq('user_id', userId)
@@ -309,7 +320,7 @@ export class CreditManager {
             limit: spendingLimit
           })
 
-          const { data, error } = await this.supabase
+          const { data, error } = await supabase
             .from('openrouter_keys')
             .update({ 
               spending_limit: spendingLimit,
@@ -332,7 +343,7 @@ export class CreditManager {
       })
 
       // Store in database
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('openrouter_keys')
         .insert({
           user_id: userId,
@@ -359,7 +370,8 @@ export class CreditManager {
    */
   async getUserOpenRouterKey(userId: string): Promise<OpenRouterKey | null> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('openrouter_keys')
         .select('*')
         .eq('user_id', userId)
@@ -391,7 +403,8 @@ export class CreditManager {
     keyHash?: string
   ): Promise<ModelUsage> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('model_usage')
         .insert({
           user_id: userId,
@@ -425,7 +438,8 @@ export class CreditManager {
     limit: number = 50
   ): Promise<ModelUsage[]> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('model_usage')
         .select('*')
         .eq('user_id', userId)
@@ -445,7 +459,8 @@ export class CreditManager {
    */
   async getUserBudget(userId: string): Promise<UserBudget | null> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('user_budgets')
         .select('*')
         .eq('user_id', userId)
@@ -468,7 +483,8 @@ export class CreditManager {
    */
   async updateUserBudget(userId: string, budget: Partial<UserBudget>): Promise<UserBudget> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('user_budgets')
         .upsert({
           user_id: userId,
@@ -567,7 +583,8 @@ export class CreditManager {
     endDate: Date
   ): Promise<number> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('model_usage')
         .select('total_cost')
         .eq('user_id', userId)
@@ -591,7 +608,8 @@ export class CreditManager {
       const startDate = new Date()
       startDate.setDate(startDate.getDate() - days)
 
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('model_usage')
         .select(`
           total_cost,
