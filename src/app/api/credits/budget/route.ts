@@ -4,7 +4,7 @@ import CreditManager from '@/lib/creditManager'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const creditManager = new CreditManager()
     
     // Get authenticated user
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const creditManager = new CreditManager()
     
     // Get authenticated user
@@ -150,7 +150,7 @@ export async function PUT(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const creditManager = new CreditManager()
     
     // Get authenticated user
