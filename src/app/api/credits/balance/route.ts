@@ -93,7 +93,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const creditManager = new CreditManager()
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -105,7 +104,18 @@ export async function POST(request: NextRequest) {
     
     switch (action) {
       case 'check_sufficient':
-        const credits = await creditManager.getUserCredits(user.id)
+        // Use service role to get user credits
+        const serviceSupabase = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+
+        const { data: credits } = await serviceSupabase
+          .from('user_credits')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+          
         const canAfford = credits && credits.balance >= amount
         
         return NextResponse.json({
