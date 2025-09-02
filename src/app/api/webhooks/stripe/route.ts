@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import { createClient } from '@/app/utils/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia'
+  apiVersion: '2025-08-27.basil'
 })
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
@@ -12,7 +12,7 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
-    const signature = headers().get('stripe-signature')!
+    const signature = (await headers()).get('stripe-signature')!
 
     let event: Stripe.Event
 
@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
 
-    const supabase = createClient({ serviceRole: true })
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Log the webhook event
     await supabase
@@ -117,8 +120,8 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
       stripe_subscription_id: subscription.id,
       plan_type: 'pro' as const,
       status: subscription.status as any,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
       cancel_at_period_end: subscription.cancel_at_period_end,
       updated_at: new Date().toISOString()
     }
@@ -189,24 +192,24 @@ async function handleSubscriptionCancellation(subscription: Stripe.Subscription,
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
   try {
-    if (!invoice.subscription) return
+    if (!(invoice as any).subscription) return
 
     // Update subscription status to active
     await supabase
       .from('user_subscriptions')
       .update({
         status: 'active',
-        current_period_start: new Date(invoice.period_start * 1000).toISOString(),
-        current_period_end: new Date(invoice.period_end * 1000).toISOString(),
+        current_period_start: new Date((invoice as any).period_start * 1000).toISOString(),
+        current_period_end: new Date((invoice as any).period_end * 1000).toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('stripe_subscription_id', invoice.subscription)
+      .eq('stripe_subscription_id', (invoice as any).subscription)
 
     // Allocate monthly credits if this is a subscription payment
     const { data: subscription } = await supabase
       .from('user_subscriptions')
       .select('user_id')
-      .eq('stripe_subscription_id', invoice.subscription)
+      .eq('stripe_subscription_id', (invoice as any).subscription)
       .single()
 
     if (subscription?.user_id) {
@@ -217,7 +220,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
       })
     }
 
-    console.log(`[Stripe Webhook] Payment succeeded for subscription ${invoice.subscription}`)
+    console.log(`[Stripe Webhook] Payment succeeded for subscription ${(invoice as any).subscription}`)
 
   } catch (error) {
     console.error('[Stripe Webhook] Error handling payment success:', error)
@@ -226,7 +229,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
 
 async function handlePaymentFailed(invoice: Stripe.Invoice, supabase: any) {
   try {
-    if (!invoice.subscription) return
+    if (!(invoice as any).subscription) return
 
     // Update subscription status
     await supabase
@@ -235,9 +238,9 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, supabase: any) {
         status: 'past_due',
         updated_at: new Date().toISOString()
       })
-      .eq('stripe_subscription_id', invoice.subscription)
+      .eq('stripe_subscription_id', (invoice as any).subscription)
 
-    console.log(`[Stripe Webhook] Payment failed for subscription ${invoice.subscription}`)
+    console.log(`[Stripe Webhook] Payment failed for subscription ${(invoice as any).subscription}`)
 
   } catch (error) {
     console.error('[Stripe Webhook] Error handling payment failure:', error)
