@@ -12,6 +12,7 @@ interface UserPreferences {
   default_provider: string
   default_model: string
   preferred_providers: string[]
+  usage_preference: 'auto' | 'api_keys' | 'credits' | 'cli'
   model_preferences: Record<string, string>
   mcp_settings: {
     default_temperature?: number
@@ -53,7 +54,12 @@ export default function PreferencesPage() {
         throw new Error(data.error || 'Failed to fetch preferences')
       }
       
-      setPreferences(data.preferences)
+      // Ensure usage_preference has a default value if not set
+      const preferencesWithDefaults = {
+        ...data.preferences,
+        usage_preference: data.preferences.usage_preference || 'auto'
+      }
+      setPreferences(preferencesWithDefaults)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -258,6 +264,76 @@ export default function PreferencesPage() {
               </select>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Used when no specific model is requested
+              </p>
+            </div>
+          </div>
+
+          {/* Usage Method Preference */}
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Preferred Usage Method
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  value: 'auto',
+                  title: 'Auto (Recommended)',
+                  description: 'Use API keys when available, fallback to credits',
+                  icon: '🔄'
+                },
+                {
+                  value: 'api_keys',
+                  title: 'Own API Keys',
+                  description: 'Prefer your configured API keys',
+                  icon: '🔑'
+                },
+                {
+                  value: 'credits',
+                  title: 'Credits',
+                  description: 'Use purchased credits',
+                  icon: '💰'
+                },
+                {
+                  value: 'cli',
+                  title: 'CLI Tools',
+                  description: 'Use local CLI tools when possible',
+                  icon: '💻'
+                }
+              ].map((option) => (
+                <div
+                  key={option.value}
+                  onClick={() => updatePreference('usage_preference', option.value)}
+                  className={`
+                    relative cursor-pointer rounded-lg p-4 border transition-all
+                    ${preferences.usage_preference === option.value
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                    }
+                  `}
+                >
+                  <div className="flex items-start space-x-3">
+                    <span className="text-2xl">{option.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center">
+                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">
+                          {option.title}
+                        </h4>
+                        {preferences.usage_preference === option.value && (
+                          <Check className="w-4 h-4 text-blue-500 ml-2" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {option.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+              <p className="text-xs text-blue-800 dark:text-blue-300">
+                <strong>Auto (Recommended):</strong> Automatically uses your API keys when available and configured, 
+                falls back to credits when API keys are not available. This provides the best balance of cost and convenience.
               </p>
             </div>
           </div>

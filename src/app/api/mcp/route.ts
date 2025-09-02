@@ -1064,16 +1064,54 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
         console.log(`[MCP] ${provider.display_name} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens} (API budget: $${apiKey.monthly_budget || 'unlimited'}, used: $${apiKey.current_usage || '0'})`)
 
-        // Determine usage path: Check if user has API keys for this provider first
-        let usagePath = 'credits' // Default to credits path
+        // Determine usage path based on user preference and availability
+        let usagePath = 'credits' // Default fallback
         let sessionType = 'credits'
         
-        if (apiKey && decryptedKey && decryptedKey !== 'demo_key') {
-          usagePath = 'api_key'
-          sessionType = 'api_key'
+        const hasValidApiKey = apiKey && decryptedKey && decryptedKey !== 'demo_key'
+        const userUsagePreference = preferences?.usage_preference || 'auto'
+        
+        // Apply usage preference logic
+        switch (userUsagePreference) {
+          case 'api_keys':
+            if (hasValidApiKey) {
+              usagePath = 'api_key'
+              sessionType = 'api_key'
+            } else {
+              // User prefers API keys but doesn't have valid ones - fall back to credits
+              console.warn(`[MCP] User prefers API keys but no valid key found for ${provider.display_name}, using credits`)
+              usagePath = 'credits'
+              sessionType = 'credits'
+            }
+            break
+          case 'credits':
+            usagePath = 'credits'
+            sessionType = 'credits'
+            break
+          case 'cli':
+            // CLI preference - would need CLI integration, fall back to API keys or credits
+            if (hasValidApiKey) {
+              usagePath = 'api_key'
+              sessionType = 'api_key'
+            } else {
+              usagePath = 'credits'
+              sessionType = 'credits'
+            }
+            break
+          case 'auto':
+          default:
+            // Auto mode: prefer API keys if available, otherwise use credits
+            if (hasValidApiKey) {
+              usagePath = 'api_key'
+              sessionType = 'api_key'
+            } else {
+              usagePath = 'credits'
+              sessionType = 'credits'
+            }
+            break
         }
         
-        console.log(`[MCP Usage] Usage path: ${usagePath} for ${provider.display_name}`)
+        console.log(`[MCP Usage] Usage path: ${usagePath} for ${provider.display_name} (user preference: ${userUsagePreference})`)
 
         // Check credits only if using credits path
         let userCredits = null
@@ -1441,45 +1479,81 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   // Get updated credit balance and subscription status for display
   let statusDisplay = ''
   try {
-    // Get credit balance
-    const { data: currentCredits } = await serviceRoleSupabase
-      .from('user_credits')
-      .select('balance, promotional_balance, total_purchased, total_spent')
-      .eq('user_id', user.id)
-      .single()
-    
     // Get subscription and message usage info
     const subscription = await subscriptionManager.getUserSubscription(user.id)
     const messageUsage = await subscriptionManager.getUserMessageUsage(user.id)
     
-    if (currentCredits) {
-      const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
-      const lifetimeSpent = currentCredits.total_spent || 0
+    // Determine which usage method was primarily used for this request
+    let primaryUsageMethod = 'api_keys'
+    let apiKeyProviders: string[] = []
+    let creditProviders: string[] = []
+    
+    // Check each provider's usage method
+    for (const response of responses.filter(r => !r.error)) {
+      const provider = availableProviders.find(p => 
+        p.models.some(m => m.id === response.model) ||
+        p.display_name.toLowerCase().includes(response.model.split('-')[0].toLowerCase())
+      )
       
-      // Calculate cost for this specific request with 10% markup
-      const requestCosts = responses
-        .filter(r => !r.error && r.tokens_used)
-        .map(r => {
-          const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
-          const estimatedOutputTokens = r.tokens_used || 0
-          let baseCost = 0.05 // Conservative fallback
-          
-          if (r.model.includes('gpt-4') || r.model.includes('claude-3')) {
-            baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10
-          } else if (r.model.includes('gpt-3.5') || r.model.includes('claude-haiku')) {
-            baseCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
-          }
-          
-          return subscriptionManager.applyMarkup(baseCost) // Apply 10% markup
-        })
-      
-      const totalRequestCost = requestCosts.reduce((sum, cost) => sum + cost, 0)
-      
-      statusDisplay = `\n💰 **Credit Status**: ${totalBalance.toFixed(3)} credits remaining (${currentCredits.balance?.toFixed(3) || 0} purchased + ${currentCredits.promotional_balance?.toFixed(3) || 0} promotional)`
-      if (totalRequestCost > 0) {
-        statusDisplay += ` | Request cost: ~${totalRequestCost.toFixed(4)} credits (includes 10% markup)`
+      if (provider) {
+        const apiKey = await getDecryptedApiKey(user.id, provider.id)
+        if (apiKey && apiKey !== 'demo_key') {
+          apiKeyProviders.push(provider.display_name)
+        } else {
+          creditProviders.push(provider.display_name)
+        }
       }
-      statusDisplay += ` | Lifetime spent: ${lifetimeSpent.toFixed(3)} credits`
+    }
+    
+    primaryUsageMethod = apiKeyProviders.length > creditProviders.length ? 'api_keys' : 'credits'
+    
+    // Display usage method clearly
+    if (primaryUsageMethod === 'api_keys') {
+      statusDisplay += `\n🔑 **Usage Method**: Own API Keys`
+      if (apiKeyProviders.length > 0) {
+        statusDisplay += ` (${apiKeyProviders.join(', ')})`
+      }
+      if (creditProviders.length > 0) {
+        statusDisplay += ` | Credits used for: ${creditProviders.join(', ')}`
+      }
+    } else {
+      // Get credit balance for credits usage
+      const { data: currentCredits } = await serviceRoleSupabase
+        .from('user_credits')
+        .select('balance, promotional_balance, total_purchased, total_spent')
+        .eq('user_id', user.id)
+        .single()
+      
+      if (currentCredits) {
+        const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
+        const lifetimeSpent = currentCredits.total_spent || 0
+        
+        statusDisplay += `\n💰 **Usage Method**: Credits - ${totalBalance.toFixed(3)} remaining (${currentCredits.balance?.toFixed(3) || 0} purchased + ${currentCredits.promotional_balance?.toFixed(3) || 0} promotional)`
+        statusDisplay += ` | Lifetime spent: ${lifetimeSpent.toFixed(3)} credits`
+        
+        // Calculate cost for this specific request with 10% markup
+        const requestCosts = responses
+          .filter(r => !r.error && r.tokens_used)
+          .map(r => {
+            const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
+            const estimatedOutputTokens = r.tokens_used || 0
+            let baseCost = 0.05 // Conservative fallback
+            
+            if (r.model.includes('gpt-4') || r.model.includes('claude-3')) {
+              baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10
+            } else if (r.model.includes('gpt-3.5') || r.model.includes('claude-haiku')) {
+              baseCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
+            }
+            
+            return subscriptionManager.applyMarkup(baseCost) // Apply 10% markup
+          })
+        
+        const totalRequestCost = requestCosts.reduce((sum, cost) => sum + cost, 0)
+        
+        if (totalRequestCost > 0) {
+          statusDisplay += ` | Request cost: ~${totalRequestCost.toFixed(4)} credits (includes 10% markup)`
+        }
+      }
     }
     
     // Add subscription status

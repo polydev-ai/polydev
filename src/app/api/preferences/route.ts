@@ -37,6 +37,7 @@ export async function GET() {
           default_provider: 'openai',
           default_model: 'gpt-4o',
           preferred_providers: ['openai', 'anthropic', 'google'],
+          usage_preference: 'auto', // auto, api_keys, credits, cli
           model_preferences: {
             openai: 'gpt-4o',
             anthropic: 'claude-3-5-sonnet-20241022',
