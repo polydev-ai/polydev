@@ -2609,7 +2609,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     authType: 'api_key',
     tags: ['openrouter', 'vision', 'reasoning', 'tools'],
     tier: 'premium',
-    baseUrl: 'https://openrouter.ai/api/v1',
+    baseUrl: 'https://api.x.ai/v1',
     openRouterUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'x-ai/grok-code-fast-1',
     modelCount: 9,
