@@ -109,11 +109,13 @@ export async function GET(request: NextRequest) {
     // Calculate uptime based on system health
     const systemUptime = '99.9%' // This could be calculated from system logs
 
-    // Get provider breakdown based on actual configured providers and usage
+    // Get provider breakdown based on actual user API keys and usage
     const providerStats = apiKeys?.map(apiKey => {
-      // Find the provider configuration
-      const provider = providers?.find(p => p.provider_name === apiKey.provider || p.id === apiKey.provider) || 
-                      { display_name: apiKey.provider || 'Unknown Provider' }
+      // Find the provider configuration (system-wide)
+      const provider = providers?.find(p => 
+        p.provider_name?.toLowerCase() === apiKey.provider?.toLowerCase() || 
+        p.id?.toLowerCase() === apiKey.provider?.toLowerCase()
+      ) || null
       
       // Calculate requests for this provider from usage data
       const providerRequests = usageData?.filter(log => {
@@ -155,7 +157,7 @@ export async function GET(request: NextRequest) {
         0
 
       return {
-        name: provider.display_name || apiKey.provider || 'Unknown Provider',
+        name: provider?.display_name || provider?.provider_name || apiKey.provider || 'Unknown Provider',
         requests: providerRequests,
         cost: `$${currentUsage.toFixed(2)}`,
         latency: avgLatency,

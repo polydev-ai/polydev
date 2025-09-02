@@ -58,12 +58,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Record the purchase in database as pending
-    await creditManager.recordPurchase(
-      user.id,
-      totalCredits,
-      session.payment_intent as string
-    )
+    // Note: We'll record the purchase when the webhook confirms payment
+    // The session.payment_intent is null at creation time
 
     return NextResponse.json({
       sessionId: session.id,
