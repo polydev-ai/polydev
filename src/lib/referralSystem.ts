@@ -105,11 +105,11 @@ export class ReferralSystem {
         code = crypto.randomBytes(4).toString('hex').toUpperCase()
       }
 
-      // Check if code already exists
+      // Check if code already exists in user_referrals table
       const { data: existing } = await supabase
-        .from('referral_codes')
+        .from('user_referrals')
         .select('id')
-        .eq('code', code)
+        .eq('referral_code', code)
         .single()
 
       if (!existing) break
@@ -120,14 +120,16 @@ export class ReferralSystem {
       throw new Error('Unable to generate unique referral code')
     }
 
-    // Create referral code record
+    // Create referral code record in user_referrals table
     const { data, error } = await supabase
-      .from('referral_codes')
+      .from('user_referrals')
       .insert({
-        user_id: userId,
-        code,
-        uses_remaining: 100, // Allow 100 uses per code
-        created_at: new Date().toISOString()
+        referrer_id: userId,
+        referral_code: code,
+        status: 'pending',
+        bonus_messages: 100,
+        uses_remaining: 5, // Use existing schema default
+        total_uses: 0
       })
       .select()
       .single()
@@ -151,12 +153,13 @@ export class ReferralSystem {
     const supabase = await this.getSupabase(true)
 
     try {
-      // Find valid referral code
+      // Find valid referral code in user_referrals table
       const { data: referralCodeData, error: codeError } = await supabase
-        .from('referral_codes')
+        .from('user_referrals')
         .select('*')
-        .eq('code', referralCode.toUpperCase())
+        .eq('referral_code', referralCode.toUpperCase())
         .gt('uses_remaining', 0)
+        .is('referred_user_id', null) // Not yet redeemed
         .single()
 
       if (codeError || !referralCodeData) {
@@ -167,7 +170,7 @@ export class ReferralSystem {
         }
       }
 
-      const referrerId = referralCodeData.user_id
+      const referrerId = referralCodeData.referrer_id
 
       // Prevent self-referral
       if (referrerId === newUserId) {
@@ -183,6 +186,7 @@ export class ReferralSystem {
         .from('user_referrals')
         .select('id')
         .eq('referred_user_id', newUserId)
+        .not('referred_user_id', 'is', null)
         .single()
 
       if (existingReferral) {
@@ -199,25 +203,25 @@ export class ReferralSystem {
 
       // Calculate rewards based on tier
       const referrerCredits = Math.floor(currentTier.creditsBonus * currentTier.bonusMultiplier)
-      const newUserCredits = 100 // Standard welcome bonus
+      const newUserCredits = referralCodeData.bonus_messages || 100 // Use existing bonus_messages field
 
-      // Create referral record
+      // Update referral record with the new user
       const { error: referralError } = await supabase
         .from('user_referrals')
-        .insert({
-          referrer_id: referrerId,
+        .update({
           referred_user_id: newUserId,
-          referral_code: referralCode.toUpperCase(),
           status: 'completed',
+          uses_remaining: referralCodeData.uses_remaining - 1,
+          total_uses: (referralCodeData.total_uses || 0) + 1,
           rewards_given: {
             referrer_credits: referrerCredits,
             new_user_credits: newUserCredits
-          },
-          completed_at: new Date().toISOString()
+          }
         })
+        .eq('id', referralCodeData.id)
 
       if (referralError) {
-        throw new Error(`Failed to create referral record: ${referralError.message}`)
+        throw new Error(`Failed to update referral record: ${referralError.message}`)
       }
 
       // Add credits to both users
@@ -235,16 +239,6 @@ export class ReferralSystem {
           p_description: `Welcome bonus for using referral code ${referralCode}`
         })
       ])
-
-      // Update referral code usage
-      await supabase
-        .from('referral_codes')
-        .update({
-          uses_remaining: referralCodeData.uses_remaining - 1,
-          total_uses: (referralCodeData.total_uses || 0) + 1,
-          last_used_at: new Date().toISOString()
-        })
-        .eq('id', referralCodeData.id)
 
       const rewards: ReferralReward[] = [
         {
@@ -277,7 +271,7 @@ export class ReferralSystem {
     const supabase = await this.getSupabase(true)
 
     try {
-      // Get all referrals by this user
+      // Get all referrals by this user (both as codes they created and completed referrals)
       const { data: referrals, error } = await supabase
         .from('user_referrals')
         .select('*')
@@ -288,18 +282,22 @@ export class ReferralSystem {
       }
 
       const totalReferrals = referrals?.length || 0
-      const completedReferrals = referrals?.filter(r => r.status === 'completed').length || 0
-      const pendingReferrals = referrals?.filter(r => r.status === 'pending').length || 0
+      const completedReferrals = referrals?.filter(r => r.status === 'completed' && r.referred_user_id !== null).length || 0
+      const pendingReferrals = referrals?.filter(r => r.status === 'pending' && r.referred_user_id === null).length || 0
 
       // Calculate this month's referrals
       const currentMonth = new Date().toISOString().substring(0, 7)
       const thisMonthReferrals = referrals?.filter(r => 
-        r.created_at?.substring(0, 7) === currentMonth
+        r.created_at?.substring(0, 7) === currentMonth && r.status === 'completed'
       ).length || 0
 
-      // Calculate total credits earned from referrals
+      // Calculate total credits earned from referrals using existing schema
       const totalCreditsEarned = referrals?.reduce((sum, r) => {
-        return sum + (r.rewards_given?.referrer_credits || 0)
+        if (r.rewards_given?.referrer_credits) {
+          return sum + r.rewards_given.referrer_credits
+        }
+        // Fallback to bonus_messages if rewards_given not available
+        return sum + (r.status === 'completed' && r.referred_user_id ? (r.bonus_messages || 0) : 0)
       }, 0) || 0
 
       // Determine current tier
@@ -343,9 +341,9 @@ export class ReferralSystem {
     const supabase = await this.getSupabase(true)
 
     const { data, error } = await supabase
-      .from('referral_codes')
+      .from('user_referrals')
       .select('*')
-      .eq('user_id', userId)
+      .eq('referrer_id', userId)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -354,7 +352,8 @@ export class ReferralSystem {
 
     return data?.map(code => ({
       ...code,
-      referralUrl: `${process.env.NEXT_PUBLIC_APP_URL}/signup?ref=${code.code}`
+      code: code.referral_code, // Map referral_code to code for compatibility
+      referralUrl: `${process.env.NEXT_PUBLIC_APP_URL}/signup?ref=${code.referral_code}`
     })) || []
   }
 
