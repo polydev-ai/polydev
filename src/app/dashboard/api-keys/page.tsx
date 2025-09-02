@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter } from 'lucide-react'
-import { PROVIDERS, ProviderTag } from '../../../types/providers'
+import { PROVIDERS, ProviderTag, getProviderSetupUrl } from '../../../types/providers'
 
 interface ApiKey {
   id: string
@@ -353,6 +353,25 @@ export default function ApiKeysPage() {
     if (percentage >= 90) return 'text-red-600 bg-red-50'
     if (percentage >= 75) return 'text-yellow-600 bg-yellow-50'
     return 'text-green-600 bg-green-50'
+  }
+
+  const handleProviderClick = (provider: any) => {
+    // If provider has a setup URL, open it
+    const setupUrl = getProviderSetupUrl(provider.id)
+    if (setupUrl) {
+      window.open(setupUrl, '_blank')
+      return
+    }
+
+    // Otherwise, open the add API key form with the provider pre-selected
+    setFormData(prev => ({
+      ...prev,
+      provider: provider.id,
+      api_base: provider.baseUrl || '',
+      default_model: provider.defaultModel || ''
+    }))
+    setShowAddForm(true)
+    setEditingKey(null)
   }
 
   if (authLoading || loading) {
@@ -873,15 +892,28 @@ export default function ApiKeysPage() {
         )}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {filteredProviders.map(provider => (
-            <div key={provider.id} className="bg-white dark:bg-gray-900 p-3 rounded border">
+            <div 
+              key={provider.id} 
+              className={`bg-white dark:bg-gray-900 p-3 rounded border transition-all duration-200 ${
+                provider.clickable 
+                  ? 'hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 cursor-pointer transform hover:scale-105' 
+                  : ''
+              }`}
+              onClick={provider.clickable ? () => handleProviderClick(provider) : undefined}
+            >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs">
-                    {provider.name.charAt(0)}
+                  <div className="w-6 h-6 flex items-center justify-center text-lg">
+                    {provider.icon || '🤖'}
                   </div>
                   <h4 className="font-medium text-gray-900 dark:text-white text-sm">
                     {provider.name}
                   </h4>
+                  {provider.clickable && (
+                    <div className="text-blue-500 hover:text-blue-700">
+                      <Plus className="w-3 h-3" />
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center space-x-1">
                   {/* Tier badge */}
@@ -904,11 +936,18 @@ export default function ApiKeysPage() {
                 </div>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
-                {provider.authType === 'cli' ? 'CLI Authentication' : 
-                 provider.authType === 'api_key' ? 'API Key Authentication' :
-                 provider.authType === 'oauth' ? 'OAuth Authentication' :
-                 provider.authType === 'local' ? 'Local Authentication' :
-                 'API Key Authentication'}
+                {provider.description || (
+                  provider.authType === 'cli' ? 'CLI Authentication' : 
+                  provider.authType === 'api_key' ? 'API Key Authentication' :
+                  provider.authType === 'oauth' ? 'OAuth Authentication' :
+                  provider.authType === 'local' ? 'Local Authentication' :
+                  'API Key Authentication'
+                )}
+                {provider.clickable && (
+                  <span className="block text-blue-500 text-xs mt-1">
+                    Click to add API key or configure →
+                  </span>
+                )}
               </p>
               {/* Tags */}
               {provider.tags && provider.tags.length > 0 && (
