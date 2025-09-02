@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     // 5. Get user's API keys with usage and budget data
     const { data: apiKeys, error: apiKeysError } = await supabase
       .from('user_api_keys')
-      .select('provider_id, provider, created_at, last_used_at, is_active, current_usage, monthly_budget, max_tokens')
+      .select('provider, created_at, last_used_at, active, current_usage, monthly_budget, max_tokens')
       .eq('user_id', user.id)
 
     console.log('[Dashboard Stats] API keys:', { count: apiKeys?.length, error: apiKeysError })
@@ -75,7 +75,6 @@ export async function GET(request: NextRequest) {
     const { data: providers, error: providersError } = await supabase
       .from('provider_configurations')
       .select('*')
-      .eq('is_active', true)
 
     console.log('[Dashboard Stats] Providers:', { count: providers?.length, error: providersError })
 
@@ -113,7 +112,7 @@ export async function GET(request: NextRequest) {
     // Get provider breakdown based on actual configured providers and usage
     const providerStats = apiKeys?.map(apiKey => {
       // Find the provider configuration
-      const provider = providers?.find(p => p.id === apiKey.provider_id) || 
+      const provider = providers?.find(p => p.provider_name === apiKey.provider || p.id === apiKey.provider) || 
                       { display_name: apiKey.provider || 'Unknown Provider' }
       
       // Calculate requests for this provider from usage data
@@ -160,7 +159,7 @@ export async function GET(request: NextRequest) {
         requests: providerRequests,
         cost: `$${currentUsage.toFixed(2)}`,
         latency: avgLatency,
-        status: apiKey.is_active && apiKey.last_used_at ? 'active' : 'inactive'
+        status: apiKey.active && apiKey.last_used_at ? 'active' : 'inactive'
       }
     }).filter(provider => provider.status === 'active' || provider.requests > 0 || parseFloat(provider.cost.replace('$', '')) > 0) || []
 
@@ -261,7 +260,7 @@ export async function GET(request: NextRequest) {
 
       // Additional real metrics
       totalApiKeys: apiKeys?.length || 0,
-      activeProviders: apiKeys?.filter(key => key.is_active).length || 0,
+      activeProviders: apiKeys?.filter(key => key.active).length || 0,
       totalMcpTokens: totalTokens,
       oldestConnection: (allTokens && allTokens.length > 0) ? 
         Math.min(...allTokens.map(t => new Date(t.created_at).getTime())) : 
