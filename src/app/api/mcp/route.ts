@@ -1116,7 +1116,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         console.log(`[MCP Credit] Base cost for ${model}: ${baseCost} credits`)
 
         // Check credit sufficiency with 10% markup
-        const creditCheck = await subscriptionManager.checkCreditSufficiency(user.id, baseCost)
+        const creditCheck = await subscriptionManager.checkCreditSufficiency(user.id, baseCost, true)
         if (!creditCheck.sufficient) {
           return {
             model,

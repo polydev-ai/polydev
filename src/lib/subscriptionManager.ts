@@ -201,9 +201,9 @@ export class SubscriptionManager {
   }
 
   // Get user credits with monthly allocation
-  async getUserCredits(userId: string): Promise<UserCredits | null> {
+  async getUserCredits(userId: string, useServiceRole: boolean = false): Promise<UserCredits | null> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase(useServiceRole)
       
       // Get or create user credits
       let { data: credits, error } = await supabase
@@ -214,7 +214,7 @@ export class SubscriptionManager {
 
       if (error && error.code === 'PGRST116') {
         // Create new credits record
-        const subscription = await this.getUserSubscription(userId)
+        const subscription = await this.getUserSubscription(userId, useServiceRole)
         const monthlyAllocation = subscription?.tier === 'pro' && subscription?.status === 'active' ? 5.0 : 0.0
         
         const { data: newCredits, error: createError } = await supabase
@@ -242,7 +242,7 @@ export class SubscriptionManager {
 
       // Check if we need to allocate monthly credits for pro users
       if (credits) {
-        const subscription = await this.getUserSubscription(userId)
+        const subscription = await this.getUserSubscription(userId, useServiceRole)
         if (subscription?.tier === 'pro' && subscription?.status === 'active') {
           const lastReset = credits.last_monthly_reset ? new Date(credits.last_monthly_reset) : null
           const now = new Date()
@@ -282,9 +282,9 @@ export class SubscriptionManager {
   }
 
   // Check if user has sufficient credits (including markup)
-  async checkCreditSufficiency(userId: string, estimatedCost: number): Promise<{ sufficient: boolean; reason?: string; markedUpCost: number }> {
+  async checkCreditSufficiency(userId: string, estimatedCost: number, useServiceRole: boolean = false): Promise<{ sufficient: boolean; reason?: string; markedUpCost: number }> {
     try {
-      const credits = await this.getUserCredits(userId)
+      const credits = await this.getUserCredits(userId, useServiceRole)
       const markedUpCost = this.applyMarkup(estimatedCost)
       
       if (!credits) {
