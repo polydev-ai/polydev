@@ -39,6 +39,12 @@ export default function Dashboard() {
     providerStats: [],
     recentActivity: []
   })
+  const [creditBalance, setCreditBalance] = useState({
+    balance: 0,
+    totalSpent: 0,
+    promotionalBalance: 0,
+    hasOpenRouterKey: false
+  })
   const [requestLogs, setRequestLogs] = useState([])
   const [requestLogsLoading, setRequestLogsLoading] = useState(false)
   const [selectedLog, setSelectedLog] = useState(null)
@@ -57,6 +63,7 @@ export default function Dashboard() {
       loadRequestLogs()
       loadProviderAnalytics()
       loadModelAnalytics()
+      loadCreditBalance()
       setupRealTimeUpdates()
     }
   }, [user])
@@ -123,6 +130,28 @@ export default function Dashboard() {
         providerStats: [],
         recentActivity: []
       })
+    }
+  }
+
+  const loadCreditBalance = async () => {
+    try {
+      const response = await fetch('/api/credits/balance', {
+        credentials: 'include'
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setCreditBalance({
+          balance: data.balance || 0,
+          totalSpent: data.totalSpent || 0,
+          promotionalBalance: data.promotionalBalance || 0,
+          hasOpenRouterKey: data.hasOpenRouterKey || false
+        })
+      } else {
+        console.error('[Dashboard] Credit balance API error:', response.status)
+      }
+    } catch (error) {
+      console.error('Error loading credit balance:', error)
     }
   }
 
@@ -475,8 +504,74 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Quick Actions - Usage Path Selection */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">How would you like to use Polydev?</h3>
+              <p className="text-sm text-gray-600">Choose your preferred method for accessing AI models</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 mt-4 md:mt-0">
+              <Link 
+                href="/dashboard/api-keys" 
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m0 0a2 2 0 012 2v6a2 2 0 01-2 2h-6a2 2 0 01-2-2V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7a2 2 0 012-2h2m0 0h2m0 0a2 2 0 012 2v2M7 7V5a2 2 0 012-2m0 4a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2m5 10V9a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h6a2 2 0 002-2z" />
+                </svg>
+                Use My API Keys
+              </Link>
+              <Link 
+                href="/dashboard/credits" 
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+                Buy Credits
+              </Link>
+              <Link 
+                href="/dashboard/usage" 
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                View Usage
+              </Link>
+            </div>
+          </div>
+        </div>
+
         {/* Real-time Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+          {/* Credit Balance - Prominently displayed first */}
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-100">Credit Balance</p>
+                <p className="text-2xl font-bold text-white">
+                  ${creditBalance.balance.toFixed(2)}
+                </p>
+                {creditBalance.promotionalBalance > 0 && (
+                  <p className="text-xs text-blue-100">
+                    +${creditBalance.promotionalBalance.toFixed(2)} promotional
+                  </p>
+                )}
+              </div>
+              <div className="p-3 bg-white bg-opacity-20 rounded-full">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-2">
+              <Link href="/dashboard/credits" className="text-sm text-blue-100 hover:text-white underline">
+                {creditBalance.hasOpenRouterKey ? 'Using API Keys' : 'Buy Credits →'}
+              </Link>
+            </div>
+          </div>
+          
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
