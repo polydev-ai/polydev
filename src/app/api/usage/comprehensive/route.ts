@@ -112,18 +112,32 @@ export async function GET(request: NextRequest) {
     })
 
     // Group sessions by type and tool for breakdown
-    const breakdown = {
+    type BreakdownItem = {
+      messages: number
+      tokens: number
+      cost_usd: number
+      cost_credits: number
+      sessions: number
+    }
+    
+    type BreakdownData = {
+      api_keys: Record<string, BreakdownItem>
+      credits: Record<string, BreakdownItem>
+      cli_tools: Record<string, BreakdownItem>
+    }
+    
+    const breakdown: BreakdownData = {
       api_keys: {},
       credits: {},
       cli_tools: {}
     }
 
     sessions?.forEach(session => {
-      const key = session.session_type
+      const key = session.session_type as keyof BreakdownData
       const toolKey = session.tool_name || session.provider || 'unknown'
       
-      if (!breakdown[key as keyof typeof breakdown][toolKey]) {
-        breakdown[key as keyof typeof breakdown][toolKey] = {
+      if (!breakdown[key][toolKey]) {
+        breakdown[key][toolKey] = {
           messages: 0,
           tokens: 0,
           cost_usd: 0,
@@ -132,7 +146,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const item = breakdown[key as keyof typeof breakdown][toolKey]
+      const item = breakdown[key][toolKey]
       item.messages += session.message_count || 0
       item.tokens += session.total_tokens || 0
       item.cost_usd += parseFloat(session.cost_usd || '0')
@@ -141,7 +155,17 @@ export async function GET(request: NextRequest) {
     })
 
     // Daily/hourly breakdown for charts
-    const timeSeriesData = {}
+    type TimeSeriesItem = {
+      messages: number
+      tokens: number
+      cost_usd: number
+      cost_credits: number
+      api_key: number
+      credits: number
+      cli_tools: number
+    }
+    
+    const timeSeriesData: Record<string, TimeSeriesItem> = {}
     sessions?.forEach(session => {
       const date = new Date(session.created_at)
       const key = timeframe === 'day' 
