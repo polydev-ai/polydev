@@ -1,138 +1,152 @@
 import { ApiHandler } from '../index'
-import { ApiHandlerOptions } from '../../../types/providers'
-import { GoogleTransformer } from '../transform'
-import { exec } from 'child_process'
-import { promisify } from 'util'
-
-const execAsync = promisify(exec)
+import { ApiHandlerOptions, ModelInfo } from '../../../types/providers'
 
 export class GeminiCLIHandler implements ApiHandler {
-  private transformer = new GoogleTransformer()
-  
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
-    const { messages, model } = options
-    
     try {
-      // Check if gcloud CLI is available
-      await execAsync('which gcloud')
-      
-      // Convert messages to a simple prompt format
-      const prompt = this.messagesToPrompt(messages || [])
-      
-      // Execute the gcloud AI command (this is a conceptual implementation)
-      const command = `gcloud ai models predict ${model || 'gemini-2.0-flash-exp'} --prompt="${prompt}"`
-      const { stdout, stderr } = await execAsync(command, { 
-        timeout: 60000, // 60 second timeout
-        maxBuffer: 1024 * 1024 * 10 // 10MB buffer
-      })
-      
-      if (stderr) {
-        console.warn('Gemini CLI stderr:', stderr)
-      }
-      
-      // Create a mock Response object with the CLI output
-      const responseData = {
-        candidates: [{
-          content: {
-            parts: [{
-              text: stdout.trim()
-            }]
+      // Use the MCP server bridge to communicate with Gemini CLI
+      const response = await fetch('/api/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          server: 'gemini-cli-bridge',
+          tool: 'send_to_gemini',
+          args: {
+            message: this.formatMessagesForCLI(options.messages || []),
+            system_prompt: options.systemPrompt,
+            model: options.model || 'gemini-2.0-flash'
           }
-        }],
-        usageMetadata: {
-          totalTokenCount: Math.floor(stdout.length / 4)
-        }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Gemini CLI request failed: ${response.statusText}`)
       }
+
+      const result = await response.json()
       
-      return new Response(JSON.stringify(responseData), {
-        status: 200,
+      // Transform MCP response to standard API response format
+      return new Response(JSON.stringify({
+        id: `gemini-${Date.now()}`,
+        type: 'message',
+        role: 'assistant',
+        content: [{
+          type: 'text',
+          text: result.result || result.content || 'No response from Gemini CLI'
+        }],
+        model: options.model || 'gemini-2.0-flash',
+        usage: {
+          input_tokens: this.estimateTokens(options.messages || []),
+          output_tokens: this.estimateTokens([{ role: 'assistant', content: result.result || '' }])
+        }
+      }), {
         headers: { 'Content-Type': 'application/json' }
       })
-      
     } catch (error) {
       console.error('Gemini CLI error:', error)
-      
-      if ((error as any).code === 'ENOENT') {
-        throw new Error('gcloud CLI not found. Please install Google Cloud SDK and authenticate first.')
-      }
-      
-      throw new Error(`Gemini CLI execution failed: ${(error as any).message}`)
+      throw new Error(`Gemini CLI failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
   
   async streamMessage(options: ApiHandlerOptions): Promise<ReadableStream> {
-    // Simulate streaming by chunking the response
+    // For CLI tools, we'll convert to non-streaming for simplicity
     const response = await this.createMessage(options)
     const data = await response.json()
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    
-    const chunks = this.splitIntoChunks(content, 75)
     
     return new ReadableStream({
       start(controller) {
-        let index = 0
+        const content = data.content?.[0]?.text || ''
+        const chunks = content.split(' ')
         
-        const sendNext = () => {
-          if (index < chunks.length) {
-            const chunk = {
-              type: 'content',
-              content: chunks[index]
+        chunks.forEach((chunk, index) => {
+          const streamChunk = {
+            type: 'content_block_delta',
+            index: 0,
+            delta: {
+              type: 'text_delta',
+              text: chunk + (index < chunks.length - 1 ? ' ' : '')
             }
-            controller.enqueue(new TextEncoder().encode(JSON.stringify(chunk) + '\n'))
-            index++
-            
-            setTimeout(sendNext, 70)
-          } else {
-            const doneChunk = { type: 'done' }
-            controller.enqueue(new TextEncoder().encode(JSON.stringify(doneChunk) + '\n'))
-            controller.close()
           }
-        }
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(streamChunk)}\n\n`))
+        })
         
-        sendNext()
+        controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'))
+        controller.close()
       }
     })
   }
   
-  private messagesToPrompt(messages: any[]): string {
-    return messages
-      .filter(msg => msg.role !== 'system')
-      .map(msg => {
-        const content = typeof msg.content === 'string' ? msg.content : 
-          msg.content.map((c: any) => c.type === 'text' ? c.text : '[Image]').join('')
-        return `${msg.role === 'user' ? 'User' : 'Assistant'}: ${content}`
-      })
-      .join('\n\n')
-  }
-  
-  private splitIntoChunks(text: string, maxChunkSize: number): string[] {
-    const chunks: string[] = []
-    let currentChunk = ''
-    
-    const words = text.split(' ')
-    
-    for (const word of words) {
-      if (currentChunk.length + word.length + 1 > maxChunkSize && currentChunk.length > 0) {
-        chunks.push(currentChunk)
-        currentChunk = word
-      } else {
-        currentChunk += (currentChunk ? ' ' : '') + word
-      }
-    }
-    
-    if (currentChunk) {
-      chunks.push(currentChunk)
-    }
-    
-    return chunks
-  }
-  
-  async validateApiKey(): Promise<boolean> {
+  async validateApiKey(apiKey: string): Promise<boolean> {
+    // CLI authentication is handled by the CLI itself
     try {
-      const { stdout } = await execAsync('gcloud auth application-default print-access-token', { timeout: 5000 })
-      return stdout.trim().length > 0
-    } catch (error) {
+      const response = await fetch('/api/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          server: 'gemini-cli-bridge',
+          tool: 'check_gemini_status',
+          args: {}
+        })
+      })
+
+      if (!response.ok) {
+        return false
+      }
+
+      const result = await response.json()
+      return !result.result?.includes('❌')
+    } catch {
       return false
     }
+  }
+
+  async getModels(): Promise<ModelInfo[]> {
+    return [
+      {
+        maxTokens: 8192,
+        contextWindow: 1000000,
+        inputPrice: 0.075,
+        outputPrice: 0.3,
+        supportsImages: true,
+        supportsPromptCache: true,
+        supportsComputerUse: false,
+        description: 'Gemini 2.0 Flash (via Google Cloud CLI)'
+      },
+      {
+        maxTokens: 8192,
+        contextWindow: 2000000,
+        inputPrice: 1.25,
+        outputPrice: 5.0,
+        supportsImages: true,
+        supportsPromptCache: true,
+        supportsComputerUse: false,
+        description: 'Gemini 1.5 Pro (via Google Cloud CLI)'
+      },
+      {
+        maxTokens: 8192,
+        contextWindow: 1000000,
+        inputPrice: 0.075,
+        outputPrice: 0.3,
+        supportsImages: true,
+        supportsPromptCache: false,
+        supportsComputerUse: false,
+        description: 'Gemini 1.5 Flash (via Google Cloud CLI)'
+      }
+    ]
+  }
+
+  private formatMessagesForCLI(messages: any[]): string {
+    return messages.map(msg => {
+      if (msg.role === 'system') {
+        return `System: ${msg.content}`
+      }
+      return `${msg.role}: ${msg.content}`
+    }).join('\n\n')
+  }
+
+  private estimateTokens(messages: any[]): number {
+    // Simple token estimation - roughly 4 characters per token
+    const text = messages.map(m => m.content || '').join(' ')
+    return Math.ceil(text.length / 4)
   }
 }

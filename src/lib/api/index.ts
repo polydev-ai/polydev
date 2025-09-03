@@ -66,6 +66,7 @@ const getEnhancedHandler = (providerId: string): ApiHandler => {
     openrouter: new OpenRouterHandler(),
     lmstudio: new LMStudioHandler(),
     'codex-cli': new CodexCLIHandler(),
+    'claude-code': new ClaudeCodeHandler(),
     'github-copilot': new GitHubCopilotHandler(),
     'gemini-cli': new GeminiCLIHandler(),
   }
@@ -76,7 +77,7 @@ const getEnhancedHandler = (providerId: string): ApiHandler => {
 // Complete provider registry combining enhanced and legacy handlers
 const getAllSupportedProviders = (): string[] => {
   const enhanced = EnhancedHandlerFactory.getSupportedProviders()
-  const legacy = ['vertex', 'bedrock', 'azure', 'openrouter', 'lmstudio', 'codex-cli', 'github-copilot', 'gemini-cli']
+  const legacy = ['vertex', 'bedrock', 'azure', 'openrouter', 'lmstudio', 'codex-cli', 'claude-code', 'github-copilot', 'gemini-cli']
   return [...enhanced, ...legacy]
 }
 

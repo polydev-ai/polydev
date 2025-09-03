@@ -1,162 +1,152 @@
 import { ApiHandler } from '../index'
-import { ApiHandlerOptions } from '../../../types/providers'
-import { AnthropicTransformer } from '../transform'
-import { exec } from 'child_process'
-import { promisify } from 'util'
-import { writeFileSync, unlinkSync } from 'fs'
-import { join } from 'path'
-import { tmpdir } from 'os'
-
-const execAsync = promisify(exec)
+import { ApiHandlerOptions, ModelInfo } from '../../../types/providers'
 
 export class ClaudeCodeHandler implements ApiHandler {
-  private transformer = new AnthropicTransformer()
-  
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
-    const { messages, model, maxTokens, temperature } = options
-    
     try {
-      // Check if claude CLI is available
-      await execAsync('which claude')
-      
-      // Create a temporary file with the conversation
-      const tempFile = join(tmpdir(), `claude-prompt-${Date.now()}.txt`)
-      const prompt = this.messagesToPrompt(messages || [])
-      writeFileSync(tempFile, prompt)
-      
-      try {
-        // Execute the claude CLI command
-        const command = `claude -f "${tempFile}" --model="${model || 'claude-opus-4-1-20250805'}" --max-tokens=${maxTokens || 8192} --temperature=${temperature || 0.7}`
-        const { stdout, stderr } = await execAsync(command, { 
-          timeout: 120000, // 2 minute timeout for Claude
-          maxBuffer: 1024 * 1024 * 20 // 20MB buffer
-        })
-        
-        if (stderr) {
-          console.warn('Claude CLI stderr:', stderr)
-        }
-        
-        // Create a mock Response object with the CLI output
-        const responseData = {
-          content: [{
-            type: 'text',
-            text: stdout.trim()
-          }],
-          usage: {
-            input_tokens: Math.floor(prompt.length / 4),
-            output_tokens: Math.floor(stdout.length / 4)
+      // Use the MCP server bridge to communicate with Claude Code CLI
+      const response = await fetch('/api/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          server: 'claude-code-cli-bridge',
+          tool: 'send_to_claude_code',
+          args: {
+            message: this.formatMessagesForCLI(options.messages || []),
+            system_prompt: options.systemPrompt,
+            model: options.model || 'claude-3.5-sonnet'
           }
-        }
-        
-        return new Response(JSON.stringify(responseData), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
         })
-        
-      } finally {
-        // Clean up temp file
-        try {
-          unlinkSync(tempFile)
-        } catch (e) {
-          console.warn('Failed to clean up temp file:', e)
+      })
+
+      if (!response.ok) {
+        throw new Error(`Claude Code CLI request failed: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      
+      // Transform MCP response to standard API response format
+      return new Response(JSON.stringify({
+        id: `claude-${Date.now()}`,
+        type: 'message',
+        role: 'assistant',
+        content: [{
+          type: 'text',
+          text: result.result || result.content || 'No response from Claude Code CLI'
+        }],
+        model: options.model || 'claude-3.5-sonnet',
+        usage: {
+          input_tokens: this.estimateTokens(options.messages || []),
+          output_tokens: this.estimateTokens([{ role: 'assistant', content: result.result || '' }])
         }
-      }
-      
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
     } catch (error) {
-      console.error('Claude CLI error:', error)
-      
-      if ((error as any).code === 'ENOENT') {
-        throw new Error('Claude CLI not found. Please install Claude Code CLI first.')
-      }
-      
-      throw new Error(`Claude CLI execution failed: ${(error as any).message}`)
+      console.error('Claude Code CLI error:', error)
+      throw new Error(`Claude Code CLI failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
   
   async streamMessage(options: ApiHandlerOptions): Promise<ReadableStream> {
-    // For CLI-based providers, we'll simulate streaming by chunking the response
+    // For CLI tools, we'll convert to non-streaming for simplicity
     const response = await this.createMessage(options)
     const data = await response.json()
-    const content = data.content?.[0]?.text || ''
-    
-    const chunks = this.splitIntoChunks(content, 100) // Split into ~100 char chunks
     
     return new ReadableStream({
       start(controller) {
-        let index = 0
+        const content = data.content?.[0]?.text || ''
+        const chunks = content.split(' ')
         
-        const sendNext = () => {
-          if (index < chunks.length) {
-            const chunk = {
-              type: 'content',
-              content: chunks[index]
+        chunks.forEach((chunk, index) => {
+          const streamChunk = {
+            type: 'content_block_delta',
+            index: 0,
+            delta: {
+              type: 'text_delta',
+              text: chunk + (index < chunks.length - 1 ? ' ' : '')
             }
-            controller.enqueue(new TextEncoder().encode(JSON.stringify(chunk) + '\n'))
-            index++
-            
-            // Add small delay to simulate streaming
-            setTimeout(sendNext, 75)
-          } else {
-            // Send done signal
-            const doneChunk = { type: 'done' }
-            controller.enqueue(new TextEncoder().encode(JSON.stringify(doneChunk) + '\n'))
-            controller.close()
           }
-        }
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(streamChunk)}\n\n`))
+        })
         
-        sendNext()
+        controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'))
+        controller.close()
       }
     })
   }
-  
-  private messagesToPrompt(messages: any[]): string {
-    let prompt = ''
-    
-    for (const msg of messages) {
-      const content = typeof msg.content === 'string' ? msg.content : 
-        msg.content.map((c: any) => c.type === 'text' ? c.text : '[Image]').join('')
-      
-      if (msg.role === 'system') {
-        prompt += `System: ${content}\n\n`
-      } else if (msg.role === 'user') {
-        prompt += `Human: ${content}\n\n`
-      } else if (msg.role === 'assistant') {
-        prompt += `Assistant: ${content}\n\n`
-      }
-    }
-    
-    return prompt.trim()
-  }
-  
-  private splitIntoChunks(text: string, maxChunkSize: number): string[] {
-    const chunks: string[] = []
-    let currentChunk = ''
-    
-    const words = text.split(' ')
-    
-    for (const word of words) {
-      if (currentChunk.length + word.length + 1 > maxChunkSize && currentChunk.length > 0) {
-        chunks.push(currentChunk)
-        currentChunk = word
-      } else {
-        currentChunk += (currentChunk ? ' ' : '') + word
-      }
-    }
-    
-    if (currentChunk) {
-      chunks.push(currentChunk)
-    }
-    
-    return chunks
-  }
-  
-  async validateApiKey(): Promise<boolean> {
+
+  async validateApiKey(apiKey: string): Promise<boolean> {
+    // CLI authentication is handled by the CLI itself
     try {
-      // Check if claude CLI is installed and authenticated
-      const { stdout } = await execAsync('claude --version', { timeout: 5000 })
-      return stdout.includes('claude') || stdout.includes('Claude')
-    } catch (error) {
+      const response = await fetch('/api/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          server: 'claude-code-cli-bridge',
+          tool: 'check_claude_code_status',
+          args: {}
+        })
+      })
+
+      if (!response.ok) {
+        return false
+      }
+
+      const result = await response.json()
+      return !result.result?.includes('❌')
+    } catch {
       return false
     }
+  }
+
+  async getModels(): Promise<ModelInfo[]> {
+    return [
+      {
+        maxTokens: 8192,
+        contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
+        supportsImages: true,
+        supportsPromptCache: true,
+        supportsComputerUse: true,
+        description: 'Claude 3.5 Sonnet (via Claude Code CLI)'
+      },
+      {
+        maxTokens: 8192,
+        contextWindow: 200000,
+        inputPrice: 0.25,
+        outputPrice: 1.25,
+        supportsImages: true,
+        supportsPromptCache: true,
+        supportsComputerUse: false,
+        description: 'Claude 3.5 Haiku (via Claude Code CLI)'
+      },
+      {
+        maxTokens: 8192,
+        contextWindow: 200000,
+        inputPrice: 15.0,
+        outputPrice: 75.0,
+        supportsImages: true,
+        supportsPromptCache: true,
+        supportsComputerUse: true,
+        description: 'Claude 3 Opus (via Claude Code CLI)'
+      }
+    ]
+  }
+
+  private formatMessagesForCLI(messages: any[]): string {
+    return messages.map(msg => {
+      if (msg.role === 'system') {
+        return `System: ${msg.content}`
+      }
+      return `${msg.role}: ${msg.content}`
+    }).join('\n\n')
+  }
+
+  private estimateTokens(messages: any[]): number {
+    // Simple token estimation - roughly 4 characters per token
+    const text = messages.map(m => m.content || '').join(' ')
+    return Math.ceil(text.length / 4)
   }
 }

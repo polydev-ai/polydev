@@ -1089,7 +1089,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             sessionType = 'credits'
             break
           case 'cli':
-            // CLI preference - would need CLI integration, fall back to API keys or credits
+            // CLI preference - CLI integration handled by separate CLI handlers (codex-cli, claude-code, gemini-cli)
+            // For MCP route, fall back to API keys → credits as per user's preference order
             if (hasValidApiKey) {
               usagePath = 'api_key'
               sessionType = 'api_key'
@@ -1100,7 +1101,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             break
           case 'auto':
           default:
-            // Auto mode: prefer API keys if available, otherwise use credits
+            // Auto mode: prefer CLI → API keys → Credits (as user specified)
+            // For now CLI integration is handled by separate CLI handlers
+            // So we check: API keys first, then credits as fallback
             if (hasValidApiKey) {
               usagePath = 'api_key'
               sessionType = 'api_key'
