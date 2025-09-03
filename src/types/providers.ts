@@ -492,7 +492,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Claude Opus 4"
         },
-      'claude-3-5-sonnet':         {
+      'claude-3-opus-latest':         {
           maxTokens: 32000,
           contextWindow: 200000,
           inputPrice: 15.0,
