@@ -330,14 +330,14 @@ export default function ApiKeysPage() {
   }
 
   const getProviderInfo = (provider: string) => {
-    return COMPREHENSIVE_PROVIDERS[provider] || {
+    return CLINE_PROVIDERS[provider as keyof typeof CLINE_PROVIDERS] || {
       name: provider.charAt(0).toUpperCase() + provider.slice(1),
       authType: 'api_key'
     }
   }
 
   const handleProviderChange = (providerId: string) => {
-    const providerConfig = COMPREHENSIVE_PROVIDERS[providerId]
+    const providerConfig = CLINE_PROVIDERS[providerId as keyof typeof CLINE_PROVIDERS]
     setFormData(prev => ({
       ...prev,
       provider: providerId,
@@ -551,7 +551,7 @@ export default function ApiKeysPage() {
                   onChange={(e) => handleProviderChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                 >
-                  {Object.entries(COMPREHENSIVE_PROVIDERS).filter(([id, config]) => {
+                  {Object.entries(CLINE_PROVIDERS).filter(([id, config]) => {
                     if (categoryFilter !== 'all' && config.category !== categoryFilter) return false
                     if (tierFilter !== 'all' && config.tier !== tierFilter) return false
                     if (authFilter !== 'all' && config.authType !== authFilter) return false
@@ -569,7 +569,7 @@ export default function ApiKeysPage() {
             </div>
 
             {/* API Key - only show for providers that require it */}
-            {COMPREHENSIVE_PROVIDERS[formData.provider]?.authType === 'api_key' && (
+            {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.authType === 'api_key' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -597,7 +597,7 @@ export default function ApiKeysPage() {
             )}
             
             {/* CLI/Cloud Provider Info */}
-            {COMPREHENSIVE_PROVIDERS[formData.provider]?.authType !== 'api_key' && (
+            {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.authType !== 'api_key' && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
@@ -646,7 +646,7 @@ export default function ApiKeysPage() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white text-sm"
                 >
                   <option value="">Select model (optional)</option>
-                  {Object.entries(COMPREHENSIVE_PROVIDERS[formData.provider]?.supportedModels || {}).map(([modelId, modelInfo]) => (
+                  {Object.entries(CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.supportedModels || {}).map(([modelId, modelInfo]) => (
                     <option key={modelId} value={modelId}>
                       {modelId}
                     </option>
@@ -775,7 +775,7 @@ export default function ApiKeysPage() {
       {/* Provider Support Info */}
       <div className="mt-8 bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
         {(() => {
-          let filteredProviders = Object.values(COMPREHENSIVE_PROVIDERS).filter(provider => {
+          let filteredProviders = Object.values(CLINE_PROVIDERS).filter(provider => {
             // Category filter
             if (categoryFilter !== 'all' && provider.category !== categoryFilter) {
               return false;
