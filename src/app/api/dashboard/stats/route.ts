@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
         if ('provider_costs' in log && log.provider_costs) {
           return Object.keys(log.provider_costs).some((key: string) => 
             key.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
-            key.toLowerCase().includes((provider.display_name || '').toLowerCase())
+            key.toLowerCase().includes((provider?.display_name || '').toLowerCase())
           )
         }
         // Fallback to simple logs format
@@ -131,7 +131,7 @@ export async function GET(request: NextRequest) {
           const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
           return modelsUsed.some((model: string) => 
             model.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
-            model.toLowerCase().includes((provider.display_name || '').toLowerCase())
+            model.toLowerCase().includes((provider?.display_name || '').toLowerCase())
           )
         }
         return false
