@@ -5631,13 +5631,88 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     description: 'Fast inference for open-source models',
     category: 'api',
     authType: 'api_key',
-    tags: ['open-source', 'fast', 'tools', 'vision'],
+    tags: ['open-source', 'fast', 'tools', 'vision', 'multimodal'],
     tier: 'premium',
     baseUrl: 'https://api.fireworks.ai/inference/v1',
     openRouterUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
-    modelCount: 50,
+    defaultModel: 'accounts/fireworks/models/deepseek-r1-distill-llama-70b',
+    modelCount: 120,
     supportedModels: {
+      // DeepSeek Models - Latest SOTA
+      'accounts/fireworks/models/deepseek-r1-distill-llama-70b': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.600000,
+        outputPrice: 0.600000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'DeepSeek R1 Distill Llama 70B - Latest state-of-the-art model for agentic reasoning, tool use, and coding'
+      },
+      'accounts/fireworks/models/deepseek-r1-distill-llama-8b': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.100000,
+        outputPrice: 0.100000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'DeepSeek R1 Distill Llama 8B - Efficient reasoning model with distilled capabilities'
+      },
+      'accounts/fireworks/models/deepseek-v3': {
+        maxTokens: 8192,
+        contextWindow: 65536,
+        inputPrice: 0.550000,
+        outputPrice: 0.550000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'DeepSeek V3.1 - State-of-the-art open weight model for agentic reasoning, tool use, and coding'
+      },
+      // OpenAI GPT-OSS Series
+      'accounts/fireworks/models/gpt-oss-120b': {
+        maxTokens: 8192,
+        contextWindow: 32768,
+        inputPrice: 1.200000,
+        outputPrice: 1.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'GPT-OSS 120B - Large open-source model for production, general purpose, and high reasoning use-cases'
+      },
+      'accounts/fireworks/models/gpt-oss-20b': {
+        maxTokens: 8192,
+        contextWindow: 32768,
+        inputPrice: 0.300000,
+        outputPrice: 0.300000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'GPT-OSS 20B - Efficient 21.5B parameter model for lower latency and specialized use-cases'
+      },
+      // Llama Models
+      'accounts/fireworks/models/llama-v3p1-405b-instruct': {
+        maxTokens: 16384,
+        contextWindow: 131072,
+        inputPrice: 3.000000,
+        outputPrice: 3.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Llama 3.1 405B Instruct - Largest and most capable Llama model'
+      },
       'accounts/fireworks/models/llama-v3p1-70b-instruct': {
         maxTokens: 4096,
         contextWindow: 131072,
@@ -5649,6 +5724,253 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
         supportsStreaming: true,
         supportsReasoning: false,
         description: 'Llama 3.1 70B Instruct optimized for fast inference'
+      },
+      'accounts/fireworks/models/llama-v3p1-8b-instruct': {
+        maxTokens: 4096,
+        contextWindow: 131072,
+        inputPrice: 0.200000,
+        outputPrice: 0.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.1 8B Instruct - Efficient and fast model for general use'
+      },
+      'accounts/fireworks/models/llama-v3p3-70b-instruct': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.900000,
+        outputPrice: 0.900000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Meta Llama 3.3 70B Instruct - Latest Llama model with improved capabilities'
+      },
+      // Code-Specific Models
+      'accounts/fireworks/models/code-llama-34b': {
+        maxTokens: 4096,
+        contextWindow: 16384,
+        inputPrice: 0.800000,
+        outputPrice: 0.800000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Code Llama 34B - Specialized for code generation and programming tasks'
+      },
+      'accounts/fireworks/models/code-llama-13b-instruct': {
+        maxTokens: 4096,
+        contextWindow: 16384,
+        inputPrice: 0.400000,
+        outputPrice: 0.400000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Code Llama 13B Instruct - Efficient code generation model'
+      },
+      // Qwen Models
+      'accounts/fireworks/models/qwen2p5-72b-instruct': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.900000,
+        outputPrice: 0.900000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen 2.5 72B Instruct - High-performance multilingual model'
+      },
+      'accounts/fireworks/models/qwen2p5-coder-32b-instruct': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.600000,
+        outputPrice: 0.600000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen2.5-Coder 32B Instruct - Specialized for coding and development tasks'
+      },
+      'accounts/fireworks/models/qwen3-30b-a3b-instruct-2507': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.800000,
+        outputPrice: 0.800000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen3 30B A3B Instruct 2507 - Latest Qwen model with advanced capabilities'
+      },
+      // Mixtral Models
+      'accounts/fireworks/models/mixtral-8x22b-instruct': {
+        maxTokens: 65536,
+        contextWindow: 65536,
+        inputPrice: 1.200000,
+        outputPrice: 1.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Mixtral 8x22B Instruct - Large mixture-of-experts model with 176B total parameters'
+      },
+      'accounts/fireworks/models/mixtral-8x7b-instruct': {
+        maxTokens: 32768,
+        contextWindow: 32768,
+        inputPrice: 0.500000,
+        outputPrice: 0.500000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Mixtral 8x7B Instruct - Efficient mixture-of-experts model with up to 300 tokens/sec'
+      },
+      // Other Language Models
+      'accounts/fireworks/models/yi-6b': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 0.200000,
+        outputPrice: 0.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Yi 6B - Efficient bilingual language model supporting Chinese and English'
+      },
+      'accounts/fireworks/models/firefunction-v2': {
+        maxTokens: 8192,
+        contextWindow: 32768,
+        inputPrice: 0.900000,
+        outputPrice: 0.900000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'FireFunction v2 - Specialized function calling model optimized for tool use'
+      },
+      // Kimi Models
+      'accounts/fireworks/models/kimi-k2-instruct': {
+        maxTokens: 16384,
+        contextWindow: 200000,
+        inputPrice: 2.000000,
+        outputPrice: 2.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Kimi K2 Instruct - 1T parameter model with 200K context window for long-form reasoning'
+      },
+      // Image Generation Models
+      'accounts/fireworks/models/stable-diffusion-xl-1024-v1-0': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 3.000000,
+        outputPrice: 0,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Stable Diffusion XL 1.0 - High-quality text-to-image generation model'
+      },
+      'accounts/fireworks/models/stable-diffusion-3-medium': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 3.500000,
+        outputPrice: 0,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Stable Diffusion 3 Medium - 2 billion parameter model for text-to-image generation'
+      },
+      'accounts/fireworks/models/stable-diffusion-3-large': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 4.000000,
+        outputPrice: 0,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Stable Diffusion 3 Large - Most capable text-to-image model from Stability AI'
+      },
+      'accounts/fireworks/models/stable-diffusion-3p5-medium': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 3.500000,
+        outputPrice: 0,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Stable Diffusion 3.5 Medium - Enhanced with Adversarial Diffusion Distillation'
+      },
+      'accounts/fireworks/models/stable-diffusion-3p5-large': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 4.500000,
+        outputPrice: 0,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Stable Diffusion 3.5 Large - Latest and most advanced text-to-image model'
+      },
+      'accounts/fireworks/models/flux-1-dev-fp8': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 2.500000,
+        outputPrice: 0,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Flux-1-dev-fp8 - Optimized image generation model with FP8 quantization'
+      },
+      // Audio Models
+      'accounts/fireworks/models/whisper-v3': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 0.006000,
+        outputPrice: 0,
+        supportsImages: false,
+        supportsAudio: true,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'OpenAI Whisper v3 - Advanced speech-to-text transcription model'
+      },
+      'accounts/fireworks/models/whisper-v3-turbo': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 0.004000,
+        outputPrice: 0,
+        supportsImages: false,
+        supportsAudio: true,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Whisper v3 Turbo - Faster version with reduced decoding layers for quick transcription'
       }
     },
     features: {
@@ -5680,8 +6002,45 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     baseUrl: 'https://api.together.xyz/v1',
     openRouterUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
-    modelCount: 60,
+    modelCount: 95,
     supportedModels: {
+      // Chat Models (50+)
+      'deepseek-ai/DeepSeek-R1-Distill-Llama-70B': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 0.800000,
+        outputPrice: 0.800000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'DeepSeek R1 Distill Llama 70B for reasoning tasks'
+      },
+      'deepseek-ai/deepseek-coder-33b-instruct': {
+        maxTokens: 4096,
+        contextWindow: 16384,
+        inputPrice: 0.800000,
+        outputPrice: 0.800000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'DeepSeek Coder 33B specialized for code generation'
+      },
+      'meta-llama/Meta-Llama-3.1-405B-Instruct-Lite-Pro': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 3.500000,
+        outputPrice: 3.500000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Meta Llama 3.1 405B Instruct - largest Llama model'
+      },
       'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo': {
         maxTokens: 4096,
         contextWindow: 131072,
@@ -5692,7 +6051,311 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
         supportsTools: true,
         supportsStreaming: true,
         supportsReasoning: false,
-        description: 'Llama 3.1 70B Instruct optimized for high throughput'
+        description: 'Meta Llama 3.1 70B Instruct optimized for high throughput'
+      },
+      'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo': {
+        maxTokens: 4096,
+        contextWindow: 32768,
+        inputPrice: 0.200000,
+        outputPrice: 0.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Meta Llama 3.1 8B Instruct optimized for speed'
+      },
+      'meta-llama/Llama-2-70b-chat-hf': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 0.900000,
+        outputPrice: 0.900000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 2 70B Chat - powerful conversational model'
+      },
+      'meta-llama/Llama-2-13b-chat-hf': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 0.225000,
+        outputPrice: 0.225000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 2 13B Chat - balanced performance and efficiency'
+      },
+      'meta-llama/Llama-2-7b-chat-hf': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 0.200000,
+        outputPrice: 0.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 2 7B Chat - efficient conversational model'
+      },
+      'mistralai/Mixtral-8x7B-Instruct-v0.1': {
+        maxTokens: 4096,
+        contextWindow: 32768,
+        inputPrice: 0.600000,
+        outputPrice: 0.600000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Mixtral 8x7B - mixture of experts architecture'
+      },
+      'mistralai/Mistral-7B-Instruct-v0.3': {
+        maxTokens: 4096,
+        contextWindow: 32768,
+        inputPrice: 0.200000,
+        outputPrice: 0.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Mistral 7B Instruct v0.3 - latest version'
+      },
+      'Qwen/Qwen2.5-72B-Instruct-Turbo': {
+        maxTokens: 4096,
+        contextWindow: 32768,
+        inputPrice: 0.600000,
+        outputPrice: 0.600000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen 2.5 72B Instruct optimized for performance'
+      },
+      'Qwen/Qwen2.5-7B-Instruct-Turbo': {
+        maxTokens: 4096,
+        contextWindow: 32768,
+        inputPrice: 0.200000,
+        outputPrice: 0.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen 2.5 7B Instruct - efficient Chinese/English model'
+      },
+      'google/gemma-2-27b-it': {
+        maxTokens: 4096,
+        contextWindow: 8192,
+        inputPrice: 0.270000,
+        outputPrice: 0.270000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Google Gemma 2 27B Instruct - powerful Google model'
+      },
+      'google/gemma-2-9b-it': {
+        maxTokens: 4096,
+        contextWindow: 8192,
+        inputPrice: 0.300000,
+        outputPrice: 0.300000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Google Gemma 2 9B Instruct'
+      },
+      'NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO': {
+        maxTokens: 4096,
+        contextWindow: 32768,
+        inputPrice: 0.600000,
+        outputPrice: 0.600000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Nous Hermes 2 Mixtral 8x7B with DPO training'
+      },
+      'microsoft/WizardLM-2-8x22B': {
+        maxTokens: 4096,
+        contextWindow: 65536,
+        inputPrice: 1.200000,
+        outputPrice: 1.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'WizardLM-2 8x22B - advanced reasoning model'
+      },
+      // Code Models (10+)
+      'Qwen/Qwen2.5-Coder-32B-Instruct': {
+        maxTokens: 4096,
+        contextWindow: 32768,
+        inputPrice: 0.600000,
+        outputPrice: 0.600000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen 2.5 Coder 32B - advanced code generation'
+      },
+      'codellama/CodeLlama-70b-Instruct-hf': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 0.900000,
+        outputPrice: 0.900000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Code Llama 70B Instruct for code generation'
+      },
+      'codellama/CodeLlama-70b-Python-hf': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 0.900000,
+        outputPrice: 0.900000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Code Llama 70B specialized for Python'
+      },
+      'codellama/CodeLlama-7b-Instruct-hf': {
+        maxTokens: 4096,
+        contextWindow: 16384,
+        inputPrice: 0.200000,
+        outputPrice: 0.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Code Llama 7B Instruct - efficient code model'
+      },
+      'Phind/Phind-CodeLlama-34B-Python-v1': {
+        maxTokens: 4096,
+        contextWindow: 16384,
+        inputPrice: 0.800000,
+        outputPrice: 0.800000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Phind CodeLlama 34B optimized for Python development'
+      },
+      'WizardLM/WizardCoder-Python-34B-V1.0': {
+        maxTokens: 4096,
+        contextWindow: 8192,
+        inputPrice: 0.800000,
+        outputPrice: 0.800000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'WizardCoder Python 34B for advanced Python coding'
+      },
+      // Language Models (25+)
+      'mistralai/Mixtral-8x22B': {
+        maxTokens: 4096,
+        contextWindow: 65536,
+        inputPrice: 1.200000,
+        outputPrice: 1.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Mixtral 8x22B base model'
+      },
+      'meta-llama/Meta-Llama-3-70B': {
+        maxTokens: 4096,
+        contextWindow: 8192,
+        inputPrice: 0.900000,
+        outputPrice: 0.900000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Meta Llama 3 70B base model'
+      },
+      'Qwen/Qwen2-72B': {
+        maxTokens: 4096,
+        contextWindow: 32768,
+        inputPrice: 0.900000,
+        outputPrice: 0.900000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen 2 72B base model'
+      },
+      'zero-one-ai/Yi-34B': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 0.800000,
+        outputPrice: 0.800000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: '01.ai Yi 34B base model'
+      },
+      // Image Models (6)
+      'stabilityai/stable-diffusion-xl-base-1.0': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 0.040000,
+        outputPrice: 0.040000,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Stable Diffusion XL 1.0 for high-quality image generation'
+      },
+      'runwayml/stable-diffusion-v1-5': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 0.020000,
+        outputPrice: 0.020000,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Stable Diffusion 1.5 for image generation'
+      },
+      // Audio Models (2)
+      'cartesia/sonic-2': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 0.150000,
+        outputPrice: 0.150000,
+        supportsImages: false,
+        supportsAudio: true,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Cartesia Sonic 2 for speech synthesis'
       }
     },
     features: {
@@ -5719,13 +6382,39 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     description: 'Ultra-fast LLM inference with GroqChip technology',
     category: 'api',
     authType: 'api_key',
-    tags: ['fast', 'inference', 'tools', 'low-latency'],
+    tags: ['fast', 'inference', 'tools', 'low-latency', 'multimodal', 'audio'],
     tier: 'premium',
     baseUrl: 'https://api.groq.com/openai/v1',
     openRouterUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'llama-3.1-70b-versatile',
-    modelCount: 8,
+    defaultModel: 'llama-3.3-70b-versatile',
+    modelCount: 25,
     supportedModels: {
+      // Latest Llama 3.3 Models
+      'llama-3.3-70b-versatile': {
+        maxTokens: 8000,
+        contextWindow: 131072,
+        inputPrice: 0.590000,
+        outputPrice: 0.790000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.3 70B Versatile - Latest Meta model optimized for ultra-fast inference with superior tool use capabilities'
+      },
+      'llama-3.3-70b-specdec': {
+        maxTokens: 8000,
+        contextWindow: 131072,
+        inputPrice: 0.590000,
+        outputPrice: 0.790000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.3 70B SpecDec - Optimized for speculative decoding with enhanced performance'
+      },
+      // Llama 3.1 Models  
       'llama-3.1-70b-versatile': {
         maxTokens: 8000,
         contextWindow: 131072,
@@ -5737,6 +6426,244 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
         supportsStreaming: true,
         supportsReasoning: false,
         description: 'Llama 3.1 70B optimized for ultra-fast inference on Groq chips'
+      },
+      'llama-3.1-8b-instant': {
+        maxTokens: 8000,
+        contextWindow: 131072,
+        inputPrice: 0.050000,
+        outputPrice: 0.080000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.1 8B Instant - Fastest and most efficient model for quick responses'
+      },
+      // Groq-Optimized Tool Use Models
+      'llama3-groq-70b-8192-tool-use-preview': {
+        maxTokens: 8192,
+        contextWindow: 8192,
+        inputPrice: 0.890000,
+        outputPrice: 0.890000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama-3-Groq-70B-Tool-Use - Specialized model achieving 90.76% accuracy on BFCL benchmark (#1 ranking)'
+      },
+      'llama3-groq-8b-8192-tool-use-preview': {
+        maxTokens: 8192,
+        contextWindow: 8192,
+        inputPrice: 0.190000,
+        outputPrice: 0.190000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama-3-Groq-8B-Tool-Use - Efficient tool-calling model achieving 89.06% accuracy on BFCL benchmark (#3 ranking)'
+      },
+      // Llama 4 Multimodal Models
+      'llama-4-maverick-17b-128e-instruct': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 1.200000,
+        outputPrice: 1.200000,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Llama 4 Maverick - MoE model with 17B activated/400B total parameters, native multimodal support (text + images)'
+      },
+      'llama-4-scout-17b-16e-instruct': {
+        maxTokens: 10485760,
+        contextWindow: 10485760,
+        inputPrice: 1.000000,
+        outputPrice: 1.000000,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Llama 4 Scout - Single H100 GPU model with 10M token context window and multimodal capabilities'
+      },
+      // Safety Models
+      'llama-guard-3-8b': {
+        maxTokens: 8192,
+        contextWindow: 8192,
+        inputPrice: 0.200000,
+        outputPrice: 0.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama Guard 3 8B - Safety classifier model for content moderation and safety checks'
+      },
+      'meta-llama/llama-guard-4-12b': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.300000,
+        outputPrice: 0.300000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama Guard 4 12B - Latest safety classifier with expanded capabilities'
+      },
+      // OpenAI GPT-OSS Models
+      'gpt-oss-120b': {
+        maxTokens: 8192,
+        contextWindow: 32768,
+        inputPrice: 1.200000,
+        outputPrice: 1.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'GPT-OSS 120B - Large open-weight model with reasoning, browser search, and code execution (~500 tps)'
+      },
+      'gpt-oss-20b': {
+        maxTokens: 8192,
+        contextWindow: 32768,
+        inputPrice: 0.300000,
+        outputPrice: 0.300000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'GPT-OSS 20B - Compact model with reasoning, browser search, and code execution (~1000 tps)'
+      },
+      // Reasoning Models
+      'qwen-qwq-32b-preview': {
+        maxTokens: 32768,
+        contextWindow: 32768,
+        inputPrice: 0.400000,
+        outputPrice: 0.400000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Qwen QwQ 32B - Advanced reasoning model specialized in logical thinking and problem-solving'
+      },
+      'deepseek-r1-distill-llama-70b': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.590000,
+        outputPrice: 0.790000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'DeepSeek R1 Distill Llama 70B - State-of-the-art reasoning model distilled for efficiency'
+      },
+      // Moonshot AI Models
+      'kimi-k2-instruct': {
+        maxTokens: 16384,
+        contextWindow: 200000,
+        inputPrice: 2.000000,
+        outputPrice: 2.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Kimi K2 Instruct - 1T parameter model with 200K context window for long-form reasoning'
+      },
+      // Alibaba Cloud Models  
+      'qwen3-32b-instruct': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 0.600000,
+        outputPrice: 0.600000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen3 32B Instruct - Latest generation multilingual model with enhanced capabilities'
+      },
+      // Legacy Llama Models
+      'llama3-70b-8192': {
+        maxTokens: 8192,
+        contextWindow: 8192,
+        inputPrice: 0.590000,
+        outputPrice: 0.790000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3 70B - Previous generation model with 8K context window'
+      },
+      'llama3-8b-8192': {
+        maxTokens: 8192,
+        contextWindow: 8192,
+        inputPrice: 0.050000,
+        outputPrice: 0.080000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3 8B - Efficient model with 8K context window for quick responses'
+      },
+      // Mixtral Models
+      'mixtral-8x7b-32768': {
+        maxTokens: 32768,
+        contextWindow: 32768,
+        inputPrice: 0.240000,
+        outputPrice: 0.240000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Mixtral 8x7B - Efficient mixture-of-experts model with 32K context'
+      },
+      'gemma2-9b-it': {
+        maxTokens: 8192,
+        contextWindow: 8192,
+        inputPrice: 0.200000,
+        outputPrice: 0.200000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Gemma 2 9B IT - Google\'s efficient instruction-tuned model'
+      },
+      // Audio Models (Whisper)
+      'whisper-large-v3': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 0.006000,
+        outputPrice: 0,
+        supportsImages: false,
+        supportsAudio: true,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Whisper Large v3 - Advanced speech-to-text transcription with 100MB max file size'
+      },
+      'whisper-large-v3-turbo': {
+        maxTokens: 0,
+        contextWindow: 0,
+        inputPrice: 0.004000,
+        outputPrice: 0,
+        supportsImages: false,
+        supportsAudio: true,
+        supportsTools: false,
+        supportsStreaming: false,
+        supportsReasoning: false,
+        description: 'Whisper Large v3 Turbo - Faster transcription and translation with 100MB max file size'
       }
     },
     features: {
@@ -5763,32 +6690,196 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     description: 'Fastest inference powered by Cerebras CS-3 chips',
     category: 'api',
     authType: 'api_key',
-    tags: ['fast', 'inference', 'tools', 'reasoning'],
+    tags: ['fast', 'inference', 'tools', 'reasoning', 'multimodal'],
     tier: 'premium',
     baseUrl: 'https://api.cerebras.ai/v1',
     openRouterUrl: 'https://openrouter.ai/api/v1/cerebras',
     features: {
       streaming: true,
       tools: true,
-      images: false,
+      images: true,
       audio: false,
-      reasoning: false,
+      reasoning: true,
       caching: false
     },
-    defaultModel: 'llama3.1-70b',
-    modelCount: 6,
+    defaultModel: 'llama-3.3-70b',
+    modelCount: 15,
     supportedModels: {
-      'llama3.1-70b': {
+      // Latest Llama 3.3 Models - Production
+      'llama-3.3-70b': {
         maxTokens: 8192,
         contextWindow: 131072,
-        inputPrice: 0.600000,
-        outputPrice: 0.600000,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
         supportsImages: false,
         supportsAudio: false,
         supportsTools: true,
         supportsStreaming: true,
         supportsReasoning: false,
-        description: 'Llama 3.1 70B optimized for Cerebras CS-3 chip architecture'
+        description: 'Llama 3.3 70B - Record-breaking ~2100 tokens/s on Cerebras CS-3 with 70x faster inference than GPUs'
+      },
+      // Llama 3.1 Models - Production
+      'llama3.1-8b': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.1 8B - Ultra-fast ~2200 tokens/s, world record performance on Cerebras WSE-3'
+      },
+      'llama3.1-70b': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 3.1 70B - World record holder with 70x faster inference than vanilla GPUs'
+      },
+      'llama3.1-405b': {
+        maxTokens: 16384,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Llama 3.1 405B - Record-breaking 969 tokens/s, 240ms time-to-first-token, 128K context (Q1 2025 GA)'
+      },
+      // Llama 4 Models - Production & Preview
+      'llama-4-scout-17b-16e-instruct': {
+        maxTokens: 10485760,
+        contextWindow: 10485760,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Llama 4 Scout - 109B total parameters, ~2600 tokens/s, native multimodal with 10M token context window'
+      },
+      'llama-4-maverick-17b-128e-instruct': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: true,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Llama 4 Maverick - 400B total parameters MoE model, ~2400 tokens/s, early fusion multimodality (Preview)'
+      },
+      // OpenAI GPT-OSS Models
+      'gpt-oss-120b': {
+        maxTokens: 8192,
+        contextWindow: 32768,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'GPT-OSS 120B - OpenAI open-weight model optimized for ~2800 tokens/s on Cerebras hardware'
+      },
+      // DeepSeek Models
+      'deepseek-r1-distill-llama-70b': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'DeepSeek R1 Distill Llama 70B - World\'s fastest reasoning model on Cerebras with breakthrough speed'
+      },
+      // Qwen Models - Production & Preview
+      'qwen-3-32b': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen 3 32B - Alibaba\'s latest model running at ~2600 tokens/s on Cerebras infrastructure'
+      },
+      'qwen-3-235b-a22b-instruct-2507': {
+        maxTokens: 16384,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen 3 235B Instruct - Large-scale model with 235B parameters, ~1400 tokens/s (Preview)'
+      },
+      'qwen-3-235b-a22b-thinking-2507': {
+        maxTokens: 16384,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Qwen 3 235B Thinking - Specialized reasoning variant with enhanced thinking capabilities, ~1700 tokens/s (Preview)'
+      },
+      'qwen-3-codel-480b': {
+        maxTokens: 16384,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Qwen 3 Codel 480B - Massive code-specialized model with 480B parameters, ~2000 tokens/s (Preview)'
+      },
+      // CePO Enhanced Models
+      'llama-3.3-70b-cepo': {
+        maxTokens: 8192,
+        contextWindow: 131072,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: true,
+        supportsStreaming: true,
+        supportsReasoning: true,
+        description: 'Llama 3.3 70B with CePO - Enhanced with Cerebras Planning & Optimization, surpasses Llama-405B on benchmarks'
+      },
+      // Legacy Support
+      'llama-2-70b': {
+        maxTokens: 4096,
+        contextWindow: 4096,
+        inputPrice: 6.000000,
+        outputPrice: 12.000000,
+        supportsImages: false,
+        supportsAudio: false,
+        supportsTools: false,
+        supportsStreaming: true,
+        supportsReasoning: false,
+        description: 'Llama 2 70B - Previous generation model trainable in 1 day on CS-3 cluster'
       }
     },
     pricing: {
