@@ -1137,34 +1137,37 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           }
         }
 
-        // Simple cost estimation based on model and tokens
-        const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
-        const estimatedOutputTokens = Math.min(providerMaxTokens, 1000)
-        let baseCost = 0.1 // Default fallback cost
-        
-        // Basic cost estimation for common models
-        if (model.includes('gpt-4') || model.includes('claude-3')) {
-          baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10 // Convert to credits
-        } else if (model.includes('gpt-3.5') || model.includes('claude-haiku')) {
-          baseCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
-        } else {
-          baseCost = 0.05 // Very conservative estimate for other models
-        }
-
-        console.log(`[MCP Credit] Base cost for ${model}: ${baseCost} credits`)
-
-        // Check credit sufficiency with 10% markup
-        const creditCheck = await subscriptionManager.checkCreditSufficiency(user.id, baseCost, true)
-        if (!creditCheck.sufficient) {
-          return {
-            model,
-            error: creditCheck.reason,
-            requiresCredits: true,
-            estimatedCost: creditCheck.markedUpCost
+        // Only check credits if using credits path
+        let estimatedCost = 0
+        if (usagePath === 'credits') {
+          // Simple cost estimation based on model and tokens
+          const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
+          const estimatedOutputTokens = Math.min(providerMaxTokens, 1000)
+          let baseCost = 0.1 // Default fallback cost
+          
+          // Basic cost estimation for common models
+          if (model.includes('gpt-4') || model.includes('claude-3')) {
+            baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10 // Convert to credits
+          } else if (model.includes('gpt-3.5') || model.includes('claude-haiku')) {
+            baseCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
+          } else {
+            baseCost = 0.05 // Very conservative estimate for other models
           }
-        }
 
-        const estimatedCost = creditCheck.markedUpCost
+          console.log(`[MCP Credit] Base cost for ${model}: ${baseCost} credits`)
+
+          // Check credit sufficiency with 10% markup
+          const creditCheck = await subscriptionManager.checkCreditSufficiency(user.id, baseCost, true)
+          if (!creditCheck.sufficient) {
+            return {
+              model,
+              error: creditCheck.reason,
+              requiresCredits: true,
+              estimatedCost: creditCheck.markedUpCost
+            }
+          }
+          estimatedCost = creditCheck.markedUpCost
+        }
 
         // Check user's budget limits using direct query
         let budgetExceeded = false

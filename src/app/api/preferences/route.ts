@@ -106,6 +106,7 @@ export async function PUT(request: NextRequest) {
       'default_provider', 
       'default_model', 
       'preferred_providers', 
+      'usage_preference',
       'model_preferences',
       'mcp_settings'
     ]
