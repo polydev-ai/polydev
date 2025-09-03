@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter } from 'lucide-react'
-import { CLINE_PROVIDERS, ProviderConfig, getAllModels } from '../../../types/providers'
 
 interface ApiKey {
   id: string
