@@ -477,10 +477,10 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     tier: 'premium',
     baseUrl: 'https://api.anthropic.com',
     openRouterUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'anthropic/claude-opus-4.1',
+    defaultModel: 'claude-3-5-sonnet-20241022',
     modelCount: 11,
     supportedModels: {
-      'anthropic/claude-opus-4.1':         {
+      'claude-3-5-sonnet-20241022':         {
           maxTokens: 32000,
           contextWindow: 200000,
           inputPrice: 15.0,
@@ -492,7 +492,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Claude Opus 4"
         },
-      'anthropic/claude-opus-4':         {
+      'claude-3-5-sonnet':         {
           maxTokens: 32000,
           contextWindow: 200000,
           inputPrice: 15.0,
@@ -504,7 +504,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Claude Opus 4 is benchmarked as the world’s best coding model, at time of release, bringing sustained performance on complex, long-running tasks and a"
         },
-      'anthropic/claude-sonnet-4':         {
+      'claude-3-5-sonnet-20240620':         {
           maxTokens: 64000,
           contextWindow: 1000000,
           inputPrice: 3.0,
@@ -516,7 +516,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Claude Sonnet 4 significantly enhances the capabilities of its predecessor, Sonnet 3"
         },
-      'anthropic/claude-3.7-sonnet':         {
+      'claude-3-5-sonnet-latest':         {
           maxTokens: 64000,
           contextWindow: 200000,
           inputPrice: 3.0,
@@ -528,7 +528,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Claude 3"
         },
-      'anthropic/claude-3.7-sonnet:thinking':         {
+      'claude-3-5-sonnet-thinking':         {
           maxTokens: 64000,
           contextWindow: 200000,
           inputPrice: 3.0,
@@ -540,7 +540,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Claude 3"
         },
-      'anthropic/claude-3.5-haiku-20241022':         {
+      'claude-3-5-haiku-20241022':         {
           maxTokens: 8192,
           contextWindow: 200000,
           inputPrice: 0.8,
@@ -552,7 +552,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Claude 3"
         },
-      'anthropic/claude-3.5-haiku':         {
+      'claude-3-5-haiku':         {
           maxTokens: 8192,
           contextWindow: 200000,
           inputPrice: 0.8,
@@ -564,7 +564,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Claude 3"
         },
-      'anthropic/claude-3.5-sonnet':         {
+      'claude-3-5-sonnet':         {
           maxTokens: 8192,
           contextWindow: 200000,
           inputPrice: 3.0,
@@ -576,7 +576,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "New Claude 3"
         },
-      'anthropic/claude-3.5-sonnet-20240620':         {
+      'claude-3-5-sonnet-20240620':         {
           maxTokens: 8192,
           contextWindow: 200000,
           inputPrice: 3.0,
@@ -588,7 +588,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Claude 3"
         },
-      'anthropic/claude-3-haiku':         {
+      'claude-3-haiku':         {
           maxTokens: 4096,
           contextWindow: 200000,
           inputPrice: 0.25,
@@ -600,7 +600,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Claude 3 Haiku is Anthropic's fastest and most compact model for near-instant responsiveness"
         },
-      'anthropic/claude-3-opus':         {
+      'claude-3-opus':         {
           maxTokens: 4096,
           contextWindow: 200000,
           inputPrice: 15.0,
@@ -1473,10 +1473,10 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     tier: 'premium',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     openRouterUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'google/gemini-2.5-flash-image-preview:free',
+    defaultModel: 'gemini-2.0-flash-exp',
     modelCount: 27,
     supportedModels: {
-      'google/gemini-2.5-flash-image-preview:free':         {
+      'gemini-2.0-flash-exp':         {
           maxTokens: 8192,
           contextWindow: 32768,
           supportsImages: true,
@@ -1486,7 +1486,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Gemini 2"
         },
-      'google/gemini-2.5-flash-image-preview':         {
+      'gemini-2.0-flash-exp-preview':         {
           maxTokens: 8192,
           contextWindow: 32768,
           inputPrice: 0.3,
@@ -1498,7 +1498,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Gemini 2"
         },
-      'google/gemini-2.5-flash-lite':         {
+      'gemini-2.0-flash-lite':         {
           maxTokens: 65535,
           contextWindow: 1048576,
           inputPrice: 0.1,
@@ -1532,7 +1532,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Gemini 2"
         },
-      'google/gemini-2.5-flash':         {
+      'gemini-2.0-flash':         {
           maxTokens: 65535,
           contextWindow: 1048576,
           inputPrice: 0.3,
@@ -1544,7 +1544,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Gemini 2"
         },
-      'google/gemini-2.5-pro':         {
+      'gemini-2.0-pro':         {
           maxTokens: 65536,
           contextWindow: 1048576,
           inputPrice: 1.25,
@@ -1556,7 +1556,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Gemini 2"
         },
-      'google/gemini-2.5-pro-preview':         {
+      'gemini-2.0-pro-preview':         {
           maxTokens: 65536,
           contextWindow: 1048576,
           inputPrice: 1.25,
@@ -3427,10 +3427,10 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     tier: 'premium',
     baseUrl: 'https://api.openai.com/v1',
     openRouterUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'openai/gpt-4o-audio-preview',
+    defaultModel: 'gpt-4o',
     modelCount: 42,
     supportedModels: {
-      'openai/gpt-4o-audio-preview':         {
+      'gpt-4o-audio-preview':         {
           maxTokens: 16384,
           contextWindow: 128000,
           inputPrice: 2.5,
@@ -3774,7 +3774,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "GPT-4o mini is OpenAI's newest model after [GPT-4 Omni](/models/openai/gpt-4o), supporting both text and image inputs with text outputs"
         },
-      'openai/gpt-4o-mini':         {
+      'gpt-4o-mini':         {
           maxTokens: 16384,
           contextWindow: 128000,
           inputPrice: 0.15,
@@ -3798,7 +3798,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "GPT-4o (\"o\" for \"omni\") is OpenAI's latest AI model, supporting both text and image inputs with text outputs"
         },
-      'openai/gpt-4o':         {
+      'gpt-4o':         {
           maxTokens: 16384,
           contextWindow: 128000,
           inputPrice: 2.5,
@@ -3822,7 +3822,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "GPT-4o (\"o\" for \"omni\") is OpenAI's latest AI model, supporting both text and image inputs with text outputs"
         },
-      'openai/gpt-4-turbo':         {
+      'gpt-4-turbo':         {
           maxTokens: 4096,
           contextWindow: 128000,
           inputPrice: 10.0,
@@ -3906,7 +3906,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "GPT-4-0314 is the first version of GPT-4 released, with a context length of 8,192 tokens, and was supported until June 14"
         },
-      'openai/gpt-3.5-turbo':         {
+      'gpt-3.5-turbo':         {
           maxTokens: 4096,
           contextWindow: 16385,
           inputPrice: 0.5,
@@ -3918,7 +3918,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "GPT-3"
         },
-      'openai/gpt-4':         {
+      'gpt-4':         {
           maxTokens: 4096,
           contextWindow: 8191,
           inputPrice: 30.0,
@@ -5236,10 +5236,10 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
     tier: 'premium',
     baseUrl: 'https://api.x.ai/v1',
     openRouterUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'x-ai/grok-code-fast-1',
+    defaultModel: 'grok-beta',
     modelCount: 9,
     supportedModels: {
-      'x-ai/grok-code-fast-1':         {
+      'grok-beta':         {
           maxTokens: 10000,
           contextWindow: 256000,
           inputPrice: 0.2,
@@ -5251,7 +5251,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Grok Code Fast 1 is a speedy and economical reasoning model that excels at agentic coding"
         },
-      'x-ai/grok-4':         {
+      'grok-4':         {
           maxTokens: 4096,
           contextWindow: 256000,
           inputPrice: 3.0,
@@ -5263,7 +5263,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Grok 4 is xAI's latest reasoning model with a 256k context window"
         },
-      'x-ai/grok-3-mini':         {
+      'grok-3-mini':         {
           maxTokens: 4096,
           contextWindow: 131072,
           inputPrice: 0.3,
@@ -5275,7 +5275,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "A lightweight model that thinks before responding"
         },
-      'x-ai/grok-3':         {
+      'grok-3':         {
           maxTokens: 4096,
           contextWindow: 131072,
           inputPrice: 3.0,
@@ -5287,7 +5287,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Grok 3 is the latest model from xAI"
         },
-      'x-ai/grok-3-mini-beta':         {
+      'grok-3-mini-beta':         {
           maxTokens: 4096,
           contextWindow: 131072,
           inputPrice: 0.3,
@@ -5299,7 +5299,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Grok 3 Mini is a lightweight, smaller thinking model"
         },
-      'x-ai/grok-3-beta':         {
+      'grok-3-beta':         {
           maxTokens: 4096,
           contextWindow: 131072,
           inputPrice: 3.0,
@@ -5311,7 +5311,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Grok 3 is the latest model from xAI"
         },
-      'x-ai/grok-2-vision-1212':         {
+      'grok-2-vision-1212':         {
           maxTokens: 4096,
           contextWindow: 32768,
           inputPrice: 2.0,
@@ -5323,7 +5323,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Grok 2 Vision 1212 advances image-based AI with stronger visual comprehension, refined instruction-following, and multilingual support"
         },
-      'x-ai/grok-2-1212':         {
+      'grok-2-1212':         {
           maxTokens: 4096,
           contextWindow: 131072,
           inputPrice: 2.0,
@@ -5335,7 +5335,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: false,
           description: "Grok 2 1212 introduces significant enhancements to accuracy, instruction adherence, and multilingual support, making it a powerful and flexible choice"
         },
-      'x-ai/grok-vision-beta':         {
+      'grok-vision-beta':         {
           maxTokens: 4096,
           contextWindow: 8192,
           inputPrice: 5.0,
