@@ -215,7 +215,7 @@ export default function ApiKeysPage() {
   // Removed old handleProviderChange - using new one below
 
   const saveApiKey = async () => {
-    const provider = CLINE_PROVIDERS[formData.provider]
+    const provider = CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]
     
     // Remove key name validation
     
