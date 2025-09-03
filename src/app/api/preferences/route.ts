@@ -41,7 +41,8 @@ export async function GET() {
           model_preferences: {
             openai: 'gpt-4o',
             anthropic: 'claude-3-5-sonnet-20241022',
-            google: 'gemini-2.0-flash-exp'
+            google: 'gemini-2.0-flash-exp',
+            'x-ai': 'grok-beta'
           },
           mcp_settings: {
             default_temperature: 0.7,

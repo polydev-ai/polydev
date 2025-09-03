@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { apiManager } from '@/lib/api'
+import { PROVIDER_CONFIGS } from '@/lib/api/providers/complete-provider-system'
 import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 
@@ -71,10 +72,24 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
 }
 
 function getProviderFromModel(model: string): string {
-  // Map model names to providers
+  // Use comprehensive provider system to find the correct provider
+  for (const [providerId, config] of Object.entries(PROVIDER_CONFIGS)) {
+    if (config.models) {
+      // Check if model exists in this provider's model list
+      const modelExists = config.models.some((m: any) => {
+        const modelName = typeof m === 'string' ? m : m.name
+        return modelName === model || model.includes(modelName.split('-')[0])
+      })
+      if (modelExists) {
+        return providerId
+      }
+    }
+  }
+  
+  // Legacy fallback mapping for models not yet in comprehensive system
   if (model.includes('gpt') || model.includes('openai')) return 'openai'
   if (model.includes('claude')) return 'anthropic'
-  if (model.includes('gemini')) return 'google'
+  if (model.includes('gemini')) return 'gemini'
   if (model.includes('llama')) return 'groq'
   if (model.includes('mixtral')) return 'groq'
   if (model.includes('deepseek')) return 'deepseek'
@@ -164,7 +179,7 @@ export async function POST(request: NextRequest) {
         }
         
         try {
-          // Prepare API call options - need to map provider specific baseUrl names
+          // Prepare API call options with comprehensive provider support
           const apiOptions: any = {
             messages: messages.map((msg: any) => ({
               role: msg.role,
@@ -177,29 +192,45 @@ export async function POST(request: NextRequest) {
             apiKey: providerKey.apiKey
           }
           
-          // Map provider-specific baseUrl property names
-          if (providerKey.baseUrl) {
-            switch (provider) {
-              case 'openai':
-              case 'groq':
-              case 'deepseek':
-                apiOptions.openAiBaseUrl = providerKey.baseUrl
-                break
-              case 'anthropic':
-                apiOptions.anthropicBaseUrl = providerKey.baseUrl
-                break
-              case 'google':
-                apiOptions.googleBaseUrl = providerKey.baseUrl
-                break
-              case 'xai':
-                apiOptions.xaiBaseUrl = providerKey.baseUrl
-                break
-              default:
-                apiOptions.openAiBaseUrl = providerKey.baseUrl // fallback to OpenAI format
+          // Use provider configuration for correct baseUrl property name
+          const providerConfig = apiManager.getProviderConfiguration(provider)
+          if (providerKey.baseUrl && providerConfig) {
+            // Set the baseUrl using the provider's expected property name
+            if (providerConfig.baseUrlProperty) {
+              apiOptions[providerConfig.baseUrlProperty] = providerKey.baseUrl
+            } else {
+              // Fallback to common patterns
+              switch (provider) {
+                case 'openai':
+                case 'groq':
+                case 'deepseek':
+                case 'xai':
+                  apiOptions.openAiBaseUrl = providerKey.baseUrl
+                  break
+                case 'anthropic':
+                  apiOptions.anthropicBaseUrl = providerKey.baseUrl
+                  break
+                case 'gemini':
+                case 'google':
+                  apiOptions.googleBaseUrl = providerKey.baseUrl
+                  break
+                default:
+                  apiOptions.openAiBaseUrl = providerKey.baseUrl
+              }
             }
           }
           
-          // Make API call through our provider system
+          // Get estimated token count before request
+          const estimatedTokens = apiManager.getTokenCount(provider, apiOptions)
+          console.log(`Estimated tokens for ${provider}:`, estimatedTokens)
+          
+          // Check rate limit status
+          const rateLimitStatus = apiManager.getRateLimitStatus(provider)
+          if (rateLimitStatus) {
+            console.log(`Rate limit status for ${provider}:`, rateLimitStatus)
+          }
+          
+          // Make API call through enhanced provider system
           const response = await apiManager.createMessage(provider, apiOptions)
           const result = await response.json()
           
@@ -207,41 +238,92 @@ export async function POST(request: NextRequest) {
             throw new Error(result.error?.message || 'API call failed')
           }
           
-          // Extract response based on provider format
+          // Validate response using comprehensive validator
+          const validation = apiManager.validateResponse(result, provider, modelId)
+          if (!validation.isValid) {
+            console.warn(`Response validation failed for ${provider}:`, validation.errors)
+            // Continue with processing but log the issues
+          }
+          
+          if (validation.warnings.length > 0) {
+            console.warn(`Response validation warnings for ${provider}:`, validation.warnings)
+          }
+          
+          // Use normalized response format for consistent extraction
+          const normalizedResult = validation.sanitizedResponse || result
+          
+          // Extract content and usage using universal approach
           let content = ''
           let usage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
           
-          if (provider === 'anthropic') {
-            content = result.content?.[0]?.text || ''
-            usage = {
-              prompt_tokens: result.usage?.input_tokens || 0,
-              completion_tokens: result.usage?.output_tokens || 0,
-              total_tokens: (result.usage?.input_tokens || 0) + (result.usage?.output_tokens || 0)
-            }
-          } else if (provider === 'openai' || provider === 'groq' || provider === 'deepseek') {
-            content = result.choices?.[0]?.message?.content || ''
-            usage = result.usage || usage
-          } else if (provider === 'google') {
-            content = result.candidates?.[0]?.content?.parts?.[0]?.text || ''
-            usage = {
-              prompt_tokens: result.usageMetadata?.promptTokenCount || 0,
-              completion_tokens: result.usageMetadata?.candidatesTokenCount || 0,
-              total_tokens: result.usageMetadata?.totalTokenCount || 0
-            }
+          // Try provider-specific extraction patterns
+          switch (provider) {
+            case 'anthropic':
+              content = normalizedResult.content?.[0]?.text || ''
+              usage = {
+                prompt_tokens: normalizedResult.usage?.input_tokens || 0,
+                completion_tokens: normalizedResult.usage?.output_tokens || 0,
+                total_tokens: (normalizedResult.usage?.input_tokens || 0) + (normalizedResult.usage?.output_tokens || 0)
+              }
+              break
+            case 'openai':
+            case 'groq':
+            case 'deepseek':
+            case 'xai':
+              content = normalizedResult.choices?.[0]?.message?.content || ''
+              usage = normalizedResult.usage || usage
+              break
+            case 'gemini':
+            case 'google':
+              content = normalizedResult.candidates?.[0]?.content?.parts?.[0]?.text || ''
+              usage = {
+                prompt_tokens: normalizedResult.usageMetadata?.promptTokenCount || 0,
+                completion_tokens: normalizedResult.usageMetadata?.candidatesTokenCount || 0,
+                total_tokens: normalizedResult.usageMetadata?.totalTokenCount || 0
+              }
+              break
+            default:
+              // Universal fallback extraction
+              content = normalizedResult.content || 
+                       normalizedResult.choices?.[0]?.message?.content ||
+                       normalizedResult.candidates?.[0]?.content?.parts?.[0]?.text ||
+                       ''
+              usage = normalizedResult.usage || normalizedResult.usageMetadata || usage
           }
+          
+          // Log successful call with comprehensive stats
+          const finalTokens = apiManager.getTokenCount(provider, { 
+            ...apiOptions, 
+            messages: [...apiOptions.messages, { role: 'assistant', content }] 
+          })
           
           return {
             model: modelId,
+            provider,
             content,
             usage,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            validation: {
+              isValid: validation.isValid,
+              warnings: validation.warnings
+            },
+            estimatedTokens: estimatedTokens.total,
+            actualTokens: usage.total_tokens || finalTokens.total,
+            rateLimitStatus: apiManager.getRateLimitStatus(provider)
           }
         } catch (error) {
           console.error(`Error calling ${provider} API for model ${modelId}:`, error)
+          
+          // Get retry stats if available
+          const retryStats = apiManager.getRetryStats(provider)
+          
           return {
             model: modelId,
+            provider,
             error: error instanceof Error ? error.message : 'Unknown error',
-            usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+            usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+            retryStats: retryStats,
+            timestamp: new Date().toISOString()
           }
         }
       })
