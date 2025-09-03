@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { apiManager } from '@/lib/api'
-import { PROVIDER_CONFIGS } from '@/lib/api/providers/complete-provider-system'
+import { CLINE_PROVIDERS } from '@/types/providers'
 import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 
@@ -72,18 +72,9 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
 }
 
 function getProviderFromModel(model: string): string {
-  // Use comprehensive provider system to find the correct provider
-  for (const [providerId, config] of Object.entries(PROVIDER_CONFIGS)) {
-    if (config.models && Array.isArray(config.models)) {
-      // Check if model exists in this provider's model list
-      const modelExists = config.models.some((m: any) => {
-        const modelName = typeof m === 'string' ? m : m.name || m.id
-        return modelName === model || model.includes(modelName.split('-')[0])
-      })
-      if (modelExists) {
-        return providerId
-      }
-    } else if (config.supportedModels) {
+  // Use CLINE_PROVIDERS system to find the correct provider
+  for (const [providerId, config] of Object.entries(CLINE_PROVIDERS)) {
+    if (config.supportedModels) {
       // Check in supportedModels object
       if (config.supportedModels[model] || Object.keys(config.supportedModels).some(modelName => 
         modelName === model || model.includes(modelName.split('-')[0])
