@@ -488,6 +488,8 @@ export const PROVIDERS: Record<string, ProviderConfiguration> = {
       'google/gemini-2.5-flash-image-preview:free': {
         maxTokens: 8192,
         contextWindow: 32768,
+        inputPrice: undefined,
+        outputPrice: undefined,
         supportsImages: true,
         supportsAudio: false,
         supportsTools: false,
@@ -543,6 +545,8 @@ export const PROVIDERS: Record<string, ProviderConfiguration> = {
       'meta-llama/llama-3.3-8b-instruct:free': {
         maxTokens: 4028,
         contextWindow: 128000,
+        inputPrice: undefined,
+        outputPrice: undefined,
         supportsImages: false,
         supportsAudio: false,
         supportsTools: true,
@@ -655,6 +659,8 @@ export const PROVIDERS: Record<string, ProviderConfiguration> = {
       'deepseek/deepseek-chat-v3.1:free': {
         maxTokens: 4096,
         contextWindow: 64000,
+        inputPrice: undefined,
+        outputPrice: undefined,
         supportsImages: false,
         supportsAudio: false,
         supportsTools: true,
@@ -1313,6 +1319,8 @@ export const PROVIDERS: Record<string, ProviderConfiguration> = {
       'moonshotai/kimi-k2:free': {
         maxTokens: 4096,
         contextWindow: 32768,
+        inputPrice: undefined,
+        outputPrice: undefined,
         supportsImages: false,
         supportsAudio: false,
         supportsTools: true,
