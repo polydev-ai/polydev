@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter } from 'lucide-react'
+import { CLINE_PROVIDERS } from '../../../types/providers'
 
 interface ApiKey {
   id: string
@@ -180,8 +181,8 @@ export default function ApiKeysPage() {
 
       if (keysError) throw keysError
 
-      // Convert COMPREHENSIVE_PROVIDERS to the format expected by the component
-      const providersData = Object.values(COMPREHENSIVE_PROVIDERS).map(provider => ({
+      // Convert CLINE_PROVIDERS to the format expected by the component
+      const providersData = Object.values(CLINE_PROVIDERS).map(provider => ({
         id: provider.id,
         provider_name: provider.id,
         display_name: provider.name,
