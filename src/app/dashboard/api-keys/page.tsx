@@ -245,7 +245,7 @@ export default function ApiKeysPage() {
         ? `${formData.api_key.slice(0, 4)}***`
         : 'No API Key'
 
-      const providerInfo = COMPREHENSIVE_PROVIDERS[formData.provider]
+      const providerInfo = CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]
       const keyData = {
         user_id: user?.id,
         provider: formData.provider,
