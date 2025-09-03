@@ -188,9 +188,9 @@ export default function ApiKeysPage() {
         display_name: provider.name,
         base_url: provider.baseUrl || '',
         api_key_required: provider.authType === 'api_key',
-        supports_streaming: provider.features?.streaming !== false,
-        supports_tools: provider.features?.tools === true,
-        supports_images: provider.features?.images === true,
+        supports_streaming: true, // Most modern providers support streaming
+        supports_tools: provider.category !== 'local', // Local providers typically don't support tools
+        supports_images: provider.tags.includes('vision') || provider.tags.includes('multimodal'),
         supports_prompt_cache: false, // TODO: Add caching support to features interface
         authentication_method: provider.authType,
         models: Object.entries(provider.supportedModels).map(([id, model]) => ({
