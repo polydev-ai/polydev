@@ -504,7 +504,7 @@ export const COMPREHENSIVE_PROVIDERS: Record<string, ProviderConfiguration> = {
           supportsReasoning: true,
           description: "Claude Opus 4 is benchmarked as the world’s best coding model, at time of release, bringing sustained performance on complex, long-running tasks and a"
         },
-      'claude-3-5-sonnet-20240620':         {
+      'claude-3-sonnet-latest':         {
           maxTokens: 64000,
           contextWindow: 1000000,
           inputPrice: 3.0,
