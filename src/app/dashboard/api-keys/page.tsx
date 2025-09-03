@@ -365,6 +365,11 @@ export default function ApiKeysPage() {
     }))
     setShowAddForm(true)
     setEditingKey(null)
+    
+    // Smooth scroll to top of the form
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 100)
   }
 
   if (authLoading || loading) {
