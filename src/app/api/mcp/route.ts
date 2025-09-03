@@ -1137,12 +1137,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           }
         }
 
+        // Simple cost estimation based on model and tokens (always needed for tracking)
+        const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
+        const estimatedOutputTokens = Math.min(providerMaxTokens, 1000)
+        
         // Only check credits if using credits path
         let estimatedCost = 0
         if (usagePath === 'credits') {
-          // Simple cost estimation based on model and tokens
-          const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
-          const estimatedOutputTokens = Math.min(providerMaxTokens, 1000)
           let baseCost = 0.1 // Default fallback cost
           
           // Basic cost estimation for common models
