@@ -2891,6 +2891,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "anthropic--claude-4-sonnet": {
         maxTokens: 8192,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -2899,6 +2901,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "anthropic--claude-4-opus": {
         maxTokens: 8192,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -2907,6 +2911,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "anthropic--claude-3.7-sonnet": {
         maxTokens: 64000,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -2915,6 +2921,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "anthropic--claude-3.5-sonnet": {
         maxTokens: 8192,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: false,
         supportsComputerUse: false,
@@ -2923,6 +2931,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "anthropic--claude-3-sonnet": {
         maxTokens: 4096,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: false,
         supportsComputerUse: false,
@@ -2931,6 +2941,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "anthropic--claude-3-haiku": {
         maxTokens: 4096,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: false,
         supportsComputerUse: false,
@@ -2939,6 +2951,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "anthropic--claude-3-opus": {
         maxTokens: 4096,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: false,
         supportsComputerUse: false,
@@ -2947,6 +2961,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gemini-2.5-pro": {
         maxTokens: 65536,
         contextWindow: 1048576,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -2955,6 +2971,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gemini-2.5-flash": {
         maxTokens: 65536,
         contextWindow: 1048576,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -2963,6 +2981,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gpt-4": {
         maxTokens: 4096,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: false,
         supportsComputerUse: false,
@@ -2971,6 +2991,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gpt-4o": {
         maxTokens: 4096,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: false,
         supportsComputerUse: false,
@@ -2979,6 +3001,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gpt-4o-mini": {
         maxTokens: 4096,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: false,
         supportsComputerUse: false,
@@ -2987,6 +3011,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gpt-4.1": {
         maxTokens: 32768,
         contextWindow: 1047576,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -2995,6 +3021,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gpt-4.1-nano": {
         maxTokens: 32768,
         contextWindow: 1047576,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -3003,6 +3031,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gpt-5": {
         maxTokens: 128000,
         contextWindow: 272000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -3011,6 +3041,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gpt-5-nano": {
         maxTokens: 128000,
         contextWindow: 272000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -3019,6 +3051,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "gpt-5-mini": {
         maxTokens: 128000,
         contextWindow: 272000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
@@ -3027,6 +3061,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "o3-mini": {
         maxTokens: 4096,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: false,
         supportsComputerUse: false,
@@ -3035,6 +3071,8 @@ export const EXTRACTED_CLINE_MODELS = {
       "o4-mini": {
         maxTokens: 100000,
         contextWindow: 200000,
+        inputPrice: 3.0,
+        outputPrice: 15.0,
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,

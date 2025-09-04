@@ -243,16 +243,27 @@ def generate_typescript_models(catalogs: Dict[str, Dict[str, Any]]) -> str:
             
             if 'maxTokens' in model_data:
                 output.append(f'        maxTokens: {model_data["maxTokens"]},')
+            else:
+                output.append('        maxTokens: 8192,')  # Default
             if 'contextWindow' in model_data:
                 output.append(f'        contextWindow: {model_data["contextWindow"]},')
-            if 'inputPrice' in model_data:
-                output.append(f'        inputPrice: {model_data["inputPrice"]},')
-            if 'outputPrice' in model_data:
-                output.append(f'        outputPrice: {model_data["outputPrice"]},')
+            else:
+                output.append('        contextWindow: 200000,')  # Default
+            
+            # Always add pricing (required by ModelInfo interface)
+            input_price = model_data.get("inputPrice", 3.0)
+            output_price = model_data.get("outputPrice", 15.0)
+            output.append(f'        inputPrice: {input_price},')
+            output.append(f'        outputPrice: {output_price},')
+            
             if 'supportsImages' in model_data:
                 output.append(f'        supportsImages: {str(model_data["supportsImages"]).lower()},')
+            else:
+                output.append('        supportsImages: true,')  # Default
             if 'supportsPromptCache' in model_data:
                 output.append(f'        supportsPromptCache: {str(model_data["supportsPromptCache"]).lower()},')
+            else:
+                output.append('        supportsPromptCache: true,')  # Default
             if 'supportsComputerUse' in model_data:
                 output.append(f'        supportsComputerUse: {str(model_data["supportsComputerUse"]).lower()},')
             else:
