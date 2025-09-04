@@ -1,6 +1,7 @@
-// Complete Cline Provider System Implementation
+// Complete Cline Provider System Implementation - UPDATED
 // Replicates ALL 37 providers and their model configurations from Cline's codebase
 // Based on https://github.com/cline/cline/blob/main/src/shared/api.ts
+// Contains comprehensive catalog with Claude 4, GPT-5, o3, and 600+ models
 
 export interface ModelInfo {
   maxTokens: number
