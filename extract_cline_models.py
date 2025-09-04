@@ -16,11 +16,11 @@ def extract_model_catalog(file_path: str) -> Dict[str, Dict[str, Any]]:
     # Find all model catalog definitions - comprehensive extraction
     catalogs = {}
     
-    # Map of Cline catalog names to our provider names
+    # Map of Cline catalog names to our provider names (matching ApiProvider type)
     catalog_mapping = {
         'anthropicModels': 'anthropic',
         'openAiNativeModels': 'openai',
-        'geminiModels': 'google',
+        'geminiModels': 'gemini',  # Changed from 'google' to 'gemini'
         'deepSeekModels': 'deepseek',
         'xaiModels': 'xai',
         'groqModels': 'groq',
@@ -132,7 +132,7 @@ def get_provider_config(provider: str) -> Dict[str, Any]:
             "supportsReasoning": True,
             "supportsPromptCaching": True,
         },
-        "google": {
+        "gemini": {
             "name": "Google Gemini",
             "description": "Multimodal models with massive context windows",
             "category": "api",
@@ -198,7 +198,7 @@ def get_provider_config(provider: str) -> Dict[str, Any]:
         "authType": "api_key",
         "baseUrl": f"https://api.{provider}.com/v1",
         "tags": ["ai", "language-model"],
-        "tier": "standard",
+        "tier": "premium",
         "supportsStreaming": True,
         "supportsTools": False,
         "supportsVision": False,
@@ -212,6 +212,7 @@ def generate_typescript_models(catalogs: Dict[str, Dict[str, Any]]) -> str:
     """Generate TypeScript model definitions for CLINE_PROVIDERS."""
     output = []
     
+    # First add all providers that have extracted models
     for provider, models in catalogs.items():
         output.append(f"\n  // {provider.upper()} MODELS ({len(models)} total)")
         output.append(f'  "{provider}": {{')
@@ -275,6 +276,33 @@ def generate_typescript_models(catalogs: Dict[str, Dict[str, Any]]) -> str:
             output.append('      },')
         
         output.append('    }')
+        output.append('  },')
+    
+    # Add missing providers that are required by ApiProvider type but not in Cline's catalog
+    missing_providers = [
+        "claude-code", "openrouter", "ollama", "lmstudio", "openai-native",
+        "requesty", "together", "vscode-lm", "cline", "litellm", 
+        "huawei-cloud-maas", "dify", "vercel-ai-gateway"
+    ]
+    
+    for provider in missing_providers:
+        output.append(f'\n  // {provider.upper()} - PLACEHOLDER (no models extracted)')
+        output.append(f'  "{provider}": {{')
+        output.append(f'    id: "{provider}",')
+        
+        config = get_provider_config(provider)
+        for key, value in config.items():
+            if isinstance(value, str):
+                output.append(f'    {key}: "{value}",')
+            elif isinstance(value, list):
+                tags_str = '", "'.join(value)
+                output.append(f'    {key}: ["{tags_str}"],')
+            elif isinstance(value, bool):
+                output.append(f'    {key}: {str(value).lower()},')
+        
+        output.append('    defaultModel: "placeholder",')
+        output.append('    modelCount: 0,')
+        output.append('    supportedModels: {}')
         output.append('  },')
     
     return '\n'.join(output)
