@@ -66,7 +66,8 @@ def extract_model_catalog(file_path: str) -> Dict[str, Dict[str, Any]]:
     
     # Extract each catalog
     for cline_name, our_name in catalog_mapping.items():
-        pattern = rf'export const {cline_name} = \{{(.*?)\}} as const'
+        # More flexible pattern to handle different const endings
+        pattern = rf'export const {cline_name} = \{{(.*?)\}} as const(?:\s+satisfies\s+[^;]+)?'
         match = re.search(pattern, content, re.DOTALL)
         if match:
             models = parse_model_object(match.group(1))

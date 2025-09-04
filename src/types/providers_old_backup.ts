@@ -104,12 +104,8 @@ export type ApiProvider =
   | "vercel-ai-gateway"
   | "zai"
 
-
-// AUTO-GENERATED MODEL CATALOG FROM CLINE
-// This contains ALL models extracted from Cline's comprehensive catalog
-
 export const CLINE_PROVIDERS: Record<ApiProvider, ProviderConfig> = {
-  // ANTHROPIC MODELS (9 total)
+// ANTHROPIC MODELS (9 total)
   "anthropic": {
     id: "anthropic",
     name: "Anthropic",
@@ -3752,4 +3748,70 @@ export const CLINE_PROVIDERS: Record<ApiProvider, ProviderConfig> = {
     modelCount: 0,
     supportedModels: {}
   },
-};
+}
+
+// Utility functions for provider management
+export function getProvidersByCategory(category: string): ProviderConfig[] {
+  return Object.values(CLINE_PROVIDERS).filter(provider => provider.category === category)
+}
+
+export function getProvidersByTier(tier: string): ProviderConfig[] {
+  return Object.values(CLINE_PROVIDERS).filter(provider => provider.tier === tier)
+}
+
+export function getProvidersByTag(tag: string): ProviderConfig[] {
+  return Object.values(CLINE_PROVIDERS).filter(provider => provider.tags.includes(tag))
+}
+
+export function searchProviders(query: string): ProviderConfig[] {
+  const searchTerm = query.toLowerCase()
+  return Object.values(CLINE_PROVIDERS).filter(provider =>
+    provider.name.toLowerCase().includes(searchTerm) ||
+    provider.description.toLowerCase().includes(searchTerm) ||
+    provider.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+  )
+}
+
+export function getModelsByProvider(providerId: ApiProvider): Record<string, ModelInfo> {
+  return CLINE_PROVIDERS[providerId]?.supportedModels || {}
+}
+
+export function getAllModels(): Array<{ provider: string; model: string; info: ModelInfo }> {
+  const models: Array<{ provider: string; model: string; info: ModelInfo }> = []
+  
+  Object.entries(CLINE_PROVIDERS).forEach(([providerId, provider]) => {
+    Object.entries(provider.supportedModels).forEach(([modelId, modelInfo]) => {
+      models.push({
+        provider: providerId,
+        model: modelId,
+        info: modelInfo
+      })
+    })
+  })
+  
+  return models
+}
+
+// Provider statistics
+export function getProviderStats() {
+  const providers = Object.values(CLINE_PROVIDERS)
+  const totalModels = providers.reduce((sum, p) => sum + p.modelCount, 0)
+  
+  return {
+    totalProviders: providers.length,
+    totalModels,
+    categories: {
+      api: providers.filter(p => p.category === 'api').length,
+      local: providers.filter(p => p.category === 'local').length,
+      cloud: providers.filter(p => p.category === 'cloud').length,
+      gateway: providers.filter(p => p.category === 'gateway').length
+    },
+    tiers: {
+      free: providers.filter(p => p.tier === 'free').length,
+      premium: providers.filter(p => p.tier === 'premium').length,
+      enterprise: providers.filter(p => p.tier === 'enterprise').length
+    }
+  }
+}
+
+export default CLINE_PROVIDERS

@@ -1,0 +1,77 @@
+[
+  {
+    "provider": "groq",
+    "current_count": 1,
+    "available_count": 13,
+    "missing_count": 12,
+    "extra_count": 0,
+    "missing": [
+      "qwen/qwen3-32b",
+      "groq/compound",
+      "llama-3.1-8b-instant",
+      "meta-llama/llama-guard-4-12b",
+      "whisper-large-v3-turbo",
+      "groq/compound-mini",
+      "meta-llama/llama-4-maverick-17b-128e-instruct",
+      "meta-llama/llama-4-scout-17b-16e-instruct",
+      "moonshotai/kimi-k2-instruct",
+      "llama-3.3-70b-versatile",
+      "openai/gpt-oss-20b",
+      "whisper-large-v3"
+    ],
+    "extra": [],
+    "accuracy": 7.6923076923076925
+  },
+  {
+    "provider": "anthropic",
+    "current_count": 1,
+    "available_count": 6,
+    "missing_count": 6,
+    "extra_count": 1,
+    "missing": [
+      "claude-haiku-3-20240307",
+      "claude-sonnet-4-20250514",
+      "claude-sonnet-3-7-20250110",
+      "claude-opus-4-20250514",
+      "claude-haiku-3-5-20241022",
+      "claude-opus-4-1-20250805"
+    ],
+    "extra": [
+      "claude-sonnet-4-20250514:1m"
+    ],
+    "accuracy": 0.0
+  },
+  {
+    "provider": "mistral",
+    "current_count": 1,
+    "available_count": 20,
+    "missing_count": 20,
+    "extra_count": 1,
+    "missing": [
+      "mistral-medium-3",
+      "mistral-large-2407",
+      "mistral-embed",
+      "mistral-small-3.1",
+      "mixtral-8x22b",
+      "mistral-moderation",
+      "mistral-nemo-12b",
+      "mistral-large-2.1",
+      "mistral-large-2402",
+      "pixtral-12b",
+      "mistral-medium-2312",
+      "mistral-7b",
+      "mistral-small-3.2",
+      "mistral-small-3",
+      "mistral-small-2",
+      "ministral-3b",
+      "ministral-8b",
+      "mixtral-8x7b",
+      "codestral",
+      "mistral-medium-3.1"
+    ],
+    "extra": [
+      "mistral-large-2411"
+    ],
+    "accuracy": 0.0
+  }
+]
