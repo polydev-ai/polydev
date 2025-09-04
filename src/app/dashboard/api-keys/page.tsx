@@ -5,6 +5,7 @@ import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter } from 'lucide-react'
 import { CLINE_PROVIDERS } from '../../../types/providers'
+import { PROVIDER_ICONS } from '../../../lib/openrouter-providers'
 
 interface ApiKey {
   id: string
@@ -902,19 +903,15 @@ export default function ApiKeysPage() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
                   <div className="w-6 h-6 flex items-center justify-center">
-                    <img 
-                      src={provider.iconUrl} 
-                      alt={`${provider.name} logo`}
-                      className="w-6 h-6 object-contain"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                        const fallback = e.currentTarget.nextElementSibling as HTMLElement
-                        if (fallback) fallback.style.display = 'flex'
-                      }}
-                    />
-                    <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs hidden">
-                      {provider.name.charAt(0)}
-                    </div>
+                    {PROVIDER_ICONS[provider.id as keyof typeof PROVIDER_ICONS] ? (
+                      <span className="text-lg">
+                        {PROVIDER_ICONS[provider.id as keyof typeof PROVIDER_ICONS]}
+                      </span>
+                    ) : (
+                      <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded flex items-center justify-center text-white font-bold text-xs">
+                        {provider.name.charAt(0)}
+                      </div>
+                    )}
                   </div>
                   <h4 className="font-medium text-gray-900 dark:text-white text-sm">
                     {provider.name}
