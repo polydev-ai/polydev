@@ -16,31 +16,53 @@ def extract_model_catalog(file_path: str) -> Dict[str, Dict[str, Any]]:
     # Find all model catalog definitions - comprehensive extraction
     catalogs = {}
     
-    # Map of Cline catalog names to our provider names (matching ApiProvider type)
+    # STEP 1: Auto-discover all model catalogs in the file
+    import re
+    discovered_catalogs = re.findall(r'export const (\w+Models) = \{', content)
+    print(f"🔍 Auto-discovered {len(discovered_catalogs)} model catalogs in Cline:")
+    for catalog in discovered_catalogs:
+        print(f"  - {catalog}")
+    
+    # Map of ALL Cline catalog names to our provider names (matching ApiProvider type)
     catalog_mapping = {
         'anthropicModels': 'anthropic',
-        'openAiNativeModels': 'openai',
-        'geminiModels': 'gemini',  # Changed from 'google' to 'gemini'
-        'deepSeekModels': 'deepseek',
-        'xaiModels': 'xai',
-        'groqModels': 'groq',
-        'cerebrasModels': 'cerebras',
-        'sambanovaModels': 'sambanova',
-        'fireworksModels': 'fireworks',
-        'mistralModels': 'mistral',
-        'moonshotModels': 'moonshot',
-        'vertexModels': 'vertex',
+        'claudeCodeModels': 'claude-code',
         'bedrockModels': 'bedrock',
-        'internationalQwenModels': 'qwen',
-        'doubaoModels': 'doubao',
+        'vertexModels': 'vertex', 
+        'geminiModels': 'gemini',
+        'openAiNativeModels': 'openai',
+        'deepSeekModels': 'deepseek',
         'huggingFaceModels': 'huggingface',
-        'nebiusModels': 'nebius',
+        'internationalQwenModels': 'qwen',
+        'mainlandQwenModels': 'qwen',  # Merge mainland and international qwen
+        'doubaoModels': 'doubao',
+        'mistralModels': 'mistral',
         'askSageModels': 'asksage',
+        'nebiusModels': 'nebius',
+        'xaiModels': 'xai',
+        'sambanovaModels': 'sambanova',
+        'cerebrasModels': 'cerebras',
+        'groqModels': 'groq',
         'sapAiCoreModels': 'sapaicore',
+        'moonshotModels': 'moonshot',
+        'huaweiCloudMaasModels': 'huawei-cloud-maas',
         'basetenModels': 'baseten',
         'internationalZAiModels': 'zai',
+        'mainlandZAiModels': 'zai',  # Merge mainland and international zai
+        'fireworksModels': 'fireworks',
         'qwenCodeModels': 'qwen-code'
     }
+    
+    # Add any newly discovered catalogs that we don't have mapped
+    for catalog in discovered_catalogs:
+        if catalog not in catalog_mapping:
+            # Try to map to provider name automatically
+            provider_name = catalog.lower().replace('models', '').replace('international', '').replace('mainland', '')
+            if provider_name not in catalog_mapping.values():
+                catalog_mapping[catalog] = provider_name
+                print(f"  ✨ Auto-mapping new catalog: {catalog} -> {provider_name}")
+    
+    print(f"📊 Total catalogs to process: {len(catalog_mapping)}")
     
     # Extract each catalog
     for cline_name, our_name in catalog_mapping.items():
@@ -49,22 +71,56 @@ def extract_model_catalog(file_path: str) -> Dict[str, Dict[str, Any]]:
         if match:
             models = parse_model_object(match.group(1))
             if models:  # Only add if we found models
-                catalogs[our_name] = models
-                print(f"  ✓ Found {our_name}: {len(models)} models")
+                if our_name in catalogs:
+                    # Merge models for providers with multiple catalogs (qwen, zai)
+                    catalogs[our_name].update(models)
+                    print(f"  ✓ Merged {cline_name} into {our_name}: +{len(models)} models (total: {len(catalogs[our_name])})")
+                else:
+                    catalogs[our_name] = models
+                    print(f"  ✓ Found {our_name}: {len(models)} models")
     
     return catalogs
 
 def parse_model_object(model_text: str) -> Dict[str, Any]:
-    """Parse a TypeScript model object into Python dict."""
+    """Parse a TypeScript model object into Python dict with improved nested parsing."""
     models = {}
     
-    # Find model definitions like "model-name": { ... }
-    model_pattern = r'"([^"]+)":\s*\{([^}]+(?:\{[^}]*\}[^}]*)*)\}'
-    matches = re.findall(model_pattern, model_text, re.DOTALL)
+    # Split into lines and find model blocks more carefully
+    lines = model_text.split('\n')
+    i = 0
     
-    for model_name, model_props in matches:
-        model_data = parse_model_properties(model_props)
-        models[model_name] = model_data
+    while i < len(lines):
+        line = lines[i].strip()
+        # Look for model name pattern with quotes
+        match = re.match(r'^\s*"([^"]+)":\s*\{\s*$', line)
+        if match:
+            model_name = match.group(1)
+            i += 1
+            
+            # Collect all properties until we find the matching closing brace
+            props_lines = []
+            brace_count = 1
+            
+            while i < len(lines) and brace_count > 0:
+                current_line = lines[i]
+                props_lines.append(current_line)
+                
+                # Count braces to find the end of this model object
+                brace_count += current_line.count('{') - current_line.count('}')
+                i += 1
+            
+            # Remove the last closing brace line
+            if props_lines and '}' in props_lines[-1]:
+                props_lines[-1] = props_lines[-1].replace('}', '', 1).rstrip()
+                if not props_lines[-1].strip():
+                    props_lines.pop()
+            
+            # Parse the collected properties
+            props_text = '\n'.join(props_lines)
+            model_data = parse_model_properties(props_text)
+            models[model_name] = model_data
+        else:
+            i += 1
     
     return models
 
@@ -279,10 +335,11 @@ def generate_typescript_models(catalogs: Dict[str, Dict[str, Any]]) -> str:
         output.append('  },')
     
     # Add missing providers that are required by ApiProvider type but not in Cline's catalog
+    # Note: claude-code and huawei-cloud-maas are now extracted from Cline
     missing_providers = [
-        "claude-code", "openrouter", "ollama", "lmstudio", "openai-native",
+        "openrouter", "ollama", "lmstudio", "openai-native",
         "requesty", "together", "vscode-lm", "cline", "litellm", 
-        "huawei-cloud-maas", "dify", "vercel-ai-gateway"
+        "dify", "vercel-ai-gateway"
     ]
     
     for provider in missing_providers:
@@ -332,10 +389,10 @@ def find_best_model(models: Dict[str, Any]) -> str:
 
 def main():
     """Main execution function."""
-    print("🚀 Extracting ALL models from Cline's comprehensive catalog...")
+    print("🚀 Extracting ALL models from Cline's latest comprehensive catalog...")
     
-    # Extract all model catalogs
-    cline_file = "/tmp/cline_api.ts"
+    # Extract all model catalogs from the latest file
+    cline_file = "/tmp/cline_api_latest.ts"
     catalogs = extract_model_catalog(cline_file)
     
     print(f"📊 Found {len(catalogs)} provider catalogs:")

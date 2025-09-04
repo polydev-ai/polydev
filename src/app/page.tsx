@@ -12,7 +12,15 @@ const getTotalModels = () => {
   }, 0)
 }
 
+// Calculate total providers with models
+const getTotalProviders = () => {
+  return Object.values(CLINE_PROVIDERS).filter(provider => 
+    Object.keys(provider.supportedModels).length > 0
+  ).length
+}
+
 const TOTAL_MODELS = getTotalModels()
+const TOTAL_PROVIDERS = getTotalProviders()
 
 const features = [
   {
@@ -83,8 +91,8 @@ const testimonials = [
 const stats = [
   { value: '100K+', label: 'Breakthroughs Generated' },
   { value: '500+', label: 'MCP Clients Connected' },
-  { value: `${TOTAL_MODELS}+`, label: 'AI Models Available' },
-  { value: '< 2s', label: 'Bridge Response Time' }
+  { value: `${TOTAL_PROVIDERS}+`, label: 'AI Providers Supported' },
+  { value: `${TOTAL_MODELS}`, label: 'Total Models Available' }
 ]
 
 export default function Home() {
