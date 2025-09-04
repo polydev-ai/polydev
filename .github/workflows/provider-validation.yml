@@ -1,0 +1,280 @@
+name: 'Provider Validation & Model Discovery'
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      provider_filter:
+        description: 'Specific providers to validate (comma-separated, or "all")'
+        required: false
+        default: 'all'
+      create_pr:
+        description: 'Create PR for new models found'
+        type: boolean
+        required: false
+        default: true
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  validate-providers:
+    runs-on: ubuntu-latest
+    name: Validate AI Provider APIs & Discover Models
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install requests aiohttp beautifulsoup4 asyncio-throttle
+      
+      - name: Run provider health check
+        id: health_check
+        run: |
+          echo "🚀 Running provider health check..."
+          python3 simple_provider_check.py > health_check_results.txt
+          
+          # Extract summary statistics
+          accessible=$(grep "Accessible APIs:" health_check_results.txt | grep -o '[0-9]*\/[0-9]*' || echo "0/0")
+          echo "accessible_apis=${accessible}" >> $GITHUB_OUTPUT
+          
+          # Check if results file was created
+          if [ -f "provider_check_*.json" ]; then
+            echo "health_check_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "health_check_success=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Run model discovery
+        id: model_discovery
+        run: |
+          echo "🔍 Running automated model discovery..."
+          python3 automated_model_discovery.py > discovery_results.txt
+          
+          # Extract discovery statistics
+          total_models=$(grep "Total Models Discovered:" discovery_results.txt | grep -o '[0-9]*' || echo "0")
+          providers_with_models=$(grep "Providers with Models:" discovery_results.txt | grep -o '[0-9]*' || echo "0")
+          
+          echo "total_models=${total_models}" >> $GITHUB_OUTPUT
+          echo "providers_with_models=${providers_with_models}" >> $GITHUB_OUTPUT
+          
+          # Check if new models were discovered
+          if [ "$total_models" -gt 0 ]; then
+            echo "models_discovered=true" >> $GITHUB_OUTPUT
+          else
+            echo "models_discovered=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Compare with current catalog
+        id: compare_catalog
+        run: |
+          echo "📊 Comparing with current catalog..."
+          
+          # Simple comparison - count current models in providers.ts
+          current_count=$(grep -o '"[^"]*": {' src/types/providers.ts | wc -l | xargs)
+          discovered_count="${{ steps.model_discovery.outputs.total_models }}"
+          
+          echo "current_models=${current_count}" >> $GITHUB_OUTPUT
+          echo "discovered_models=${discovered_count}" >> $GITHUB_OUTPUT
+          
+          # Determine if significant changes were found
+          if [ "$discovered_count" -gt $((current_count + 10)) ]; then
+            echo "significant_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "significant_changes=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Generate validation report
+        run: |
+          echo "📋 Generating comprehensive validation report..."
+          
+          cat << EOF > validation_report.md
+          # Provider Validation Report
+          
+          **Generated**: $(date -u '+%Y-%m-%d %H:%M:%S') UTC
+          **Workflow**: Provider Validation & Model Discovery
+          **Trigger**: ${{ github.event_name }}
+          
+          ## 📊 Summary Statistics
+          
+          - **APIs Accessible**: ${{ steps.health_check.outputs.accessible_apis }}
+          - **Models Discovered**: ${{ steps.model_discovery.outputs.total_models }}
+          - **Providers with Models**: ${{ steps.model_discovery.outputs.providers_with_models }}
+          - **Current Catalog Models**: ${{ steps.compare_catalog.outputs.current_models }}
+          - **Significant Changes**: ${{ steps.compare_catalog.outputs.significant_changes }}
+          
+          ## 🔍 Health Check Results
+          
+          \`\`\`
+          $(cat health_check_results.txt)
+          \`\`\`
+          
+          ## 🤖 Model Discovery Results
+          
+          \`\`\`
+          $(cat discovery_results.txt)
+          \`\`\`
+          
+          ## 📁 Generated Files
+          
+          - Provider health check JSON: \`provider_check_*.json\`
+          - Model discovery JSON: \`model_discovery_*.json\`
+          - Discovered models TypeScript: \`discovered_models_*.ts\`
+          
+          ## 🎯 Recommended Actions
+          
+          EOF
+          
+          # Add conditional recommendations
+          if [ "${{ steps.compare_catalog.outputs.significant_changes }}" == "true" ]; then
+            echo "- ✅ **High Priority**: Review discovered models and update catalog" >> validation_report.md
+            echo "- 🔄 Consider running extraction script with new findings" >> validation_report.md
+          else
+            echo "- ✅ Catalog appears up-to-date with current provider offerings" >> validation_report.md
+          fi
+          
+          if [ "${{ steps.health_check.outputs.accessible_apis }}" == "0/10" ]; then
+            echo "- ⚠️ **Issue**: No APIs accessible - check network or authentication" >> validation_report.md
+          fi
+          
+          echo "" >> validation_report.md
+          echo "---" >> validation_report.md
+          echo "*This report was automatically generated by GitHub Actions*" >> validation_report.md
+      
+      - name: Upload validation artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: validation-results-${{ github.run_number }}
+          path: |
+            validation_report.md
+            health_check_results.txt
+            discovery_results.txt
+            provider_check_*.json
+            model_discovery_*.json
+            discovered_models_*.ts
+          retention-days: 30
+      
+      - name: Create issue for significant changes
+        if: steps.compare_catalog.outputs.significant_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportContent = fs.readFileSync('validation_report.md', 'utf8');
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔍 Significant Model Changes Detected - ${new Date().toISOString().split('T')[0]}`,
+              body: `${reportContent}
+              
+              ## 🚨 Action Required
+              
+              This automated validation detected **${{ steps.model_discovery.outputs.total_models }}** models, which is significantly higher than our current catalog of **${{ steps.compare_catalog.outputs.current_models }}** models.
+              
+              ### Next Steps:
+              1. Review the discovered models in the artifacts
+              2. Run the extraction script to update the catalog
+              3. Test the updated catalog
+              4. Deploy the changes
+              
+              **Validation Run**: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+              labels: ['enhancement', 'automated-discovery', 'high-priority']
+            });
+      
+      - name: Create PR for model updates
+        if: steps.model_discovery.outputs.models_discovered == 'true' && github.event.inputs.create_pr == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // This would create a PR with discovered model updates
+            // For now, just create an issue with the recommendation
+            
+            const fs = require('fs');
+            const reportContent = fs.readFileSync('validation_report.md', 'utf8');
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🤖 Automated Model Discovery Results - ${new Date().toISOString().split('T')[0]}`,
+              body: `${reportContent}
+              
+              ## 🎯 Discovered Models Summary
+              
+              - **Total Models Found**: ${{ steps.model_discovery.outputs.total_models }}
+              - **Providers with Models**: ${{ steps.model_discovery.outputs.providers_with_models }}
+              
+              The automated discovery system has found new models that may not be in our current catalog. 
+              Please review the artifacts and consider updating the model catalog.
+              
+              **Files Generated**:
+              - \`model_discovery_*.json\` - Full discovery results
+              - \`discovered_models_*.ts\` - TypeScript model definitions
+              
+              **Validation Run**: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+              labels: ['enhancement', 'automated-discovery', 'model-update']
+            });
+      
+      - name: Post to Slack/Discord (if configured)
+        if: steps.compare_catalog.outputs.significant_changes == 'true'
+        run: |
+          # This would post to Slack/Discord if webhooks are configured
+          echo "🚨 Significant model changes detected!"
+          echo "Would post to communication channels if configured"
+          echo "Models discovered: ${{ steps.model_discovery.outputs.total_models }}"
+          echo "Current catalog: ${{ steps.compare_catalog.outputs.current_models }}"
+      
+      - name: Update validation status badge
+        run: |
+          # Create a simple status indicator
+          accessible_count=$(echo "${{ steps.health_check.outputs.accessible_apis }}" | cut -d'/' -f1)
+          total_count=$(echo "${{ steps.health_check.outputs.accessible_apis }}" | cut -d'/' -f2)
+          
+          if [ "$accessible_count" -eq "$total_count" ]; then
+            echo "All providers accessible" > .provider-status
+          elif [ "$accessible_count" -gt $((total_count / 2)) ]; then
+            echo "Most providers accessible" > .provider-status
+          else
+            echo "Some providers inaccessible" > .provider-status
+          fi
+          
+          echo "Last checked: $(date -u '+%Y-%m-%d %H:%M:%S') UTC" >> .provider-status
+
+  # Optional: Deploy updated catalog if significant changes are found
+  deploy-if-needed:
+    needs: validate-providers
+    if: needs.validate-providers.outputs.significant_changes == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Download validation artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: validation-results-${{ github.run_number }}
+      
+      - name: Check deployment readiness
+        run: |
+          echo "🚀 Checking if deployment is needed..."
+          echo "This job would:"
+          echo "1. Review discovered models"
+          echo "2. Update providers.ts if appropriate"
+          echo "3. Run tests to ensure quality"
+          echo "4. Deploy to production if all checks pass"
+          echo ""
+          echo "Current status: Manual review required"
+          echo "Discovered models: ${{ needs.validate-providers.outputs.total_models }}"

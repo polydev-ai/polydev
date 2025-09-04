@@ -1,0 +1,97 @@
+🚀 Starting provider health check...
+
+🔍 Checking OpenAI...
+🔍 Checking Anthropic...
+🔍 Checking Google Gemini...
+🔍 Checking Mistral AI...
+🔍 Checking Groq...
+🔍 Checking xAI...
+🔍 Checking DeepSeek...
+🔍 Checking Together AI...
+🔍 Checking Perplexity...
+🔍 Checking Cohere...
+✅ Together AI: 401 (96ms)
+✅ Groq: 401 (105ms)
+✅ OpenAI: 401 (116ms)
+✅ Google Gemini: 403 (115ms)
+✅ Cohere: 401 (122ms)
+✅ Anthropic: 405 (143ms)
+✅ Perplexity: 401 (158ms)
+✅ xAI: 401 (252ms)
+✅ Mistral AI: 401 (515ms)
+✅ DeepSeek: 401 (675ms)
+
+============================================================
+🔍 PROVIDER VALIDATION REPORT
+============================================================
+Generated: 2025-09-04 12:15:07
+Providers Checked: 10
+
+📊 SUMMARY
+Accessible APIs: 10/10
+Average Response Time: 230ms
+
+📋 DETAILED RESULTS
+----------------------------------------
+✅ Together AI
+   Status: 401 (96ms)
+   Doc URL: https://docs.together.ai/docs/inference-models
+   Expected Models: meta-llama/Llama-3-70b-chat-hf
+
+✅ Groq
+   Status: 401 (105ms)
+   Doc URL: https://console.groq.com/docs/models
+   Expected Models: llama-3.1-70b-versatile, mixtral-8x7b-32768
+
+✅ Google Gemini
+   Status: 403 (115ms)
+   Doc URL: https://ai.google.dev/gemini-api/docs/models/gemini
+   Expected Models: gemini-1.5-pro, gemini-1.5-flash
+
+✅ OpenAI
+   Status: 401 (116ms)
+   Doc URL: https://platform.openai.com/docs/models/overview
+   Expected Models: gpt-4o, gpt-4-turbo, gpt-3.5-turbo
+
+✅ Cohere
+   Status: 401 (122ms)
+   Doc URL: https://docs.cohere.com/docs/models
+   Expected Models: command-r-plus, command-r
+
+✅ Anthropic
+   Status: 405 (143ms)
+   Doc URL: https://docs.anthropic.com/claude/docs/models-overview
+   Expected Models: claude-3-5-sonnet-20241022, claude-3-opus-20240229
+
+✅ Perplexity
+   Status: 401 (158ms)
+   Doc URL: https://docs.perplexity.ai/docs/model-cards
+   Expected Models: llama-3.1-sonar-small-128k-online
+
+✅ xAI
+   Status: 401 (252ms)
+   Doc URL: https://docs.x.ai/docs
+   Expected Models: grok-4, grok-3-beta
+
+✅ Mistral AI
+   Status: 401 (515ms)
+   Doc URL: https://docs.mistral.ai/getting-started/models/
+   Expected Models: mistral-large-latest, mistral-medium
+
+✅ DeepSeek
+   Status: 401 (675ms)
+   Doc URL: https://platform.deepseek.com/api-docs/api/create-chat-completion
+   Expected Models: deepseek-chat, deepseek-coder
+
+💡 RECOMMENDATIONS
+-------------------------
+2. Set up monitoring for accessible endpoints
+3. Implement model discovery for accessible APIs
+4. Create automated sync process for model updates
+💾 Results saved to: provider_check_20250904_121507.json
+
+🎯 NEXT STEPS
+1. Set up API keys for accessible providers
+2. Run model discovery on accessible endpoints
+3. Create automated validation pipeline
+4. Monitor for new model releases

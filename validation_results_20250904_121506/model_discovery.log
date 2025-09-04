@@ -1,0 +1,97 @@
+2025-09-04 12:15:07,325 - INFO - 🚀 Starting comprehensive model discovery...
+2025-09-04 12:15:07,325 - INFO - 🔍 Discovering models for openai...
+2025-09-04 12:15:07,328 - INFO - 🔍 Discovering models for anthropic...
+2025-09-04 12:15:07,328 - INFO - 🔍 Discovering models for google...
+2025-09-04 12:15:07,328 - INFO - 🔍 Discovering models for xai...
+2025-09-04 12:15:07,328 - INFO - 🔍 Discovering models for mistral...
+2025-09-04 12:15:07,329 - INFO - 🔍 Discovering models for groq...
+2025-09-04 12:15:07,329 - INFO - 🔍 Discovering models for deepseek...
+2025-09-04 12:15:07,329 - INFO - 🔍 Discovering models for perplexity...
+2025-09-04 12:15:07,406 - WARNING - ⚠️ https://docs.x.ai/docs returned 403
+2025-09-04 12:15:07,406 - INFO - 📄 Found 0 models from https://docs.x.ai/docs
+2025-09-04 12:15:07,426 - WARNING - ⚠️ https://platform.deepseek.com/api-docs/api/create-chat-completion returned 403
+2025-09-04 12:15:07,426 - INFO - 📄 Found 0 models from https://platform.deepseek.com/api-docs/api/create-chat-completion
+2025-09-04 12:15:07,430 - WARNING - ⚠️ https://platform.openai.com/docs/models/overview returned 403
+2025-09-04 12:15:07,430 - INFO - 📄 Found 0 models from https://platform.openai.com/docs/models/overview
+2025-09-04 12:15:07,495 - WARNING - ⚠️ https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo returned 403
+2025-09-04 12:15:07,495 - INFO - 📄 Found 0 models from https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo
+2025-09-04 12:15:07,572 - ERROR - ❌ Error scraping https://docs.perplexity.ai/docs/model-cards: nothing to repeat at position 26
+2025-09-04 12:15:07,572 - INFO - 📄 Found 0 models from https://docs.perplexity.ai/docs/model-cards
+2025-09-04 12:15:07,573 - WARNING - ⚠️ https://platform.openai.com/docs/models/gpt-3-5 returned 403
+2025-09-04 12:15:07,573 - INFO - 📄 Found 0 models from https://platform.openai.com/docs/models/gpt-3-5
+2025-09-04 12:15:07,573 - INFO - ✅ openai: Discovered 0 unique models
+2025-09-04 12:15:07,576 - WARNING - ⚠️ https://deepseek.com/ returned 403
+2025-09-04 12:15:07,576 - INFO - 📄 Found 0 models from https://deepseek.com/
+2025-09-04 12:15:07,582 - WARNING - ⚠️ https://x.ai/blog/grok-reasoning returned 403
+2025-09-04 12:15:07,582 - INFO - 📄 Found 0 models from https://x.ai/blog/grok-reasoning
+2025-09-04 12:15:07,614 - INFO - 📄 Found 42 models from https://docs.mistral.ai/getting-started/models/
+2025-09-04 12:15:07,637 - ERROR - ❌ Error scraping https://console.groq.com/docs/models: nothing to repeat at position 40
+2025-09-04 12:15:07,637 - INFO - 📄 Found 0 models from https://console.groq.com/docs/models
+2025-09-04 12:15:07,657 - INFO - 📄 Found 4 models from https://docs.anthropic.com/claude/docs/models-overview
+2025-09-04 12:15:07,685 - WARNING - ⚠️ https://x.ai/ returned 403
+2025-09-04 12:15:07,685 - INFO - 📄 Found 0 models from https://x.ai/
+2025-09-04 12:15:07,685 - INFO - ✅ xai: Discovered 0 unique models
+2025-09-04 12:15:07,786 - INFO - 📄 Found 23 models from https://ai.google.dev/gemini-api/docs/models/gemini
+2025-09-04 12:15:07,819 - WARNING - ⚠️ https://blog.perplexity.ai/ returned 403
+2025-09-04 12:15:07,819 - INFO - 📄 Found 0 models from https://blog.perplexity.ai/
+2025-09-04 12:15:07,880 - WARNING - ⚠️ https://www.perplexity.ai/ returned 403
+2025-09-04 12:15:07,880 - INFO - 📄 Found 0 models from https://www.perplexity.ai/
+2025-09-04 12:15:07,880 - INFO - ✅ perplexity: Discovered 0 unique models
+2025-09-04 12:15:07,949 - ERROR - ❌ Error scraping https://wow.groq.com/news/: nothing to repeat at position 40
+2025-09-04 12:15:07,949 - INFO - 📄 Found 0 models from https://wow.groq.com/news/
+2025-09-04 12:15:07,955 - INFO - 📄 Found 0 models from https://mistral.ai/news/
+2025-09-04 12:15:08,122 - INFO - 📄 Found 48 models from https://arxiv.org/search/?query=deepseek&searchtype=all
+2025-09-04 12:15:08,123 - INFO - ✅ deepseek: Discovered 6 unique models
+2025-09-04 12:15:08,435 - INFO - 📄 Found 1 models from https://mistral.ai/technology/
+2025-09-04 12:15:08,435 - INFO - ✅ mistral: Discovered 10 unique models
+2025-09-04 12:15:08,473 - INFO - 📄 Found 0 models from https://www.anthropic.com/news/claude-3-family
+2025-09-04 12:15:08,473 - INFO - ✅ anthropic: Discovered 2 unique models
+2025-09-04 12:15:08,513 - INFO - 📄 Found 0 models from https://deepmind.google/technologies/gemini/
+2025-09-04 12:15:08,731 - INFO - 📄 Found 0 models from https://blog.google/technology/ai/google-gemini-ai/
+2025-09-04 12:15:08,731 - INFO - ✅ google: Discovered 6 unique models
+2025-09-04 12:15:08,996 - ERROR - ❌ Error scraping https://groq.com/: nothing to repeat at position 40
+2025-09-04 12:15:08,996 - INFO - 📄 Found 0 models from https://groq.com/
+2025-09-04 12:15:08,996 - INFO - ✅ groq: Discovered 0 unique models
+2025-09-04 12:15:08,997 - INFO - 💾 Discovery results saved to: model_discovery_20250904_121508.json
+
+🔍 MODEL DISCOVERY RESULTS
+==================================================
+Providers Scanned: 8
+Providers with Models: 4
+Total Models Discovered: 24
+
+📊 BY PROVIDER:
+------------------------------
+❌ openai: No models discovered
+✅ anthropic: 2 models
+   - claude-3-haiku-20240307 (confidence: 0.7)
+   - claude-3-haiku (confidence: 0.7)
+✅ google: 6 models
+   - gemini-1.5-flash (confidence: 0.7)
+   - gemini-1.5-pro (confidence: 0.7)
+   - gemini-1.5-flash-001 (confidence: 0.7)
+   ... and 3 more
+❌ xai: No models discovered
+✅ mistral: 10 models
+   - mistral-medium (confidence: 0.7)
+   - mistral-large (confidence: 0.7)
+   - mistral-small (confidence: 0.7)
+   ... and 7 more
+❌ groq: No models discovered
+✅ deepseek: 6 models
+   - DeepSeek-Coder (confidence: 0.7)
+   - DeepSeek-R1 (confidence: 0.7)
+   - deepseek-r1-distill (confidence: 0.7)
+   ... and 3 more
+❌ perplexity: No models discovered
+
+📁 FILES GENERATED:
+- model_discovery_20250904_121508.json (JSON results)
+- discovered_models_20250904.ts (TypeScript catalog)
+
+🤖 AUTOMATION RECOMMENDATIONS:
+1. Schedule this script to run weekly
+2. Compare results with current catalog
+3. Generate automated PRs for new models
+4. Set up alerts for significant changes
+5. Implement confidence scoring for quality control
