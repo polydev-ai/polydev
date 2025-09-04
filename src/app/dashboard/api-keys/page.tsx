@@ -934,7 +934,7 @@ export default function ApiKeysPage() {
                   {/* Category badge */}
                   <span className={`px-1.5 py-0.5 text-xs rounded font-medium ${
                     provider.category === 'api' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' :
-                    provider.category === 'openrouter' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                    provider.category === 'gateway' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
                     'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200'
                   }`}>
                     {provider.category}
