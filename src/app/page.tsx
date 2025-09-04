@@ -2,7 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { CLINE_PROVIDERS } from '../types/providers'
 import Link from 'next/link'
+
+// Calculate total models across all providers
+const getTotalModels = () => {
+  return Object.values(CLINE_PROVIDERS).reduce((total, provider) => {
+    return total + Object.keys(provider.supportedModels).length
+  }, 0)
+}
+
+const TOTAL_MODELS = getTotalModels()
 
 const features = [
   {
@@ -15,7 +25,7 @@ const features = [
   {
     icon: '⚡',
     title: 'Lightning Fast Responses',
-    description: 'Parallel queries to GPT-4, Claude 3.5, Gemini Pro, and 20+ models return breakthrough insights in under 2 seconds',
+    description: `Parallel queries to GPT-4, Claude 3.5, Gemini Pro, and ${TOTAL_MODELS}+ models return breakthrough insights in under 2 seconds`,
     highlight: 'Sub-2s parallel query',
     gradient: 'from-yellow-500 to-orange-500'
   },
@@ -36,7 +46,7 @@ const features = [
   {
     icon: '🔑',
     title: 'Your Keys, Your Rules',
-    description: 'Use your own API keys for unlimited access to 20+ providers, or start instantly with managed keys',
+    description: `Use your own API keys for unlimited access to ${Math.ceil(TOTAL_MODELS/10)}+ providers, or start instantly with managed keys`,
     highlight: 'Complete control',
     gradient: 'from-green-500 to-teal-500'
   },
@@ -73,7 +83,7 @@ const testimonials = [
 const stats = [
   { value: '100K+', label: 'Breakthroughs Generated' },
   { value: '500+', label: 'MCP Clients Connected' },
-  { value: '22+', label: 'AI Providers Supported' },
+  { value: `${TOTAL_MODELS}+`, label: 'AI Models Available' },
   { value: '< 2s', label: 'Bridge Response Time' }
 ]
 
@@ -183,7 +193,7 @@ export default function Home() {
             </h1>
             
             <p className="text-xl md:text-2xl text-slate-600 dark:text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed">
-              One MCP tool that queries 20+ AI models in parallel when your agents hit walls. From Claude to GPT-4 to Gemini — get breakthrough insights in under 2 seconds through{' '}
+              One MCP tool that queries {TOTAL_MODELS}+ AI models in parallel when your agents hit walls. From Claude to GPT-4 to Gemini — get breakthrough insights in under 2 seconds through{' '}
               <span className="text-blue-600 font-medium">
                 {typedText}
                 <span className="animate-pulse">|</span>
