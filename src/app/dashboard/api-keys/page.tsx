@@ -893,11 +893,11 @@ export default function ApiKeysPage() {
             <div 
               key={provider.id} 
               className={`bg-white dark:bg-gray-900 p-3 rounded border transition-all duration-200 ${
-                provider.clickable 
+                provider.authType === 'api_key' 
                   ? 'hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 cursor-pointer transform hover:scale-105' 
                   : ''
               }`}
-              onClick={provider.clickable ? () => handleProviderClick(provider) : undefined}
+              onClick={provider.authType === 'api_key' ? () => handleProviderClick(provider) : undefined}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center space-x-2">
