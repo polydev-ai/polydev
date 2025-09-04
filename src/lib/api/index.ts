@@ -1,7 +1,8 @@
-import { ApiHandlerOptions, ModelInfo, ProviderConfiguration } from '../../types/providers'
+import { ApiHandlerOptions, ModelInfo, ProviderConfiguration, ApiProvider } from '../../types/providers'
 // Enhanced handlers with integrated utilities (rate limiting, token counting, retry logic, validation)
 import { EnhancedHandlerFactory, BaseEnhancedHandler } from './providers/enhanced-handlers'
 import { universalProvider, PROVIDER_CONFIGS } from './providers/complete-provider-system'
+import { CLINE_PROVIDERS } from '../../types/providers'
 import { TokenCounter, TokenCount } from './utils/token-counter'
 import { RateLimiter, RateLimitConfig } from './utils/rate-limiter'
 import { RetryHandler } from './utils/retry-handler'
@@ -145,11 +146,11 @@ export class ApiManager {
   
   // Enhanced utility methods leveraging comprehensive system
   getProviderConfiguration(providerId: string): any {
-    return PROVIDER_CONFIGS[providerId] || null
+    return CLINE_PROVIDERS[providerId as ApiProvider] || null
   }
   
   getAllProviderConfigurations(): Record<string, any> {
-    return PROVIDER_CONFIGS
+    return CLINE_PROVIDERS
   }
   
   getTokenCount(providerId: string, options: ApiHandlerOptions): TokenCount {
@@ -197,18 +198,18 @@ export class ApiManager {
   
   // Provider capability checks
   supportsStreaming(providerId: string): boolean {
-    const config = PROVIDER_CONFIGS[providerId]
-    return config ? config.capabilities.streaming : false
+    const config = CLINE_PROVIDERS[providerId as ApiProvider]
+    return config ? config.supportsStreaming || false : false
   }
   
   supportsFunctionCalling(providerId: string): boolean {
-    const config = PROVIDER_CONFIGS[providerId]
-    return config ? config.capabilities.functionCalling : false
+    const config = CLINE_PROVIDERS[providerId as ApiProvider]
+    return config ? config.supportsTools || false : false
   }
   
   supportsVision(providerId: string): boolean {
-    const config = PROVIDER_CONFIGS[providerId]
-    return config ? config.capabilities.vision : false
+    const config = CLINE_PROVIDERS[providerId as ApiProvider]
+    return config ? config.supportsVision || false : false
   }
   
   // Statistics and monitoring

@@ -58,7 +58,7 @@ export class CodexCLIHandler implements ApiHandler {
         const content = data.choices[0]?.message?.content || ''
         const chunks = content.split(' ')
         
-        chunks.forEach((chunk, index) => {
+        chunks.forEach((chunk: string, index: number) => {
           const streamChunk = {
             choices: [{
               delta: {

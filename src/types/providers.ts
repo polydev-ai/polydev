@@ -25,6 +25,43 @@ export interface ProviderConfig {
   supportedModels: Record<string, ModelInfo>
   tags: string[]
   tier: 'free' | 'premium' | 'enterprise'
+  // Feature support at provider level
+  supportsStreaming?: boolean
+  supportsTools?: boolean
+  supportsVision?: boolean
+  supportsReasoning?: boolean
+  supportsPromptCaching?: boolean
+}
+
+export interface Message {
+  role: 'system' | 'user' | 'assistant'
+  content: string | Array<{ type: 'text' | 'image'; text?: string; source?: any }>
+}
+
+export interface ApiHandlerOptions {
+  messages: Message[]
+  model: string
+  temperature?: number
+  maxTokens?: number
+  stream?: boolean
+  apiKey: string
+  [key: string]: any // Allow additional provider-specific options
+}
+
+export interface ProviderConfiguration {
+  baseUrl: string
+  authType: 'api_key' | 'oauth' | 'cli' | 'none'
+  rateLimits?: {
+    requestsPerMinute?: number
+    tokensPerMinute?: number
+  }
+  features?: {
+    streaming?: boolean
+    tools?: boolean
+    vision?: boolean
+    reasoning?: boolean
+  }
+  baseUrlProperty?: string // Property name for base URL in handler options
 }
 
 // All 37 providers from Cline's system
@@ -78,6 +115,11 @@ export const CLINE_PROVIDERS: Record<ApiProvider, ProviderConfig> = {
     modelCount: 6,
     tags: ["reasoning", "safety", "tools", "vision"],
     tier: "premium",
+    supportsStreaming: true,
+    supportsTools: true,
+    supportsVision: true,
+    supportsReasoning: true,
+    supportsPromptCaching: true,
     supportedModels: {
       "claude-3-5-haiku-20241022": {
         maxTokens: 8192,
@@ -153,6 +195,11 @@ export const CLINE_PROVIDERS: Record<ApiProvider, ProviderConfig> = {
     modelCount: 8,
     tags: ["versatile", "tools", "vision", "reasoning"],
     tier: "premium",
+    supportsStreaming: true,
+    supportsTools: true,
+    supportsVision: true,
+    supportsReasoning: true,
+    supportsPromptCaching: false,
     supportedModels: {
       "gpt-4o": {
         maxTokens: 16384,
@@ -248,6 +295,11 @@ export const CLINE_PROVIDERS: Record<ApiProvider, ProviderConfig> = {
     modelCount: 6,
     tags: ["multimodal", "large-context", "tools", "vision"],
     tier: "premium",
+    supportsStreaming: true,
+    supportsTools: true,
+    supportsVision: true,
+    supportsReasoning: true,
+    supportsPromptCaching: false,
     supportedModels: {
       "gemini-2.0-flash": {
         maxTokens: 8192,

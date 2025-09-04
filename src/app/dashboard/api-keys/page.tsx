@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter } from 'lucide-react'
-import { CLINE_PROVIDERS } from '../../../types/providers'
+import { CLINE_PROVIDERS, ProviderConfig } from '../../../types/providers'
 import { PROVIDER_ICONS } from '../../../lib/openrouter-providers'
 
 interface ApiKey {
@@ -18,18 +18,6 @@ interface ApiKey {
   last_used_at?: string
 }
 
-interface ProviderConfig {
-  id: string
-  provider_name: string
-  base_url?: string
-  api_key_required: boolean
-  supports_streaming: boolean
-  supports_tools: boolean
-  supports_images: boolean
-  supports_prompt_cache: boolean
-  authentication_method: string
-  models: any[]
-}
 
 export default function ApiKeysPage() {
   const { user, loading: authLoading } = useAuth()
@@ -182,27 +170,8 @@ export default function ApiKeysPage() {
 
       if (keysError) throw keysError
 
-      // Convert CLINE_PROVIDERS to the format expected by the component
-      const providersData = Object.values(CLINE_PROVIDERS).map(provider => ({
-        id: provider.id,
-        provider_name: provider.id,
-        display_name: provider.name,
-        base_url: provider.baseUrl || '',
-        api_key_required: provider.authType === 'api_key',
-        supports_streaming: true, // Most modern providers support streaming
-        supports_tools: provider.category !== 'local', // Local providers typically don't support tools
-        supports_images: provider.tags.includes('vision') || provider.tags.includes('multimodal'),
-        supports_prompt_cache: false, // TODO: Add caching support to features interface
-        authentication_method: provider.authType,
-        models: Object.entries(provider.supportedModels).map(([id, model]) => ({
-          id,
-          name: id.includes('_') ? id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : id,
-          maxTokens: model.maxTokens || 4096,
-          contextWindow: model.contextWindow || 4096,
-          inputPrice: model.inputPrice || 0,
-          outputPrice: model.outputPrice || 0
-        }))
-      }))
+      // Use CLINE_PROVIDERS directly
+      const providersData = Object.values(CLINE_PROVIDERS)
 
       setApiKeys(keysData || [])
       setProviders(providersData)
@@ -608,10 +577,10 @@ export default function ApiKeysPage() {
                   </div>
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                      {providers.find(p => p.id === formData.provider)?.authentication_method === 'cli' ? 'CLI-based Provider' : 'Cloud-based Provider'}
+                      {providers.find(p => p.id === formData.provider)?.authType === 'cli' ? 'CLI-based Provider' : 'Cloud-based Provider'}
                     </h3>
                     <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                      {providers.find(p => p.id === formData.provider)?.authentication_method === 'cli' 
+                      {providers.find(p => p.id === formData.provider)?.authType === 'cli' 
                         ? 'This provider uses CLI authentication. Make sure you have the CLI tool installed and authenticated.'
                         : 'This provider uses cloud credentials. Configure your cloud authentication separately.'
                       }
@@ -943,7 +912,7 @@ export default function ApiKeysPage() {
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
                 {provider.description || 'API Key Authentication'}
-                {provider.clickable && (
+                {provider.authType === 'api_key' && (
                   <span className="block text-blue-500 text-xs mt-1">
                     Click to add API key or configure →
                   </span>
@@ -965,18 +934,20 @@ export default function ApiKeysPage() {
                 </div>
               )}
               <div className="flex flex-wrap gap-1 mt-2">
-                {provider.features?.streaming !== false && (
+                {provider.supportsStreaming && (
                   <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs rounded">Stream</span>
                 )}
-                {provider.features?.tools === true && (
+                {provider.supportsTools && (
                   <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 text-xs rounded">Tools</span>
                 )}
-                {provider.features?.images === true && (
-                  <span className="px-1.5 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs rounded">Images</span>
+                {provider.supportsVision && (
+                  <span className="px-1.5 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 text-xs rounded">Vision</span>
                 )}
-                {/* TODO: Add caching feature support */}
-                {provider.features?.reasoning === true && (
+                {provider.supportsReasoning && (
                   <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 text-xs rounded">Reasoning</span>
+                )}
+                {provider.supportsPromptCaching && (
+                  <span className="px-1.5 py-0.5 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs rounded">Caching</span>
                 )}
                 <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 text-xs rounded">
                   {Object.keys(provider.supportedModels).length} models

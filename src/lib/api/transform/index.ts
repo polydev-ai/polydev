@@ -51,7 +51,7 @@ export class OpenAITransformer implements MessageTransformer {
     }
     
     if (tools && tools.length > 0) {
-      request.tools = tools.map(tool => ({
+      request.tools = tools.map((tool: Tool) => ({
         type: 'function',
         function: {
           name: tool.name,

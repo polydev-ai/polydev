@@ -58,7 +58,7 @@ export class ClaudeCodeHandler implements ApiHandler {
         const content = data.content?.[0]?.text || ''
         const chunks = content.split(' ')
         
-        chunks.forEach((chunk, index) => {
+        chunks.forEach((chunk: string, index: number) => {
           const streamChunk = {
             type: 'content_block_delta',
             index: 0,
