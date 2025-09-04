@@ -1,7 +1,8 @@
-// Complete Cline Provider System Implementation - FORCE DEPLOY
+// Complete Cline Provider System Implementation - FORCE DEPLOY v2.0
 // Replicates ALL 37 providers and their model configurations from Cline's codebase
 // Based on https://github.com/cline/cline/blob/main/src/shared/api.ts
 // Contains comprehensive catalog with Claude 4, GPT-5, o3, and 1,774 total models
+// CACHE BUSTING: Force fresh deployment with comprehensive model catalog
 
 export interface ModelInfo {
   maxTokens: number
