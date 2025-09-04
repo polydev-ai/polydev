@@ -916,7 +916,7 @@ export default function ApiKeysPage() {
                   <h4 className="font-medium text-gray-900 dark:text-white text-sm">
                     {provider.name}
                   </h4>
-                  {provider.clickable && (
+                  {provider.authType === 'api_key' && (
                     <div className="text-blue-500 hover:text-blue-700">
                       <Plus className="w-3 h-3" />
                     </div>
