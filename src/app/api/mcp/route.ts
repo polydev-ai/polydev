@@ -1690,7 +1690,7 @@ function getDefaultModelForProvider(provider: string): string {
     'anthropic': 'claude-3-5-sonnet-20241022',
     'gemini': 'gemini-2.0-flash-exp',
     'google': 'gemini-2.0-flash-exp',
-    'x-ai': 'grok-4-0709', // Updated to latest xAI Grok 4 model
+    'x-ai': 'grok-4', // Latest xAI Grok 4 model
     'openrouter': 'meta-llama/llama-3.2-90b-vision-instruct',
     'groq': 'llama-3.1-70b-versatile',
     'perplexity': 'llama-3.1-sonar-large-128k-online',
@@ -1734,6 +1734,10 @@ function determineProvider(model: string, configMap: Map<string, ProviderConfig>
   
   if (modelLower.includes('sonar')) {
     return configMap.get('perplexity') || null
+  }
+  
+  if (modelLower.includes('grok')) {
+    return configMap.get('xai') || configMap.get('x-ai') || null
   }
   
   // Default fallback to first available OpenAI-compatible provider
