@@ -134,9 +134,12 @@ const providers = [
   {
     provider_name: 'xai',
     display_name: 'xAI',
+    base_url: 'https://api.x.ai/v1',
     models: [
+      {"id": "grok-4", "name": "Grok 4", "maxTokens": 8192, "contextWindow": 262144, "inputPrice": 3.0, "outputPrice": 15.0},
       {"id": "grok-beta", "name": "Grok Beta", "maxTokens": 4096, "contextWindow": 131072, "inputPrice": 5.0, "outputPrice": 15.0},
-      {"id": "grok-vision-beta", "name": "Grok Vision Beta", "maxTokens": 4096, "contextWindow": 8192, "inputPrice": 5.0, "outputPrice": 15.0}
+      {"id": "grok-vision-beta", "name": "Grok Vision Beta", "maxTokens": 4096, "contextWindow": 8192, "inputPrice": 5.0, "outputPrice": 15.0},
+      {"id": "grok-2-latest", "name": "Grok 2 Latest", "maxTokens": 4096, "contextWindow": 131072, "inputPrice": 2.0, "outputPrice": 10.0}
     ]
   },
   {

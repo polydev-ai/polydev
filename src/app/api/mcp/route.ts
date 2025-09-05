@@ -173,6 +173,8 @@ function buildRequestConfig(
     case 'perplexity':
     case 'deepseek':
     case 'mistral':
+    case 'xai':
+    case 'x-ai':
       // OpenAI-compatible format
       return {
         url: `${baseUrl}/chat/completions`,
@@ -262,6 +264,8 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
     case 'perplexity':
     case 'deepseek':
     case 'mistral':
+    case 'xai':
+    case 'x-ai':
       return {
         content: data.choices?.[0]?.message?.content || 'No response',
         tokens_used: data.usage?.total_tokens || 0
@@ -1729,7 +1733,39 @@ function determineProvider(model: string, configMap: Map<string, ProviderConfig>
   }
   
   if (modelLower.includes('deepseek')) {
-    return configMap.get('deepseek') || null
+    return configMap.get('deepseek') || {
+      id: 'deepseek',
+      provider_name: 'deepseek',
+      display_name: 'DeepSeek',
+      base_url: 'https://api.deepseek.com/v1',
+      api_key_required: true,
+      supports_streaming: true,
+      supports_tools: false,
+      supports_images: false,
+      supports_prompt_cache: false,
+      authentication_method: 'api_key',
+      models: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  }
+  
+  if (modelLower.includes('grok')) {
+    return configMap.get('xai') || configMap.get('x-ai') || {
+      id: 'xai',
+      provider_name: 'xai',
+      display_name: 'xAI',
+      base_url: 'https://api.x.ai/v1',
+      api_key_required: true,
+      supports_streaming: true,
+      supports_tools: false,
+      supports_images: false,
+      supports_prompt_cache: false,
+      authentication_method: 'api_key',
+      models: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
   }
   
   if (modelLower.includes('sonar')) {
