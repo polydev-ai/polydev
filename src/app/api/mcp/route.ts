@@ -998,21 +998,22 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   const responses = await Promise.all(
     models.map(async (model: string) => {
       const startTime = Date.now()
-      try {
-        // Clean model name by removing provider prefixes that cause API errors
-        let cleanModel = model
-        if (model.includes('/')) {
-          const parts = model.split('/')
-          const providerPrefix = parts[0].toLowerCase()
-          const modelName = parts.slice(1).join('/')
-          
-          // Only strip known problematic prefixes, keep others for OpenRouter compatibility
-          if (['x-ai', 'xai', 'google'].includes(providerPrefix)) {
-            cleanModel = modelName
-            console.log(`[MCP] Stripped provider prefix: ${model} → ${cleanModel}`)
-          }
-        }
+      
+      // Clean model name by removing provider prefixes that cause API errors
+      let cleanModel = model
+      if (model.includes('/')) {
+        const parts = model.split('/')
+        const providerPrefix = parts[0].toLowerCase()
+        const modelName = parts.slice(1).join('/')
         
+        // Only strip known problematic prefixes, keep others for OpenRouter compatibility
+        if (['x-ai', 'xai', 'google'].includes(providerPrefix)) {
+          cleanModel = modelName
+          console.log(`[MCP] Stripped provider prefix: ${model} → ${cleanModel}`)
+        }
+      }
+      
+      try {
         // Determine provider from original model name or use intelligent matching
         const provider = determineProvider(model, configMap)
         if (!provider) {
