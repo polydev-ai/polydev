@@ -2417,10 +2417,10 @@ export const CLINE_PROVIDERS: Record<ApiProvider, ProviderConfig> = {
     supportsVision: true,
     supportsReasoning: true,
     supportsPromptCaching: false,
-    defaultModel: "grok-4",
+    defaultModel: "grok-4-0709",
     modelCount: 17,
     supportedModels: {
-      "grok-4": {
+      "grok-4-0709": {
         maxTokens: 8192,
         contextWindow: 262144,
         inputPrice: 3.0,
@@ -2428,7 +2428,7 @@ export const CLINE_PROVIDERS: Record<ApiProvider, ProviderConfig> = {
         supportsImages: true,
         supportsPromptCache: true,
         supportsComputerUse: false,
-        description: "grok-4 model"
+        description: "grok-4-0709 model"
       },
       "grok-3-beta": {
         maxTokens: 8192,

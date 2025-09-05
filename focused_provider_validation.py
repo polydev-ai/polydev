@@ -12,19 +12,38 @@ from typing import Dict, List, Set
 import json
 
 def extract_current_models(provider: str) -> Set[str]:
-    """Extract current models for a provider from providers.ts"""
+    """Extract current models for a provider from providers.ts with proper brace counting"""
     with open('src/types/providers.ts', 'r') as f:
         content = f.read()
     
     # Find the provider section
-    pattern = f'"{provider}":\s*\{{.*?supportedModels:\s*\{{(.*?)\}}'
-    match = re.search(pattern, content, re.DOTALL)
-    
-    if not match:
+    provider_start = content.find(f'"{provider}": {{')
+    if provider_start == -1:
         print(f"❌ Could not find {provider} in providers.ts")
         return set()
     
-    models_section = match.group(1)
+    # Find supportedModels within provider section
+    models_start = content.find('supportedModels: {', provider_start)
+    if models_start == -1:
+        print(f"❌ Could not find supportedModels in {provider}")
+        return set()
+    
+    # Count braces to find the correct closing brace for supportedModels
+    brace_count = 1
+    i = models_start + len('supportedModels: {')
+    models_end = i
+    
+    while i < len(content) and brace_count > 0:
+        if content[i] == '{':
+            brace_count += 1
+        elif content[i] == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                models_end = i
+                break
+        i += 1
+    
+    models_section = content[models_start + len('supportedModels: {'):models_end]
     
     # Extract model names
     model_names = re.findall(r'"([^"]+)":\s*\{', models_section)
