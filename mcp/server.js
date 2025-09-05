@@ -6,9 +6,9 @@ const path = require('path');
 class MCPServer {
   constructor() {
     this.capabilities = {
-      tools: true,
-      resources: false,
-      prompts: false
+      tools: {},
+      resources: {},
+      prompts: {}
     };
     
     this.tools = new Map();
@@ -158,14 +158,26 @@ class MCPServer {
       throw new Error('prompt is required and must be a string');
     }
 
-    if (!args.user_token || typeof args.user_token !== 'string') {
-      throw new Error('user_token is required - generate one at https://polydev.ai/dashboard/mcp-tools');
+    // Support both parameter token (Claude Code) and environment token (Cline)
+    const userToken = args.user_token || process.env.POLYDEV_USER_TOKEN;
+    
+    // Debug logging
+    console.error(`[Polydev MCP] Debug - args.user_token: ${args.user_token ? 'present' : 'missing'}`);
+    console.error(`[Polydev MCP] Debug - process.env.POLYDEV_USER_TOKEN: ${process.env.POLYDEV_USER_TOKEN ? 'present' : 'missing'}`);
+    console.error(`[Polydev MCP] Debug - final userToken: ${userToken ? 'present' : 'missing'}`);
+    
+    if (!userToken || typeof userToken !== 'string') {
+      throw new Error('user_token is required. Either:\n' +
+        '1. Pass user_token parameter, or\n' +
+        '2. Set POLYDEV_USER_TOKEN environment variable\n' +
+        'Generate token at: https://polydev.ai/dashboard/mcp-tools');
     }
 
     // Build request payload with defaults
     const payload = {
       prompt: args.prompt,
-      user_token: args.user_token,
+      user_token: userToken,
+      mode: 'managed',
       models: args.models || ['gpt-4', 'claude-3-sonnet', 'gemini-pro'],
       project_memory: args.project_memory || 'none',
       max_messages: args.max_messages || 10,

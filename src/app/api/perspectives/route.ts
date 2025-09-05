@@ -381,6 +381,7 @@ export async function POST(request: NextRequest) {
       // Managed mode - validate MCP token if provided
       if (user_token) {
         const tokenData = await validateUserToken(user_token)
+        
         if (!tokenData) {
           return NextResponse.json({ 
             error: 'Invalid token. Generate a new one at: https://polydev.ai/dashboard/mcp-tools' 
@@ -407,9 +408,21 @@ export async function POST(request: NextRequest) {
       // If no user_token is provided in managed mode, skip message limits 
       // (this is for Polydev's own managed API keys without user restrictions)
       
-      // Use Polydev managed API keys
-      const managedKeys = await getPolynDevManagedKeys()
-      availableKeys = managedKeys
+      // Get user's API keys from database for managed mode (if user is identified)
+      if (userId) {
+        const userKeys = await getUserApiKeys(userId)
+        
+        // Convert user keys to simple format for compatibility
+        Object.keys(userKeys).forEach(provider => {
+          availableKeys[provider] = userKeys[provider].key
+        })
+      }
+      
+      // Fallback to Polydev managed keys if user has no keys configured
+      if (Object.keys(availableKeys).length === 0) {
+        const managedKeys = await getPolynDevManagedKeys()
+        availableKeys = managedKeys
+      }
     }
 
     // Build the enhanced prompt with project context
