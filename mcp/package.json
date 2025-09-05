@@ -1,14 +1,14 @@
 {
-  "name": "polydev-perspectives-mcp",
+  "name": "@polydev/perspectives-mcp",
   "version": "1.0.0",
-  "description": "MCP server for Polydev AI perspectives tool",
+  "description": "Get diverse AI perspectives from multiple LLMs via MCP - supports Cline, Claude Code, and other MCP clients",
   "main": "server.js",
   "bin": {
-    "polydev-perspectives-mcp": "./server.js"
+    "polydev-mcp": "./server.js"
   },
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"No tests specified\" && exit 0"
+    "test": "node server.js --help"
   },
   "keywords": [
     "mcp",
@@ -16,18 +16,31 @@
     "ai",
     "llm",
     "perspectives",
-    "multi-model"
+    "multi-model",
+    "cline",
+    "claude",
+    "openai",
+    "anthropic",
+    "gemini",
+    "polydev"
   ],
-  "author": "Polydev AI",
+  "author": "Polydev AI <support@polydev.ai>",
   "license": "MIT",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=16.0.0"
   },
-  "dependencies": {
-    "node-fetch": "^3.3.0"
-  },
+  "files": [
+    "server.js",
+    "manifest.json",
+    "README.md"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/polydev-ai/perspectives-mcp"
+    "url": "https://github.com/backspacevenkat/polydev-website.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://polydev.ai/docs/mcp-integration",
+  "bugs": {
+    "url": "https://github.com/backspacevenkat/polydev-website/issues"
   }
 }

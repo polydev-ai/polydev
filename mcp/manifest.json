@@ -96,7 +96,7 @@
             }
           }
         },
-        "required": ["prompt", "user_token"]
+        "required": ["prompt"]
       },
       "outputSchema": {
         "type": "object",
@@ -199,7 +199,7 @@
     }
   ],
   "configuration": {
-    "server_url": "https://polydev.ai/api/perspectives",
+    "server_url": "https://www.polydev.ai/api/perspectives",
     "dashboard_url": "https://polydev.ai/dashboard/mcp-tools",
     "auth_required": true,
     "rate_limits": {

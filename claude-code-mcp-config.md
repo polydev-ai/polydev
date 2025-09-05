@@ -20,6 +20,8 @@ Your Claude Code configuration should use **HTTP transport**, not curl commands:
     }
   }
 }
+
+
 ```
 
 ### ❌ Incorrect (Curl Commands)

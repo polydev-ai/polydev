@@ -173,6 +173,8 @@ function buildRequestConfig(
     case 'perplexity':
     case 'deepseek':
     case 'mistral':
+    case 'xai':
+    case 'x-ai':
       // OpenAI-compatible format
       return {
         url: `${baseUrl}/chat/completions`,
@@ -262,6 +264,8 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
     case 'perplexity':
     case 'deepseek':
     case 'mistral':
+    case 'xai':
+    case 'x-ai':
       return {
         content: data.choices?.[0]?.message?.content || 'No response',
         tokens_used: data.usage?.total_tokens || 0
@@ -722,8 +726,8 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
     return { success: true, user: { id: tokenData.user_id } }
   }
 
-  // Check if it's an MCP token (starts with pd_)
-  if (token.startsWith('pd_')) {
+  // Check if it's an MCP token (starts with pd_ or legacy poly_)
+  if (token.startsWith('pd_') || token.startsWith('poly_')) {
     const tokenHash = createHash('sha256').update(token).digest('hex')
     
     const { data: tokenData, error } = await supabase
@@ -746,7 +750,7 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
     return { success: true, user: { id: tokenData.user_id } }
   }
 
-  return { success: false, error: 'Unsupported token format. Use OAuth tokens (polydev_) or MCP tokens (pd_)' }
+  return { success: false, error: 'Unsupported token format. Use OAuth tokens (polydev_) or MCP tokens (pd_/poly_)' }
 }
 
 // Legacy function for backward compatibility (keeping existing behavior)
@@ -1729,7 +1733,39 @@ function determineProvider(model: string, configMap: Map<string, ProviderConfig>
   }
   
   if (modelLower.includes('deepseek')) {
-    return configMap.get('deepseek') || null
+    return configMap.get('deepseek') || {
+      id: 'deepseek',
+      provider_name: 'deepseek',
+      display_name: 'DeepSeek',
+      base_url: 'https://api.deepseek.com/v1',
+      api_key_required: true,
+      supports_streaming: true,
+      supports_tools: false,
+      supports_images: false,
+      supports_prompt_cache: false,
+      authentication_method: 'api_key',
+      models: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  }
+  
+  if (modelLower.includes('grok')) {
+    return configMap.get('xai') || configMap.get('x-ai') || {
+      id: 'xai',
+      provider_name: 'xai',
+      display_name: 'xAI',
+      base_url: 'https://api.x.ai/v1',
+      api_key_required: true,
+      supports_streaming: true,
+      supports_tools: false,
+      supports_images: false,
+      supports_prompt_cache: false,
+      authentication_method: 'api_key',
+      models: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
   }
   
   if (modelLower.includes('sonar')) {
