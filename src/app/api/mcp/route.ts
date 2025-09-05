@@ -999,7 +999,21 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     models.map(async (model: string) => {
       const startTime = Date.now()
       try {
-        // Determine provider from model name or use intelligent matching
+        // Clean model name by removing provider prefixes that cause API errors
+        let cleanModel = model
+        if (model.includes('/')) {
+          const parts = model.split('/')
+          const providerPrefix = parts[0].toLowerCase()
+          const modelName = parts.slice(1).join('/')
+          
+          // Only strip known problematic prefixes, keep others for OpenRouter compatibility
+          if (['x-ai', 'xai', 'google'].includes(providerPrefix)) {
+            cleanModel = modelName
+            console.log(`[MCP] Stripped provider prefix: ${model} → ${cleanModel}`)
+          }
+        }
+        
+        // Determine provider from original model name or use intelligent matching
         const provider = determineProvider(model, configMap)
         if (!provider) {
           return {
@@ -1201,9 +1215,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           }
         }
 
-        // Use the unified API caller with provider-specific preferences
+        // Use the unified API caller with provider-specific preferences and cleaned model name
         const response = await callLLMAPI(
-          model, 
+          cleanModel, 
           contextualPrompt, 
           decryptedKey, 
           provider,
@@ -1229,7 +1243,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             p_user_id: user.id,
             p_session_type: sessionType,
             p_tool_name: 'polydev_mcp',
-            p_model_name: model,
+            p_model_name: cleanModel,
             p_provider: provider.display_name,
             p_message_count: 1,
             p_input_tokens: actualInputTokens,
@@ -1277,7 +1291,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             .from('model_usage')
             .insert({
               user_id: user.id,
-              model_name: model,
+              model_name: cleanModel,
               provider: provider.display_name,
               input_tokens: actualInputTokens,
               output_tokens: actualOutputTokens,
@@ -1304,7 +1318,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
         const latency = Date.now() - startTime
         return {
-          model,
+          model: cleanModel, // Use clean model name in response
+          originalModel: model, // Keep original for debugging
           provider: provider.display_name,
           content: response.content,
           tokens_used: response.tokens_used,
@@ -1313,8 +1328,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       } catch (error) {
         const latency = Date.now() - startTime
         return {
-          model,
-          error: `Failed to get response from ${model}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          model: cleanModel || model,
+          originalModel: model,
+          error: `Failed to get response from ${cleanModel || model}: ${error instanceof Error ? error.message : 'Unknown error'}`,
           latency_ms: latency
         }
       }
