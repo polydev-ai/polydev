@@ -1690,7 +1690,7 @@ function getDefaultModelForProvider(provider: string): string {
     'anthropic': 'claude-3-5-sonnet-20241022',
     'gemini': 'gemini-2.0-flash-exp',
     'google': 'gemini-2.0-flash-exp',
-    'x-ai': 'grok-2-latest', // Updated to working xAI model
+    'x-ai': 'grok-4-0709', // Updated to latest xAI Grok 4 model
     'openrouter': 'meta-llama/llama-3.2-90b-vision-instruct',
     'groq': 'llama-3.1-70b-versatile',
     'perplexity': 'llama-3.1-sonar-large-128k-online',

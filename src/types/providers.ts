@@ -2417,7 +2417,7 @@ export const CLINE_PROVIDERS: Record<ApiProvider, ProviderConfig> = {
     supportsVision: true,
     supportsReasoning: true,
     supportsPromptCaching: false,
-    defaultModel: "grok-4-0709",
+    defaultModel: "grok-2-latest",
     modelCount: 17,
     supportedModels: {
       "grok-4-0709": {
