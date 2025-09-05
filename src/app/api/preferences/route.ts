@@ -42,7 +42,7 @@ export async function GET() {
             openai: 'gpt-4o',
             anthropic: 'claude-3-5-sonnet-20241022',
             google: 'gemini-2.0-flash-exp',
-            'x-ai': 'grok-beta'
+            'x-ai': 'grok-2-latest'
           },
           mcp_settings: {
             default_temperature: 0.7,
