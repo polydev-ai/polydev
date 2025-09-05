@@ -151,7 +151,7 @@ class MCPServer {
   }
 
   async callPerspectivesAPI(args) {
-    const serverUrl = this.manifest.configuration?.server_url || 'https://polydev.ai/api/perspectives';
+    const serverUrl = this.manifest.configuration?.server_url || 'https://www.polydev.ai/api/mcp';
     
     // Validate required arguments
     if (!args.prompt || typeof args.prompt !== 'string') {
@@ -173,18 +173,22 @@ class MCPServer {
         'Generate token at: https://polydev.ai/dashboard/mcp-tools');
     }
 
-    // Build request payload with defaults
+    // Build request payload - let /api/mcp endpoint use user preferences when models not specified
     const payload = {
       prompt: args.prompt,
       user_token: userToken,
       mode: 'managed',
-      models: args.models || ['gpt-4', 'claude-3-sonnet', 'gemini-pro'],
       project_memory: args.project_memory || 'none',
       max_messages: args.max_messages || 10,
       temperature: args.temperature || 0.7,
       max_tokens: args.max_tokens || 2000,
       project_context: args.project_context || {}
     };
+    
+    // Only include models if explicitly provided, otherwise let API use user preferences
+    if (args.models) {
+      payload.models = args.models;
+    }
 
     // Add project context if project_memory is enabled
     if (payload.project_memory !== 'none' && !payload.project_context.root_path) {
@@ -197,16 +201,33 @@ class MCPServer {
     }
 
     console.error(`[Polydev MCP] Getting perspectives for: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`);
-    console.error(`[Polydev MCP] Models: ${payload.models.join(', ')}`);
+    console.error(`[Polydev MCP] Models: ${payload.models ? payload.models.join(', ') : 'using user preferences'}`);
     console.error(`[Polydev MCP] Project memory: ${payload.project_memory}`);
 
     const response = await fetch(serverUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userToken}`,
         'User-Agent': 'polydev-perspectives-mcp/1.0.0'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: {
+          name: 'get_perspectives',
+          arguments: {
+            prompt: args.prompt,
+            models: args.models,
+            temperature: args.temperature || 0.7,
+            max_tokens: args.max_tokens || 2000,
+            project_memory: args.project_memory || 'none',
+            max_messages: args.max_messages || 10,
+            project_context: args.project_context || {}
+          }
+        },
+        id: 1
+      })
     });
 
     if (!response.ok) {
@@ -228,12 +249,27 @@ class MCPServer {
     }
 
     const result = await response.json();
-    console.error(`[Polydev MCP] Got ${result.responses?.length || 0} responses in ${result.total_latency_ms}ms`);
     
+    // Handle MCP JSON-RPC response format
+    if (result.result && result.result.content && result.result.content[0]) {
+      const content = result.result.content[0].text;
+      console.error(`[Polydev MCP] Got MCP response successfully`);
+      return { content };
+    } else if (result.error) {
+      throw new Error(result.error.message || 'MCP API error');
+    }
+    
+    console.error(`[Polydev MCP] Got ${result.responses?.length || 0} responses in ${result.total_latency_ms}ms`);
     return result;
   }
 
   formatPerspectivesResponse(result) {
+    // Handle MCP response format (already formatted text)
+    if (result.content) {
+      return result.content;
+    }
+    
+    // Handle legacy response format
     if (!result.responses || result.responses.length === 0) {
       return 'No perspectives received from models.';
     }

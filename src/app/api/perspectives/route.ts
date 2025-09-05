@@ -40,6 +40,32 @@ const DEFAULT_MODELS = [
   'gemini-pro'
 ]
 
+async function getUserPreferences(userId: string) {
+  // Use service role for backend operations
+  let supabase = await createClient()
+  
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your_service_role_key') {
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+    supabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+  
+  const { data: preferences, error } = await supabase
+    .from('user_preferences')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+  
+  if (error || !preferences) {
+    console.error('Error getting user preferences:', error)
+    return null
+  }
+  
+  return preferences
+}
+
 async function callOpenAI(prompt: string, apiKey: string, model: string = 'gpt-4', options: any = {}) {
   const startTime = Date.now()
   
@@ -320,7 +346,7 @@ export async function POST(request: NextRequest) {
     const { 
       prompt,
       user_token,
-      models = DEFAULT_MODELS, 
+      models, 
       mode = 'user_keys',
       project_memory = 'none',
       max_messages = 10,
@@ -425,6 +451,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Determine which models to use - user preferences or provided models or defaults
+    let modelsToUse = models
+    if (!modelsToUse && userId) {
+      // Fetch user preferences to get their preferred models
+      const userPreferences = await getUserPreferences(userId)
+      if (userPreferences?.model_preferences) {
+        // Extract models from user preferences
+        modelsToUse = Object.values(userPreferences.model_preferences).filter(Boolean) as string[]
+      }
+    }
+    
+    // Fallback to default models if still no models specified
+    if (!modelsToUse || modelsToUse.length === 0) {
+      modelsToUse = DEFAULT_MODELS
+    }
+
     // Build the enhanced prompt with project context
     let enhancedPrompt = prompt
     if (project_memory !== 'none' && project_context.root_path) {
@@ -435,7 +477,7 @@ export async function POST(request: NextRequest) {
     // Fan out to multiple models in parallel
     const modelCalls: Promise<ModelResponse>[] = []
     
-    models.forEach(model => {
+    modelsToUse.forEach(model => {
       // OpenAI models
       if (model.startsWith('gpt-') && availableKeys.openai) {
         modelCalls.push(callOpenAI(enhancedPrompt, availableKeys.openai, model, { temperature, max_tokens }))
@@ -447,6 +489,14 @@ export async function POST(request: NextRequest) {
       // Google models
       else if (model.startsWith('gemini-') && availableKeys.google) {
         modelCalls.push(callGemini(enhancedPrompt, availableKeys.google, model, { temperature, max_tokens }))
+      }
+      // xAI models (OpenAI-compatible)
+      else if ((model.startsWith('grok-') || model.includes('grok')) && availableKeys.xai) {
+        modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.xai, model, 'https://api.x.ai/v1/', { temperature, max_tokens }))
+      }
+      // DeepSeek models (OpenAI-compatible)
+      else if ((model.startsWith('deepseek-') || model.includes('deep-seek') || model.includes('deepseek')) && availableKeys.deepseek) {
+        modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.deepseek, model, 'https://api.deepseek.com/v1/', { temperature, max_tokens }))
       }
       // Groq models (OpenAI-compatible)
       else if ((model.includes('llama') || model.includes('mixtral') || model.includes('gemma')) && availableKeys.groq) {

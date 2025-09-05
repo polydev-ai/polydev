@@ -726,8 +726,8 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
     return { success: true, user: { id: tokenData.user_id } }
   }
 
-  // Check if it's an MCP token (starts with pd_)
-  if (token.startsWith('pd_')) {
+  // Check if it's an MCP token (starts with pd_ or legacy poly_)
+  if (token.startsWith('pd_') || token.startsWith('poly_')) {
     const tokenHash = createHash('sha256').update(token).digest('hex')
     
     const { data: tokenData, error } = await supabase
@@ -750,7 +750,7 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
     return { success: true, user: { id: tokenData.user_id } }
   }
 
-  return { success: false, error: 'Unsupported token format. Use OAuth tokens (polydev_) or MCP tokens (pd_)' }
+  return { success: false, error: 'Unsupported token format. Use OAuth tokens (polydev_) or MCP tokens (pd_/poly_)' }
 }
 
 // Legacy function for backward compatibility (keeping existing behavior)
