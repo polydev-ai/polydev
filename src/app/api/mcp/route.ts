@@ -951,16 +951,23 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
   console.log(`[MCP] User preferences:`, preferences)
 
-  // Use models from args, or user preferences, or fallback defaults
+  // Use models from args, or user preferences with new structure, or fallback defaults
   const models = args.models || 
-    (preferences?.preferred_providers?.length > 0 
-      ? preferences.preferred_providers.map((provider: string) => {
-          const modelPref = preferences?.model_preferences?.[provider]
-          return modelPref || getDefaultModelForProvider(provider)
-        })
-      : (preferences?.default_model 
-          ? [preferences.default_model]  // Use user's default model (GPT-5)
-          : ['gpt-5-2025-08-07']        // System fallback to GPT-5
+    (preferences?.model_preferences && Object.keys(preferences.model_preferences).length > 0
+      ? getModelsFromPreferences(preferences.model_preferences)
+      : (preferences?.preferred_providers?.length > 0 
+          ? preferences.preferred_providers.map((provider: string) => {
+              const modelPref = preferences?.model_preferences?.[provider]
+              // Handle both old and new preference structures
+              if (typeof modelPref === 'object' && modelPref.models && Array.isArray(modelPref.models)) {
+                return modelPref.models[0] || getDefaultModelForProvider(provider)
+              }
+              return modelPref || getDefaultModelForProvider(provider)
+            })
+          : (preferences?.default_model 
+              ? [preferences.default_model]  // Use user's default model (GPT-5)
+              : ['gpt-5-2025-08-07']        // System fallback to GPT-5
+            )
         )
     )
 
@@ -1694,7 +1701,7 @@ function getDefaultModelForProvider(provider: string): string {
     'anthropic': 'claude-3-5-sonnet-20241022',
     'gemini': 'gemini-2.0-flash-exp',
     'google': 'gemini-2.0-flash-exp',
-    'x-ai': 'grok-4', // Latest xAI Grok 4 model
+    'x-ai': 'grok-4-0709', // Latest xAI Grok 4 model
     'openrouter': 'meta-llama/llama-3.2-90b-vision-instruct',
     'groq': 'llama-3.1-70b-versatile',
     'perplexity': 'llama-3.1-sonar-large-128k-online',
@@ -1702,6 +1709,25 @@ function getDefaultModelForProvider(provider: string): string {
     'mistral': 'mistral-large-latest'
   }
   return defaults[provider] || 'gpt-4o'
+}
+
+// Get ordered models from new preference structure
+function getModelsFromPreferences(modelPreferences: any): string[] {
+  if (!modelPreferences || typeof modelPreferences !== 'object') {
+    return []
+  }
+  
+  // Convert to array and sort by order
+  const sortedProviders = Object.entries(modelPreferences)
+    .filter(([_, pref]: [string, any]) => pref && typeof pref === 'object' && Array.isArray(pref.models))
+    .sort(([_, a]: [string, any], [__, b]: [string, any]) => (a.order || 0) - (b.order || 0))
+  
+  // Extract first model from each provider in order
+  const models = sortedProviders
+    .map(([provider, pref]: [string, any]) => pref.models[0] || getDefaultModelForProvider(provider))
+    .filter(Boolean)
+  
+  return models.length > 0 ? models : []
 }
 
 // Intelligent provider determination based on model name
@@ -1770,10 +1796,6 @@ function determineProvider(model: string, configMap: Map<string, ProviderConfig>
   
   if (modelLower.includes('sonar')) {
     return configMap.get('perplexity') || null
-  }
-  
-  if (modelLower.includes('grok')) {
-    return configMap.get('xai') || configMap.get('x-ai') || null
   }
   
   // Default fallback to first available OpenAI-compatible provider
