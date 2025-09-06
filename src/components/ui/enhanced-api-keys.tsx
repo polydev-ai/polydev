@@ -393,7 +393,7 @@ export default function EnhancedApiKeysPage() {
                                             default_model: key.default_model || '',
                                             is_preferred: key.is_preferred || false,
                                             additional_models: key.additional_models || [],
-                                            budget_limit: key.budget_limit
+                                            budget_limit: key.budget_limit ?? null
                                           })
                                           setShowAddForm(true)
                                         }}
