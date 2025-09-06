@@ -39,10 +39,22 @@ export async function GET() {
           preferred_providers: ['openai', 'anthropic', 'google'],
           usage_preference: 'auto', // auto, api_keys, credits, cli
           model_preferences: {
-            openai: 'gpt-4o',
-            anthropic: 'claude-3-5-sonnet-20241022',
-            google: 'gemini-2.0-flash-exp',
-            'x-ai': 'grok-2-latest'
+            openai: {
+              models: ['gpt-4o'],
+              order: 1
+            },
+            anthropic: {
+              models: ['claude-3-5-sonnet-20241022'],
+              order: 2
+            },
+            google: {
+              models: ['gemini-2.0-flash-exp'],
+              order: 3
+            },
+            'x-ai': {
+              models: ['grok-2-latest'],
+              order: 4
+            }
           },
           mcp_settings: {
             default_temperature: 0.7,
