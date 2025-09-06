@@ -1728,8 +1728,8 @@ function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): s
         // Use the model from preferences, or the default model from API key, or provider default
         let selectedModel: string | null = null
         
-        if (pref.models && Array.isArray(pref.models) && pref.models.length > 0) {
-          selectedModel = pref.models[0]
+        if (pref && typeof pref === 'object' && (pref as any).models && Array.isArray((pref as any).models) && (pref as any).models.length > 0) {
+          selectedModel = (pref as any).models[0]
         } else if (matchingApiKey.default_model) {
           selectedModel = matchingApiKey.default_model
         } else {
