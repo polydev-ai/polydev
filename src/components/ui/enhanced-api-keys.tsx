@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { createClient } from '../../app/utils/supabase/client'
-import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, GripVertical, Star, StarOff, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight } from 'lucide-react'
 import { CLINE_PROVIDERS, ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 
 interface ApiKey {
   id: string
@@ -18,7 +17,6 @@ interface ApiKey {
   additional_models?: string[]
   is_preferred?: boolean
   budget_limit?: number
-  display_order?: number
   created_at: string
   last_used_at?: string
 }
@@ -65,12 +63,11 @@ export default function EnhancedApiKeysPage() {
     try {
       setLoading(true)
       
-      // Fetch API keys ordered by display_order
+      // Fetch API keys
       const { data: keysData, error: keysError } = await supabase
         .from('user_api_keys')
         .select('*')
         .eq('user_id', user.id)
-        .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
 
       if (keysError) throw keysError
@@ -119,48 +116,6 @@ export default function EnhancedApiKeysPage() {
     }
   }
 
-  const handleDragEnd = async (result: any) => {
-    if (!result.destination) return
-
-    const startIndex = result.source.index
-    const endIndex = result.destination.index
-
-    if (startIndex === endIndex) return
-
-    // Create a copy of the API keys array
-    const newApiKeys = Array.from(apiKeys)
-    const [reorderedItem] = newApiKeys.splice(startIndex, 1)
-    newApiKeys.splice(endIndex, 0, reorderedItem)
-
-    // Update the display order for each key
-    const reorderedKeys = newApiKeys.map((key, index) => ({
-      id: key.id,
-      display_order: index
-    }))
-
-    // Optimistically update the UI
-    setApiKeys(newApiKeys)
-
-    try {
-      // Send the reorder request to the API
-      const response = await fetch('/api/api-keys/reorder', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ reorderedKeys })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update order')
-      }
-    } catch (error) {
-      // Revert the optimistic update on failure
-      setApiKeys(apiKeys)
-      setError('Failed to update order')
-    }
-  }
 
   const toggleProviderExpanded = (provider: string) => {
     setExpandedProviders(prev => ({
@@ -305,124 +260,108 @@ export default function EnhancedApiKeysPage() {
         </div>
       )}
 
-      {/* API Keys Section with Drag & Drop Ordering */}
+      {/* API Keys Section */}
       {apiKeys.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
             <Settings className="w-5 h-5" />
-            <span>API Keys (Drag to Reorder)</span>
+            <span>API Keys</span>
           </h2>
           
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="api-keys">
-              {(provided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
-                  {apiKeys.map((key, index) => {
-                    const providerConfig = CLINE_PROVIDERS[key.provider as keyof typeof CLINE_PROVIDERS]
-                    return (
-                      <Draggable key={key.id} draggableId={key.id} index={index}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            className={`border rounded-lg p-4 ${snapshot.isDragging ? 'shadow-lg' : ''} bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600`}
+          <div className="space-y-3">
+            {apiKeys.map((key, index) => {
+              const providerConfig = CLINE_PROVIDERS[key.provider as keyof typeof CLINE_PROVIDERS]
+              return (
+                <div
+                  key={key.id}
+                  className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm font-medium">
+                            #{index + 1}
+                          </span>
+                          <span className="font-medium text-gray-900 dark:text-white capitalize">
+                            {providerConfig?.name || key.provider}
+                          </span>
+                          {key.is_preferred && (
+                            <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                          )}
+                          <button
+                            onClick={() => toggleProviderExpanded(key.id)}
+                            className="text-gray-400 hover:text-gray-600"
                           >
-                            <div className="flex items-center space-x-3">
-                              <div {...provided.dragHandleProps} className="text-gray-400 hover:text-gray-600">
-                                <GripVertical className="w-5 h-5" />
-                              </div>
-                              
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3">
-                                    <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm font-medium">
-                                      #{index + 1}
+                            {expandedProviders[key.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {key.budget_limit && (
+                            <span className="text-sm text-green-600 dark:text-green-400">
+                              ${key.budget_limit}/month
+                            </span>
+                          )}
+                          <span className="text-sm text-gray-500">
+                            {key.key_preview}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {expandedProviders[key.id] && (
+                        <div className="mt-3 space-y-2 pl-8">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>API URL: <span className="font-mono text-xs">{key.api_base || providerConfig?.baseUrl}</span></div>
+                            <div>Default Model: <span className="font-mono text-xs">{key.default_model}</span></div>
+                            {key.additional_models && key.additional_models.length > 0 && (
+                              <div className="md:col-span-2">
+                                <span>Additional Models: </span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {key.additional_models.map(model => (
+                                    <span key={model} className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs">
+                                      {model}
                                     </span>
-                                    <span className="font-medium text-gray-900 dark:text-white capitalize">
-                                      {providerConfig?.name || key.provider}
-                                    </span>
-                                    {key.is_preferred && (
-                                      <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                                    )}
-                                    <button
-                                      onClick={() => toggleProviderExpanded(key.id)}
-                                      className="text-gray-400 hover:text-gray-600"
-                                    >
-                                      {expandedProviders[key.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                    </button>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    {key.budget_limit && (
-                                      <span className="text-sm text-green-600 dark:text-green-400">
-                                        ${key.budget_limit}/month
-                                      </span>
-                                    )}
-                                    <span className="text-sm text-gray-500">
-                                      {key.key_preview}
-                                    </span>
-                                  </div>
+                                  ))}
                                 </div>
-                                
-                                {expandedProviders[key.id] && (
-                                  <div className="mt-3 space-y-2 pl-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                      <div>API URL: <span className="font-mono text-xs">{key.api_base || providerConfig?.baseUrl}</span></div>
-                                      <div>Default Model: <span className="font-mono text-xs">{key.default_model}</span></div>
-                                      {key.additional_models && key.additional_models.length > 0 && (
-                                        <div className="md:col-span-2">
-                                          <span>Additional Models: </span>
-                                          <div className="flex flex-wrap gap-1 mt-1">
-                                            {key.additional_models.map(model => (
-                                              <span key={model} className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs">
-                                                {model}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex space-x-2 pt-2">
-                                      <button 
-                                        className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
-                                        onClick={() => {
-                                          setEditingKey(key)
-                                          setFormData({
-                                            provider: key.provider,
-                                            api_key: '', // Don't pre-fill for security
-                                            api_base: key.api_base || '',
-                                            default_model: key.default_model || '',
-                                            is_preferred: key.is_preferred || false,
-                                            additional_models: key.additional_models || [],
-                                            budget_limit: key.budget_limit ?? null
-                                          })
-                                          setShowAddForm(true)
-                                        }}
-                                      >
-                                        <Edit3 className="w-3 h-3" />
-                                        <span>Edit</span>
-                                      </button>
-                                      <button 
-                                        className="text-red-600 hover:text-red-800 text-sm flex items-center space-x-1"
-                                        onClick={() => deleteApiKey(key.id)}
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                        <span>Delete</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
-                            </div>
+                            )}
                           </div>
-                        )}
-                      </Draggable>
-                    )
-                  })}
-                  {provided.placeholder}
+                          <div className="flex space-x-2 pt-2">
+                            <button 
+                              className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
+                              onClick={() => {
+                                setEditingKey(key)
+                                setFormData({
+                                  provider: key.provider,
+                                  api_key: '', // Don't pre-fill for security
+                                  api_base: key.api_base || '',
+                                  default_model: key.default_model || '',
+                                  is_preferred: key.is_preferred || false,
+                                  additional_models: key.additional_models || [],
+                                  budget_limit: key.budget_limit ?? null
+                                })
+                                setShowAddForm(true)
+                              }}
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                            <button 
+                              className="text-red-600 hover:text-red-800 text-sm flex items-center space-x-1"
+                              onClick={() => deleteApiKey(key.id)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </Droppable>
-          </DragDropContext>
+              )
+            })}
+          </div>
         </div>
       )}
 
