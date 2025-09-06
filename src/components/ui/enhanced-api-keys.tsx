@@ -397,6 +397,17 @@ export default function EnhancedApiKeysPage() {
                           {showApiKey[key.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
+                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                        {key.api_base && (
+                          <div>API URL: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">{key.api_base}</code></div>
+                        )}
+                        {!key.api_base && CLINE_PROVIDERS[key.provider as keyof typeof CLINE_PROVIDERS] && (
+                          <div>API URL: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded text-xs">{CLINE_PROVIDERS[key.provider as keyof typeof CLINE_PROVIDERS].baseUrl}</code></div>
+                        )}
+                        {key.default_model && (
+                          <div>Default Model: <span className="font-mono text-xs">{key.default_model}</span></div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -461,6 +472,55 @@ export default function EnhancedApiKeysPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Provider Information */}
+              {formData.provider && CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS] && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      {PROVIDER_ICONS[formData.provider as keyof typeof PROVIDER_ICONS] && (
+                        <img 
+                          src={PROVIDER_ICONS[formData.provider as keyof typeof PROVIDER_ICONS]} 
+                          alt={CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].name}
+                          className="w-6 h-6"
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                        {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].name}
+                      </h4>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].description}
+                      </p>
+                      <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                        <div>API URL: <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].baseUrl}</code></div>
+                        <div className="mt-1">Models: {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].modelCount} available</div>
+                        <div className="mt-1">Auth: {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].authType === 'api_key' ? 'API Key Required' : CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].authType}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* API Base URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  API Base URL
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="url"
+                    value={formData.api_base || CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.baseUrl || ''}
+                    onChange={(e) => setFormData(prev => ({...prev, api_base: e.target.value}))}
+                    placeholder={CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.baseUrl || 'Enter custom API base URL'}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Default: {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.baseUrl || 'No default URL'}
+                  </p>
+                </div>
               </div>
 
               {/* API Key */}
