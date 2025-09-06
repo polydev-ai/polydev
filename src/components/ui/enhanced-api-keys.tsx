@@ -73,6 +73,7 @@ export default function EnhancedApiKeysPage() {
         .from('user_api_keys')
         .select('*')
         .eq('user_id', user.id)
+        .order('display_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false })
 
       if (keysError) throw keysError
