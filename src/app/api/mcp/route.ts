@@ -951,25 +951,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
   console.log(`[MCP] User preferences:`, preferences)
 
-  // Use models from args, or user preferences with new structure, or fallback defaults
-  const models = args.models || 
-    (preferences?.model_preferences && Object.keys(preferences.model_preferences).length > 0
-      ? getModelsFromPreferences(preferences.model_preferences)
-      : (preferences?.preferred_providers?.length > 0 
-          ? preferences.preferred_providers.map((provider: string) => {
-              const modelPref = preferences?.model_preferences?.[provider]
-              // Handle both old and new preference structures
-              if (typeof modelPref === 'object' && modelPref.models && Array.isArray(modelPref.models)) {
-                return modelPref.models[0] || getDefaultModelForProvider(provider)
-              }
-              return modelPref || getDefaultModelForProvider(provider)
-            })
-          : (preferences?.default_model 
-              ? [preferences.default_model]  // Use user's default model (GPT-5)
-              : ['gpt-5-2025-08-07']        // System fallback to GPT-5
-            )
-        )
-    )
+  // Use models from args, or get models from available API keys, or fallback defaults
+  const models = args.models || getModelsFromApiKeysAndPreferences(apiKeys, preferences) || ['gpt-5-2025-08-07']
 
   // Use temperature and max_tokens from args, or user preferences, or defaults
   const temperature = args.temperature ?? preferences?.default_temperature ?? 0.7
@@ -1037,19 +1020,20 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Find API key for this provider with fallback matching
         console.log(`[MCP] Looking for API key - Provider: ${provider.provider_name}/${provider.id}, Available keys: ${apiKeys?.map(k => k.provider).join(', ')}`)
         
-        // Enhanced provider matching to handle variations like openai <-> openai-native
+        // Enhanced provider matching using normalization
         const findApiKeyForProvider = (providerName: string) => {
+          const normalizedProviderName = normalizeProviderName(providerName)
+          const normalizedProviderId = normalizeProviderName(provider.id)
+          
           return apiKeys?.find(key => {
-            // Direct match
-            if (key.provider === providerName || key.provider === provider.id) return true
+            const normalizedKeyProvider = normalizeProviderName(key.provider)
             
-            // Handle OpenAI variations
-            if ((providerName === 'openai' && key.provider === 'openai-native') ||
-                (providerName === 'openai-native' && key.provider === 'openai')) return true
-                
-            // Handle Google/Gemini variations  
-            if ((providerName === 'google' && key.provider === 'gemini') ||
-                (providerName === 'gemini' && key.provider === 'google')) return true
+            // Try normalized matching first
+            if (normalizedKeyProvider === normalizedProviderName || 
+                normalizedKeyProvider === normalizedProviderId) return true
+            
+            // Direct match as fallback
+            if (key.provider === providerName || key.provider === provider.id) return true
                 
             return false
           })
@@ -1711,7 +1695,104 @@ function getDefaultModelForProvider(provider: string): string {
   return defaults[provider] || 'gpt-4o'
 }
 
-// Get ordered models from new preference structure
+// Get models from available API keys and user preferences
+function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): string[] {
+  if (!apiKeys || apiKeys.length === 0) {
+    console.log('[MCP] No API keys available, using system defaults')
+    return ['gpt-5-2025-08-07'] // System fallback
+  }
+  
+  console.log('[MCP] Getting models from API keys and preferences')
+  console.log('[MCP] Available API keys:', apiKeys.map(k => ({ provider: k.provider, default_model: k.default_model })))
+  console.log('[MCP] User preferences:', preferences?.model_preferences)
+  
+  const models: string[] = []
+  const usedProviders = new Set<string>()
+  
+  // First, try to use models from user preferences if they match available API keys
+  if (preferences?.model_preferences && typeof preferences.model_preferences === 'object') {
+    const sortedProviders = Object.entries(preferences.model_preferences)
+      .filter(([_, pref]: [string, any]) => pref && typeof pref === 'object')
+      .sort(([_, a]: [string, any], [__, b]: [string, any]) => (a.order || 0) - (b.order || 0))
+    
+    for (const [prefProvider, pref] of sortedProviders) {
+      // Normalize provider names for matching
+      const normalizedPrefProvider = normalizeProviderName(prefProvider)
+      
+      // Find matching API key with flexible provider name matching
+      const matchingApiKey = apiKeys.find(key => {
+        const normalizedKeyProvider = normalizeProviderName(key.provider)
+        return normalizedKeyProvider === normalizedPrefProvider
+      })
+      
+      if (matchingApiKey) {
+        // Use the model from preferences, or the default model from API key, or provider default
+        let selectedModel: string | null = null
+        
+        if (pref.models && Array.isArray(pref.models) && pref.models.length > 0) {
+          selectedModel = pref.models[0]
+        } else if (matchingApiKey.default_model) {
+          selectedModel = matchingApiKey.default_model
+        } else {
+          selectedModel = getDefaultModelForProvider(normalizedPrefProvider)
+        }
+        
+        if (selectedModel) {
+          models.push(selectedModel)
+          usedProviders.add(normalizedPrefProvider)
+          console.log(`[MCP] Added model from preferences: ${selectedModel} (${matchingApiKey.provider})`)
+        }
+      } else {
+        console.log(`[MCP] Preference provider ${prefProvider} not found in API keys`)
+      }
+    }
+  }
+  
+  // Then, add models from remaining API keys that weren't in preferences (max 3 total)
+  for (const apiKey of apiKeys) {
+    if (models.length >= 3) break // Limit to 3 models for performance
+    
+    const normalizedProvider = normalizeProviderName(apiKey.provider)
+    if (!usedProviders.has(normalizedProvider)) {
+      const selectedModel = apiKey.default_model || getDefaultModelForProvider(normalizedProvider)
+      if (selectedModel) {
+        models.push(selectedModel)
+        usedProviders.add(normalizedProvider)
+        console.log(`[MCP] Added model from available API key: ${selectedModel} (${apiKey.provider})`)
+      }
+    }
+  }
+  
+  // If still no models, use the first available API key's default model or provider default
+  if (models.length === 0 && apiKeys.length > 0) {
+    const firstApiKey = apiKeys[0]
+    const fallbackModel = firstApiKey.default_model || getDefaultModelForProvider(normalizeProviderName(firstApiKey.provider))
+    models.push(fallbackModel)
+    console.log(`[MCP] Used fallback model from first API key: ${fallbackModel} (${firstApiKey.provider})`)
+  }
+  
+  console.log(`[MCP] Final selected models: ${models.join(', ')}`)
+  return models
+}
+
+// Normalize provider names to handle variations like "xai" vs "x-ai", "openai" vs "openai-native"
+function normalizeProviderName(provider: string): string {
+  if (!provider) return ''
+  
+  const normalized = provider.toLowerCase().trim()
+  
+  // Handle common variations
+  const mappings: Record<string, string> = {
+    'x-ai': 'xai',
+    'openai-native': 'openai',
+    'google': 'gemini',
+    'gemini': 'google' // Allow both directions
+  }
+  
+  return mappings[normalized] || normalized
+}
+
+// Get ordered models from new preference structure (keeping for backward compatibility)
 function getModelsFromPreferences(modelPreferences: any): string[] {
   if (!modelPreferences || typeof modelPreferences !== 'object') {
     return []
