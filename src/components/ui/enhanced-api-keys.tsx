@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { createClient } from '../../app/utils/supabase/client'
-import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock } from 'lucide-react'
+import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw } from 'lucide-react'
 import { CLINE_PROVIDERS, ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
@@ -56,7 +56,7 @@ interface CLIProviderInfo {
 }
 
 export default function EnhancedApiKeysPage() {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, reAuthenticateForCLI, validateCLITools, cliValidationInProgress } = useAuth()
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
   const [providers, setProviders] = useState<ProviderConfig[]>([])
@@ -310,7 +310,13 @@ export default function EnhancedApiKeysPage() {
         c.provider === provider ? { ...c, status: 'checking' } : c
       ))
 
-      // Use the dedicated CLI status endpoint
+      // Trigger re-authentication flow for comprehensive CLI validation
+      if (reAuthenticateForCLI) {
+        await reAuthenticateForCLI()
+        return
+      }
+
+      // Fallback: Use serverless validation with user guidance
       const response = await fetch('/api/cli-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -663,6 +669,16 @@ export default function EnhancedApiKeysPage() {
               </h2>
             </div>
             <div className="flex items-center space-x-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  validateCLITools?.()
+                }}
+                disabled={cliValidationInProgress}
+                className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:opacity-50"
+              >
+                {cliValidationInProgress ? 'Validating...' : 'Check All'}
+              </button>
               <span className="text-sm text-gray-500">
                 {cliConfigs.filter(c => c.enabled && c.status === 'available').length} active
               </span>
@@ -672,6 +688,16 @@ export default function EnhancedApiKeysPage() {
           <p className="text-gray-600 dark:text-gray-300 mt-1">
             Use CLI tools for authentication-free access to Claude Code, Codex CLI, and Gemini CLI
           </p>
+          {cliValidationInProgress && (
+            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+              <div className="flex items-center space-x-2">
+                <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>Validating CLI tools...</strong> This may open a validation window for comprehensive status checking.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         
         {showCliSettings && (
@@ -860,11 +886,13 @@ export default function EnhancedApiKeysPage() {
                                 />
                                 <button
                                   onClick={() => checkCLIStatus(cliProvider.provider)}
-                                  className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500 flex items-center space-x-1"
-                                  disabled={status === 'checking'}
+                                  className="px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  disabled={status === 'checking' || cliValidationInProgress}
                                 >
                                   <Wrench className="w-3 h-3" />
-                                  <span>Check</span>
+                                  <span>
+                                    {cliValidationInProgress ? 'Validating...' : 'Check Status'}
+                                  </span>
                                 </button>
                               </div>
                             </div>
