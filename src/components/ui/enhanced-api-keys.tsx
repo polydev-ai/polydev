@@ -255,10 +255,9 @@ export default function EnhancedApiKeysPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tool_name: provider,
-          cli_path: cliPath,
-          enabled,
-          config_options: {}
+          provider: provider,
+          custom_path: cliPath,
+          enabled
         })
       })
 
