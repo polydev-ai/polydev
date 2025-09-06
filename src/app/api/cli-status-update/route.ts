@@ -18,23 +18,29 @@ interface CLIStatusUpdate {
 async function verifyMCPToken(token: string, userId: string): Promise<boolean> {
   try {
     const supabase = await createClient()
+    const { createHash } = require('crypto')
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    
     const { data: tokenData, error } = await supabase
-      .from('mcp_tokens')
-      .select('is_active, expires_at')
-      .eq('token', token)
+      .from('mcp_user_tokens')
+      .select('active, last_used_at')
+      .eq('token_hash', tokenHash)
       .eq('user_id', userId)
-      .eq('is_active', true)
+      .eq('active', true)
       .single()
 
     if (error || !tokenData) return false
 
-    // Check if token is expired
-    if (new Date(tokenData.expires_at) <= new Date()) {
-      return false
-    }
+    // Update last used timestamp
+    await supabase
+      .from('mcp_user_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('token_hash', tokenHash)
+      .eq('user_id', userId)
 
     return true
-  } catch {
+  } catch (error) {
+    console.error('Token verification error:', error)
     return false
   }
 }

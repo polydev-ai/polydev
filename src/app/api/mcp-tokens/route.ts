@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import { randomBytes } from 'crypto'
+import { randomBytes, createHash } from 'crypto'
 
 // Generate MCP authentication tokens for CLI status reporting
 export async function GET(request: NextRequest) {
@@ -12,41 +12,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user already has an MCP token
+    // Check if user already has an active MCP token
     const { data: existingToken, error: tokenError } = await supabase
-      .from('mcp_tokens')
-      .select('token, created_at, expires_at, is_active')
+      .from('mcp_user_tokens')
+      .select('token_preview, created_at, active')
       .eq('user_id', user.id)
-      .eq('is_active', true)
+      .eq('active', true)
       .single()
 
-    if (existingToken && new Date(existingToken.expires_at) > new Date()) {
+    if (existingToken && !tokenError) {
       return NextResponse.json({
-        token: existingToken.token,
-        expires_at: existingToken.expires_at,
+        token: existingToken.token_preview,
         created_at: existingToken.created_at
       })
     }
 
     // Generate new token
     const token = `mcp_${randomBytes(32).toString('hex')}`
-    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
+    const tokenHash = createHash('sha256').update(token).digest('hex')
+    const tokenPreview = `${token.substring(0, 12)}...${token.substring(token.length - 8)}`
 
     // Deactivate old tokens
     await supabase
-      .from('mcp_tokens')
-      .update({ is_active: false })
+      .from('mcp_user_tokens')
+      .update({ active: false })
       .eq('user_id', user.id)
 
     // Create new token
     const { data: newToken, error: createError } = await supabase
-      .from('mcp_tokens')
+      .from('mcp_user_tokens')
       .insert({
         user_id: user.id,
-        token,
-        expires_at: expiresAt.toISOString(),
-        is_active: true,
-        created_at: new Date().toISOString()
+        token_name: 'CLI Status Reporter',
+        token_hash: tokenHash,
+        token_preview: tokenPreview,
+        active: true
       })
       .select()
       .single()
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       token,
-      expires_at: expiresAt.toISOString(),
+      token_preview: tokenPreview,
       created_at: newToken.created_at,
       setup_instructions: {
         description: "Use this token to configure your local MCP bridge for CLI status reporting",
@@ -89,9 +89,9 @@ export async function DELETE(request: NextRequest) {
 
     // Deactivate all user tokens
     await supabase
-      .from('mcp_tokens')
+      .from('mcp_user_tokens')
       .update({ 
-        is_active: false,
+        active: false,
         updated_at: new Date().toISOString()
       })
       .eq('user_id', user.id)
