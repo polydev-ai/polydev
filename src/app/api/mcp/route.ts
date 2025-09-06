@@ -1679,19 +1679,20 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 // Helper function to get default model for a provider
 function getDefaultModelForProvider(provider: string): string {
   const defaults: Record<string, string> = {
-    'openai': 'gpt-4o',
-    'openai-native': 'gpt-4o', 
+    'openai': 'gpt-5-2025-08-07',
+    'openai-native': 'gpt-5-2025-08-07', 
     'anthropic': 'claude-3-5-sonnet-20241022',
-    'gemini': 'gemini-2.0-flash-exp',
-    'google': 'gemini-2.0-flash-exp',
-    'x-ai': 'grok-4-0709', // Latest xAI Grok 4 model
+    'gemini': 'gemini-2.5-pro',
+    'google': 'gemini-2.5-pro',
+    'xai': 'grok-4-0709',
+    'x-ai': 'grok-4-0709',
     'openrouter': 'meta-llama/llama-3.2-90b-vision-instruct',
-    'groq': 'llama-3.1-70b-versatile',
+    'groq': 'llama-3.3-70b-versatile',
     'perplexity': 'llama-3.1-sonar-large-128k-online',
     'deepseek': 'deepseek-chat',
     'mistral': 'mistral-large-latest'
   }
-  return defaults[provider] || 'gpt-4o'
+  return defaults[provider] || 'gpt-5-2025-08-07'
 }
 
 // Get models from available API keys and user preferences
@@ -1784,8 +1785,7 @@ function normalizeProviderName(provider: string): string {
   const mappings: Record<string, string> = {
     'x-ai': 'xai',
     'openai-native': 'openai',
-    'google': 'gemini',
-    'gemini': 'google' // Allow both directions
+    'gemini': 'google' // Normalize gemini to google for consistent matching
   }
   
   return mappings[normalized] || normalized
