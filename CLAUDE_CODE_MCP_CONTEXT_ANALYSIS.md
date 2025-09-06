@@ -4,7 +4,8 @@
 
 **Question**: Can Polydev MCP server automatically access Claude Code conversation history and project memory without local installation?
 
-**Answer**: **No, this is not possible** due to fundamental architectural limitations.
+**Answer**: **No, this is not possible** due to fundamental architectural limitation.
+
 
 ## Technical Investigation
 
