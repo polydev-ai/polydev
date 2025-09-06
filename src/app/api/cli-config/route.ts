@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     // Get user's CLI configurations
     const { data: configs, error } = await supabase
-      .from('user_cli_configs')
+      .from('cli_provider_configurations')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true })
@@ -30,18 +30,16 @@ export async function GET(request: NextRequest) {
       // Insert detected CLIs into database
       const configsToInsert = detectedCLIs.map(cli => ({
         user_id: user.id,
-        tool_name: cli.toolName,
-        cli_path: cli.cliPath,
-        is_default: cli.isDefault,
-        auto_detect: cli.autoDetect,
+        provider: cli.toolName,
+        custom_path: cli.cliPath,
         enabled: cli.enabled,
-        config_options: cli.configOptions,
-        last_verified: cli.lastVerified?.toISOString()
+        status: cli.lastVerified ? 'available' : 'unchecked',
+        last_checked_at: cli.lastVerified?.toISOString()
       }))
 
       if (configsToInsert.length > 0) {
         const { data: insertedConfigs, error: insertError } = await supabase
-          .from('user_cli_configs')
+          .from('cli_provider_configurations')
           .insert(configsToInsert)
           .select()
 
@@ -75,33 +73,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { tool_name, cli_path, enabled, config_options } = await request.json()
+    const { provider, custom_path, enabled } = await request.json()
 
-    if (!tool_name || !cli_path) {
-      return NextResponse.json({ error: 'tool_name and cli_path are required' }, { status: 400 })
+    if (!provider) {
+      return NextResponse.json({ error: 'provider is required' }, { status: 400 })
     }
 
-    // Verify the CLI tool works
-    const cliManager = new CLIIntegrationManager()
-    const isValid = await cliManager.verifyCLI({
-      toolName: tool_name,
-      cliPath: cli_path,
-      isDefault: false,
-      autoDetect: false,
-      enabled: enabled ?? true,
-      configOptions: config_options || {}
-    })
+    // Verify the CLI tool works if custom_path is provided
+    let isValid = false
+    if (custom_path) {
+      const cliManager = new CLIIntegrationManager()
+      isValid = await cliManager.verifyCLI({
+        toolName: provider,
+        cliPath: custom_path,
+        isDefault: false,
+        autoDetect: false,
+        enabled: enabled ?? true,
+        configOptions: {}
+      })
+    }
 
     // Insert or update CLI configuration
     const { data, error } = await supabase
-      .from('user_cli_configs')
+      .from('cli_provider_configurations')
       .upsert({
         user_id: user.id,
-        tool_name,
-        cli_path,
+        provider,
+        custom_path,
         enabled: enabled ?? true,
-        config_options: config_options || {},
-        last_verified: isValid ? new Date().toISOString() : null,
+        status: custom_path ? (isValid ? 'available' : 'unavailable') : 'unchecked',
+        last_checked_at: custom_path ? new Date().toISOString() : null,
         updated_at: new Date().toISOString()
       })
       .select()
@@ -114,7 +115,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       config: data,
       verified: isValid,
-      message: isValid ? 'CLI tool verified and saved' : 'CLI tool saved but verification failed'
+      message: custom_path 
+        ? (isValid ? 'CLI tool verified and saved' : 'CLI tool saved but verification failed')
+        : 'CLI tool configuration saved'
     })
 
   } catch (error) {
@@ -132,7 +135,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id, enabled, cli_path, config_options } = await request.json()
+    const { id, enabled, custom_path } = await request.json()
 
     if (!id) {
       return NextResponse.json({ error: 'Configuration ID is required' }, { status: 400 })
@@ -143,34 +146,37 @@ export async function PUT(request: NextRequest) {
     }
 
     if (enabled !== undefined) updateData.enabled = enabled
-    if (cli_path) updateData.cli_path = cli_path
-    if (config_options) updateData.config_options = config_options
+    if (custom_path !== undefined) updateData.custom_path = custom_path
 
     // If CLI path changed, verify it
-    if (cli_path) {
+    if (custom_path !== undefined) {
       const { data: existingConfig } = await supabase
-        .from('user_cli_configs')
-        .select('tool_name')
+        .from('cli_provider_configurations')
+        .select('provider')
         .eq('id', id)
         .eq('user_id', user.id)
         .single()
 
-      if (existingConfig) {
+      if (existingConfig && custom_path) {
         const cliManager = new CLIIntegrationManager()
         const isValid = await cliManager.verifyCLI({
-          toolName: existingConfig.tool_name,
-          cliPath: cli_path,
+          toolName: existingConfig.provider,
+          cliPath: custom_path,
           isDefault: false,
           autoDetect: false,
           enabled: enabled ?? true,
-          configOptions: config_options || {}
+          configOptions: {}
         })
-        updateData.last_verified = isValid ? new Date().toISOString() : null
+        updateData.status = isValid ? 'available' : 'unavailable'
+        updateData.last_checked_at = new Date().toISOString()
+      } else if (!custom_path) {
+        updateData.status = 'unchecked'
+        updateData.last_checked_at = null
       }
     }
 
     const { data, error } = await supabase
-      .from('user_cli_configs')
+      .from('cli_provider_configurations')
       .update(updateData)
       .eq('id', id)
       .eq('user_id', user.id)
@@ -209,7 +215,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { error } = await supabase
-      .from('user_cli_configs')
+      .from('cli_provider_configurations')
       .delete()
       .eq('id', id)
       .eq('user_id', user.id)

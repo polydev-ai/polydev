@@ -135,30 +135,78 @@ export async function POST(request: NextRequest) {
       targetModels = [defaultModel]
     }
     
-    // Get user's API keys for required providers
+    // Get user's provider configurations (CLI + API keys) for required providers
     const requiredProviders = [...new Set(targetModels.map(getProviderFromModel))]
+    
+    // Priority 1: Check for enabled CLI providers
+    const { data: cliConfigs } = await supabase
+      .from('cli_provider_configurations')
+      .select('provider, custom_path, enabled, status')
+      .eq('user_id', user.id)
+      .eq('enabled', true)
+      .eq('status', 'available')
+      .in('provider', ['claude_code', 'codex_cli', 'gemini_cli'])
+      
+    // Priority 2: Get API keys for providers not covered by CLI
+    const cliProviderMappings: Record<string, string> = {
+      'claude_code': 'anthropic',
+      'codex_cli': 'openai', 
+      'gemini_cli': 'google'
+    }
+    
+    const enabledCliProviders = (cliConfigs || [])
+      .map(cli => cliProviderMappings[cli.provider])
+      .filter(Boolean)
+    
+    const providersNeedingApiKeys = requiredProviders.filter(p => !enabledCliProviders.includes(p))
+    
     const { data: apiKeys } = await supabase
       .from('user_api_keys')
       .select('provider, encrypted_key, api_base, active')
       .eq('user_id', user.id)
       .eq('active', true)
-      .in('provider', requiredProviders)
+      .in('provider', providersNeedingApiKeys)
     
-    if (!apiKeys || apiKeys.length === 0) {
+    // Check if we have any way to handle the required providers (CLI or API keys)
+    const availableProviders = [
+      ...enabledCliProviders,
+      ...(apiKeys || []).map(key => key.provider)
+    ]
+    
+    const missingProviders = requiredProviders.filter(p => !availableProviders.includes(p))
+    
+    if (missingProviders.length > 0 && availableProviders.length === 0) {
       return NextResponse.json({ 
         error: { 
-          message: `No active API keys found for required providers: ${requiredProviders.join(', ')}`, 
+          message: `No active API keys or CLI providers found for required providers: ${requiredProviders.join(', ')}. Please configure API keys or enable CLI tools in your settings.`, 
           type: 'authentication_error' 
         } 
       }, { status: 401 })
     }
     
-    // Create a map of provider to API key
-    const providerKeys: Record<string, any> = {}
-    apiKeys.forEach(key => {
-      providerKeys[key.provider] = {
-        apiKey: atob(key.encrypted_key), // Decrypt (basic base64 for now)
-        baseUrl: key.api_base
+    // Create a comprehensive provider configuration map (CLI first, then API keys)
+    const providerConfigs: Record<string, any> = {}
+    
+    // Priority 1: CLI providers
+    ;(cliConfigs || []).forEach(cli => {
+      const mappedProvider = cliProviderMappings[cli.provider]
+      if (mappedProvider) {
+        providerConfigs[mappedProvider] = {
+          type: 'cli',
+          cliProvider: cli.provider,
+          customPath: cli.custom_path
+        }
+      }
+    })
+    
+    // Priority 2: API keys (only for providers not handled by CLI)
+    ;(apiKeys || []).forEach(key => {
+      if (!providerConfigs[key.provider]) {
+        providerConfigs[key.provider] = {
+          type: 'api',
+          apiKey: atob(key.encrypted_key), // Decrypt (basic base64 for now)
+          baseUrl: key.api_base
+        }
       }
     })
     
@@ -166,162 +214,146 @@ export async function POST(request: NextRequest) {
     const responses = await Promise.all(
       targetModels.map(async (modelId: string) => {
         const provider = getProviderFromModel(modelId)
-        const providerKey = providerKeys[provider]
+        const providerConfig = providerConfigs[provider]
         
-        if (!providerKey) {
+        if (!providerConfig) {
           return {
             model: modelId,
-            error: `No API key configured for provider: ${provider}`,
+            error: `No CLI provider or API key configured for provider: ${provider}`,
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
           }
         }
         
         try {
-          // Prepare API call options with comprehensive provider support
-          const apiOptions: any = {
-            messages: messages.map((msg: any) => ({
-              role: msg.role,
-              content: msg.content
-            })),
-            model: modelId,
-            temperature,
-            maxTokens: max_tokens,
-            stream: false, // For now, handle streaming separately
-            apiKey: providerKey.apiKey
-          }
+          let response
           
-          // Use provider configuration for correct baseUrl property name
-          const providerConfig = apiManager.getProviderConfiguration(provider)
-          if (providerKey.baseUrl && providerConfig) {
-            // Set the baseUrl using the provider's expected property name
-            if (providerConfig.baseUrlProperty) {
-              apiOptions[providerConfig.baseUrlProperty] = providerKey.baseUrl
-            } else {
-              // Fallback to common patterns
-              switch (provider) {
-                case 'openai':
-                case 'groq':
-                case 'deepseek':
-                case 'xai':
-                  apiOptions.openAiBaseUrl = providerKey.baseUrl
-                  break
-                case 'anthropic':
-                  apiOptions.anthropicBaseUrl = providerKey.baseUrl
-                  break
-                case 'gemini':
-                case 'google':
-                  apiOptions.googleBaseUrl = providerKey.baseUrl
-                  break
-                default:
-                  apiOptions.openAiBaseUrl = providerKey.baseUrl
+          if (providerConfig.type === 'cli') {
+            // Use CLI provider through existing handler
+            const cliProviderMap: Record<string, string> = {
+              'claude_code': 'claude-code',
+              'codex_cli': 'codex-cli',
+              'gemini_cli': 'gemini-cli'
+            }
+            
+            const handlerName = cliProviderMap[providerConfig.cliProvider]
+            if (!handlerName) {
+              throw new Error(`Unsupported CLI provider: ${providerConfig.cliProvider}`)
+            }
+            
+            const handler = apiManager.getHandler(handlerName)
+            response = await handler.createMessage({
+              messages: messages.map((msg: any) => ({
+                role: msg.role,
+                content: msg.content
+              })),
+              model: modelId,
+              temperature,
+              maxTokens: max_tokens,
+              apiKey: '' // CLI handlers don't use API keys
+            })
+            
+            const responseData = await response.json()
+            return {
+              model: modelId,
+              content: responseData.content?.[0]?.text || responseData.choices?.[0]?.message?.content || '',
+              usage: responseData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+              provider: `${provider} (CLI)`
+            }
+          } else {
+            // Use API key provider (existing logic)
+            const apiOptions: any = {
+              messages: messages.map((msg: any) => ({
+                role: msg.role,
+                content: msg.content
+              })),
+              model: modelId,
+              temperature,
+              maxTokens: max_tokens,
+              stream: false,
+              apiKey: providerConfig.apiKey
+            }
+            
+            // Use provider configuration for correct baseUrl property name
+            const apiProviderConfig = apiManager.getProviderConfiguration(provider)
+            if (providerConfig.baseUrl && apiProviderConfig) {
+              // Set the baseUrl using the provider's expected property name
+              if (apiProviderConfig.baseUrlProperty) {
+                apiOptions[apiProviderConfig.baseUrlProperty] = providerConfig.baseUrl
+              } else {
+                // Fallback to common patterns
+                switch (provider) {
+                  case 'openai':
+                  case 'groq':
+                  case 'deepseek':
+                  case 'xai':
+                    apiOptions.openAiBaseUrl = providerConfig.baseUrl
+                    break
+                  case 'anthropic':
+                    apiOptions.anthropicBaseUrl = providerConfig.baseUrl
+                    break
+                  case 'gemini':
+                  case 'google':
+                    apiOptions.googleBaseUrl = providerConfig.baseUrl
+                    break
+                  default:
+                    apiOptions.openAiBaseUrl = providerConfig.baseUrl
+                }
               }
             }
+            
+            // Get estimated token count before request
+            const estimatedTokens = apiManager.getTokenCount(provider, apiOptions)
+            console.log(`Estimated tokens for ${provider}:`, estimatedTokens)
+            
+            // Check rate limit status
+            const rateLimitStatus = apiManager.getRateLimitStatus(provider)
+            if (rateLimitStatus) {
+              console.log(`Rate limit status for ${provider}:`, rateLimitStatus)
+            }
+            
+            // Make API call through enhanced provider system
+            response = await apiManager.createMessage(provider, apiOptions)
+            const result = await response.json()
+            
+            if (!response.ok) {
+              throw new Error(result.error?.message || 'API call failed')
+            }
+            
+            // Validate response using comprehensive validator
+            const validation = apiManager.validateResponse(result, provider, modelId)
+            if (!validation.isValid) {
+              console.warn(`Response validation failed for ${provider}:`, validation.errors)
+            }
+            
+            if (validation.warnings.length > 0) {
+              console.warn(`Response validation warnings for ${provider}:`, validation.warnings)
+            }
+            
+            // Extract content based on provider format
+            let content = ''
+            if (result.content?.[0]?.text) {
+              // Anthropic format
+              content = result.content[0].text
+            } else if (result.choices?.[0]?.message?.content) {
+              // OpenAI format
+              content = result.choices[0].message.content
+            }
+            
+            return {
+              model: modelId,
+              content: content,
+              usage: result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+              provider: `${provider} (API)`
+            }
           }
-          
-          // Get estimated token count before request
-          const estimatedTokens = apiManager.getTokenCount(provider, apiOptions)
-          console.log(`Estimated tokens for ${provider}:`, estimatedTokens)
-          
-          // Check rate limit status
-          const rateLimitStatus = apiManager.getRateLimitStatus(provider)
-          if (rateLimitStatus) {
-            console.log(`Rate limit status for ${provider}:`, rateLimitStatus)
-          }
-          
-          // Make API call through enhanced provider system
-          const response = await apiManager.createMessage(provider, apiOptions)
-          const result = await response.json()
-          
-          if (!response.ok) {
-            throw new Error(result.error?.message || 'API call failed')
-          }
-          
-          // Validate response using comprehensive validator
-          const validation = apiManager.validateResponse(result, provider, modelId)
-          if (!validation.isValid) {
-            console.warn(`Response validation failed for ${provider}:`, validation.errors)
-            // Continue with processing but log the issues
-          }
-          
-          if (validation.warnings.length > 0) {
-            console.warn(`Response validation warnings for ${provider}:`, validation.warnings)
-          }
-          
-          // Use normalized response format for consistent extraction
-          const normalizedResult = validation.sanitizedResponse || result
-          
-          // Extract content and usage using universal approach
-          let content = ''
-          let usage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-          
-          // Try provider-specific extraction patterns
-          switch (provider) {
-            case 'anthropic':
-              content = normalizedResult.content?.[0]?.text || ''
-              usage = {
-                prompt_tokens: normalizedResult.usage?.input_tokens || 0,
-                completion_tokens: normalizedResult.usage?.output_tokens || 0,
-                total_tokens: (normalizedResult.usage?.input_tokens || 0) + (normalizedResult.usage?.output_tokens || 0)
-              }
-              break
-            case 'openai':
-            case 'groq':
-            case 'deepseek':
-            case 'xai':
-              content = normalizedResult.choices?.[0]?.message?.content || ''
-              usage = normalizedResult.usage || usage
-              break
-            case 'gemini':
-            case 'google':
-              content = normalizedResult.candidates?.[0]?.content?.parts?.[0]?.text || ''
-              usage = {
-                prompt_tokens: normalizedResult.usageMetadata?.promptTokenCount || 0,
-                completion_tokens: normalizedResult.usageMetadata?.candidatesTokenCount || 0,
-                total_tokens: normalizedResult.usageMetadata?.totalTokenCount || 0
-              }
-              break
-            default:
-              // Universal fallback extraction
-              content = normalizedResult.content || 
-                       normalizedResult.choices?.[0]?.message?.content ||
-                       normalizedResult.candidates?.[0]?.content?.parts?.[0]?.text ||
-                       ''
-              usage = normalizedResult.usage || normalizedResult.usageMetadata || usage
-          }
-          
-          // Log successful call with comprehensive stats
-          const finalTokens = apiManager.getTokenCount(provider, { 
-            ...apiOptions, 
-            messages: [...apiOptions.messages, { role: 'assistant', content }] 
-          })
-          
+        } catch (error: any) {
+          console.error(`Error with ${provider} for model ${modelId}:`, error)
           return {
             model: modelId,
-            provider,
-            content,
-            usage,
-            timestamp: new Date().toISOString(),
-            validation: {
-              isValid: validation.isValid,
-              warnings: validation.warnings
-            },
-            estimatedTokens: estimatedTokens.total,
-            actualTokens: usage.total_tokens || finalTokens.total,
-            rateLimitStatus: apiManager.getRateLimitStatus(provider)
-          }
-        } catch (error) {
-          console.error(`Error calling ${provider} API for model ${modelId}:`, error)
-          
-          // Get retry stats if available
-          const retryStats = apiManager.getRetryStats(provider)
-          
-          return {
-            model: modelId,
-            provider,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            content: '',
+            error: error.message,
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-            retryStats: retryStats,
-            timestamp: new Date().toISOString()
+            provider: providerConfig.type === 'cli' ? `${provider} (CLI)` : `${provider} (API)`
           }
         }
       })

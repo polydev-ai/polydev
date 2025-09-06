@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { createClient } from '../../app/utils/supabase/client'
-import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical } from 'lucide-react'
+import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock } from 'lucide-react'
 import { CLINE_PROVIDERS, ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
@@ -34,6 +34,26 @@ interface UserPreferences {
   preferred_providers: string[]
 }
 
+interface CLIConfig {
+  id?: string
+  user_id: string
+  provider: string
+  custom_path: string | null
+  enabled: boolean
+  status: 'available' | 'unavailable' | 'unchecked' | 'checking'
+  last_checked_at?: string
+  created_at?: string
+  updated_at?: string
+}
+
+interface CLIProviderInfo {
+  name: string
+  provider: string
+  defaultPaths: string[]
+  authCommand: string
+  description: string
+}
+
 export default function EnhancedApiKeysPage() {
   const { user, loading: authLoading } = useAuth()
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
@@ -49,6 +69,12 @@ export default function EnhancedApiKeysPage() {
   const [expandedProviders, setExpandedProviders] = useState<{[provider: string]: boolean}>({})
   const [updateApiKey, setUpdateApiKey] = useState(false)
   
+  // CLI Configuration State
+  const [cliConfigs, setCliConfigs] = useState<CLIConfig[]>([])
+  const [showCliSettings, setShowCliSettings] = useState(false)
+  const [editingCliConfig, setEditingCliConfig] = useState<CLIConfig | null>(null)
+  const [cliLoading, setCliLoading] = useState(false)
+  
   // Form state with new fields
   const [formData, setFormData] = useState({
     provider: 'openai',
@@ -61,6 +87,31 @@ export default function EnhancedApiKeysPage() {
   })
 
   const supabase = createClient()
+
+  // CLI Provider Information
+  const CLI_PROVIDERS: CLIProviderInfo[] = [
+    {
+      name: 'Claude Code',
+      provider: 'claude_code',
+      defaultPaths: ['/usr/local/bin/claude', '/opt/homebrew/bin/claude', '~/.local/bin/claude'],
+      authCommand: 'claude auth',
+      description: 'Use Claude Code CLI for Anthropic models'
+    },
+    {
+      name: 'Codex CLI', 
+      provider: 'codex_cli',
+      defaultPaths: ['/usr/local/bin/codex', '/opt/homebrew/bin/codex', '~/.local/bin/codex'],
+      authCommand: 'codex auth',
+      description: 'Use Codex CLI for GPT models'
+    },
+    {
+      name: 'Gemini CLI',
+      provider: 'gemini_cli', 
+      defaultPaths: ['/usr/local/bin/gcloud', '/opt/homebrew/bin/gcloud', '~/google-cloud-sdk/bin/gcloud'],
+      authCommand: 'gcloud auth login',
+      description: 'Use Google Cloud CLI for Gemini models'
+    }
+  ]
 
   const fetchData = async () => {
     if (!user?.id) return
@@ -90,9 +141,16 @@ export default function EnhancedApiKeysPage() {
         (keysData || []).some(key => key.provider === provider.id)
       )
 
+      // Fetch CLI configurations
+      const { data: cliData, error: cliError } = await supabase
+        .from('cli_provider_configurations')
+        .select('*')
+        .eq('user_id', user.id)
+
       setApiKeys(keysData || [])
       setPreferences(prefsError ? null : prefsData)
       setProviders(providersWithKeys)
+      setCliConfigs(cliError ? [] : cliData || [])
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -164,6 +222,113 @@ export default function EnhancedApiKeysPage() {
     }
     
     await updatePreferenceOrder(newPreferences)
+  }
+
+  // CLI Configuration Functions
+  const fetchCliConfigs = async () => {
+    if (!user?.id) return
+    
+    try {
+      setCliLoading(true)
+      const response = await fetch('/api/cli-config')
+      
+      if (!response.ok) throw new Error('Failed to fetch CLI configurations')
+      
+      const data = await response.json()
+      setCliConfigs(data.configs || [])
+      
+      if (data.detected && data.message) {
+        setSuccess(data.message)
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setCliLoading(false)
+    }
+  }
+
+  const saveCLIConfig = async (provider: string, cliPath: string, enabled: boolean) => {
+    try {
+      setCliLoading(true)
+      
+      const response = await fetch('/api/cli-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool_name: provider,
+          cli_path: cliPath,
+          enabled,
+          config_options: {}
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to save CLI configuration')
+      
+      const result = await response.json()
+      
+      // Update local state
+      setCliConfigs(prev => {
+        const existing = prev.find(c => c.provider === provider)
+        if (existing) {
+          return prev.map(c => c.provider === provider ? { ...c, custom_path: cliPath, enabled, status: result.verified ? 'available' : 'unavailable' } : c)
+        } else {
+          return [...prev, {
+            user_id: user!.id,
+            provider,
+            custom_path: cliPath,
+            enabled,
+            status: result.verified ? 'available' : 'unavailable'
+          }]
+        }
+      })
+      
+      setSuccess(result.message)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setCliLoading(false)
+    }
+  }
+
+  const checkCLIStatus = async (provider: string) => {
+    try {
+      setCliConfigs(prev => prev.map(c => 
+        c.provider === provider ? { ...c, status: 'checking' } : c
+      ))
+
+      // Use the existing MCP bridge to check status
+      const response = await fetch('/api/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          server: provider === 'claude_code' ? 'claude-code-cli-bridge' : 
+                 provider === 'codex_cli' ? 'cross-llm-bridge-test' :
+                 'gemini-cli-bridge',
+          tool: provider === 'claude_code' ? 'check_claude_code_status' : 
+                provider === 'codex_cli' ? 'check_codex_status' :
+                'check_gemini_status',
+          args: {}
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to check CLI status')
+      
+      const result = await response.json()
+      const isAuthenticated = !result.result?.includes('❌')
+      
+      setCliConfigs(prev => prev.map(c => 
+        c.provider === provider ? { 
+          ...c, 
+          status: isAuthenticated ? 'available' : 'unavailable',
+          last_checked_at: new Date().toISOString()
+        } : c
+      ))
+    } catch (err: any) {
+      setCliConfigs(prev => prev.map(c => 
+        c.provider === provider ? { ...c, status: 'unavailable' } : c
+      ))
+      setError(`Failed to check ${provider} status: ${err.message}`)
+    }
   }
 
   const saveApiKey = async () => {
@@ -343,6 +508,156 @@ export default function EnhancedApiKeysPage() {
           </button>
         </div>
       )}
+
+      {/* CLI Providers Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div 
+          className="p-6 cursor-pointer"
+          onClick={() => setShowCliSettings(!showCliSettings)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Terminal className="w-5 h-5" />
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                CLI Providers
+              </h2>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-500">
+                {cliConfigs.filter(c => c.enabled && c.status === 'available').length} active
+              </span>
+              {showCliSettings ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </div>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">
+            Use CLI tools for authentication-free access to Claude Code, Codex CLI, and Gemini CLI
+          </p>
+        </div>
+        
+        {showCliSettings && (
+          <div className="px-6 pb-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="mt-4 space-y-4">
+              {CLI_PROVIDERS.map((cliProvider) => {
+                const config = cliConfigs.find(c => c.provider === cliProvider.provider)
+                const isEnabled = config?.enabled || false
+                const status = config?.status || 'unchecked'
+                const customPath = config?.custom_path || cliProvider.defaultPaths[0]
+
+                return (
+                  <div key={cliProvider.provider} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  saveCLIConfig(cliProvider.provider, customPath, true)
+                                } else {
+                                  saveCLIConfig(cliProvider.provider, customPath, false)
+                                }
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
+                            />
+                            <h3 className="font-medium text-gray-900 dark:text-white">
+                              {cliProvider.name}
+                            </h3>
+                          </div>
+                          
+                          {status === 'checking' && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          )}
+                          
+                          {status === 'available' && (
+                            <div className="flex items-center space-x-1 text-green-600">
+                              <CheckCircle className="w-4 h-4" />
+                              <span className="text-xs">Available</span>
+                            </div>
+                          )}
+                          
+                          {status === 'unavailable' && (
+                            <div className="flex items-center space-x-1 text-yellow-600">
+                              <XCircle className="w-4 h-4" />
+                              <span className="text-xs">Unavailable</span>
+                            </div>
+                          )}
+                          
+                          {status === 'unchecked' && (
+                            <div className="flex items-center space-x-1 text-gray-500">
+                              <Clock className="w-4 h-4" />
+                              <span className="text-xs">Unchecked</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                          {cliProvider.description}
+                        </p>
+                        
+                        {isEnabled && (
+                          <div className="mt-3 space-y-2">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                CLI Path
+                              </label>
+                              <div className="mt-1 flex space-x-2">
+                                <input
+                                  type="text"
+                                  value={customPath}
+                                  onChange={(e) => {
+                                    const newPath = e.target.value
+                                    setCliConfigs(prev => prev.map(c => 
+                                      c.provider === cliProvider.provider 
+                                        ? { ...c, custom_path: newPath }
+                                        : c
+                                    ))
+                                  }}
+                                  onBlur={() => saveCLIConfig(cliProvider.provider, customPath, isEnabled)}
+                                  className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                  placeholder={cliProvider.defaultPaths[0]}
+                                />
+                                <button
+                                  onClick={() => checkCLIStatus(cliProvider.provider)}
+                                  className="px-3 py-2 text-sm bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500 flex items-center space-x-1"
+                                  disabled={status === 'checking'}
+                                >
+                                  <Wrench className="w-3 h-3" />
+                                  <span>Check</span>
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {status === 'unavailable' && (
+                              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3">
+                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                                  <strong>Authentication required:</strong> Please run <code className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">{cliProvider.authCommand}</code> to authenticate.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+              <button
+                onClick={fetchCliConfigs}
+                disabled={cliLoading}
+                className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50 flex items-center space-x-1"
+              >
+                <Settings className="w-3 h-3" />
+                <span>{cliLoading ? 'Detecting...' : 'Auto-detect CLI tools'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* API Keys Section */}
       {apiKeys.length > 0 && (
