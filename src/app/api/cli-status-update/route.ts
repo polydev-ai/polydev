@@ -1,0 +1,201 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/app/utils/supabase/server'
+
+interface CLIStatusUpdate {
+  provider: 'claude_code' | 'codex_cli' | 'gemini_cli'
+  status: 'available' | 'unavailable' | 'not_installed' | 'checking'
+  message?: string
+  user_id: string
+  mcp_token: string
+  cli_version?: string
+  cli_path?: string
+  authenticated?: boolean
+  last_used?: string
+  additional_info?: Record<string, any>
+}
+
+// Verify MCP token
+async function verifyMCPToken(token: string, userId: string): Promise<boolean> {
+  try {
+    const supabase = await createClient()
+    const { data: tokenData, error } = await supabase
+      .from('mcp_tokens')
+      .select('is_active, expires_at')
+      .eq('token', token)
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .single()
+
+    if (error || !tokenData) return false
+
+    // Check if token is expired
+    if (new Date(tokenData.expires_at) <= new Date()) {
+      return false
+    }
+
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Receive CLI status updates from MCP bridges
+export async function POST(request: NextRequest) {
+  try {
+    const body: CLIStatusUpdate = await request.json()
+    const { provider, status, message, user_id, mcp_token, cli_version, cli_path, authenticated, last_used, additional_info } = body
+
+    // Validate required fields
+    if (!provider || !status || !user_id || !mcp_token) {
+      return NextResponse.json({ 
+        error: 'Missing required fields', 
+        required: ['provider', 'status', 'user_id', 'mcp_token']
+      }, { status: 400 })
+    }
+
+    // Validate provider
+    const validProviders = ['claude_code', 'codex_cli', 'gemini_cli']
+    if (!validProviders.includes(provider)) {
+      return NextResponse.json({ 
+        error: 'Invalid provider', 
+        valid_providers: validProviders 
+      }, { status: 400 })
+    }
+
+    // Validate status
+    const validStatuses = ['available', 'unavailable', 'not_installed', 'checking']
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ 
+        error: 'Invalid status', 
+        valid_statuses: validStatuses 
+      }, { status: 400 })
+    }
+
+    // Verify MCP token
+    const isValidToken = await verifyMCPToken(mcp_token, user_id)
+    if (!isValidToken) {
+      return NextResponse.json({ error: 'Invalid or expired MCP token' }, { status: 401 })
+    }
+
+    const supabase = await createClient()
+
+    // Update or create CLI configuration
+    const updateData = {
+      user_id,
+      provider,
+      status,
+      last_checked_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status_message: message || `${provider} is ${status}`,
+      cli_version: cli_version || null,
+      cli_path: cli_path || null,
+      authenticated: authenticated || null,
+      last_used: last_used || null,
+      additional_info: additional_info || null
+    }
+
+    // Try to update existing configuration
+    const { data: existingConfig, error: selectError } = await supabase
+      .from('cli_provider_configurations')
+      .select('id')
+      .eq('user_id', user_id)
+      .eq('provider', provider)
+      .single()
+
+    if (existingConfig) {
+      // Update existing configuration
+      const { error: updateError } = await supabase
+        .from('cli_provider_configurations')
+        .update(updateData)
+        .eq('id', existingConfig.id)
+
+      if (updateError) {
+        console.error('CLI config update error:', updateError)
+        return NextResponse.json({ error: 'Failed to update CLI configuration' }, { status: 500 })
+      }
+    } else {
+      // Create new configuration
+      const { error: insertError } = await supabase
+        .from('cli_provider_configurations')
+        .insert({
+          ...updateData,
+          enabled: status === 'available',
+          created_at: new Date().toISOString()
+        })
+
+      if (insertError) {
+        console.error('CLI config insert error:', insertError)
+        return NextResponse.json({ error: 'Failed to create CLI configuration' }, { status: 500 })
+      }
+    }
+
+    // Log the status update for monitoring
+    await supabase
+      .from('cli_status_logs')
+      .insert({
+        user_id,
+        provider,
+        status,
+        message,
+        cli_version,
+        cli_path,
+        authenticated,
+        timestamp: new Date().toISOString(),
+        source: 'mcp_bridge'
+      })
+
+    return NextResponse.json({
+      success: true,
+      message: `CLI status updated for ${provider}`,
+      status: status,
+      timestamp: new Date().toISOString()
+    })
+
+  } catch (error) {
+    console.error('CLI status update error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
+
+// Get CLI status history for debugging
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const provider = searchParams.get('provider')
+    const limit = parseInt(searchParams.get('limit') || '10')
+
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    let query = supabase
+      .from('cli_status_logs')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('timestamp', { ascending: false })
+      .limit(limit)
+
+    if (provider) {
+      query = query.eq('provider', provider)
+    }
+
+    const { data: logs, error } = await query
+
+    if (error) {
+      console.error('Status logs fetch error:', error)
+      return NextResponse.json({ error: 'Failed to fetch status logs' }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      logs: logs || [],
+      count: logs?.length || 0
+    })
+
+  } catch (error) {
+    console.error('Status logs error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

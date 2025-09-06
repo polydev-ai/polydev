@@ -1,0 +1,71 @@
+{
+  "name": "polydev-cli-status-reporter",
+  "version": "1.0.0",
+  "description": "MCP tools for reporting CLI tool status to Polydev web application",
+  "tools": [
+    {
+      "name": "report_cli_status", 
+      "description": "Check and report CLI tool status (Claude Code, Codex CLI, Gemini CLI) to Polydev",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": ["claude_code", "codex_cli", "gemini_cli", "all"],
+            "description": "Which CLI tool to check, or 'all' for all tools"
+          }
+        },
+        "required": ["provider"]
+      },
+      "examples": [
+        {
+          "description": "Check Claude Code CLI status",
+          "input": { "provider": "claude_code" }
+        },
+        {
+          "description": "Check all CLI tools",
+          "input": { "provider": "all" }
+        }
+      ]
+    },
+    {
+      "name": "setup_cli_monitoring",
+      "description": "Configure automatic CLI status monitoring",
+      "inputSchema": {
+        "type": "object", 
+        "properties": {
+          "interval_minutes": {
+            "type": "number",
+            "description": "Check interval in minutes (default: 15)",
+            "default": 15,
+            "minimum": 5,
+            "maximum": 1440
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Enable/disable monitoring",
+            "default": true
+          }
+        }
+      }
+    }
+  ],
+  "environment": {
+    "required": [
+      "POLYDEV_MCP_TOKEN",
+      "POLYDEV_USER_ID"
+    ],
+    "optional": [
+      "POLYDEV_API_URL"
+    ]
+  },
+  "setup_instructions": {
+    "1": "Get your MCP token from Polydev Settings > API Keys > CLI Providers",
+    "2": "Add environment variables to your shell profile:",
+    "3": "export POLYDEV_MCP_TOKEN=\"your_token_here\"",
+    "4": "export POLYDEV_USER_ID=\"your_user_id\"", 
+    "5": "export POLYDEV_API_URL=\"https://polydev.com/api/cli-status-update\"",
+    "6": "Add this MCP server to your Claude Code/Cursor configuration",
+    "7": "CLI status will be automatically reported to Polydev"
+  }
+}

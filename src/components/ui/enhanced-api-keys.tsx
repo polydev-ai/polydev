@@ -76,6 +76,14 @@ export default function EnhancedApiKeysPage() {
   const [editingCliConfig, setEditingCliConfig] = useState<CLIConfig | null>(null)
   const [cliLoading, setCliLoading] = useState(false)
   
+  // MCP Token State for bidirectional CLI status reporting
+  const [mcpToken, setMcpToken] = useState<string>('')
+  const [mcpTokenLoading, setMcpTokenLoading] = useState(false)
+  const [showMcpSetup, setShowMcpSetup] = useState(false)
+  const [statusLogs, setStatusLogs] = useState<any[]>([])
+  const [realTimeConnected, setRealTimeConnected] = useState(false)
+  const [lastStatusUpdate, setLastStatusUpdate] = useState<Date | null>(null)
+  
   // Form state with new fields
   const [formData, setFormData] = useState({
     provider: 'openai',
@@ -391,6 +399,80 @@ export default function EnhancedApiKeysPage() {
     }
   }
 
+  // MCP Token Management Functions
+  const fetchMcpToken = async () => {
+    if (!user?.id) return
+    
+    try {
+      setMcpTokenLoading(true)
+      const response = await fetch('/api/mcp-tokens')
+      
+      if (!response.ok) throw new Error('Failed to fetch MCP token')
+      
+      const data = await response.json()
+      setMcpToken(data.token)
+      
+      // Set up instructions for user
+      if (data.setup_instructions) {
+        console.log('MCP Setup Instructions:', data.setup_instructions)
+      }
+      
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setMcpTokenLoading(false)
+    }
+  }
+
+  const regenerateMcpToken = async () => {
+    if (!user?.id) return
+    
+    try {
+      setMcpTokenLoading(true)
+      // First revoke old token
+      await fetch('/api/mcp-tokens', { method: 'DELETE' })
+      
+      // Generate new token
+      await fetchMcpToken()
+      setSuccess('MCP token regenerated successfully! Please update your local MCP bridge configuration.')
+      
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setMcpTokenLoading(false)
+    }
+  }
+
+  const fetchStatusLogs = async (provider?: string) => {
+    try {
+      const url = provider 
+        ? `/api/cli-status-update?provider=${provider}&limit=20`
+        : '/api/cli-status-update?limit=50'
+      
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('Failed to fetch status logs')
+      
+      const data = await response.json()
+      setStatusLogs(data.logs || [])
+      
+    } catch (err: any) {
+      console.error('Failed to fetch status logs:', err.message)
+    }
+  }
+
+  // Simulate real-time connection status (in real implementation, use WebSocket or polling)
+  const checkRealTimeConnection = async () => {
+    try {
+      const response = await fetch('/api/health')
+      setRealTimeConnected(response.ok)
+      if (response.ok) {
+        setLastStatusUpdate(new Date())
+      }
+    } catch {
+      setRealTimeConnected(false)
+    }
+  }
+
   const saveApiKey = async () => {
     try {
       setSaving(true)
@@ -596,7 +678,100 @@ export default function EnhancedApiKeysPage() {
         
         {showCliSettings && (
           <div className="px-6 pb-6 border-t border-gray-200 dark:border-gray-700">
-            <div className="mt-4 space-y-4">
+            
+            {/* MCP Token Setup Section */}
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 flex items-center space-x-2">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                    <span>MCP Bridge Connection</span>
+                    {realTimeConnected && (
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Connected</span>
+                    )}
+                  </h3>
+                  <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+                    Configure your local MCP bridge to automatically report CLI tool status to Polydev.
+                    {lastStatusUpdate && (
+                      <span className="block text-xs text-blue-600 dark:text-blue-400 mt-1">
+                        Last update: {lastStatusUpdate.toLocaleTimeString()}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowMcpSetup(!showMcpSetup)}
+                  disabled={mcpTokenLoading}
+                  className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-1"
+                >
+                  {mcpTokenLoading && <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>}
+                  <span>{showMcpSetup ? 'Hide Setup' : 'Setup MCP'}</span>
+                </button>
+              </div>
+              
+              {showMcpSetup && (
+                <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded border">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        MCP Authentication Token
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="password"
+                          value={mcpToken}
+                          readOnly
+                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 font-mono text-xs"
+                          placeholder="Click 'Generate Token' to create your MCP token"
+                        />
+                        <button
+                          onClick={fetchMcpToken}
+                          disabled={mcpTokenLoading}
+                          className="px-3 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {mcpToken ? 'Regenerate' : 'Generate'}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {mcpToken && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Environment Variable Setup
+                          </label>
+                          <div className="bg-gray-100 dark:bg-gray-900 p-3 rounded font-mono text-xs overflow-x-auto">
+                            <div className="mb-2">export POLYDEV_MCP_TOKEN="{mcpToken}"</div>
+                            <div>export POLYDEV_API_URL="https://polydev.com/api/cli-status-update"</div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Copy to Clipboard
+                          </label>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(`export POLYDEV_MCP_TOKEN="${mcpToken}"\nexport POLYDEV_API_URL="https://polydev.com/api/cli-status-update"`)}
+                            className="text-sm bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700"
+                          >
+                            Copy Environment Variables
+                          </button>
+                        </div>
+                        
+                        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                          <p><strong>Next steps:</strong></p>
+                          <p>1. Add the environment variables to your shell profile (~/.bashrc, ~/.zshrc, etc.)</p>
+                          <p>2. Restart your terminal or reload your shell</p>
+                          <p>3. Your MCP bridge will now automatically report CLI tool status</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-6 space-y-4">
               {CLI_PROVIDERS.map((cliProvider) => {
                 const config = cliConfigs.find(c => c.provider === cliProvider.provider)
                 const isEnabled = config?.enabled || false
