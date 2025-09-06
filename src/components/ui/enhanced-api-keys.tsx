@@ -40,10 +40,11 @@ interface CLIConfig {
   provider: string
   custom_path: string | null
   enabled: boolean
-  status: 'available' | 'unavailable' | 'unchecked' | 'checking'
+  status: 'available' | 'unavailable' | 'not_installed' | 'unchecked' | 'checking'
   last_checked_at?: string
   created_at?: string
   updated_at?: string
+  statusMessage?: string
 }
 
 interface CLIProviderInfo {
@@ -240,6 +241,12 @@ export default function EnhancedApiKeysPage() {
       if (data.detected && data.message) {
         setSuccess(data.message)
       }
+      
+      // Auto-check status for enabled CLI tools after loading configs
+      setTimeout(() => {
+        checkAllCliStatuses()
+      }, 1000) // Small delay to let configs render first
+      
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -313,20 +320,74 @@ export default function EnhancedApiKeysPage() {
       if (!response.ok) throw new Error('Failed to check CLI status')
       
       const result = await response.json()
-      const isAuthenticated = !result.result?.includes('❌')
+      const resultText = result.result || ''
       
+      // Determine installation and authentication status
+      const isInstalled = !resultText.includes('not found') && 
+                         !resultText.includes('command not found') &&
+                         !resultText.includes('No such file or directory')
+      const isAuthenticated = isInstalled && 
+                             !resultText.includes('❌') && 
+                             !resultText.includes('not authenticated') &&
+                             !resultText.includes('Please login')
+      
+      let newStatus: 'available' | 'unavailable' | 'not_installed'
+      let statusMessage = ''
+      
+      if (!isInstalled) {
+        newStatus = 'not_installed'
+        statusMessage = `${provider} is not installed`
+      } else if (!isAuthenticated) {
+        newStatus = 'unavailable'
+        statusMessage = `${provider} is installed but not authenticated`
+      } else {
+        newStatus = 'available'
+        statusMessage = `${provider} is installed and authenticated`
+      }
+      
+      // Update local state with detailed status
       setCliConfigs(prev => prev.map(c => 
         c.provider === provider ? { 
           ...c, 
-          status: isAuthenticated ? 'available' : 'unavailable',
-          last_checked_at: new Date().toISOString()
+          status: newStatus,
+          last_checked_at: new Date().toISOString(),
+          statusMessage
         } : c
       ))
+      
+      // Update server with real status from MCP
+      const config = cliConfigs.find(c => c.provider === provider)
+      if (config?.id) {
+        try {
+          await fetch('/api/cli-config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: config.id,
+              status: newStatus,
+              last_checked_at: new Date().toISOString()
+            })
+          })
+        } catch (updateErr) {
+          console.warn('Failed to update server status:', updateErr)
+        }
+      }
+      
     } catch (err: any) {
       setCliConfigs(prev => prev.map(c => 
         c.provider === provider ? { ...c, status: 'unavailable' } : c
       ))
       setError(`Failed to check ${provider} status: ${err.message}`)
+    }
+  }
+
+  // Check all enabled CLI tools automatically
+  const checkAllCliStatuses = async () => {
+    const enabledConfigs = cliConfigs.filter(c => c.enabled)
+    for (const config of enabledConfigs) {
+      await checkCLIStatus(config.provider)
+      // Small delay between checks to avoid overwhelming MCP
+      await new Promise(resolve => setTimeout(resolve, 500))
     }
   }
 
@@ -579,7 +640,14 @@ export default function EnhancedApiKeysPage() {
                           {status === 'unavailable' && (
                             <div className="flex items-center space-x-1 text-yellow-600">
                               <XCircle className="w-4 h-4" />
-                              <span className="text-xs">Unavailable</span>
+                              <span className="text-xs">Not Authenticated</span>
+                            </div>
+                          )}
+                          
+                          {status === 'not_installed' && (
+                            <div className="flex items-center space-x-1 text-red-600">
+                              <XCircle className="w-4 h-4" />
+                              <span className="text-xs">Not Installed</span>
                             </div>
                           )}
                           
@@ -628,10 +696,29 @@ export default function EnhancedApiKeysPage() {
                               </div>
                             </div>
                             
+                            {/* Status-based guidance */}
+                            {status === 'not_installed' && (
+                              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
+                                <p className="text-sm text-red-800 dark:text-red-200">
+                                  <strong>Installation required:</strong> {cliProvider.name} is not installed on your system. Please install it first.
+                                  {cliProvider.provider === 'claude_code' && (
+                                    <span className="block mt-1">Visit <a href="https://claude.ai/code" target="_blank" rel="noopener noreferrer" className="underline">claude.ai/code</a> for installation instructions.</span>
+                                  )}
+                                  {cliProvider.provider === 'codex_cli' && (
+                                    <span className="block mt-1">Install from <a href="https://github.com/ai-codex/codex-cli" target="_blank" rel="noopener noreferrer" className="underline">GitHub</a>.</span>
+                                  )}
+                                  {cliProvider.provider === 'gemini_cli' && (
+                                    <span className="block mt-1">Install using your preferred package manager.</span>
+                                  )}
+                                </p>
+                              </div>
+                            )}
+                            
                             {status === 'unavailable' && (
                               <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3">
                                 <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                  <strong>Authentication required:</strong> Please run <code className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">{cliProvider.authCommand}</code> to authenticate.
+                                  <strong>Authentication required:</strong> {config?.statusMessage || `${cliProvider.name} is installed but not authenticated.`}
+                                  <span className="block mt-1">Please run <code className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">{cliProvider.authCommand}</code> to authenticate.</span>
                                 </p>
                               </div>
                             )}

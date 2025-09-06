@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import CLIIntegrationManager from '@/lib/cliIntegration'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,34 +21,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // If no configs exist, auto-detect and create them
+    // If no configs exist, create default entries (auto-detection happens client-side)
     if (!configs || configs.length === 0) {
-      const cliManager = new CLIIntegrationManager()
-      const detectedCLIs = await cliManager.detectAvailableCLIs()
-
-      // Insert detected CLIs into database
-      const configsToInsert = detectedCLIs.map(cli => ({
+      const defaultProviders = ['claude_code', 'codex_cli', 'gemini_cli']
+      const configsToInsert = defaultProviders.map(provider => ({
         user_id: user.id,
-        provider: cli.toolName,
-        custom_path: cli.cliPath,
-        enabled: cli.enabled,
-        status: cli.lastVerified ? 'available' : 'unchecked',
-        last_checked_at: cli.lastVerified?.toISOString()
+        provider,
+        custom_path: null,
+        enabled: false,
+        status: 'unchecked',
+        last_checked_at: null
       }))
 
-      if (configsToInsert.length > 0) {
-        const { data: insertedConfigs, error: insertError } = await supabase
-          .from('cli_provider_configurations')
-          .insert(configsToInsert)
-          .select()
+      const { data: insertedConfigs, error: insertError } = await supabase
+        .from('cli_provider_configurations')
+        .insert(configsToInsert)
+        .select()
 
-        if (!insertError) {
-          return NextResponse.json({ 
-            configs: insertedConfigs,
-            detected: true,
-            message: `Auto-detected ${insertedConfigs.length} CLI tools`
-          })
-        }
+      if (!insertError) {
+        return NextResponse.json({ 
+          configs: insertedConfigs,
+          detected: false,
+          message: 'Created default CLI configurations. Use MCP to check status.'
+        })
       }
     }
 
@@ -79,19 +73,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'provider is required' }, { status: 400 })
     }
 
-    // Verify the CLI tool works if custom_path is provided
-    let isValid = false
-    if (custom_path) {
-      const cliManager = new CLIIntegrationManager()
-      isValid = await cliManager.verifyCLI({
-        toolName: provider,
-        cliPath: custom_path,
-        isDefault: false,
-        autoDetect: false,
-        enabled: enabled ?? true,
-        configOptions: {}
-      })
-    }
+    // Note: CLI verification happens client-side through MCP bridges
+    // Server-side verification is not needed since CLI tools are on user's machine
 
     // Insert or update CLI configuration
     const { data, error } = await supabase
@@ -101,8 +84,8 @@ export async function POST(request: NextRequest) {
         provider,
         custom_path,
         enabled: enabled ?? true,
-        status: custom_path ? (isValid ? 'available' : 'unavailable') : 'unchecked',
-        last_checked_at: custom_path ? new Date().toISOString() : null,
+        status: 'unchecked', // Status will be updated via MCP status checks
+        last_checked_at: null,
         updated_at: new Date().toISOString()
       })
       .select()
@@ -114,10 +97,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       config: data,
-      verified: isValid,
-      message: custom_path 
-        ? (isValid ? 'CLI tool verified and saved' : 'CLI tool saved but verification failed')
-        : 'CLI tool configuration saved'
+      message: 'CLI tool configuration saved. Status will be checked via MCP.'
     })
 
   } catch (error) {
@@ -135,7 +115,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id, enabled, custom_path } = await request.json()
+    const { id, enabled, custom_path, status, last_checked_at } = await request.json()
 
     if (!id) {
       return NextResponse.json({ error: 'Configuration ID is required' }, { status: 400 })
@@ -147,32 +127,15 @@ export async function PUT(request: NextRequest) {
 
     if (enabled !== undefined) updateData.enabled = enabled
     if (custom_path !== undefined) updateData.custom_path = custom_path
+    
+    // Allow direct status updates from MCP results
+    if (status) updateData.status = status
+    if (last_checked_at) updateData.last_checked_at = last_checked_at
 
-    // If CLI path changed, verify it
-    if (custom_path !== undefined) {
-      const { data: existingConfig } = await supabase
-        .from('cli_provider_configurations')
-        .select('provider')
-        .eq('id', id)
-        .eq('user_id', user.id)
-        .single()
-
-      if (existingConfig && custom_path) {
-        const cliManager = new CLIIntegrationManager()
-        const isValid = await cliManager.verifyCLI({
-          toolName: existingConfig.provider,
-          cliPath: custom_path,
-          isDefault: false,
-          autoDetect: false,
-          enabled: enabled ?? true,
-          configOptions: {}
-        })
-        updateData.status = isValid ? 'available' : 'unavailable'
-        updateData.last_checked_at = new Date().toISOString()
-      } else if (!custom_path) {
-        updateData.status = 'unchecked'
-        updateData.last_checked_at = null
-      }
+    // If custom_path changed, reset status to unchecked (will be updated via MCP)
+    if (custom_path !== undefined && !status) {
+      updateData.status = 'unchecked'
+      updateData.last_checked_at = null
     }
 
     const { data, error } = await supabase
