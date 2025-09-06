@@ -37,13 +37,9 @@ class CLIValidationService {
    * Check if we're in a client environment that can spawn processes
    */
   private canRunLocalValidation(): boolean {
-    return typeof window !== 'undefined' && 
-           typeof navigator !== 'undefined' &&
-           // Check if we have access to local execution (Electron, Tauri, etc.)
-           !!(window as any).electronAPI || 
-           !!(window as any).__TAURI__ ||
-           // Or if we're in a desktop browser with file system access
-           typeof (window as any).showDirectoryPicker === 'function'
+    // For now, always use server-side detection since browser can't spawn processes
+    // In the future, we can add desktop app detection here
+    return false
   }
 
   /**
@@ -260,8 +256,8 @@ class CLIValidationService {
 
       // Check if we can run local validation
       if (!this.canRunLocalValidation()) {
-        // For browser environments, trigger re-authentication flow
-        return await this.triggerReAuthenticationFlow(options)
+        // For browser environments, use server-side detection
+        return await this.performServerSideDetection(options)
       }
 
       const validationTasks = [
@@ -305,6 +301,68 @@ class CLIValidationService {
 
     } finally {
       this.isValidating = false
+    }
+  }
+
+  /**
+   * Perform server-side CLI detection
+   */
+  private async performServerSideDetection(options: CLIValidationOptions): Promise<CLIValidationResult[]> {
+    console.log('🌐 Browser environment - using server-side CLI detection')
+    
+    try {
+      // Call server-side CLI detection API
+      const response = await fetch('/api/cli-detect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: options.userId,
+          mcp_token: options.mcpToken
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Server detection failed: ${response.status}`)
+      }
+
+      const results: CLIValidationResult[] = await response.json()
+      
+      // Report each result to the CLI status update API
+      for (const result of results) {
+        options.onProgress?.(result.provider, result.status)
+        await this.reportToServer(result, options.userId, options.mcpToken)
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+
+      console.log('✅ Server-side CLI detection completed')
+      options.onComplete?.(results)
+      return results
+
+    } catch (error: any) {
+      console.error('❌ Server-side detection failed:', error)
+      
+      // Return fallback results indicating detection failed
+      const fallbackResults: CLIValidationResult[] = [
+        {
+          provider: 'claude_code',
+          status: 'unavailable', 
+          message: 'CLI detection failed - please check manually'
+        },
+        {
+          provider: 'codex_cli',
+          status: 'unavailable',
+          message: 'CLI detection failed - please check manually'
+        },
+        {
+          provider: 'gemini_cli',
+          status: 'unavailable', 
+          message: 'CLI detection failed - please check manually'
+        }
+      ]
+
+      return fallbackResults
     }
   }
 
