@@ -952,7 +952,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   console.log(`[MCP] User preferences:`, preferences)
 
   // Use models from args, or get models from available API keys, or fallback defaults
-  const models = args.models || getModelsFromApiKeysAndPreferences(apiKeys, preferences) || ['gpt-5-2025-08-07']
+  const models = args.models || getModelsFromApiKeysAndPreferences(apiKeys || [], preferences) || ['gpt-5-2025-08-07']
 
   // Use temperature and max_tokens from args, or user preferences, or defaults
   const temperature = args.temperature ?? preferences?.default_temperature ?? 0.7
