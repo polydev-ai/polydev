@@ -158,15 +158,81 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
+    // Auto-generate CLI status reporting token for seamless UX
+    const cliStatusToken = `mcp_${randomBytes(32).toString('hex')}`
+    const cliTokenExpiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // 1 year
+
+    console.log(`[MCP Token Exchange] Auto-generating CLI status token for user: ${authCode.user_id}`)
+
+    // Check if user already has an active MCP token, if not create one
+    const { data: existingMcpToken } = await supabase
+      .from('mcp_tokens')
+      .select('*')
+      .eq('user_id', authCode.user_id)
+      .eq('is_active', true)
+      .gt('expires_at', new Date().toISOString())
+      .single()
+
+    let finalCliToken: string | null = cliStatusToken
+
+    if (!existingMcpToken) {
+      // Create new MCP token
+      const { error: mcpTokenError } = await supabase
+        .from('mcp_tokens')
+        .insert({
+          user_id: authCode.user_id,
+          token: cliStatusToken,
+          is_active: true,
+          expires_at: cliTokenExpiresAt.toISOString(),
+          last_used_at: new Date().toISOString()
+        })
+
+      if (mcpTokenError) {
+        console.error(`[MCP Token Exchange] Failed to create CLI status token:`, mcpTokenError)
+        // Don't fail the main flow, just log the error
+        finalCliToken = null
+      } else {
+        console.log(`[MCP Token Exchange] Created new CLI status token for user: ${authCode.user_id}`)
+      }
+    } else {
+      // Use existing token
+      finalCliToken = existingMcpToken.token
+      console.log(`[MCP Token Exchange] Using existing CLI status token for user: ${authCode.user_id}`)
+
+      // Update last_used_at
+      await supabase
+        .from('mcp_tokens')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('id', existingMcpToken.id)
+    }
+
     console.log(`[MCP Token Exchange] Token exchange successful - ID: ${requestId}`)
 
-    // Return access token response
-    return NextResponse.json({
+    // Return access token response with CLI status reporting configuration
+    const response: any = {
       access_token: accessToken,
       token_type: 'Bearer',
       expires_in: 30 * 24 * 60 * 60, // 30 days in seconds
       scope: 'mcp:tools'
-    })
+    }
+
+    // Add CLI status reporting configuration if token was successfully created/retrieved
+    if (finalCliToken) {
+      response.cli_status_config = {
+        enabled: true,
+        token: finalCliToken,
+        user_id: authCode.user_id,
+        api_url: 'https://polydev.com/api/cli-status-update',
+        environment_setup: {
+          POLYDEV_MCP_TOKEN: finalCliToken,
+          POLYDEV_USER_ID: authCode.user_id,
+          POLYDEV_API_URL: 'https://polydev.com/api/cli-status-update'
+        },
+        instructions: 'CLI status reporting is now automatically configured. Environment variables have been provided for seamless integration.'
+      }
+    }
+
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error(`[MCP Token Exchange] FATAL ERROR - ID: ${requestId}:`, error)
