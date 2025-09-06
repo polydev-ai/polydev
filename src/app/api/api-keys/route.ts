@@ -15,6 +15,7 @@ export async function GET() {
       .from('user_api_keys')
       .select('*')
       .eq('user_id', user.id)
+      .order('display_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
     
     if (error) {
@@ -52,6 +53,18 @@ export async function POST(request: NextRequest) {
       ? `${api_key.slice(0, 8)}...${api_key.slice(-4)}`
       : `${api_key.slice(0, 4)}***`
     
+    // Get the current max display_order for this user to append new key at the end
+    const { data: maxOrderData, error: maxOrderError } = await supabase
+      .from('user_api_keys')
+      .select('display_order')
+      .eq('user_id', user.id)
+      .order('display_order', { ascending: false, nullsFirst: false })
+      .limit(1)
+    
+    const maxOrder = maxOrderData && maxOrderData.length > 0 
+      ? (maxOrderData[0].display_order ?? -1) 
+      : -1
+
     const keyData = {
       user_id: user.id,
       provider,
@@ -63,6 +76,7 @@ export async function POST(request: NextRequest) {
       additional_models: additional_models,
       is_preferred,
       budget_limit,
+      display_order: maxOrder + 1,
       active: true
     }
     
