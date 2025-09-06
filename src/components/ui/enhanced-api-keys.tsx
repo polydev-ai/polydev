@@ -225,7 +225,8 @@ export default function EnhancedApiKeysPage() {
         api_base: '',
         default_model: '',
         is_preferred: false,
-        additional_models: []
+        additional_models: [],
+        budget_limit: null
       })
     } catch (err: any) {
       setError(err.message)
