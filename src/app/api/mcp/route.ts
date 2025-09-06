@@ -360,15 +360,37 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
     
-    const { method, params, id } = requestBody
+    const { method, params, id, jsonrpc } = requestBody
     
-    // Log all MCP requests for debugging reconnection issues
-    console.log(`[MCP Server] Raw request body:`, JSON.stringify(requestBody, null, 2))
+    // Validate JSON-RPC 2.0 format
+    if (!method || !jsonrpc || jsonrpc !== '2.0') {
+      console.log(`[MCP Server] Invalid request format - not JSON-RPC 2.0`)
+      console.log(`[MCP Server] Missing required fields: method=${!!method}, jsonrpc=${!!jsonrpc}`)
+      console.log(`[MCP Server] This appears to be a frontend API request, not MCP`)
+      
+      // Return a 400 error for invalid MCP requests
+      return NextResponse.json({
+        jsonrpc: '2.0',
+        id: id || null,
+        error: {
+          code: -32600,
+          message: 'Invalid Request - This endpoint only accepts JSON-RPC 2.0 MCP protocol requests'
+        }
+      }, { 
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      })
+    }
+    
+    // Log all valid MCP requests for debugging reconnection issues
+    console.log(`[MCP Server] Valid MCP request received`)
     console.log(`[MCP Server] Method: ${method}, ID: ${id}`)
     console.log(`[MCP Server] Params:`, params)
     console.log(`[MCP Server] Auth header:`, request.headers.get('authorization') ? 'Present' : 'Missing')
-    console.log(`[MCP Server] Request URL:`, request.url)
-    console.log(`[MCP Server] Request headers:`, Object.fromEntries(request.headers.entries()))
     
     // Handle MCP protocol requests
     switch (method) {
