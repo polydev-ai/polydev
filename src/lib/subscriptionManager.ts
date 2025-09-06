@@ -91,8 +91,8 @@ export class SubscriptionManager {
         const subscription = await this.getUserSubscription(userId, useServiceRole)
         const isPro = subscription?.tier === 'pro' && subscription?.status === 'active'
         
-        // Get base limit (50 free) + referral bonuses
-        const baseLimit = isPro ? 999999 : 50 // Unlimited for pro users
+        // Get base limit (200 free) + referral bonuses
+        const baseLimit = isPro ? 999999 : 200 // Unlimited for pro users
         const referralBonus = await this.getReferralBonus(userId, useServiceRole)
         
         const { data: newUsage, error: createError } = await supabase
@@ -114,6 +114,52 @@ export class SubscriptionManager {
         usage = newUsage
       } else if (error) {
         throw error
+      }
+
+      // Check if we need to update existing usage records to match current subscription status
+      if (usage) {
+        const subscription = await this.getUserSubscription(userId, useServiceRole)
+        const isPro = subscription?.tier === 'pro' && subscription?.status === 'active'
+        const referralBonus = await this.getReferralBonus(userId, useServiceRole)
+        
+        let shouldUpdate = false
+        let newLimit = usage.messages_limit
+        
+        if (isPro && usage.messages_limit !== 999999) {
+          // User is pro but has limited messages - upgrade them
+          newLimit = 999999
+          shouldUpdate = true
+          console.log(`[SubscriptionManager] User ${userId} is pro, upgrading to unlimited messages`)
+        } else if (!isPro && usage.messages_limit === 999999) {
+          // User is not pro but has unlimited messages - downgrade them  
+          newLimit = 200 + referralBonus
+          shouldUpdate = true
+          console.log(`[SubscriptionManager] User ${userId} is not pro, downgrading from unlimited to ${newLimit} messages`)
+        } else if (!isPro && usage.messages_limit === 50) {
+          // Free user with old limit (50) - upgrade to new free limit (200)
+          newLimit = 200 + referralBonus
+          shouldUpdate = true
+          console.log(`[SubscriptionManager] User ${userId} is free, upgrading from 50 to ${newLimit} messages`)
+        }
+        
+        if (shouldUpdate) {
+          const { data: updatedUsage, error: updateError } = await supabase
+            .from('user_message_usage')
+            .update({ 
+              messages_limit: newLimit,
+              cli_usage_allowed: isPro 
+            })
+            .eq('user_id', userId)
+            .eq('month_year', currentMonth)
+            .select()
+            .single()
+          
+          if (updateError) {
+            console.warn('Failed to update message limit:', updateError)
+          } else {
+            usage = updatedUsage
+          }
+        }
       }
 
       return usage!
