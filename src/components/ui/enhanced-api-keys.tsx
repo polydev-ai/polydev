@@ -38,11 +38,14 @@ export default function EnhancedApiKeysPage() {
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null)
   const [showApiKey, setShowApiKey] = useState<{[keyId: string]: boolean}>({})
   const [expandedProviders, setExpandedProviders] = useState<{[provider: string]: boolean}>({})
+  const [updateApiKey, setUpdateApiKey] = useState(false)
   
   // Form state with new fields
   const [formData, setFormData] = useState({
@@ -162,18 +165,49 @@ export default function EnhancedApiKeysPage() {
 
   const saveApiKey = async () => {
     try {
-      setLoading(true)
+      setSaving(true)
       
-      const response = await fetch('/api/api-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
+      let response
+      if (editingKey) {
+        // Update existing API key
+        const updateData: any = {
+          api_base: formData.api_base,
+          default_model: formData.default_model,
+          is_preferred: formData.is_preferred,
+          additional_models: formData.additional_models,
+          budget_limit: formData.budget_limit
+        }
+        
+        // Only include API key if user chose to update it
+        if (updateApiKey && formData.api_key.trim()) {
+          updateData.encrypted_key = btoa(formData.api_key)
+          updateData.key_preview = formData.api_key.length > 8 
+            ? `${formData.api_key.slice(0, 8)}...${formData.api_key.slice(-4)}`
+            : `${formData.api_key.slice(0, 4)}***`
+        }
+        
+        response = await fetch(`/api/api-keys/${editingKey.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        })
+      } else {
+        // Create new API key
+        response = await fetch('/api/api-keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        })
+      }
       
       if (!response.ok) throw new Error('Failed to save API key')
       
       await fetchData()
       setShowAddForm(false)
+      setEditingKey(null)
+      setUpdateApiKey(false)
+      setSuccess(editingKey ? 'API key updated successfully!' : 'API key added successfully!')
+      setTimeout(() => setSuccess(null), 3000)
       setFormData({
         provider: 'openai',
         api_key: '',
@@ -186,7 +220,7 @@ export default function EnhancedApiKeysPage() {
     } catch (err: any) {
       setError(err.message)
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
@@ -257,6 +291,25 @@ export default function EnhancedApiKeysPage() {
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center space-x-2">
           <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
           <span className="text-red-700 dark:text-red-300">{error}</span>
+          <button 
+            onClick={() => setError(null)}
+            className="ml-auto text-red-600 hover:text-red-800"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center space-x-2">
+          <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+          <span className="text-green-700 dark:text-green-300">{success}</span>
+          <button 
+            onClick={() => setSuccess(null)}
+            className="ml-auto text-green-600 hover:text-green-800"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -331,6 +384,7 @@ export default function EnhancedApiKeysPage() {
                               className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
                               onClick={() => {
                                 setEditingKey(key)
+                                setUpdateApiKey(false) // Start with not updating the key
                                 setFormData({
                                   provider: key.provider,
                                   api_key: '', // Don't pre-fill for security
@@ -368,8 +422,8 @@ export default function EnhancedApiKeysPage() {
 
       {/* Add/Edit Form Modal */}
       {(showAddForm || editingKey) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full mx-4 p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full my-8 p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               {editingKey ? 'Edit API Key' : 'Add API Key'}
             </h3>
@@ -444,16 +498,33 @@ export default function EnhancedApiKeysPage() {
 
               {/* API Key */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  API Key
-                </label>
-                <input
-                  type="password"
-                  value={formData.api_key}
-                  onChange={(e) => setFormData(prev => ({...prev, api_key: e.target.value}))}
-                  placeholder="Enter your API key"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-                />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    API Key
+                  </label>
+                  {editingKey && (
+                    <button
+                      type="button"
+                      onClick={() => setUpdateApiKey(!updateApiKey)}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {updateApiKey ? 'Keep existing key' : 'Update API key'}
+                    </button>
+                  )}
+                </div>
+                {(!editingKey || updateApiKey) ? (
+                  <input
+                    type="password"
+                    value={formData.api_key}
+                    onChange={(e) => setFormData(prev => ({...prev, api_key: e.target.value}))}
+                    placeholder="Enter your API key"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  />
+                ) : (
+                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm">
+                    API key will remain unchanged
+                  </div>
+                )}
               </div>
 
               {/* Default Model */}
@@ -534,16 +605,26 @@ export default function EnhancedApiKeysPage() {
             <div className="flex space-x-3 mt-6">
               <button
                 onClick={saveApiKey}
-                disabled={!formData.api_key.trim() || !formData.default_model}
+                disabled={saving || (!editingKey ? !formData.api_key.trim() : (updateApiKey && !formData.api_key.trim())) || !formData.default_model}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
               >
-                <Check className="w-4 h-4" />
-                <span>{editingKey ? 'Update' : 'Save'}</span>
+                {saving ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>{editingKey ? 'Update' : 'Save'}</span>
+                  </>
+                )}
               </button>
               <button
                 onClick={() => {
                   setShowAddForm(false)
                   setEditingKey(null)
+                  setUpdateApiKey(false)
                   setFormData({
                     provider: 'openai',
                     api_key: '',
