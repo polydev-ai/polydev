@@ -56,6 +56,8 @@ export default function EnhancedApiKeysPage() {
   const supabase = createClient()
 
   const fetchData = async () => {
+    if (!user?.id) return
+    
     try {
       setLoading(true)
       
@@ -63,7 +65,7 @@ export default function EnhancedApiKeysPage() {
       const { data: keysData, error: keysError } = await supabase
         .from('user_api_keys')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
       if (keysError) throw keysError
@@ -72,7 +74,7 @@ export default function EnhancedApiKeysPage() {
       const { data: prefsData, error: prefsError } = await supabase
         .from('user_preferences')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .single()
       
       // Use CLINE_PROVIDERS directly
@@ -113,7 +115,7 @@ export default function EnhancedApiKeysPage() {
   const handleDragEnd = (result: any) => {
     if (!result.destination || !preferences) return
 
-    const items = Object.entries(preferences.model_preferences)
+    const items = Object.entries(preferences.model_preferences || {})
     const [reorderedItem] = items.splice(result.source.index, 1)
     items.splice(result.destination.index, 0, reorderedItem)
 
@@ -139,11 +141,11 @@ export default function EnhancedApiKeysPage() {
   const addModelToProvider = async (provider: string, model: string) => {
     if (!preferences) return
     
-    const currentPref = preferences.model_preferences[provider] || { models: [], order: Object.keys(preferences.model_preferences).length + 1 }
+    const currentPref = preferences.model_preferences?.[provider] || { models: [], order: Object.keys(preferences.model_preferences || {}).length + 1 }
     const updatedModels = [...currentPref.models, model].filter((m, i, arr) => arr.indexOf(m) === i) // Remove duplicates
     
     const newPreferences = {
-      ...preferences.model_preferences,
+      ...(preferences.model_preferences || {}),
       [provider]: {
         ...currentPref,
         models: updatedModels
@@ -156,13 +158,13 @@ export default function EnhancedApiKeysPage() {
   const removeModelFromProvider = async (provider: string, model: string) => {
     if (!preferences) return
     
-    const currentPref = preferences.model_preferences[provider]
+    const currentPref = preferences.model_preferences?.[provider]
     if (!currentPref) return
     
     const updatedModels = currentPref.models.filter(m => m !== model)
     
     const newPreferences = {
-      ...preferences.model_preferences,
+      ...(preferences.model_preferences || {}),
       [provider]: {
         ...currentPref,
         models: updatedModels
@@ -267,7 +269,7 @@ export default function EnhancedApiKeysPage() {
       )}
 
       {/* Model Preferences Section */}
-      {sortedPreferences.length > 0 && (
+      {sortedPreferences && sortedPreferences.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
             <Settings className="w-5 h-5" />
@@ -308,14 +310,14 @@ export default function EnhancedApiKeysPage() {
                                   </button>
                                 </div>
                                 <span className="text-sm text-gray-500">
-                                  {pref.models.length} model{pref.models.length !== 1 ? 's' : ''}
+                                  {pref.models?.length || 0} model{(pref.models?.length || 0) !== 1 ? 's' : ''}
                                 </span>
                               </div>
                               
                               {expandedProviders[provider] && (
                                 <div className="mt-3 space-y-2">
                                   <div className="flex flex-wrap gap-2">
-                                    {pref.models.map((model, modelIndex) => (
+                                    {pref.models?.map((model, modelIndex) => (
                                       <div key={model} className="flex items-center space-x-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded px-2 py-1">
                                         <span className="text-sm">{model}</span>
                                         <button
@@ -340,7 +342,7 @@ export default function EnhancedApiKeysPage() {
                                   >
                                     <option value="">Add model...</option>
                                     {Object.keys(CLINE_PROVIDERS[provider as keyof typeof CLINE_PROVIDERS]?.supportedModels || {}).map(model => (
-                                      <option key={model} value={model} disabled={pref.models.includes(model)}>
+                                      <option key={model} value={model} disabled={pref.models?.includes(model)}>
                                         {model}
                                       </option>
                                     ))}
