@@ -3,7 +3,7 @@ import { createClient } from '@/app/utils/supabase/server'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -15,7 +15,7 @@ export async function PUT(
     }
     
     const updates = await request.json()
-    const id = params.id
+    const { id } = await params
     
     // Validate ownership
     const { data: existingKey, error: fetchError } = await supabase
@@ -49,7 +49,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -60,7 +60,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const id = params.id
+    const { id } = await params
     
     const { error } = await supabase
       .from('user_api_keys')
