@@ -1,151 +1,78 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import { spawn } from 'child_process'
-import { promisify } from 'util'
-import path from 'path'
-import { exec } from 'child_process'
-
-const execAsync = promisify(exec)
 
 export const dynamic = 'force-dynamic'
 
-// Function to call MCP bridge for real CLI validation
-async function callMCPBridge(bridgePath: string, tool: string): Promise<{
+// Serverless-compatible CLI validation using basic checks
+async function validateCLIStatus(cliType: string): Promise<{
   success: boolean
   result: string
   available: boolean
   error?: string
 }> {
-  return new Promise((resolve) => {
-    console.log(`[MCP Bridge] Calling ${bridgePath} with tool: ${tool}`)
-    
-    // Prepare MCP request
-    const mcpRequest = {
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/call',
-      params: {
-        name: tool,
-        arguments: {}
-      }
+  console.log(`[CLI Status] Validating ${cliType} in serverless environment`)
+  
+  // In a serverless environment, we can't spawn subprocesses to directly test CLIs
+  // Instead, we provide instructions for users to validate locally
+  
+  const cliInstructions = {
+    claude_code: {
+      name: 'Claude Code',
+      checkCommand: 'claude --version',
+      installInstructions: 'Install via: npm install -g @anthropic-ai/claude-code',
+      authInstructions: 'Authenticate with: claude auth login'
+    },
+    codex_cli: {
+      name: 'Codex CLI', 
+      checkCommand: 'codex --version',
+      installInstructions: 'Install Codex CLI from OpenAI',
+      authInstructions: 'Authenticate with: codex auth'
+    },
+    gemini_cli: {
+      name: 'Gemini CLI',
+      checkCommand: 'gemini --version', 
+      installInstructions: 'Install Gemini CLI from Google',
+      authInstructions: 'Authenticate with: gemini auth login'
     }
-    
-    const child = spawn('python3', [bridgePath], {
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
-    
-    let stdout = ''
-    let stderr = ''
-    
-    child.stdout.on('data', (data) => {
-      stdout += data.toString()
-    })
-    
-    child.stderr.on('data', (data) => {
-      stderr += data.toString()
-    })
-    
-    // Send initialization request first
-    const initRequest = {
-      jsonrpc: '2.0',
-      id: 0,
-      method: 'initialize',
-      params: {
-        protocolVersion: '2024-11-05',
-        capabilities: {},
-        clientInfo: {
-          name: 'polydev-dashboard',
-          version: '1.0.0'
-        }
-      }
+  }
+  
+  const cli = cliInstructions[cliType as keyof typeof cliInstructions]
+  
+  if (!cli) {
+    return {
+      success: false,
+      result: `❌ Unknown CLI type: ${cliType}`,
+      available: false,
+      error: 'Unknown CLI'
     }
-    
-    child.stdin.write(JSON.stringify(initRequest) + '\n')
-    child.stdin.write(JSON.stringify(mcpRequest) + '\n')
-    child.stdin.end()
-    
-    const timeout = setTimeout(() => {
-      child.kill('SIGKILL')
-      resolve({
-        success: false,
-        result: 'Timeout: CLI check took too long',
-        available: false,
-        error: 'Timeout'
-      })
-    }, 15000) // 15 second timeout
-    
-    child.on('close', (code) => {
-      clearTimeout(timeout)
-      
-      console.log(`[MCP Bridge] Process exited with code: ${code}`)
-      console.log(`[MCP Bridge] stdout: ${stdout}`)
-      console.log(`[MCP Bridge] stderr: ${stderr}`)
-      
-      if (code !== 0) {
-        resolve({
-          success: false,
-          result: `MCP bridge failed with code ${code}`,
-          available: false,
-          error: stderr || `Process exited with code ${code}`
-        })
-        return
-      }
-      
-      // Parse MCP response
-      try {
-        const lines = stdout.split('\n').filter(line => line.trim())
-        let toolResult = null
-        
-        // Look for the tool call response
-        for (const line of lines) {
-          try {
-            const parsed = JSON.parse(line)
-            if (parsed.id === 1 && parsed.result) {
-              toolResult = parsed.result
-              break
-            }
-          } catch (e) {
-            // Skip non-JSON lines
-          }
-        }
-        
-        if (toolResult && toolResult.content && toolResult.content.length > 0) {
-          const content = toolResult.content[0].text || ''
-          const isAvailable = content.includes('✅') && !content.includes('❌')
-          
-          resolve({
-            success: true,
-            result: content,
-            available: isAvailable
-          })
-        } else {
-          resolve({
-            success: false,
-            result: 'No valid response from MCP bridge',
-            available: false,
-            error: 'Invalid MCP response'
-          })
-        }
-      } catch (parseError) {
-        resolve({
-          success: false,
-          result: 'Failed to parse MCP response',
-          available: false,
-          error: `Parse error: ${parseError}`
-        })
-      }
-    })
-    
-    child.on('error', (error) => {
-      clearTimeout(timeout)
-      resolve({
-        success: false,
-        result: `Failed to start MCP bridge: ${error.message}`,
-        available: false,
-        error: error.message
-      })
-    })
-  })
+  }
+  
+  // Return validation instructions since we can't directly test in serverless
+  const result = `🔍 **${cli.name} Status Check**
+
+⚠️  **Serverless Limitation**: Direct CLI validation requires a local environment.
+
+**To validate ${cli.name} locally, run:**
+\`\`\`bash
+${cli.checkCommand}
+\`\`\`
+
+**If not installed:**
+${cli.installInstructions}
+
+**If not authenticated:**
+${cli.authInstructions}
+
+**For automatic validation:** Use this dashboard on a local server environment (not Vercel/serverless).
+
+💡 **Status will be marked as "needs manual verification" until validated locally.**`
+
+  return {
+    success: true,
+    result,
+    available: false, // Conservative approach - assume not available until manually verified
+    error: undefined
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -172,38 +99,27 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
     
-    // Map server names to CLI provider types and bridge paths
+    // Map server names to CLI provider types
     const serverToCLI = {
       'claude-code-cli-bridge': 'claude_code',
       'cross-llm-bridge-test': 'codex_cli', 
       'gemini-cli-bridge': 'gemini_cli'
     }
     
-    const bridgePaths = {
-      'claude-code-cli-bridge': '../claude_code_cli_bridge.py',
-      'cross-llm-bridge-test': '../codex_cli_bridge.py',
-      'gemini-cli-bridge': '../gemini_cli_bridge.py'
-    }
-    
     const cliType = serverToCLI[server as keyof typeof serverToCLI]
-    const bridgePath = bridgePaths[server as keyof typeof bridgePaths]
     
-    if (!cliType || !bridgePath) {
+    if (!cliType) {
       return NextResponse.json({
         error: `Unknown server: ${server}`
       }, { status: 400 })
     }
     
-    // Get absolute path to bridge
-    const absoluteBridgePath = path.resolve(process.cwd(), bridgePath)
-    console.log(`[CLI Status] Bridge path: ${absoluteBridgePath}`)
+    // Perform serverless-compatible CLI validation
+    const validationResult = await validateCLIStatus(cliType)
     
-    // Call MCP bridge for real-time validation
-    const mcpResult = await callMCPBridge(absoluteBridgePath, tool)
-    
-    // Update database with real status
-    if (mcpResult.success) {
-      const newStatus = mcpResult.available ? 'available' : 'unavailable'
+    // Update database with validation status
+    if (validationResult.success) {
+      const newStatus = validationResult.available ? 'available' : 'needs_verification'
       const now = new Date().toISOString()
       
       // Update or create CLI configuration
@@ -240,11 +156,12 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json({
-      result: mcpResult.result,
-      available: mcpResult.available,
-      success: mcpResult.success,
+      result: validationResult.result,
+      available: validationResult.available,
+      success: validationResult.success,
       last_checked_at: new Date().toISOString(),
-      mcp_validation: true // Flag to indicate this was real-time validation
+      serverless_validation: true, // Flag to indicate serverless validation
+      needs_local_verification: true
     })
     
   } catch (error) {
