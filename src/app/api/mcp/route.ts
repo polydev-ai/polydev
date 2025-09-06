@@ -951,18 +951,6 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
   console.log(`[MCP] User preferences:`, preferences)
 
-  // Use models from args, or get models from available API keys, or fallback defaults
-  const models = args.models || getModelsFromApiKeysAndPreferences(apiKeys || [], preferences) || ['gpt-5-2025-08-07']
-
-  // Use temperature and max_tokens from args, or user preferences, or defaults
-  const temperature = args.temperature ?? preferences?.default_temperature ?? 0.7
-  const maxTokens = args.max_tokens ?? preferences?.default_max_tokens ?? 1000
-
-  console.log(`[MCP] Using temperature: ${temperature}, maxTokens: ${maxTokens}`)
-
-  console.log(`[MCP] Getting perspectives for user ${user.id}: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`)
-  console.log(`[MCP] Models: ${models.join(', ')}`)
-
   // Get user API keys from database using service role (bypasses RLS since we already validated OAuth)
   console.log(`[MCP] Authenticated user: ${user.id}`)
   console.log(`[MCP] Querying API keys for user_id: ${user.id}`)
@@ -976,6 +964,17 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   if (apiKeys && apiKeys.length > 0) {
     console.log(`[MCP] API Keys:`, apiKeys.map(k => ({ provider: k.provider, preview: k.key_preview })))
   }
+
+  // Use models from args, or get models from available API keys, or fallback defaults
+  const models = args.models || getModelsFromApiKeysAndPreferences(apiKeys || [], preferences) || ['gpt-5-2025-08-07']
+
+  // Use temperature and max_tokens from args, or user preferences, or defaults
+  const temperature = args.temperature ?? preferences?.default_temperature ?? 0.7
+  const maxTokens = args.max_tokens ?? preferences?.default_max_tokens ?? 1000
+
+  console.log(`[MCP] Using temperature: ${temperature}, maxTokens: ${maxTokens}`)
+  console.log(`[MCP] Getting perspectives for user ${user.id}: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`)
+  console.log(`[MCP] Models: ${models.join(', ')}`)
 
   // Get all provider configurations using service role
   const { data: providerConfigs } = await serviceRoleSupabase
