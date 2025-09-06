@@ -340,10 +340,30 @@ async function callGoogle(model: string, prompt: string, apiKey: string, tempera
 // MCP Server Implementation with Bearer Token Authentication
 export async function POST(request: NextRequest) {
   try {
-    const requestBody = await request.json()
+    // Get the raw text first to debug parsing issues
+    const rawText = await request.text()
+    console.log(`[MCP Server] Raw request text:`, rawText)
+    
+    let requestBody
+    try {
+      requestBody = JSON.parse(rawText)
+    } catch (parseError) {
+      console.error(`[MCP Server] JSON parse error:`, parseError)
+      console.log(`[MCP Server] Failed to parse body:`, rawText.substring(0, 200))
+      return NextResponse.json({
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          code: -32700,
+          message: 'Parse error - Invalid JSON'
+        }
+      }, { status: 400 })
+    }
+    
     const { method, params, id } = requestBody
     
     // Log all MCP requests for debugging reconnection issues
+    console.log(`[MCP Server] Raw request body:`, JSON.stringify(requestBody, null, 2))
     console.log(`[MCP Server] Method: ${method}, ID: ${id}`)
     console.log(`[MCP Server] Params:`, params)
     console.log(`[MCP Server] Auth header:`, request.headers.get('authorization') ? 'Present' : 'Missing')
@@ -1777,6 +1797,54 @@ Your CLI status reporting token has been automatically configured, but you need 
 Visit your [Polydev API Keys dashboard](https://polydev.com/dashboard/api-keys) to get your complete setup instructions.`
   }
 
+  // Helper function to check CLI availability
+  const checkCLIStatus = async (cliProvider: string): Promise<{ status: string, message: string, detected: boolean }> => {
+    // Note: This runs on the server, not the user's machine
+    // For actual CLI detection, we need the client-side bridges or environment detection
+    // For now, we'll report based on what we can detect server-side
+    
+    try {
+      // Check if we have existing configuration from the database
+      const { data: existingConfig } = await serviceRoleSupabase
+        .from('cli_provider_configurations')
+        .select('status, last_checked_at, cli_version')
+        .eq('user_id', user.id)
+        .eq('provider', cliProvider)
+        .single()
+
+      if (existingConfig && existingConfig.last_checked_at) {
+        const lastCheck = new Date(existingConfig.last_checked_at)
+        const now = new Date()
+        const minutesSinceCheck = (now.getTime() - lastCheck.getTime()) / (1000 * 60)
+        
+        // If checked within last 5 minutes, return cached result
+        if (minutesSinceCheck < 5) {
+          return {
+            status: existingConfig.status,
+            message: `Status from recent check (${Math.floor(minutesSinceCheck)} min ago): ${existingConfig.status}`,
+            detected: existingConfig.status === 'available'
+          }
+        }
+      }
+
+      // For server-side detection, we can only do basic checks
+      // Real CLI detection requires client-side execution
+      return {
+        status: 'checking',
+        message: `Server-side detection initiated. Real CLI detection requires client-side verification.`,
+        detected: false
+      }
+      
+    } catch (error) {
+      console.error(`CLI status check error for ${cliProvider}:`, error)
+      return {
+        status: 'error', 
+        message: `Error checking ${cliProvider} status: ${error}`,
+        detected: false
+      }
+    }
+  }
+
   const formatProvider = (p: string) => {
     switch(p) {
       case 'claude_code': return 'Claude Code'
@@ -1787,22 +1855,23 @@ Visit your [Polydev API Keys dashboard](https://polydev.com/dashboard/api-keys) 
   }
 
   if (provider === 'all') {
-    return `🔍 **CLI Status Check Initiated**
+    const claudeCheck = await checkCLIStatus('claude_code')
+    const codexCheck = await checkCLIStatus('codex_cli')
+    const geminiCheck = await checkCLIStatus('gemini_cli')
+    
+    return `🔍 **CLI Status Check Results**
 
-Checking status for all CLI tools: Claude Code, Codex CLI, and Gemini CLI.
+**Claude Code:** ${claudeCheck.status === 'available' ? '✅' : claudeCheck.status === 'checking' ? '🔄' : '❌'} ${claudeCheck.message}
 
-✅ Your CLI status reporting is properly configured and the check has been queued.
+**Codex CLI:** ${codexCheck.status === 'available' ? '✅' : codexCheck.status === 'checking' ? '🔄' : '❌'} ${codexCheck.message}
 
-**What happens next:**
-- CLI tool installations will be detected
-- Authentication status will be verified
-- Results will appear in your Polydev dashboard within 30 seconds
-- Any issues will be reported with helpful resolution steps
+**Gemini CLI:** ${geminiCheck.status === 'available' ? '✅' : geminiCheck.status === 'checking' ? '🔄' : '❌'} ${geminiCheck.message}
 
-**View Results:**
-- Visit your [Polydev dashboard](https://polydev.com/dashboard/api-keys) 
-- Look for the "CLI Providers" section
-- Status indicators will show: ✅ Available, ⚠️ Needs Auth, or ❌ Not Installed
+**Important Note:** 🚨
+Server-side CLI detection is limited. For accurate status:
+1. CLI tools must be detected on your local machine
+2. Use the MCP client-side bridges for real-time detection
+3. Status updates will appear in your dashboard as tools are detected
 
 **Environment Variables:**
 - POLYDEV_MCP_TOKEN: ✅ Configured
@@ -1810,24 +1879,24 @@ Checking status for all CLI tools: Claude Code, Codex CLI, and Gemini CLI.
 - POLYDEV_API_URL: ✅ Configured`
   }
 
+  const statusCheck = await checkCLIStatus(provider)
+  
   return `🔍 **${formatProvider(provider)} Status Check**
 
-Status check initiated for ${formatProvider(provider)}.
+**Status:** ${statusCheck.status === 'available' ? '✅ Available' : statusCheck.status === 'checking' ? '🔄 Checking' : '❌ ' + statusCheck.status}
 
-✅ Your CLI status reporting is configured and the check is in progress.
+**Details:** ${statusCheck.message}
 
-**What's being checked:**
-- Installation detection in system PATH
-- Authentication status verification  
-- Version information collection
-- Configuration validation
+**Note:** CLI detection works best with client-side verification. Install and authenticate the CLI on your local machine for accurate status reporting.
 
-**Results will show:**
-- ✅ **Available**: CLI is installed and authenticated
-- ⚠️ **Needs Authentication**: CLI is installed but requires login
-- ❌ **Not Installed**: CLI not found - installation needed
+**Next Steps:**
+${statusCheck.status !== 'available' ? `- Install ${formatProvider(provider)} on your local machine
+- Authenticate with your account
+- Status will automatically update in your dashboard` : '- CLI tool is properly configured and available'}
 
-Check your [Polydev dashboard](https://polydev.com/dashboard/api-keys) in the CLI Providers section for updated status.`
+**Environment Variables:**
+- POLYDEV_MCP_TOKEN: ✅ Configured  
+- POLYDEV_USER_ID: ✅ Configured (${user.id})`
 }
 
 async function handleCliMonitoringSetup(args: any, user: any): Promise<string> {
