@@ -310,8 +310,8 @@ export default function EnhancedApiKeysPage() {
         c.provider === provider ? { ...c, status: 'checking' } : c
       ))
 
-      // Use the existing MCP bridge to check status
-      const response = await fetch('/api/mcp', {
+      // Use the dedicated CLI status endpoint
+      const response = await fetch('/api/cli-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -328,16 +328,14 @@ export default function EnhancedApiKeysPage() {
       if (!response.ok) throw new Error('Failed to check CLI status')
       
       const result = await response.json()
+      
+      // Use the structured response from the new endpoint
+      const isAvailable = result.available === true
       const resultText = result.result || ''
       
-      // Determine installation and authentication status
-      const isInstalled = !resultText.includes('not found') && 
-                         !resultText.includes('command not found') &&
-                         !resultText.includes('No such file or directory')
-      const isAuthenticated = isInstalled && 
-                             !resultText.includes('❌') && 
-                             !resultText.includes('not authenticated') &&
-                             !resultText.includes('Please login')
+      // Determine installation and authentication status from structured response
+      const isInstalled = !resultText.includes('not configured')
+      const isAuthenticated = isAvailable
       
       let newStatus: 'available' | 'unavailable' | 'not_installed'
       let statusMessage = ''

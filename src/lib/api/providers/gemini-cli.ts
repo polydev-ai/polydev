@@ -79,7 +79,7 @@ export class GeminiCLIHandler implements ApiHandler {
   async validateApiKey(apiKey: string): Promise<boolean> {
     // CLI authentication is handled by the CLI itself
     try {
-      const response = await fetch('/api/mcp', {
+      const response = await fetch('/api/cli-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -94,7 +94,7 @@ export class GeminiCLIHandler implements ApiHandler {
       }
 
       const result = await response.json()
-      return !result.result?.includes('❌')
+      return result.available === true
     } catch {
       return false
     }
