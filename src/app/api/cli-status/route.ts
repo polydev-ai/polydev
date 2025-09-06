@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     
     // Check CLI configuration from database
     const { data: cliConfigs, error: configError } = await supabase
-      .from('cli_configurations')
+      .from('cli_provider_configurations')
       .select('*')
       .eq('user_id', user.id)
     
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     
     console.log(`[CLI Status] Found ${cliConfigs?.length || 0} CLI configurations for user`)
     
-    // Map server names to CLI types
+    // Map server names to CLI provider types
     const serverToCLI = {
       'claude-code-cli-bridge': 'claude_code',
       'cross-llm-bridge-test': 'codex_cli', 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if CLI is configured and available
-    const cliConfig = cliConfigs?.find(config => config.cli_type === cliType)
+    const cliConfig = cliConfigs?.find(config => config.provider === cliType)
     
     if (!cliConfig) {
       console.log(`[CLI Status] No configuration found for ${cliType}`)
@@ -67,21 +67,22 @@ export async function POST(request: NextRequest) {
       })
     }
     
-    // Check if CLI is available (has valid token and recent activity)
-    const isAvailable = cliConfig.status === 'available' && 
-                       cliConfig.last_seen && 
-                       new Date(cliConfig.last_seen) > new Date(Date.now() - 24 * 60 * 60 * 1000) // 24 hours
+    // Check if CLI is available (enabled and status is available, with recent activity)
+    const isAvailable = cliConfig.enabled && 
+                       cliConfig.status === 'available' && 
+                       cliConfig.last_checked_at && 
+                       new Date(cliConfig.last_checked_at) > new Date(Date.now() - 24 * 60 * 60 * 1000) // 24 hours
     
-    console.log(`[CLI Status] ${cliType} status: ${cliConfig.status}, last_seen: ${cliConfig.last_seen}, available: ${isAvailable}`)
+    console.log(`[CLI Status] ${cliType} enabled: ${cliConfig.enabled}, status: ${cliConfig.status}, last_checked_at: ${cliConfig.last_checked_at}, available: ${isAvailable}`)
     
     return NextResponse.json({
       result: isAvailable 
         ? `✅ ${cliType.replace('_', ' ').toUpperCase()} is available and working`
-        : `❌ ${cliType.replace('_', ' ').toUpperCase()} configured but not active (last seen: ${cliConfig.last_seen})`,
+        : `❌ ${cliType.replace('_', ' ').toUpperCase()} configured but not active (last checked: ${cliConfig.last_checked_at || 'never'})`,
       available: isAvailable,
       status: cliConfig.status,
-      last_seen: cliConfig.last_seen,
-      version: cliConfig.version
+      last_checked_at: cliConfig.last_checked_at,
+      enabled: cliConfig.enabled
     })
     
   } catch (error) {
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
     
     // Get all CLI configurations for the user
     const { data: cliConfigs, error: configError } = await supabase
-      .from('cli_configurations')
+      .from('cli_provider_configurations')
       .select('*')
       .eq('user_id', user.id)
     
@@ -129,16 +130,17 @@ export async function GET(request: NextRequest) {
     }
     
     cliConfigs?.forEach(config => {
-      const isAvailable = config.status === 'available' && 
-                         config.last_seen && 
-                         new Date(config.last_seen) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+      const isAvailable = config.enabled && 
+                         config.status === 'available' && 
+                         config.last_checked_at && 
+                         new Date(config.last_checked_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
       
-      cliStatus[config.cli_type as keyof typeof cliStatus] = {
+      cliStatus[config.provider as keyof typeof cliStatus] = {
         available: isAvailable,
         status: config.status,
-        last_seen: config.last_seen,
-        version: config.version,
-        token_valid: !!config.cli_status_token
+        last_checked_at: config.last_checked_at,
+        enabled: config.enabled,
+        custom_path: config.custom_path
       }
     })
     
