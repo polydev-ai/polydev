@@ -151,7 +151,7 @@ class MCPServer {
   }
 
   async callPerspectivesAPI(args) {
-    const serverUrl = this.manifest.configuration?.server_url || 'https://www.polydev.ai/api/mcp';
+    const serverUrl = 'https://www.polydev.ai/api/mcp';
     
     // Validate required arguments
     if (!args.prompt || typeof args.prompt !== 'string') {
@@ -170,40 +170,14 @@ class MCPServer {
       throw new Error('user_token is required. Either:\n' +
         '1. Pass user_token parameter, or\n' +
         '2. Set POLYDEV_USER_TOKEN environment variable\n' +
-        'Generate token at: https://polydev.ai/dashboard/mcp-tools');
-    }
-
-    // Build request payload - let /api/mcp endpoint use user preferences when models not specified
-    const payload = {
-      prompt: args.prompt,
-      user_token: userToken,
-      mode: 'managed',
-      project_memory: args.project_memory || 'none',
-      max_messages: args.max_messages || 10,
-      temperature: args.temperature || 0.7,
-      max_tokens: args.max_tokens || 2000,
-      project_context: args.project_context || {}
-    };
-    
-    // Only include models if explicitly provided, otherwise let API use user preferences
-    if (args.models) {
-      payload.models = args.models;
-    }
-
-    // Add project context if project_memory is enabled
-    if (payload.project_memory !== 'none' && !payload.project_context.root_path) {
-      // Try to auto-detect project root
-      const cwd = process.cwd();
-      if (fs.existsSync(path.join(cwd, 'package.json')) || 
-          fs.existsSync(path.join(cwd, '.git'))) {
-        payload.project_context.root_path = cwd;
-      }
+        'Generate token at: https://polydev.ai/dashboard/mcp-tokens');
     }
 
     console.error(`[Polydev MCP] Getting perspectives for: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`);
-    console.error(`[Polydev MCP] Models: ${payload.models ? payload.models.join(', ') : 'using user preferences'}`);
-    console.error(`[Polydev MCP] Project memory: ${payload.project_memory}`);
+    console.error(`[Polydev MCP] Models: ${args.models ? args.models.join(', ') : 'using user preferences'}`);
+    console.error(`[Polydev MCP] Project memory: ${args.project_memory || 'none'}`);
 
+    // Call the MCP endpoint directly with proper MCP format
     const response = await fetch(serverUrl, {
       method: 'POST',
       headers: {
@@ -216,15 +190,7 @@ class MCPServer {
         method: 'tools/call',
         params: {
           name: 'get_perspectives',
-          arguments: {
-            prompt: args.prompt,
-            models: args.models,
-            temperature: args.temperature || 0.7,
-            max_tokens: args.max_tokens || 2000,
-            project_memory: args.project_memory || 'none',
-            max_messages: args.max_messages || 10,
-            project_context: args.project_context || {}
-          }
+          arguments: args
         },
         id: 1
       })
@@ -259,7 +225,7 @@ class MCPServer {
       throw new Error(result.error.message || 'MCP API error');
     }
     
-    console.error(`[Polydev MCP] Got ${result.responses?.length || 0} responses in ${result.total_latency_ms}ms`);
+    console.error(`[Polydev MCP] Unexpected response format:`, result);
     return result;
   }
 

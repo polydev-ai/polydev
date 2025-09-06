@@ -218,7 +218,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
       user_id: userId,
       stripe_customer_id: subscription.customer as string,
       stripe_subscription_id: subscription.id,
-      plan_type: 'pro' as const,
+      tier: 'pro' as const,
       status: subscription.status as any,
       current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
       current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),

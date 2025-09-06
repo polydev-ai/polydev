@@ -1,10 +1,10 @@
 {
-  "name": "@polydev/perspectives-mcp",
+  "name": "polydev-perspectives-mcp",
   "version": "1.0.0",
   "description": "Get diverse AI perspectives from multiple LLMs via MCP - supports Cline, Claude Code, and other MCP clients",
-  "main": "server.js",
+  "main": "stdio-wrapper.js",
   "bin": {
-    "polydev-mcp": "./server.js"
+    "polydev-mcp": "./stdio-wrapper.js"
   },
   "scripts": {
     "start": "node server.js",
@@ -30,7 +30,7 @@
     "node": ">=16.0.0"
   },
   "files": [
-    "server.js",
+    "stdio-wrapper.js",
     "manifest.json",
     "README.md"
   ],
