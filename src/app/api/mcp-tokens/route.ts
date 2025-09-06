@@ -20,11 +20,10 @@ export async function GET(request: NextRequest) {
       .eq('active', true)
       .single()
 
+    // If user has existing token, we need to generate a new one since we can't retrieve the original
+    // The stored token is hashed for security, so we generate fresh tokens for CLI validation
     if (existingToken && !tokenError) {
-      return NextResponse.json({
-        token: existingToken.token_preview,
-        created_at: existingToken.created_at
-      })
+      console.log('User has existing token, generating fresh token for CLI validation')
     }
 
     // Generate new token
