@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
+import { createClient as createServerClient } from '@supabase/supabase-js'
 
 interface CLIStatusUpdate {
   provider: 'claude_code' | 'codex_cli' | 'gemini_cli'
@@ -14,10 +15,15 @@ interface CLIStatusUpdate {
   additional_info?: Record<string, any>
 }
 
-// Verify MCP token
+// Verify MCP token using service role to bypass RLS
 async function verifyMCPToken(token: string, userId: string): Promise<boolean> {
   try {
-    const supabase = await createClient()
+    // Use service role client to bypass RLS policies
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    
     const { createHash } = require('crypto')
     const tokenHash = createHash('sha256').update(token).digest('hex')
     
@@ -29,14 +35,21 @@ async function verifyMCPToken(token: string, userId: string): Promise<boolean> {
       .eq('active', true)
       .single()
 
-    if (error || !tokenData) return false
+    if (error || !tokenData) {
+      console.error('Token verification failed:', error)
+      return false
+    }
 
     // Update last used timestamp
-    await supabase
+    const { error: updateError } = await supabase
       .from('mcp_user_tokens')
       .update({ last_used_at: new Date().toISOString() })
       .eq('token_hash', tokenHash)
       .eq('user_id', userId)
+
+    if (updateError) {
+      console.error('Token update error:', updateError)
+    }
 
     return true
   } catch (error) {
@@ -83,7 +96,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid or expired MCP token' }, { status: 401 })
     }
 
-    const supabase = await createClient()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Update or create CLI configuration
     const updateData = {
