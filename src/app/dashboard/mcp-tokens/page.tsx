@@ -30,8 +30,7 @@ export default function MCPTokensPage() {
   // Form state
   const [formData, setFormData] = useState({
     token_name: '',
-    rate_limit_tier: 'standard',
-    token_type: 'api' // 'api', 'cli', or 'oauth'
+    token_type: 'api' // 'api' or 'cli' (oauth is automatic)
   })
 
   const supabase = createClient()
@@ -55,7 +54,9 @@ export default function MCPTokensPage() {
         throw new Error(data.error || 'Failed to fetch tokens')
       }
       
-      setTokens(data.tokens || [])
+      // Filter out OAuth tokens as they can't be used directly by users
+      const filteredTokens = (data.tokens || []).filter((token: MCPToken) => token.token_type !== 'oauth')
+      setTokens(filteredTokens)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -89,7 +90,7 @@ export default function MCPTokensPage() {
       
       setGeneratedApiKey(data.api_key)
       setShowAddForm(false)
-      setFormData({ token_name: '', rate_limit_tier: 'standard', token_type: 'api' })
+      setFormData({ token_name: '', token_type: 'api' })
       await fetchTokens()
     } catch (err: any) {
       setError(err.message)
@@ -274,7 +275,7 @@ export default function MCPTokensPage() {
           <button
             onClick={() => {
               setShowAddForm(true)
-              setFormData({ token_name: '', rate_limit_tier: 'standard', token_type: 'api' })
+              setFormData({ token_name: '', token_type: 'api' })
             }}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
           >
@@ -322,20 +323,10 @@ export default function MCPTokensPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Rate Limit Tier
-                </label>
-                <select
-                  value={formData.rate_limit_tier}
-                  onChange={(e) => setFormData(prev => ({...prev, rate_limit_tier: e.target.value}))}
-                  disabled={formData.token_type === 'cli'}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white disabled:opacity-50"
-                >
-                  <option value="standard">Standard - {getRateLimitDescription('standard')}</option>
-                  <option value="premium">Premium - {getRateLimitDescription('premium')}</option>
-                  <option value="enterprise">Enterprise - {getRateLimitDescription('enterprise')}</option>
-                </select>
+              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-3">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <strong>Rate Limit Tier:</strong> Automatically set based on your subscription plan
+                </div>
               </div>
             </div>
 

@@ -91,11 +91,32 @@ export async function POST(request: NextRequest) {
     
     console.log('MCP tokens POST - User authenticated:', user.id)
     
-    const { token_name, rate_limit_tier = 'standard', token_type = 'api' } = await request.json()
+    const { token_name, token_type = 'api' } = await request.json()
     
     if (!token_name || token_name.trim().length === 0) {
       return NextResponse.json({ error: 'Token name is required' }, { status: 400 })
     }
+
+    // Get user's subscription tier from profiles table
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError)
+    }
+
+    // Map subscription tier to rate limit tier
+    const tierMapping = {
+      'free': 'standard',
+      'pro': 'premium', 
+      'enterprise': 'enterprise'
+    }
+    const rate_limit_tier = userProfile?.subscription_tier 
+      ? tierMapping[userProfile.subscription_tier as keyof typeof tierMapping] || 'standard'
+      : 'standard'
     
     if (!['api', 'cli'].includes(token_type)) {
       return NextResponse.json({ error: 'Invalid token type. Must be "api" or "cli"' }, { status: 400 })
