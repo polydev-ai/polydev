@@ -58,13 +58,16 @@ export async function POST(request: NextRequest) {
       .update(updates)
       .eq('user_id', user.id)
 
+    // Get the updated subscription details
+    const updatedSubscription = await stripe.subscriptions.retrieve(subscription.stripe_subscription_id) as Stripe.Subscription
+
     return NextResponse.json({
       success: true,
       message: immediately 
         ? 'Subscription cancelled immediately' 
         : 'Subscription will cancel at the end of the current period',
-      cancel_at_period_end: cancelledSubscription.cancel_at_period_end,
-      current_period_end: cancelledSubscription.current_period_end
+      cancel_at_period_end: updatedSubscription.cancel_at_period_end,
+      current_period_end: new Date((updatedSubscription as any).current_period_end * 1000).toISOString()
     })
 
   } catch (error) {

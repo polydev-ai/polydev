@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .single()
 
-    let billingHistory = []
+    let billingHistory: any[] = []
     
     if (subscription?.stripe_customer_id) {
       // Get invoices from Stripe

@@ -166,8 +166,8 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
       stripe_subscription_id: subscription.id,
       tier: 'pro' as const,
       status: subscription.status as any,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
       cancel_at_period_end: subscription.cancel_at_period_end,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -265,8 +265,8 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
       stripe_subscription_id: subscription.id,
       tier: 'pro' as const,
       status: subscription.status as any,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
       cancel_at_period_end: subscription.cancel_at_period_end,
       updated_at: new Date().toISOString()
     }
@@ -344,7 +344,7 @@ async function handleSubscriptionCancellation(subscription: Stripe.Subscription,
 
     // Send cancellation email
     try {
-      const periodEnd = new Date(subscription.current_period_end * 1000).toISOString()
+      const periodEnd = new Date((subscription as any).current_period_end * 1000).toISOString()
       await sendSubscriptionCancelledEmail(customerEmail, 'Pro', periodEnd)
       console.log(`[Stripe Webhook] Cancellation email sent to ${customerEmail}`)
     } catch (emailError) {
@@ -360,7 +360,7 @@ async function handleSubscriptionCancellation(subscription: Stripe.Subscription,
 
 async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
   try {
-    if (!invoice.subscription) return
+    if (!(invoice as any).subscription) return
 
     // Get customer for email
     const customer = await stripe.customers.retrieve(invoice.customer as string)
@@ -371,17 +371,17 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
       .from('user_subscriptions')
       .update({
         status: 'active',
-        current_period_start: new Date(invoice.period_start * 1000).toISOString(),
-        current_period_end: new Date(invoice.period_end * 1000).toISOString(),
+        current_period_start: new Date((invoice as any).period_start * 1000).toISOString(),
+        current_period_end: new Date((invoice as any).period_end * 1000).toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('stripe_subscription_id', invoice.subscription)
+      .eq('stripe_subscription_id', (invoice as any).subscription)
 
     // Allocate monthly credits if this is a subscription payment
     const { data: subscription } = await supabase
       .from('user_subscriptions')
       .select('user_id')
-      .eq('stripe_subscription_id', invoice.subscription)
+      .eq('stripe_subscription_id', (invoice as any).subscription)
       .single()
 
     if (subscription?.user_id) {
@@ -396,7 +396,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
     if (customerEmail) {
       try {
         const amount = `$${((invoice.amount_paid || 0) / 100).toFixed(2)}`
-        const periodEnd = new Date(invoice.period_end * 1000).toISOString()
+        const periodEnd = new Date((invoice as any).period_end * 1000).toISOString()
         await sendPaymentSucceededEmail(customerEmail, amount, periodEnd)
         console.log(`[Stripe Webhook] Payment success email sent to ${customerEmail}`)
       } catch (emailError) {
@@ -404,7 +404,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
       }
     }
 
-    console.log(`[Stripe Webhook] Payment succeeded for subscription ${invoice.subscription}`)
+    console.log(`[Stripe Webhook] Payment succeeded for subscription ${(invoice as any).subscription}`)
 
   } catch (error) {
     console.error('[Stripe Webhook] Error handling payment success:', error)
@@ -413,7 +413,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
 
 async function handlePaymentFailed(invoice: Stripe.Invoice, supabase: any) {
   try {
-    if (!invoice.subscription) return
+    if (!(invoice as any).subscription) return
 
     // Get customer for email
     const customer = await stripe.customers.retrieve(invoice.customer as string)
@@ -426,7 +426,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, supabase: any) {
         status: 'past_due',
         updated_at: new Date().toISOString()
       })
-      .eq('stripe_subscription_id', invoice.subscription)
+      .eq('stripe_subscription_id', (invoice as any).subscription)
 
     // Send payment failed email
     if (customerEmail) {
@@ -441,7 +441,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, supabase: any) {
       }
     }
 
-    console.log(`[Stripe Webhook] Payment failed for subscription ${invoice.subscription}`)
+    console.log(`[Stripe Webhook] Payment failed for subscription ${(invoice as any).subscription}`)
 
   } catch (error) {
     console.error('[Stripe Webhook] Error handling payment failure:', error)
