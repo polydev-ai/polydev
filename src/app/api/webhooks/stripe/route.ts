@@ -143,19 +143,19 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
       return
     }
 
-    // Find user by email - use direct query instead of admin method
-    const { data: authUsers, error: userError } = await supabase
-      .from('auth.users')
-      .select('id, email')
-      .eq('email', customerEmail)
-      .single()
-
-    if (userError || !authUsers) {
-      console.error('[Stripe Webhook] User not found:', userError)
+    // Find user by email using admin auth API
+    const { data: authUsers, error: userError } = await supabase.auth.admin.listUsers()
+    
+    if (userError || !authUsers.users) {
+      console.error('[Stripe Webhook] Error fetching users:', userError)
       return
     }
 
-    const user = { id: authUsers.id }
+    const user = authUsers.users.find((u: any) => u.email === customerEmail)
+    if (!user) {
+      console.error('[Stripe Webhook] User not found for email:', customerEmail)
+      return
+    }
 
     const userId = user.id
 
@@ -242,19 +242,19 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
       return
     }
 
-    // Find user by email - use direct query instead of admin method
-    const { data: authUsers, error: userError } = await supabase
-      .from('auth.users')
-      .select('id, email')
-      .eq('email', customerEmail)
-      .single()
-
-    if (userError || !authUsers) {
-      console.error('[Stripe Webhook] User not found:', userError)
+    // Find user by email using admin auth API
+    const { data: authUsers, error: userError } = await supabase.auth.admin.listUsers()
+    
+    if (userError || !authUsers.users) {
+      console.error('[Stripe Webhook] Error fetching users:', userError)
       return
     }
 
-    const user = { id: authUsers.id }
+    const user = authUsers.users.find((u: any) => u.email === customerEmail)
+    if (!user) {
+      console.error('[Stripe Webhook] User not found for email:', customerEmail)
+      return
+    }
 
     const userId = user.id
 
