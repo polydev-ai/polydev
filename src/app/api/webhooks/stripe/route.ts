@@ -182,11 +182,24 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         return
       }
 
-      // Add credits to user account
-      const { error: creditError } = await supabase.rpc('allocate_monthly_credits', {
-        p_user_id: user.id,
-        p_amount: creditAmount
-      })
+      // Add credits to user account and update total_purchased
+      const { data: existingCredits } = await supabase
+        .from('user_credits')
+        .select('balance, total_purchased')
+        .eq('user_id', user.id)
+        .single()
+
+      const newBalance = (existingCredits?.balance || 0) + creditAmount
+      const newTotalPurchased = (existingCredits?.total_purchased || 0) + creditAmount
+
+      const { error: creditError } = await supabase
+        .from('user_credits')
+        .upsert({
+          user_id: user.id,
+          balance: newBalance,
+          total_purchased: newTotalPurchased,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' })
 
       if (creditError) {
         console.error('[Stripe Webhook] Failed to add credits:', creditError)
