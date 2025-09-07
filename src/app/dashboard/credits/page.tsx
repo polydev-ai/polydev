@@ -18,7 +18,7 @@ import {
   Activity
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, isValid, parseISO } from 'date-fns'
 
 interface CreditBalance {
   balance: number
@@ -60,6 +60,20 @@ interface BudgetInfo {
     dailyExceeded: boolean
     weeklyExceeded: boolean
     monthlyExceeded: boolean
+  }
+}
+
+// Helper function for safe date formatting
+const formatSafeDate = (dateString: string | null | undefined) => {
+  if (!dateString) return 'Unknown date'
+  
+  try {
+    const date = typeof dateString === 'string' ? parseISO(dateString) : new Date(dateString)
+    if (!isValid(date)) return 'Invalid date'
+    return formatDistanceToNow(date, { addSuffix: true })
+  } catch (error) {
+    console.warn('Invalid date:', dateString)
+    return 'Invalid date'
   }
 }
 
@@ -272,7 +286,7 @@ export default function CreditsPage() {
                           <div>
                             <p className="font-medium">${purchase.amount}</p>
                             <p className="text-sm text-muted-foreground">
-                              {formatDistanceToNow(new Date(purchase.created_at), { addSuffix: true })}
+                              {formatSafeDate(purchase.date)}
                             </p>
                           </div>
                         </div>
@@ -300,15 +314,15 @@ export default function CreditsPage() {
                     creditBalance.recentUsage.map((usage) => (
                       <div key={usage.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
-                          <p className="font-medium">{usage.model_id}</p>
+                          <p className="font-medium">{usage.model || 'Unknown Model'}</p>
                           <p className="text-sm text-muted-foreground">
-                            {usage.prompt_tokens + usage.completion_tokens} tokens
+                            {usage.tokens || 0} tokens • {usage.tool || usage.type || 'Unknown'}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-medium">${usage.total_cost.toFixed(4)}</p>
+                          <p className="font-medium">${(usage.cost || 0).toFixed(4)}</p>
                           <p className="text-sm text-muted-foreground">
-                            {formatDistanceToNow(new Date(usage.request_timestamp), { addSuffix: true })}
+                            {formatSafeDate(usage.date)}
                           </p>
                         </div>
                       </div>
