@@ -63,19 +63,106 @@ export async function GET(request: NextRequest) {
       userCredits = credits
     }
     
+    // Fetch purchase history
+    const { data: purchaseHistory } = await serviceSupabase
+      .from('purchase_history')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    // Fetch recent usage sessions
+    const { data: recentUsage } = await serviceSupabase
+      .from('usage_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    // Calculate analytics from usage sessions (last 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const { data: analyticsData } = await serviceSupabase
+      .from('usage_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('created_at', thirtyDaysAgo)
+
+    // Process analytics
+    const analytics = {
+      totalSpent: 0,
+      totalRequests: 0,
+      avgCostPerRequest: 0,
+      topModels: [] as Array<{model: string, usage: number, cost: number}>
+    }
+
+    const modelStats = new Map<string, {usage: number, cost: number}>()
+
+    if (analyticsData) {
+      analyticsData.forEach(session => {
+        const cost = parseFloat(session.cost_credits || '0')
+        const requests = session.message_count || 0
+        
+        analytics.totalSpent += cost
+        analytics.totalRequests += requests
+
+        // Track model usage
+        if (session.model_name) {
+          const existing = modelStats.get(session.model_name) || { usage: 0, cost: 0 }
+          existing.usage += requests
+          existing.cost += cost
+          modelStats.set(session.model_name, existing)
+        }
+      })
+
+      analytics.avgCostPerRequest = analytics.totalRequests > 0 ? 
+        analytics.totalSpent / analytics.totalRequests : 0
+
+      // Get top 5 models by usage
+      analytics.topModels = Array.from(modelStats.entries())
+        .sort((a, b) => b[1].usage - a[1].usage)
+        .slice(0, 5)
+        .map(([model, stats]) => ({
+          model,
+          usage: stats.usage,
+          cost: stats.cost
+        }))
+    }
+
+    // Format purchase history
+    const formattedPurchaseHistory = (purchaseHistory || []).map(purchase => ({
+      id: purchase.id,
+      date: purchase.created_at,
+      amount: purchase.amount_paid / 100, // Convert cents to dollars
+      credits: purchase.credits_purchased,
+      package: purchase.metadata?.package_name || 'Credit Purchase',
+      status: purchase.status
+    }))
+
+    // Format recent usage
+    const formattedRecentUsage = (recentUsage || []).map(session => ({
+      id: session.id,
+      date: session.created_at,
+      tool: session.tool_name || session.provider || 'Unknown',
+      model: session.model_name,
+      requests: session.message_count,
+      tokens: session.total_tokens,
+      cost: parseFloat(session.cost_credits || '0'),
+      type: session.session_type
+    }))
+
     return NextResponse.json({
       balance: userCredits.balance || 0,
       totalPurchased: userCredits.total_purchased || 0,
       totalSpent: userCredits.total_spent || 0,
       hasOpenRouterKey: false,
       openRouterKeyActive: false,
-      purchaseHistory: [],
-      recentUsage: [],
+      purchaseHistory: formattedPurchaseHistory,
+      recentUsage: formattedRecentUsage,
       analytics: {
-        totalSpent: 0,
-        totalRequests: 0,
-        avgCostPerRequest: 0,
-        topModels: []
+        totalSpent: parseFloat(analytics.totalSpent.toFixed(4)),
+        totalRequests: analytics.totalRequests,
+        avgCostPerRequest: parseFloat(analytics.avgCostPerRequest.toFixed(4)),
+        topModels: analytics.topModels
       },
       createdAt: userCredits.created_at,
       updatedAt: userCredits.updated_at

@@ -56,7 +56,9 @@ export async function POST(request: NextRequest) {
         metadata: {
           userId: user.id,
           packageId: packageId,
+          package_name: creditPackage.name,
           creditsAmount: creditPackage.totalCredits.toString(),
+          credits: creditPackage.totalCredits.toString(), // Also include 'credits' for backward compatibility
           type: 'credit_purchase'
         }
       })

@@ -24,8 +24,8 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     credits: 20,
     bonusCredits: 0,
     totalCredits: 20,
-    priceId: 'price_1S2q6RJtMA6wwImlHRH4p88T',
-    productId: 'prod_SynheFtbhPcQUe',
+    priceId: 'price_1S4euAJtMA6wwImle3TlCfMo',
+    productId: 'prod_T0gGwoVYkYvZPY',
     price: 2200, // $22.00 (10% markup - $20 in credits)
     displayPrice: '$22.00',
     features: [
@@ -43,8 +43,8 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     credits: 40,
     bonusCredits: 0,
     totalCredits: 40,
-    priceId: 'price_1S2q6aJtMA6wwImlIYbemPU6',
-    productId: 'prod_SynhR26vI78whT',
+    priceId: 'price_1S4euSJtMA6wwIml8sSfQfon',
+    productId: 'prod_T0gGpZlpFHDD6v',
     price: 4400, // $44.00 (10% markup - $40 in credits)
     displayPrice: '$44.00',
     popular: true,
@@ -64,8 +64,8 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     credits: 90,
     bonusCredits: 0,
     totalCredits: 90,
-    priceId: 'price_1S2q70JtMA6wwImlQ6T3lrPo',
-    productId: 'prod_Syni2GyfwT5FVA',
+    priceId: 'price_1S4eucJtMA6wwImlC3N4YoBl',
+    productId: 'prod_T0gHVaYypV8qu3',
     price: 9900, // $99.00 (10% markup - $90 in credits)
     displayPrice: '$99.00',
     features: [
