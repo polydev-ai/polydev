@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
-import { 
-  sendSubscriptionCreatedEmail, 
-  sendSubscriptionCancelledEmail, 
-  sendPaymentFailedEmail, 
-  sendPaymentSucceededEmail 
-} from '@/lib/resendService'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil'
@@ -38,7 +32,7 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('stripe_webhook_events')
       .insert({
-        event_id: event.id,
+        stripe_event_id: event.id,
         event_type: event.type,
         processed: false,
         data: event.data,
@@ -55,12 +49,7 @@ export async function POST(request: NextRequest) {
         break
       }
 
-      case 'customer.subscription.created': {
-        const subscription = event.data.object as Stripe.Subscription
-        await handleSubscriptionCreated(subscription, supabase)
-        break
-      }
-
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
         await handleSubscriptionChange(subscription, supabase)
@@ -93,7 +82,7 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('stripe_webhook_events')
       .update({ processed: true, processed_at: new Date().toISOString() })
-      .eq('event_id', event.id)
+      .eq('stripe_event_id', event.id)
 
     return NextResponse.json({ received: true })
 
@@ -110,120 +99,93 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
   try {
     console.log(`[Stripe Webhook] Processing checkout session: ${session.id}`)
     
-    // Check if this is a subscription or one-time payment
-    if (session.mode === 'subscription') {
-      console.log(`[Stripe Webhook] Checkout session is for subscription, handled by customer.subscription.created event`)
+    // Find pending purchase
+    const { data: pendingPurchase, error: findError } = await supabase
+      .from('pending_purchases')
+      .select('*')
+      .eq('payment_link_id', session.id)
+      .eq('status', 'pending')
+      .single()
+
+    if (findError || !pendingPurchase) {
+      console.error('[Stripe Webhook] Pending purchase not found:', findError)
       return
     }
 
-    // This is a one-time payment (credit purchase), but we need to handle it differently
-    // since we don't have the pending_purchases table structure yet
-    console.log(`[Stripe Webhook] One-time payment checkout completed, but no credit purchase system implemented yet`)
-    return
+    // Get the line items to determine what was purchased
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 })
+    if (!lineItems.data.length) {
+      console.error('[Stripe Webhook] No line items found for session')
+      return
+    }
+
+    const priceId = lineItems.data[0].price?.id
+    if (!priceId) {
+      console.error('[Stripe Webhook] No price ID found in line items')
+      return
+    }
+
+    // Import credit package config
+    const { getCreditPackageByPriceId } = await import('@/lib/stripeConfig')
+    const creditPackage = getCreditPackageByPriceId(priceId)
+    
+    if (!creditPackage) {
+      console.error('[Stripe Webhook] Credit package not found for price ID:', priceId)
+      return
+    }
+
+    // Add credits to user account using RPC function
+    const { error: creditsError } = await supabase.rpc('add_user_credits', {
+      p_user_id: pendingPurchase.user_id,
+      p_amount: creditPackage.totalCredits,
+      p_transaction_type: 'purchase',
+      p_description: `Purchased ${creditPackage.name} package`
+    })
+
+    if (creditsError) {
+      console.error('[Stripe Webhook] Failed to add credits:', creditsError)
+      return
+    }
+
+    // Record completed purchase
+    const { error: purchaseError } = await supabase
+      .from('purchase_history')
+      .insert({
+        user_id: pendingPurchase.user_id,
+        item_type: 'credits',
+        item_id: creditPackage.id,
+        amount_paid: session.amount_total || 0,
+        credits_purchased: creditPackage.totalCredits,
+        stripe_session_id: session.id,
+        status: 'completed',
+        metadata: {
+          package_name: creditPackage.name,
+          base_credits: creditPackage.credits,
+          bonus_credits: creditPackage.bonusCredits
+        }
+      })
+
+    if (purchaseError) {
+      console.error('[Stripe Webhook] Failed to record purchase:', purchaseError)
+    }
+
+    // Update pending purchase status
+    const { error: updateError } = await supabase
+      .from('pending_purchases')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('id', pendingPurchase.id)
+
+    if (updateError) {
+      console.error('[Stripe Webhook] Failed to update pending purchase:', updateError)
+    }
+
+    console.log(`[Stripe Webhook] Successfully processed credit purchase for user: ${pendingPurchase.user_id}`)
 
   } catch (error) {
     console.error('[Stripe Webhook] Error handling checkout session completed:', error)
-  }
-}
-
-async function handleSubscriptionCreated(subscription: Stripe.Subscription, supabase: any) {
-  try {
-    console.log(`[Stripe Webhook] Processing new subscription: ${subscription.id}`)
-    
-    // Get customer to find user
-    const customer = await stripe.customers.retrieve(subscription.customer as string)
-    if (!customer || customer.deleted) {
-      console.error('[Stripe Webhook] Customer not found or deleted')
-      return
-    }
-
-    const customerEmail = (customer as Stripe.Customer).email
-    if (!customerEmail) {
-      console.error('[Stripe Webhook] Customer email not found')
-      return
-    }
-
-    // Find user by email using admin auth API
-    const { data: authUsers, error: userError } = await supabase.auth.admin.listUsers()
-    
-    if (userError || !authUsers.users) {
-      console.error('[Stripe Webhook] Error fetching users:', userError)
-      return
-    }
-
-    const user = authUsers.users.find((u: any) => u.email === customerEmail)
-    if (!user) {
-      console.error('[Stripe Webhook] User not found for email:', customerEmail)
-      return
-    }
-
-    const userId = user.id
-
-    // Create subscription record
-    const subscriptionData = {
-      user_id: userId,
-      stripe_customer_id: subscription.customer as string,
-      stripe_subscription_id: subscription.id,
-      tier: 'pro' as const,
-      status: subscription.status as any,
-      current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-      current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-
-    const { error } = await supabase
-      .from('user_subscriptions')
-      .upsert(subscriptionData, { onConflict: 'user_id' })
-
-    if (error) {
-      console.error('[Stripe Webhook] Failed to create subscription:', error)
-      return
-    }
-
-    // Update user message usage for Pro users
-    const currentMonth = new Date().toISOString().substring(0, 7)
-    await supabase
-      .from('user_message_usage')
-      .upsert({
-        user_id: userId,
-        month_year: currentMonth,
-        messages_sent: 0,
-        messages_limit: 999999,
-        cli_usage_allowed: true
-      }, { onConflict: 'user_id,month_year' })
-
-    // Initialize credits for Pro users
-    if (subscription.status === 'active') {
-      await supabase
-        .from('user_credits')
-        .upsert({
-          user_id: userId,
-          balance: 5.0,
-          promotional_balance: 0.0,
-          monthly_allocation: 5.0,
-          total_purchased: 0.0,
-          total_spent: 0.0,
-          last_monthly_reset: new Date().toISOString()
-        }, { 
-          onConflict: 'user_id',
-          ignoreDuplicates: false 
-        })
-    }
-
-    // Send welcome email
-    try {
-      await sendSubscriptionCreatedEmail(customerEmail, 'Pro')
-      console.log(`[Stripe Webhook] Welcome email sent to ${customerEmail}`)
-    } catch (emailError) {
-      console.error('[Stripe Webhook] Failed to send welcome email:', emailError)
-    }
-
-    console.log(`[Stripe Webhook] Created subscription for user ${userId}`)
-
-  } catch (error) {
-    console.error('[Stripe Webhook] Error handling subscription creation:', error)
   }
 }
 
@@ -242,23 +204,16 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
       return
     }
 
-    // Find user by email using admin auth API
-    const { data: authUsers, error: userError } = await supabase.auth.admin.listUsers()
-    
-    if (userError || !authUsers.users) {
-      console.error('[Stripe Webhook] Error fetching users:', userError)
-      return
-    }
-
-    const user = authUsers.users.find((u: any) => u.email === customerEmail)
-    if (!user) {
-      console.error('[Stripe Webhook] User not found for email:', customerEmail)
+    // Find user by email
+    const { data: user, error: userError } = await supabase.auth.admin.getUserByEmail(customerEmail)
+    if (userError || !user) {
+      console.error('[Stripe Webhook] User not found:', userError)
       return
     }
 
     const userId = user.id
 
-    // Update subscription record  
+    // Update subscription record
     const subscriptionData = {
       user_id: userId,
       stripe_customer_id: subscription.customer as string,
@@ -319,37 +274,14 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
 
 async function handleSubscriptionCancellation(subscription: Stripe.Subscription, supabase: any) {
   try {
-    // Get customer to find user
-    const customer = await stripe.customers.retrieve(subscription.customer as string)
-    if (!customer || customer.deleted) {
-      console.error('[Stripe Webhook] Customer not found or deleted')
-      return
-    }
-
-    const customerEmail = (customer as Stripe.Customer).email
-    if (!customerEmail) {
-      console.error('[Stripe Webhook] Customer email not found')
-      return
-    }
-
     // Update subscription status
     await supabase
       .from('user_subscriptions')
       .update({
         status: 'canceled',
-        canceled_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('stripe_subscription_id', subscription.id)
-
-    // Send cancellation email
-    try {
-      const periodEnd = new Date((subscription as any).current_period_end * 1000).toISOString()
-      await sendSubscriptionCancelledEmail(customerEmail, 'Pro', periodEnd)
-      console.log(`[Stripe Webhook] Cancellation email sent to ${customerEmail}`)
-    } catch (emailError) {
-      console.error('[Stripe Webhook] Failed to send cancellation email:', emailError)
-    }
 
     console.log(`[Stripe Webhook] Canceled subscription ${subscription.id}`)
 
@@ -361,10 +293,6 @@ async function handleSubscriptionCancellation(subscription: Stripe.Subscription,
 async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
   try {
     if (!(invoice as any).subscription) return
-
-    // Get customer for email
-    const customer = await stripe.customers.retrieve(invoice.customer as string)
-    const customerEmail = customer && !customer.deleted ? (customer as Stripe.Customer).email : null
 
     // Update subscription status to active
     await supabase
@@ -392,18 +320,6 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
       })
     }
 
-    // Send payment success email
-    if (customerEmail) {
-      try {
-        const amount = `$${((invoice.amount_paid || 0) / 100).toFixed(2)}`
-        const periodEnd = new Date((invoice as any).period_end * 1000).toISOString()
-        await sendPaymentSucceededEmail(customerEmail, amount, periodEnd)
-        console.log(`[Stripe Webhook] Payment success email sent to ${customerEmail}`)
-      } catch (emailError) {
-        console.error('[Stripe Webhook] Failed to send payment success email:', emailError)
-      }
-    }
-
     console.log(`[Stripe Webhook] Payment succeeded for subscription ${(invoice as any).subscription}`)
 
   } catch (error) {
@@ -415,10 +331,6 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, supabase: any) {
   try {
     if (!(invoice as any).subscription) return
 
-    // Get customer for email
-    const customer = await stripe.customers.retrieve(invoice.customer as string)
-    const customerEmail = customer && !customer.deleted ? (customer as Stripe.Customer).email : null
-
     // Update subscription status
     await supabase
       .from('user_subscriptions')
@@ -427,19 +339,6 @@ async function handlePaymentFailed(invoice: Stripe.Invoice, supabase: any) {
         updated_at: new Date().toISOString()
       })
       .eq('stripe_subscription_id', (invoice as any).subscription)
-
-    // Send payment failed email
-    if (customerEmail) {
-      try {
-        const amount = `$${((invoice.amount_due || 0) / 100).toFixed(2)}`
-        // Calculate next retry date (typically 3-7 days later)
-        const retryDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-        await sendPaymentFailedEmail(customerEmail, amount, retryDate)
-        console.log(`[Stripe Webhook] Payment failed email sent to ${customerEmail}`)
-      } catch (emailError) {
-        console.error('[Stripe Webhook] Failed to send payment failed email:', emailError)
-      }
-    }
 
     console.log(`[Stripe Webhook] Payment failed for subscription ${(invoice as any).subscription}`)
 
