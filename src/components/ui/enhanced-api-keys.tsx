@@ -760,7 +760,7 @@ export default function EnhancedApiKeysPage() {
                     type="password"
                     value={formData.api_key}
                     onChange={(e) => setFormData(prev => ({...prev, api_key: e.target.value}))}
-                    placeholder="Enter your API key"
+                    placeholder="Enter your API key (optional - will use credits if not provided)"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                   />
                 ) : (
@@ -768,6 +768,15 @@ export default function EnhancedApiKeysPage() {
                     API key will remain unchanged
                   </div>
                 )}
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center space-x-1">
+                  <CheckCircle className="w-3 h-3" />
+                  <span>
+                    {!editingKey ? 
+                      'API key is optional! If not provided or budget exceeded, we\'ll automatically use your credits via OpenRouter.' :
+                      'Leave empty to keep current API key, or enter new key to update.'
+                    }
+                  </span>
+                </p>
               </div>
 
               {/* Default Model */}
@@ -848,7 +857,7 @@ export default function EnhancedApiKeysPage() {
             <div className="flex space-x-3 mt-6">
               <button
                 onClick={saveApiKey}
-                disabled={saving || (!editingKey ? !formData.api_key.trim() : (updateApiKey && !formData.api_key.trim())) || !formData.default_model}
+                disabled={saving || !formData.default_model}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
               >
                 {saving ? (

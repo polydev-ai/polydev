@@ -42,16 +42,21 @@ export async function POST(request: NextRequest) {
     
     const { provider, api_key, key_name, api_base, default_model, is_preferred = false, additional_models = [], budget_limit = null } = await request.json()
     
-    // Validate required fields
-    if (!provider || !api_key) {
-      return NextResponse.json({ error: 'Provider and API key are required' }, { status: 400 })
+    // Validate required fields - API key is now optional
+    if (!provider) {
+      return NextResponse.json({ error: 'Provider is required' }, { status: 400 })
     }
     
-    // Encrypt the API key (in production, use proper encryption)
-    const encryptedKey = btoa(api_key)
-    const keyPreview = api_key.length > 8 
-      ? `${api_key.slice(0, 8)}...${api_key.slice(-4)}`
-      : `${api_key.slice(0, 4)}***`
+    // Handle optional API key - encrypt if provided, otherwise store placeholder
+    let encryptedKey = null
+    let keyPreview = 'Credits Only'
+    
+    if (api_key && api_key.trim()) {
+      encryptedKey = btoa(api_key)
+      keyPreview = api_key.length > 8 
+        ? `${api_key.slice(0, 8)}...${api_key.slice(-4)}`
+        : `${api_key.slice(0, 4)}***`
+    }
     
     // Get the current max display_order for this user to append new key at the end
     const { data: maxOrderData, error: maxOrderError } = await supabase

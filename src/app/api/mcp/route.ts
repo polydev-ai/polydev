@@ -1358,6 +1358,101 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           }
         }
 
+        // Handle credits-only mode or decode API key
+        if (!apiKey.encrypted_key) {
+          // This is a credits-only configuration, trigger OpenRouter fallback
+          console.log(`[MCP] Credits-only configuration for ${provider.display_name}, using OpenRouter fallback...`)
+          
+          try {
+            // Initialize OpenRouter manager for credits-only fallback
+            const openRouterManager = new OpenRouterManager()
+            
+            // Estimate request cost
+            const estimatedTokens = Math.min(maxTokens || 1000, 4000)
+            const estimatedCost = estimatedTokens * 0.00003
+            
+            // Check if this is a CLI request
+            const isCliRequest = request?.headers.get('user-agent')?.includes('cli') || 
+                                request?.headers.get('x-request-source') === 'cli' ||
+                                args.source === 'cli'
+            
+            // Determine API key strategy with CLI priority
+            const strategy = await openRouterManager.determineApiKeyStrategy(
+              user.id,
+              undefined,
+              estimatedCost,
+              isCliRequest
+            )
+            
+            if (!strategy.canProceed) {
+              return {
+                model,
+                error: `${strategy.error || 'Cannot proceed with request'}`
+              }
+            }
+            
+            console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy for credits-only ${model}`)
+            
+            // Use OpenRouter configuration for the request
+            const openRouterConfig = configMap.get('openrouter')
+            if (!openRouterConfig) {
+              return {
+                model,
+                error: `Credits-only fallback not available - OpenRouter configuration missing.`
+              }
+            }
+            
+            // Make the API call with OpenRouter
+            const response = await callLLMAPI(
+              model,
+              contextualPrompt,
+              strategy.apiKey,
+              openRouterConfig,
+              providerTemperature,
+              providerMaxTokens
+            )
+            
+            const endTime = Date.now()
+            const duration = endTime - startTime
+            
+            // Handle credits if using credits strategy
+            if (strategy.strategy === 'credits') {
+              try {
+                const actualCost = response.tokens_used * 0.00003
+                await openRouterManager.deductCredits(user.id, actualCost)
+                await openRouterManager.recordUsage(
+                  user.id,
+                  model,
+                  Math.floor(response.tokens_used * 0.7),
+                  Math.floor(response.tokens_used * 0.3),
+                  actualCost,
+                  strategy.strategy
+                )
+              } catch (creditError) {
+                console.error('[MCP] Error handling credits:', creditError)
+              }
+            }
+            
+            console.log(`[MCP] ${provider.display_name} (${model}) credits-only - Duration: ${duration}ms, Tokens: ${response.tokens_used}`)
+            return {
+              model,
+              provider: `${provider.display_name} (Credits Only)`,
+              content: response.content,
+              tokens_used: response.tokens_used,
+              response_time_ms: duration,
+              strategy: strategy.strategy,
+              fallback: true
+            }
+            
+          } catch (creditsError) {
+            console.error(`[MCP] Credits-only fallback failed:`, creditsError)
+            return {
+              model,
+              error: `Credits-only mode failed. Please add your API key or purchase more credits.`
+            }
+          }
+        }
+
         // Decode the Base64 encoded API key
         const decryptedKey = Buffer.from(apiKey.encrypted_key, 'base64').toString('utf-8')
         console.log(`[MCP] Decoded key for ${provider.display_name}: ${decryptedKey.substring(0, 10)}...`)
