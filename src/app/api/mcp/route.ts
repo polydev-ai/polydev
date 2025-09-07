@@ -1786,6 +1786,16 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 async function handleCliStatusReport(args: any, user: any): Promise<string> {
   const { provider, status, authenticated, version, message } = args
   
+  // Helper function to format provider name for display  
+  const formatProvider = (provider: string): string => {
+    switch (provider) {
+      case 'claude_code': return 'Claude Code'
+      case 'codex_cli': return 'Codex CLI'
+      case 'gemini_cli': return 'Gemini CLI'
+      default: return provider
+    }
+  }
+  
   if (!provider || !['claude_code', 'codex_cli', 'gemini_cli'].includes(provider)) {
     throw new Error('provider is required and must be one of: claude_code, codex_cli, gemini_cli')
   }
@@ -1903,16 +1913,6 @@ async function handleCliStatusReport(args: any, user: any): Promise<string> {
 Failed to record status for ${formatProvider(provider)}: ${error instanceof Error ? error.message : 'Unknown error'}
 
 Please try again or contact support if the issue persists.`
-  }
-
-  // Helper function to format provider name for display  
-  const formatProvider = (provider: string): string => {
-    switch (provider) {
-      case 'claude_code': return 'Claude Code'
-      case 'codex_cli': return 'Codex CLI'
-      case 'gemini_cli': return 'Gemini CLI'
-      default: return provider
-    }
   }
 }
 
