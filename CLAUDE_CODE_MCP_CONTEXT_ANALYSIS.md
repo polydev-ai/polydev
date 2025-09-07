@@ -11,7 +11,7 @@
 
 ### 1. Claude Code Request Structure
 
-Claude Code sends standard JSON-RPC requests to MCP servers containing:
+Claude Code sends standard JSON-RPC requests to MCP servers containing :
 ```json
 {
   "jsonrpc": "2.0",
