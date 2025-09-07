@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { subscriptionManager } from '@/lib/subscriptionManager'
+import Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,30 +25,86 @@ export async function POST(request: NextRequest) {
     const baseUrl = `${protocol}://${host}`
     const returnUrl = `${baseUrl}/dashboard/subscription`
 
-    // Create customer portal session using MCP
+    // Create customer portal session using Stripe SDK
     try {
-      const response = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          customer: subscription.stripe_customer_id,
-          return_url: returnUrl
-        })
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+        apiVersion: '2025-08-27.basil'
       })
 
-      if (!response.ok) {
-        throw new Error(`Stripe API error: ${response.status}`)
+      // First, try to create with default configuration
+      let portalSession
+      try {
+        portalSession = await stripe.billingPortal.sessions.create({
+          customer: subscription.stripe_customer_id,
+          return_url: returnUrl,
+        })
+      } catch (configError: any) {
+        // If no default configuration exists, create one
+        if (configError.message.includes('No configuration provided')) {
+          console.log('[Subscription] Creating default portal configuration...')
+          
+          const configuration = await stripe.billingPortal.configurations.create({
+            features: {
+              payment_method_update: {
+                enabled: true,
+              },
+              invoice_history: {
+                enabled: true,
+              },
+              subscription_cancel: {
+                enabled: true,
+                mode: 'at_period_end',
+                cancellation_reason: {
+                  enabled: true,
+                  options: [
+                    'too_expensive',
+                    'missing_features',
+                    'switched_service',
+                    'unused',
+                    'other',
+                  ],
+                },
+              },
+              subscription_update: {
+                enabled: true,
+                default_allowed_updates: ['price'],
+                proration_behavior: 'create_prorations',
+              },
+            },
+            business_profile: {
+              headline: 'Manage your Polydev subscription',
+            },
+          })
+
+          // Now create the session with the new configuration
+          portalSession = await stripe.billingPortal.sessions.create({
+            customer: subscription.stripe_customer_id,
+            return_url: returnUrl,
+            configuration: configuration.id,
+          })
+        } else {
+          throw configError
+        }
       }
 
-      const portalSession = await response.json()
       return NextResponse.json({ portalUrl: portalSession.url })
 
-    } catch (stripeError) {
+    } catch (stripeError: any) {
       console.error('[Subscription] Portal session error:', stripeError)
-      return NextResponse.json({ error: 'Failed to create portal session' }, { status: 500 })
+      
+      // Provide more specific error messages
+      if (stripeError.message.includes('No configuration provided')) {
+        return NextResponse.json({ 
+          error: 'Billing portal not configured',
+          details: 'Please configure the customer portal in your Stripe dashboard at https://dashboard.stripe.com/settings/billing/portal',
+          action: 'contact_support'
+        }, { status: 503 })
+      }
+      
+      return NextResponse.json({ 
+        error: 'Failed to create portal session',
+        details: stripeError.message 
+      }, { status: 500 })
     }
 
   } catch (error) {

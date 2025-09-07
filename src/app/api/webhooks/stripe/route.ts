@@ -6,7 +6,8 @@ import {
   sendSubscriptionCreatedEmail, 
   sendSubscriptionCancelledEmail, 
   sendPaymentFailedEmail, 
-  sendPaymentSucceededEmail 
+  sendPaymentSucceededEmail,
+  sendCreditPurchaseEmail
 } from '@/lib/resendService'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -147,9 +148,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         return
       }
 
-      // Parse metadata to get credit amount
-      const creditAmount = parseFloat(session.metadata?.credits || '0')
-      const packageName = session.metadata?.package_name || 'Credit Purchase'
+      // Parse metadata to get credit amount (handle both 'credits' and 'creditsAmount' fields)
+      const creditAmount = parseFloat(session.metadata?.credits || session.metadata?.creditsAmount || '0')
+      const packageName = session.metadata?.package_name || session.metadata?.packageId || 'Credit Purchase'
       
       if (creditAmount <= 0) {
         console.error('[Stripe Webhook] Invalid credit amount:', creditAmount)
@@ -190,6 +191,14 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       if (creditError) {
         console.error('[Stripe Webhook] Failed to add credits:', creditError)
         return
+      }
+
+      // Send credit purchase email notification
+      try {
+        await sendCreditPurchaseEmail(customerEmail, creditAmount, packageName, session.amount_total! / 100)
+        console.log(`[Stripe Webhook] Credit purchase email sent to ${customerEmail}`)
+      } catch (emailError) {
+        console.error('[Stripe Webhook] Failed to send credit purchase email:', emailError)
       }
 
       console.log(`[Stripe Webhook] Successfully processed credit purchase: ${creditAmount} credits for user ${user.id}`)
