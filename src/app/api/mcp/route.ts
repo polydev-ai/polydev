@@ -5,6 +5,7 @@ import { createClient } from '@/app/utils/supabase/server'
 import { createHash } from 'crypto'
 import { MCPMemoryManager } from '@/lib/mcpMemory'
 import { subscriptionManager } from '@/lib/subscriptionManager'
+import { OpenRouterManager } from '@/lib/openrouterManager'
 
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
@@ -1114,7 +1115,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       
       try {
         // Determine provider from original model name or use intelligent matching
-        const provider = determineProvider(model, configMap)
+        let provider = determineProvider(model, configMap)
         if (!provider) {
           return {
             model,
@@ -1128,7 +1129,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Enhanced provider matching using normalization
         const findApiKeyForProvider = (providerName: string) => {
           const normalizedProviderName = normalizeProviderName(providerName)
-          const normalizedProviderId = normalizeProviderName(provider.id)
+          const normalizedProviderId = provider ? normalizeProviderName(provider.id) : ''
           
           return apiKeys?.find(key => {
             const normalizedKeyProvider = normalizeProviderName(key.provider)
@@ -1138,34 +1139,15 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 normalizedKeyProvider === normalizedProviderId) return true
             
             // Direct match as fallback
-            if (key.provider === providerName || key.provider === provider.id) return true
+            if (key.provider === providerName || (provider && key.provider === provider.id)) return true
                 
             return false
           })
         }
         
         const apiKey = findApiKeyForProvider(provider.provider_name)
-        if (!apiKey) {
-          return {
-            model,
-            error: `No API key found for provider: ${provider.display_name} (${provider.provider_name}). Available: ${apiKeys?.map(k => k.provider).join(', ')}. Please add your ${provider.display_name} API key in the dashboard.`
-          }
-        }
-
-        // Check provider budget before making API call
-        if (apiKey.monthly_budget && apiKey.current_usage && 
-            parseFloat(apiKey.current_usage.toString()) >= parseFloat(apiKey.monthly_budget.toString())) {
-          return {
-            model,
-            error: `Monthly budget of $${apiKey.monthly_budget} exceeded for ${provider.display_name}. Current usage: $${apiKey.current_usage}`
-          }
-        }
-
-        // Decode the Base64 encoded API key
-        const decryptedKey = Buffer.from(apiKey.encrypted_key, 'base64').toString('utf-8')
-        console.log(`[MCP] Decoded key for ${provider.display_name}: ${decryptedKey.substring(0, 10)}...`)
-
-        // Use provider-specific settings if provided, otherwise use global settings
+        
+        // Calculate provider settings early (needed for both regular and fallback flows)
         const providerSettings = args.provider_settings?.[provider.provider_name] || {}
         const providerTemperature = providerSettings.temperature ?? temperature
         
@@ -1173,9 +1155,212 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         const preferencesMaxTokens = preferences?.model_preferences?.[`${provider.provider_name}_max_tokens`] || 
                                     preferences?.model_preferences?.[`${provider.id}_max_tokens`]
         const providerMaxTokens = providerSettings.max_tokens ?? 
-                                 apiKey.max_tokens ?? 
+                                 apiKey?.max_tokens ?? 
                                  preferencesMaxTokens ?? 
                                  maxTokens
+        
+        // If no API key found, try OpenRouter fallback for supported models
+        if (!apiKey) {
+          console.log(`[MCP] No API key for ${provider.display_name}, attempting OpenRouter fallback...`)
+          
+          try {
+            // Initialize OpenRouter manager
+            const openRouterManager = new OpenRouterManager()
+            
+            // Estimate request cost (rough estimate)
+            const estimatedTokens = Math.min(maxTokens || 1000, 4000)
+            const estimatedCost = estimatedTokens * 0.00003 // Rough estimate: $0.03 per 1K tokens
+            
+            // Check if this is a CLI request
+            const isCliRequest = request?.headers.get('user-agent')?.includes('cli') || 
+                                request?.headers.get('x-request-source') === 'cli' ||
+                                args.source === 'cli'
+            
+            // Determine API key strategy with proper priority
+            const strategy = await openRouterManager.determineApiKeyStrategy(
+              user.id,
+              undefined, // No user-provided key in this context
+              estimatedCost,
+              isCliRequest
+            )
+            
+            if (!strategy.canProceed) {
+              return {
+                model,
+                error: `${strategy.error || 'Cannot proceed with request'}`
+              }
+            }
+            
+            console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy for ${model}`)
+            
+            // Use OpenRouter configuration for the request
+            const openRouterConfig = configMap.get('openrouter')
+            if (!openRouterConfig) {
+              return {
+                model,
+                error: `OpenRouter fallback not available - configuration missing. Please add your ${provider.display_name} API key in the dashboard.`
+              }
+            }
+            
+            // Temporarily override provider config to use OpenRouter
+            provider = openRouterConfig
+            
+            // Create fake API key object for OpenRouter
+            const openRouterApiKey = {
+              provider: 'openrouter',
+              encrypted_key: Buffer.from(strategy.apiKey).toString('base64'),
+              key_preview: 'or-...credits',
+              api_base: openRouterConfig.base_url,
+              default_model: model,
+              monthly_budget: null,
+              current_usage: null,
+              max_tokens: maxTokens
+            }
+            
+            // Use this for the API call
+            const decryptedKey = strategy.apiKey
+            console.log(`[MCP] Using OpenRouter key for ${model}: ${decryptedKey.substring(0, 10)}...`)
+            
+            // Make the API call with OpenRouter
+            const response = await callLLMAPI(
+              model, // Keep original model name for OpenRouter
+              contextualPrompt,
+              decryptedKey,
+              provider,
+              providerTemperature,
+              providerMaxTokens
+            )
+            
+            const endTime = Date.now()
+            const duration = endTime - startTime
+            
+            // Record usage and deduct credits if using credits strategy
+            if (strategy.strategy === 'credits') {
+              try {
+                // Calculate actual cost (should be updated with real usage data)
+                const actualCost = response.tokens_used * 0.00003 // Update with real pricing
+                
+                await openRouterManager.deductCredits(user.id, actualCost)
+                await openRouterManager.recordUsage(
+                  user.id,
+                  model,
+                  Math.floor(response.tokens_used * 0.7), // Rough prompt tokens estimate
+                  Math.floor(response.tokens_used * 0.3), // Rough completion tokens estimate
+                  actualCost,
+                  strategy.strategy
+                )
+              } catch (creditError) {
+                console.error('[MCP] Error handling credits:', creditError)
+              }
+            }
+            
+            console.log(`[MCP] ${provider.display_name} (${model}) - Duration: ${duration}ms, Tokens: ${response.tokens_used}`)
+            return {
+              model,
+              provider: `${provider.display_name} (Credits)`,
+              content: response.content,
+              tokens_used: response.tokens_used,
+              response_time_ms: duration,
+              strategy: strategy.strategy,
+              fallback: true
+            }
+            
+          } catch (openRouterError) {
+            console.error(`[MCP] OpenRouter fallback failed:`, openRouterError)
+            return {
+              model,
+              error: `No API key found for ${provider.display_name} and OpenRouter fallback failed. Please add your API key in the dashboard or purchase credits.`
+            }
+          }
+        }
+
+        // Check provider budget before making API call
+        if (apiKey.monthly_budget && apiKey.current_usage && 
+            parseFloat(apiKey.current_usage.toString()) >= parseFloat(apiKey.monthly_budget.toString())) {
+          
+          console.log(`[MCP] Budget exceeded for ${provider.display_name}, attempting OpenRouter fallback...`)
+          
+          try {
+            // Initialize OpenRouter manager for budget fallback
+            const openRouterManager = new OpenRouterManager()
+            
+            // Estimate request cost
+            const estimatedTokens = Math.min(maxTokens || 1000, 4000)
+            const estimatedCost = estimatedTokens * 0.00003
+            
+            // Determine API key strategy with CLI priority
+            const strategy = await openRouterManager.determineApiKeyStrategy(
+              user.id,
+              undefined,
+              estimatedCost,
+              isCliRequest
+            )
+            
+            if (!strategy.canProceed) {
+              return {
+                model,
+                error: `Monthly budget of $${apiKey.monthly_budget} exceeded for ${provider.display_name}. ${strategy.error || 'No credits available for fallback.'}`
+              }
+            }
+            
+            // Use OpenRouter as fallback (same logic as above)
+            const openRouterConfig = configMap.get('openrouter')
+            if (openRouterConfig) {
+              console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy due to budget limit`)
+              
+              const response = await callLLMAPI(
+                model,
+                contextualPrompt,
+                strategy.apiKey,
+                openRouterConfig,
+                providerTemperature,
+                providerMaxTokens
+              )
+              
+              const endTime = Date.now()
+              const duration = endTime - startTime
+              
+              // Handle credits if using credits strategy
+              if (strategy.strategy === 'credits') {
+                try {
+                  const actualCost = response.tokens_used * 0.00003
+                  await openRouterManager.deductCredits(user.id, actualCost)
+                  await openRouterManager.recordUsage(
+                    user.id,
+                    model,
+                    Math.floor(response.tokens_used * 0.7),
+                    Math.floor(response.tokens_used * 0.3),
+                    actualCost,
+                    strategy.strategy
+                  )
+                } catch (creditError) {
+                  console.error('[MCP] Error handling credits:', creditError)
+                }
+              }
+              
+              return {
+                model,
+                provider: `${provider.display_name} (Credits - Budget Exceeded)`,
+                content: response.content,
+                tokens_used: response.tokens_used,
+                response_time_ms: duration,
+                strategy: strategy.strategy,
+                fallback: true
+              }
+            }
+          } catch (fallbackError) {
+            console.error(`[MCP] Budget fallback failed:`, fallbackError)
+          }
+          
+          return {
+            model,
+            error: `Monthly budget of $${apiKey.monthly_budget} exceeded for ${provider.display_name}. Current usage: $${apiKey.current_usage}. OpenRouter fallback not available.`
+          }
+        }
+
+        // Decode the Base64 encoded API key
+        const decryptedKey = Buffer.from(apiKey.encrypted_key, 'base64').toString('utf-8')
+        console.log(`[MCP] Decoded key for ${provider.display_name}: ${decryptedKey.substring(0, 10)}...`)
 
         console.log(`[MCP] ${provider.display_name} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens} (API budget: $${apiKey.monthly_budget || 'unlimited'}, used: $${apiKey.current_usage || '0'})`)
 
