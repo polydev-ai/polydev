@@ -215,11 +215,36 @@ export async function POST(request: NextRequest) {
         expires_at: expiresAt.toISOString()
       })
 
+    // Generate CLI status token for automatic reporting
+    console.log('[MCP Auth] Generating CLI status token for client-side validation')
+    const cliStatusToken = `cli_${Buffer.from(`${authData.user_id}_${Date.now()}_${Math.random()}`).toString('base64url')}`
+    
+    // Store CLI status token for client to use
+    await supabaseService
+      .from('mcp_user_tokens')
+      .upsert({
+        user_id: authData.user_id,
+        token_hash: require('crypto').createHash('sha256').update(cliStatusToken).digest('hex'),
+        token_preview: cliStatusToken.substring(0, 8) + '...',
+        active: true,
+        created_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
+      })
+
+    console.log('[MCP Auth] CLI status token generated and stored')
+
     return NextResponse.json({
       access_token: accessToken,
       token_type: 'Bearer',
       expires_in: 30 * 24 * 60 * 60, // 30 days in seconds
-      scope: 'mcp:tools'
+      scope: 'mcp:tools',
+      cli_status_config: {
+        token: cliStatusToken,
+        user_id: authData.user_id,
+        api_url: `${new URL(request.url).origin}/api/cli-status-update`,
+        instructions: 'Use this token to report CLI status from client-side validation'
+      }
     })
 
   } catch (error) {
