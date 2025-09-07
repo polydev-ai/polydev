@@ -21,39 +21,39 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     id: 'starter',
     name: 'Starter',
     description: 'Perfect for getting started',
-    credits: 100,
+    credits: 20,
     bonusCredits: 0,
-    totalCredits: 100,
+    totalCredits: 20,
     priceId: 'price_1S2q6RJtMA6wwImlHRH4p88T',
     productId: 'prod_SynheFtbhPcQUe',
-    price: 999, // $9.99
-    displayPrice: '$9.99',
+    price: 2200, // $22.00 (10% markup - $20 in credits)
+    displayPrice: '$22.00',
     features: [
-      '100 AI model credits',
+      '$20 AI model credits',
       'Works with all providers',
       'No expiration',
-      'Instant activation'
+      'Instant activation',
+      '10% covers payment processing & platform maintenance'
     ]
   },
   {
     id: 'professional',
     name: 'Professional',
     description: 'Most popular choice',
-    credits: 500,
-    bonusCredits: 100,
-    totalCredits: 600,
+    credits: 40,
+    bonusCredits: 0,
+    totalCredits: 40,
     priceId: 'price_1S2q6aJtMA6wwImlIYbemPU6',
     productId: 'prod_SynhR26vI78whT',
-    price: 4499, // $44.99
-    displayPrice: '$44.99',
-    savings: 20,
+    price: 4400, // $44.00 (10% markup - $40 in credits)
+    displayPrice: '$44.00',
     popular: true,
     features: [
-      '500 AI model credits',
-      '+ 100 bonus credits',
+      '$40 AI model credits',
       'Works with all providers',
       'No expiration',
-      '20% more value',
+      'Instant activation',
+      '10% covers payment processing & platform maintenance',
       'Priority support'
     ]
   },
@@ -61,20 +61,19 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     id: 'enterprise',
     name: 'Enterprise',
     description: 'For power users',
-    credits: 1000,
-    bonusCredits: 300,
-    totalCredits: 1300,
+    credits: 90,
+    bonusCredits: 0,
+    totalCredits: 90,
     priceId: 'price_1S2q70JtMA6wwImlQ6T3lrPo',
     productId: 'prod_Syni2GyfwT5FVA',
-    price: 7999, // $79.99
-    displayPrice: '$79.99',
-    savings: 30,
+    price: 9900, // $99.00 (10% markup - $90 in credits)
+    displayPrice: '$99.00',
     features: [
-      '1000 AI model credits',
-      '+ 300 bonus credits',
+      '$90 AI model credits',
       'Works with all providers',
       'No expiration',
-      '30% more value',
+      'Instant activation',
+      '10% covers payment processing & platform maintenance',
       'Priority support',
       'Advanced analytics'
     ]

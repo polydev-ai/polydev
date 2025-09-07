@@ -241,6 +241,14 @@ The Polydev Team
             <p style="margin: 5px 0;"><strong>Amount Paid:</strong> $${amountPaid.toFixed(2)}</p>
           </div>
         </div>
+
+        <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+          <h3 style="color: #92400e; margin-top: 0;">💡 About Our Pricing</h3>
+          <p style="color: #78350f; margin-bottom: 0; font-size: 14px;">
+            Our credit packages include a 10% service fee that covers payment processing costs and platform maintenance. 
+            This ensures we can continue providing you with reliable AI services and keep improving the platform.
+          </p>
+        </div>
         
         <div style="background: #eff6ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
           <h3 style="color: #1d4ed8; margin-top: 0;">What's Next?</h3>
@@ -277,6 +285,9 @@ Purchase Details:
 • Credits Added: $${creditAmount}
 • Package: ${packageName}
 • Amount Paid: $${amountPaid.toFixed(2)}
+
+💡 About Our Pricing
+Our credit packages include a 10% service fee that covers payment processing costs and platform maintenance. This ensures we can continue providing you with reliable AI services and keep improving the platform.
 
 What's Next?
 • 🚀 Start using premium AI models
