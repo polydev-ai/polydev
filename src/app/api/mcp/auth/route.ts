@@ -220,18 +220,40 @@ export async function POST(request: NextRequest) {
     const cliStatusToken = `cli_${Buffer.from(`${authData.user_id}_${Date.now()}_${Math.random()}`).toString('base64url')}`
     
     // Store CLI status token for client to use
-    const { error: tokenInsertError } = await supabaseService
+    // First try to update existing CLI Status Token, if none exists, insert new one
+    const { data: existingCliToken } = await supabaseService
       .from('mcp_user_tokens')
-      .upsert({
-        user_id: authData.user_id,
-        token_name: 'CLI Status Token',
-        token_hash: require('crypto').createHash('sha256').update(cliStatusToken).digest('hex'),
-        token_preview: cliStatusToken.substring(0, 8) + '...',
-        active: true,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
-      })
+      .select('id')
+      .eq('user_id', authData.user_id)
+      .eq('token_name', 'CLI Status Token')
+      .single()
+    
+    let tokenInsertError = null
+    if (existingCliToken) {
+      // Update existing CLI Status Token
+      const { error } = await supabaseService
+        .from('mcp_user_tokens')
+        .update({
+          token_hash: require('crypto').createHash('sha256').update(cliStatusToken).digest('hex'),
+          token_preview: cliStatusToken.substring(0, 8) + '...',
+          active: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingCliToken.id)
+      tokenInsertError = error
+    } else {
+      // Insert new CLI Status Token
+      const { error } = await supabaseService
+        .from('mcp_user_tokens')
+        .insert({
+          user_id: authData.user_id,
+          token_name: 'CLI Status Token',
+          token_hash: require('crypto').createHash('sha256').update(cliStatusToken).digest('hex'),
+          token_preview: cliStatusToken.substring(0, 8) + '...',
+          active: true
+        })
+      tokenInsertError = error
+    }
 
     if (tokenInsertError) {
       console.error('[MCP Auth] Error storing CLI status token:', tokenInsertError)

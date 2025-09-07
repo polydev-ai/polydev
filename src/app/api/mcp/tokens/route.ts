@@ -91,16 +91,30 @@ export async function POST(request: NextRequest) {
     
     console.log('MCP tokens POST - User authenticated:', user.id)
     
-    const { token_name, rate_limit_tier = 'standard' } = await request.json()
+    const { token_name, rate_limit_tier = 'standard', token_type = 'api' } = await request.json()
     
     if (!token_name || token_name.trim().length === 0) {
       return NextResponse.json({ error: 'Token name is required' }, { status: 400 })
     }
     
-    // Generate a secure token
-    const token = `pd_${randomBytes(32).toString('hex')}`
+    if (!['api', 'cli'].includes(token_type)) {
+      return NextResponse.json({ error: 'Invalid token type. Must be "api" or "cli"' }, { status: 400 })
+    }
+    
+    // Generate a secure token based on type
+    let token: string
+    if (token_type === 'api') {
+      token = `pd_${randomBytes(32).toString('hex')}`
+    } else if (token_type === 'cli') {
+      token = `cli_${Buffer.from(`${user.id}_${Date.now()}_${Math.random()}`).toString('base64url')}`
+    } else {
+      return NextResponse.json({ error: 'Invalid token type' }, { status: 400 })
+    }
+    
     const tokenHash = createHash('sha256').update(token).digest('hex')
-    const tokenPreview = `${token.slice(0, 12)}...${token.slice(-8)}`
+    const tokenPreview = token_type === 'api' 
+      ? `${token.slice(0, 12)}...${token.slice(-8)}`
+      : token.substring(0, 8) + '...'
     
     // Insert the token
     const { data: newToken, error } = await supabase

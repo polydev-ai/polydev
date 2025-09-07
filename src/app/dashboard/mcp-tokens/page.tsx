@@ -30,7 +30,8 @@ export default function MCPTokensPage() {
   // Form state
   const [formData, setFormData] = useState({
     token_name: '',
-    rate_limit_tier: 'standard'
+    rate_limit_tier: 'standard',
+    token_type: 'api' // 'api', 'cli', or 'oauth'
   })
 
   const supabase = createClient()
@@ -88,7 +89,7 @@ export default function MCPTokensPage() {
       
       setGeneratedApiKey(data.api_key)
       setShowAddForm(false)
-      setFormData({ token_name: '', rate_limit_tier: 'standard' })
+      setFormData({ token_name: '', rate_limit_tier: 'standard', token_type: 'api' })
       await fetchTokens()
     } catch (err: any) {
       setError(err.message)
@@ -273,7 +274,7 @@ export default function MCPTokensPage() {
           <button
             onClick={() => {
               setShowAddForm(true)
-              setFormData({ token_name: '', rate_limit_tier: 'standard' })
+              setFormData({ token_name: '', rate_limit_tier: 'standard', token_type: 'api' })
             }}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
           >
@@ -289,7 +290,21 @@ export default function MCPTokensPage() {
               Create New MCP Token
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Token Type *
+                </label>
+                <select
+                  value={formData.token_type}
+                  onChange={(e) => setFormData(prev => ({...prev, token_type: e.target.value}))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="api">API Token (pd_) - For published package & MCP clients</option>
+                  <option value="cli">CLI Status Token (cli_) - For status reporting</option>
+                </select>
+              </div>
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Token Name *
@@ -298,7 +313,11 @@ export default function MCPTokensPage() {
                   type="text"
                   value={formData.token_name}
                   onChange={(e) => setFormData(prev => ({...prev, token_name: e.target.value}))}
-                  placeholder="e.g., Claude Desktop, Continue Extension"
+                  placeholder={
+                    formData.token_type === 'api' ? 'e.g., Continue Extension, API Access' :
+                    formData.token_type === 'cli' ? 'e.g., CLI Status Reporter' :
+                    'e.g., Token Name'
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                 />
               </div>
@@ -310,13 +329,21 @@ export default function MCPTokensPage() {
                 <select
                   value={formData.rate_limit_tier}
                   onChange={(e) => setFormData(prev => ({...prev, rate_limit_tier: e.target.value}))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  disabled={formData.token_type === 'cli'}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white disabled:opacity-50"
                 >
                   <option value="standard">Standard - {getRateLimitDescription('standard')}</option>
                   <option value="premium">Premium - {getRateLimitDescription('premium')}</option>
                   <option value="enterprise">Enterprise - {getRateLimitDescription('enterprise')}</option>
                 </select>
               </div>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Note:</strong> OAuth tokens (polydev_) are automatically generated when you authenticate with Claude Desktop. 
+                Only create manual tokens if you need them for the published package or other MCP clients.
+              </p>
             </div>
 
             <div className="flex space-x-3">
