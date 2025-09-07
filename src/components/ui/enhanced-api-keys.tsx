@@ -70,19 +70,9 @@ export default function EnhancedApiKeysPage() {
   const [expandedProviders, setExpandedProviders] = useState<{[provider: string]: boolean}>({})
   const [updateApiKey, setUpdateApiKey] = useState(false)
   
-  // CLI Configuration State
+  // CLI Configuration State  
   const [cliConfigs, setCliConfigs] = useState<CLIConfig[]>([])
   const [showCliSettings, setShowCliSettings] = useState(false)
-  const [editingCliConfig, setEditingCliConfig] = useState<CLIConfig | null>(null)
-  const [cliLoading, setCliLoading] = useState(false)
-  
-  // MCP Token State for bidirectional CLI status reporting
-  const [mcpToken, setMcpToken] = useState<string>('')
-  const [mcpTokenLoading, setMcpTokenLoading] = useState(false)
-  const [showMcpSetup, setShowMcpSetup] = useState(false)
-  const [statusLogs, setStatusLogs] = useState<any[]>([])
-  const [realTimeConnected, setRealTimeConnected] = useState(false)
-  const [lastStatusUpdate, setLastStatusUpdate] = useState<Date | null>(null)
   
   // Form state with new fields
   const [formData, setFormData] = useState({
@@ -150,16 +140,9 @@ export default function EnhancedApiKeysPage() {
         (keysData || []).some(key => key.provider === provider.id)
       )
 
-      // Fetch CLI configurations
-      const { data: cliData, error: cliError } = await supabase
-        .from('cli_provider_configurations')
-        .select('*')
-        .eq('user_id', user.id)
-
       setApiKeys(keysData || [])
       setPreferences(prefsError ? null : prefsData)
       setProviders(providersWithKeys)
-      setCliConfigs(cliError ? [] : cliData || [])
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -233,247 +216,19 @@ export default function EnhancedApiKeysPage() {
     await updatePreferenceOrder(newPreferences)
   }
 
-  // CLI Configuration Functions
-  const fetchCliConfigs = async () => {
-    if (!user?.id) return
+  // Simplified CLI status fetch
+  const fetchCliStatus = async () => {
+    if (!user?.id) return []
     
     try {
-      setCliLoading(true)
-      const response = await fetch('/api/cli-config')
-      
-      if (!response.ok) throw new Error('Failed to fetch CLI configurations')
+      const response = await fetch('/api/cli-status')
+      if (!response.ok) return []
       
       const data = await response.json()
-      setCliConfigs(data.configs || [])
-      
-      if (data.detected && data.message) {
-        setSuccess(data.message)
-      }
-      
-      // Auto-check status for enabled CLI tools after loading configs
-      setTimeout(() => {
-        checkAllCliStatuses()
-      }, 1000) // Small delay to let configs render first
-      
+      return data.statuses || []
     } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setCliLoading(false)
-    }
-  }
-
-  const saveCLIConfig = async (provider: string, cliPath: string, enabled: boolean) => {
-    try {
-      setCliLoading(true)
-      
-      const response = await fetch('/api/cli-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          provider: provider,
-          custom_path: cliPath,
-          enabled
-        })
-      })
-
-      if (!response.ok) throw new Error('Failed to save CLI configuration')
-      
-      const result = await response.json()
-      
-      // Update local state
-      setCliConfigs(prev => {
-        const existing = prev.find(c => c.provider === provider)
-        if (existing) {
-          return prev.map(c => c.provider === provider ? { ...c, custom_path: cliPath, enabled, status: result.verified ? 'available' : 'unavailable' } : c)
-        } else {
-          return [...prev, {
-            user_id: user!.id,
-            provider,
-            custom_path: cliPath,
-            enabled,
-            status: result.verified ? 'available' : 'unavailable'
-          }]
-        }
-      })
-      
-      setSuccess(result.message)
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setCliLoading(false)
-    }
-  }
-
-  const checkCLIStatus = async (provider: string) => {
-    try {
-      setCliConfigs(prev => prev.map(c => 
-        c.provider === provider ? { ...c, status: 'checking' } : c
-      ))
-
-      // Trigger re-authentication flow for comprehensive CLI validation
-      if (reAuthenticateForCLI) {
-        await reAuthenticateForCLI()
-        return
-      }
-
-      // Fallback: Use serverless validation with user guidance
-      const response = await fetch('/api/cli-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          server: provider === 'claude_code' ? 'claude-code-cli-bridge' : 
-                 provider === 'codex_cli' ? 'cross-llm-bridge-test' :
-                 'gemini-cli-bridge',
-          tool: provider === 'claude_code' ? 'check_claude_code_status' : 
-                provider === 'codex_cli' ? 'check_codex_status' :
-                'check_gemini_status',
-          args: {}
-        })
-      })
-
-      if (!response.ok) throw new Error('Failed to check CLI status')
-      
-      const result = await response.json()
-      
-      // Use the structured response from the new endpoint
-      const isAvailable = result.available === true
-      const resultText = result.result || ''
-      
-      // Determine installation and authentication status from structured response
-      const isInstalled = !resultText.includes('not configured')
-      const isAuthenticated = isAvailable
-      
-      let newStatus: 'available' | 'unavailable' | 'not_installed'
-      let statusMessage = ''
-      
-      if (!isInstalled) {
-        newStatus = 'not_installed'
-        statusMessage = `${provider} is not installed`
-      } else if (!isAuthenticated) {
-        newStatus = 'unavailable'
-        statusMessage = `${provider} is installed but not authenticated`
-      } else {
-        newStatus = 'available'
-        statusMessage = `${provider} is installed and authenticated`
-      }
-      
-      // Update local state with detailed status
-      setCliConfigs(prev => prev.map(c => 
-        c.provider === provider ? { 
-          ...c, 
-          status: newStatus,
-          last_checked_at: new Date().toISOString(),
-          statusMessage
-        } : c
-      ))
-      
-      // Update server with real status from MCP
-      const config = cliConfigs.find(c => c.provider === provider)
-      if (config?.id) {
-        try {
-          await fetch('/api/cli-config', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id: config.id,
-              status: newStatus,
-              last_checked_at: new Date().toISOString()
-            })
-          })
-        } catch (updateErr) {
-          console.warn('Failed to update server status:', updateErr)
-        }
-      }
-      
-    } catch (err: any) {
-      setCliConfigs(prev => prev.map(c => 
-        c.provider === provider ? { ...c, status: 'unavailable' } : c
-      ))
-      setError(`Failed to check ${provider} status: ${err.message}`)
-    }
-  }
-
-  // Check all enabled CLI tools automatically
-  const checkAllCliStatuses = async () => {
-    const enabledConfigs = cliConfigs.filter(c => c.enabled)
-    for (const config of enabledConfigs) {
-      await checkCLIStatus(config.provider)
-      // Small delay between checks to avoid overwhelming MCP
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
-  }
-
-  // MCP Token Management Functions
-  const fetchMcpToken = async () => {
-    if (!user?.id) return
-    
-    try {
-      setMcpTokenLoading(true)
-      const response = await fetch('/api/mcp-tokens')
-      
-      if (!response.ok) throw new Error('Failed to fetch MCP token')
-      
-      const data = await response.json()
-      setMcpToken(data.token)
-      
-      // Set up instructions for user
-      if (data.setup_instructions) {
-        console.log('MCP Setup Instructions:', data.setup_instructions)
-      }
-      
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setMcpTokenLoading(false)
-    }
-  }
-
-  const regenerateMcpToken = async () => {
-    if (!user?.id) return
-    
-    try {
-      setMcpTokenLoading(true)
-      // First revoke old token
-      await fetch('/api/mcp-tokens', { method: 'DELETE' })
-      
-      // Generate new token
-      await fetchMcpToken()
-      setSuccess('MCP token regenerated successfully! Please update your local MCP bridge configuration.')
-      
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setMcpTokenLoading(false)
-    }
-  }
-
-  const fetchStatusLogs = async (provider?: string) => {
-    try {
-      const url = provider 
-        ? `/api/cli-status-update?provider=${provider}&limit=20`
-        : '/api/cli-status-update?limit=50'
-      
-      const response = await fetch(url)
-      if (!response.ok) throw new Error('Failed to fetch status logs')
-      
-      const data = await response.json()
-      setStatusLogs(data.logs || [])
-      
-    } catch (err: any) {
-      console.error('Failed to fetch status logs:', err.message)
-    }
-  }
-
-  // Simulate real-time connection status (in real implementation, use WebSocket or polling)
-  const checkRealTimeConnection = async () => {
-    try {
-      const response = await fetch('/api/health')
-      setRealTimeConnected(response.ok)
-      if (response.ok) {
-        setLastStatusUpdate(new Date())
-      }
-    } catch {
-      setRealTimeConnected(false)
+      console.error('Failed to fetch CLI status:', err.message)
+      return []
     }
   }
 
@@ -655,295 +410,73 @@ export default function EnhancedApiKeysPage() {
         </div>
       )}
 
-      {/* CLI Providers Section */}
+      {/* CLI Tools Status Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-        <div 
-          className="p-6 cursor-pointer"
-          onClick={() => setShowCliSettings(!showCliSettings)}
-        >
+        <div className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Terminal className="w-5 h-5" />
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                CLI Providers
+                CLI Tools Status
               </h2>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  validateCLITools?.()
-                }}
+                onClick={() => reAuthenticateForCLI?.()}
                 disabled={cliValidationInProgress}
-                className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:opacity-50"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
               >
-                {cliValidationInProgress ? 'Validating...' : 'Check All'}
+                {cliValidationInProgress ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Checking...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Check CLI Status</span>
+                  </>
+                )}
               </button>
-              <span className="text-sm text-gray-500">
-                {cliConfigs.filter(c => c.enabled && c.status === 'available').length} active
-              </span>
-              {showCliSettings ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </div>
           </div>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">
-            Use CLI tools for authentication-free access to Claude Code, Codex CLI, and Gemini CLI
+          <p className="text-gray-600 dark:text-gray-300 mt-1 mb-4">
+            CLI tools are checked automatically when you authenticate. Click "Check CLI Status" to refresh.
           </p>
+          
+          {/* CLI Status Display */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {CLI_PROVIDERS.map((cliProvider) => (
+              <div key={cliProvider.provider} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-white">
+                      {cliProvider.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                      {cliProvider.description}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-1 text-gray-500">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-xs">Check to see status</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
           {cliValidationInProgress && (
-            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
               <div className="flex items-center space-x-2">
                 <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Validating CLI tools...</strong> This may open a validation window for comprehensive status checking.
+                  <strong>Checking CLI tools...</strong> This will update the status automatically.
                 </p>
               </div>
             </div>
           )}
         </div>
-        
-        {showCliSettings && (
-          <div className="px-6 pb-6 border-t border-gray-200 dark:border-gray-700">
-            
-            {/* MCP Token Setup Section */}
-            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 flex items-center space-x-2">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                    <span>MCP Bridge Connection</span>
-                    {realTimeConnected && (
-                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Connected</span>
-                    )}
-                  </h3>
-                  <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
-                    Configure your local MCP bridge to automatically report CLI tool status to Polydev.
-                    {lastStatusUpdate && (
-                      <span className="block text-xs text-blue-600 dark:text-blue-400 mt-1">
-                        Last update: {lastStatusUpdate.toLocaleTimeString()}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowMcpSetup(!showMcpSetup)}
-                  disabled={mcpTokenLoading}
-                  className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-1"
-                >
-                  {mcpTokenLoading && <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>}
-                  <span>{showMcpSetup ? 'Hide Setup' : 'Setup MCP'}</span>
-                </button>
-              </div>
-              
-              {showMcpSetup && (
-                <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded border">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        MCP Authentication Token
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="password"
-                          value={mcpToken}
-                          readOnly
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 font-mono text-xs"
-                          placeholder="Click 'Generate Token' to create your MCP token"
-                        />
-                        <button
-                          onClick={fetchMcpToken}
-                          disabled={mcpTokenLoading}
-                          className="px-3 py-2 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                        >
-                          {mcpToken ? 'Regenerate' : 'Generate'}
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {mcpToken && (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Environment Variable Setup
-                          </label>
-                          <div className="bg-gray-100 dark:bg-gray-900 p-3 rounded font-mono text-xs overflow-x-auto">
-                            <div className="mb-2">export POLYDEV_MCP_TOKEN="{mcpToken}"</div>
-                            <div>export POLYDEV_API_URL="https://polydev.com/api/cli-status-update"</div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Copy to Clipboard
-                          </label>
-                          <button
-                            onClick={() => navigator.clipboard.writeText(`export POLYDEV_MCP_TOKEN="${mcpToken}"\nexport POLYDEV_API_URL="https://polydev.com/api/cli-status-update"`)}
-                            className="text-sm bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700"
-                          >
-                            Copy Environment Variables
-                          </button>
-                        </div>
-                        
-                        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                          <p><strong>Next steps:</strong></p>
-                          <p>1. Add the environment variables to your shell profile (~/.bashrc, ~/.zshrc, etc.)</p>
-                          <p>2. Restart your terminal or reload your shell</p>
-                          <p>3. Your MCP bridge will now automatically report CLI tool status</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="mt-6 space-y-4">
-              {CLI_PROVIDERS.map((cliProvider) => {
-                const config = cliConfigs.find(c => c.provider === cliProvider.provider)
-                const isEnabled = config?.enabled || false
-                const status = config?.status || 'unchecked'
-                const customPath = config?.custom_path || cliProvider.defaultPaths[0]
-
-                return (
-                  <div key={cliProvider.provider} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={isEnabled}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  saveCLIConfig(cliProvider.provider, customPath, true)
-                                } else {
-                                  saveCLIConfig(cliProvider.provider, customPath, false)
-                                }
-                              }}
-                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600"
-                            />
-                            <h3 className="font-medium text-gray-900 dark:text-white">
-                              {cliProvider.name}
-                            </h3>
-                          </div>
-                          
-                          {status === 'checking' && (
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                          )}
-                          
-                          {status === 'available' && (
-                            <div className="flex items-center space-x-1 text-green-600">
-                              <CheckCircle className="w-4 h-4" />
-                              <span className="text-xs">Available</span>
-                            </div>
-                          )}
-                          
-                          {status === 'unavailable' && (
-                            <div className="flex items-center space-x-1 text-yellow-600">
-                              <XCircle className="w-4 h-4" />
-                              <span className="text-xs">Not Authenticated</span>
-                            </div>
-                          )}
-                          
-                          {status === 'not_installed' && (
-                            <div className="flex items-center space-x-1 text-red-600">
-                              <XCircle className="w-4 h-4" />
-                              <span className="text-xs">Not Installed</span>
-                            </div>
-                          )}
-                          
-                          {status === 'unchecked' && (
-                            <div className="flex items-center space-x-1 text-gray-500">
-                              <Clock className="w-4 h-4" />
-                              <span className="text-xs">Unchecked</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                          {cliProvider.description}
-                        </p>
-                        
-                        {isEnabled && (
-                          <div className="mt-3 space-y-2">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                CLI Path
-                              </label>
-                              <div className="mt-1 flex space-x-2">
-                                <input
-                                  type="text"
-                                  value={customPath}
-                                  onChange={(e) => {
-                                    const newPath = e.target.value
-                                    setCliConfigs(prev => prev.map(c => 
-                                      c.provider === cliProvider.provider 
-                                        ? { ...c, custom_path: newPath }
-                                        : c
-                                    ))
-                                  }}
-                                  onBlur={() => saveCLIConfig(cliProvider.provider, customPath, isEnabled)}
-                                  className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                  placeholder={cliProvider.defaultPaths[0]}
-                                />
-                                <button
-                                  onClick={() => checkCLIStatus(cliProvider.provider)}
-                                  className="px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded-md flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  disabled={status === 'checking' || cliValidationInProgress}
-                                >
-                                  <Wrench className="w-3 h-3" />
-                                  <span>
-                                    {cliValidationInProgress ? 'Validating...' : 'Check Status'}
-                                  </span>
-                                </button>
-                              </div>
-                            </div>
-                            
-                            {/* Status-based guidance */}
-                            {status === 'not_installed' && (
-                              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
-                                <p className="text-sm text-red-800 dark:text-red-200">
-                                  <strong>Installation required:</strong> {cliProvider.name} is not installed on your system. Please install it first.
-                                  {cliProvider.provider === 'claude_code' && (
-                                    <span className="block mt-1">Visit <a href="https://claude.ai/code" target="_blank" rel="noopener noreferrer" className="underline">claude.ai/code</a> for installation instructions.</span>
-                                  )}
-                                  {cliProvider.provider === 'codex_cli' && (
-                                    <span className="block mt-1">Install from <a href="https://github.com/ai-codex/codex-cli" target="_blank" rel="noopener noreferrer" className="underline">GitHub</a>.</span>
-                                  )}
-                                  {cliProvider.provider === 'gemini_cli' && (
-                                    <span className="block mt-1">Install using your preferred package manager.</span>
-                                  )}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {status === 'unavailable' && (
-                              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded p-3">
-                                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                                  <strong>Authentication required:</strong> {config?.statusMessage || `${cliProvider.name} is installed but not authenticated.`}
-                                  <span className="block mt-1">Please run <code className="bg-yellow-200 dark:bg-yellow-800 px-1 rounded">{cliProvider.authCommand}</code> to authenticate.</span>
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-              <button
-                onClick={fetchCliConfigs}
-                disabled={cliLoading}
-                className="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50 flex items-center space-x-1"
-              >
-                <Settings className="w-3 h-3" />
-                <span>{cliLoading ? 'Detecting...' : 'Auto-detect CLI tools'}</span>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* API Keys Section */}
