@@ -399,9 +399,26 @@ export async function POST(request: NextRequest) {
         return handleInitialize(params, id)
       
       case 'initialized':
+      case 'notifications/initialized':
         // Handle initialized notification - Claude Code sends this after initialize
-        // Notifications don't expect a response, but we'll return 200 OK
         console.log(`[MCP Server] Initialized notification received from client`)
+        
+        // Automatically trigger CLI status check after client initializes
+        try {
+          console.log(`[MCP Server] Triggering automatic CLI status detection...`)
+          // We'll run this asynchronously to not block the response
+          setImmediate(async () => {
+            try {
+              await triggerCLIStatusCheck(request)
+            } catch (error) {
+              console.error('[MCP Server] Failed to trigger CLI status check:', error)
+            }
+          })
+        } catch (error) {
+          console.error('[MCP Server] Error setting up automatic CLI status check:', error)
+        }
+        
+        // Notifications don't expect a response, but we'll return 200 OK
         return new NextResponse(null, {
           status: 200,
           headers: {
@@ -2405,6 +2422,183 @@ export async function PATCH(request: NextRequest) {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     }
   })
+}
+
+// Helper function to detect CLI status  
+async function detectCLIStatus(cliProvider: string): Promise<{ status: string, message: string, detected: boolean, version?: string, authenticated?: boolean }> {
+  const { spawn } = await import('child_process')
+  
+  const commandMap: Record<string, { cmd: string, authCmd: string }> = {
+    claude_code: { cmd: 'claude', authCmd: 'claude auth status' },
+    codex_cli: { cmd: 'codex', authCmd: 'codex auth status' },  
+    gemini_cli: { cmd: 'gemini', authCmd: 'gemini auth status' }
+  }
+
+  const commands = commandMap[cliProvider]
+  if (!commands) {
+    return { status: 'error', message: 'Unknown CLI provider', detected: false }
+  }
+
+  try {
+    // Check if CLI is installed
+    const versionResult = await executeCommandSimple(spawn, commands.cmd, ['--version'], 5000)
+    
+    if (!versionResult.success) {
+      return {
+        status: 'not_installed',
+        message: `CLI is not installed or not in PATH`,
+        detected: false
+      }
+    }
+
+    // Check authentication status
+    const authArgs = commands.authCmd.split(' ').slice(1)
+    const authResult = await executeCommandSimple(spawn, commands.cmd, authArgs, 5000)
+    
+    const isAuthenticated = authResult.success && 
+                           !authResult.stderr.includes('not authenticated') && 
+                           !authResult.stderr.includes('Please login') &&
+                           !authResult.stdout.includes('not authenticated')
+
+    return {
+      status: isAuthenticated ? 'available' : 'unavailable',
+      message: isAuthenticated ? 'CLI detected and authenticated' : 'CLI detected but not authenticated',
+      detected: true,
+      version: versionResult.stdout.trim(),
+      authenticated: isAuthenticated
+    }
+  } catch (error) {
+    return {
+      status: 'error',
+      message: `Error checking CLI: ${error.message}`,
+      detected: false
+    }
+  }
+}
+
+// Helper to execute commands with timeout
+async function executeCommandSimple(spawn: any, command: string, args: string[], timeoutMs: number = 5000): Promise<{ success: boolean, stdout: string, stderr: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { shell: true })
+    let stdout = ''
+    let stderr = ''
+    let finished = false
+
+    const timeout = setTimeout(() => {
+      if (!finished) {
+        finished = true
+        child.kill()
+        resolve({ success: false, stdout, stderr: stderr + ' (timeout)' })
+      }
+    }, timeoutMs)
+
+    child.stdout?.on('data', (data: Buffer) => {
+      stdout += data.toString()
+    })
+
+    child.stderr?.on('data', (data: Buffer) => {
+      stderr += data.toString()
+    })
+
+    child.on('close', (code: number) => {
+      if (!finished) {
+        finished = true
+        clearTimeout(timeout)
+        resolve({ success: code === 0, stdout, stderr })
+      }
+    })
+
+    child.on('error', (error: Error) => {
+      if (!finished) {
+        finished = true
+        clearTimeout(timeout)
+        resolve({ success: false, stdout, stderr: error.message })
+      }
+    })
+  })
+}
+
+// Helper to report CLI status to API
+async function reportCLIStatusToAPI(provider: string, cliStatus: any, userId: string) {
+  try {
+    console.log(`[MCP Server] Reporting ${provider} status to API:`, cliStatus)
+    
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!serviceRoleKey) {
+      console.error('[MCP Server] Service role key not available for CLI status reporting')
+      return
+    }
+
+    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
+    const serviceRoleSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      serviceRoleKey
+    )
+
+    // Update CLI provider configuration
+    const updateData = {
+      user_id: userId,
+      provider,
+      enabled: cliStatus.status === 'available',
+      cli_path: cliStatus.detected ? 'detected' : null,
+      last_checked_at: new Date().toISOString(),
+      additional_config: {
+        auto_detected: true,
+        version: cliStatus.version,
+        authenticated: cliStatus.authenticated,
+        message: cliStatus.message
+      }
+    }
+
+    const { error } = await serviceRoleSupabase
+      .from('cli_provider_configurations')
+      .upsert(updateData, { onConflict: 'user_id,provider' })
+
+    if (error) {
+      console.error(`[MCP Server] Error updating ${provider} status:`, error)
+    } else {
+      console.log(`[MCP Server] Successfully reported ${provider} status`)
+    }
+  } catch (error) {
+    console.error(`[MCP Server] Error in reportCLIStatusToAPI for ${provider}:`, error)
+  }
+}
+
+// Trigger automatic CLI status check after MCP client initialization
+async function triggerCLIStatusCheck(request: NextRequest) {
+  try {
+    console.log('[MCP Server] Starting automatic CLI status detection...')
+    
+    // Get user information from the Bearer token
+    const authResult = await authenticateBearerToken(request)
+    if (!authResult.success) {
+      console.log('[MCP Server] Cannot trigger CLI check - authentication failed:', authResult.error)
+      return
+    }
+
+    const userId = authResult.userId
+    console.log('[MCP Server] Authenticated user for CLI check:', userId)
+
+    // Check all three CLI tools
+    const cliProviders = ['claude_code', 'codex_cli', 'gemini_cli']
+    
+    for (const provider of cliProviders) {
+      console.log(`[MCP Server] Checking ${provider} CLI status...`)
+      
+      try {
+        // Execute CLI detection and report status to API
+        const cliStatus = await detectCLIStatus(provider)
+        await reportCLIStatusToAPI(provider, cliStatus, userId)
+        console.log(`[MCP Server] ${provider} status: ${cliStatus.status}`)
+      } catch (error) {
+        console.error(`[MCP Server] Error checking ${provider}:`, error.message)
+      }
+    }
+    
+    console.log('[MCP Server] Automatic CLI status detection completed')
+  } catch (error) {
+    console.error('[MCP Server] Error in triggerCLIStatusCheck:', error)
+  }
 }
 
 export async function DELETE(request: NextRequest) {

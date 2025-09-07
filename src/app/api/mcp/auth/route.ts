@@ -220,17 +220,22 @@ export async function POST(request: NextRequest) {
     const cliStatusToken = `cli_${Buffer.from(`${authData.user_id}_${Date.now()}_${Math.random()}`).toString('base64url')}`
     
     // Store CLI status token for client to use
-    await supabaseService
+    const { error: tokenInsertError } = await supabaseService
       .from('mcp_user_tokens')
       .upsert({
         user_id: authData.user_id,
         token_hash: require('crypto').createHash('sha256').update(cliStatusToken).digest('hex'),
         token_preview: cliStatusToken.substring(0, 8) + '...',
         active: true,
-        created_at: new Date().toISOString()
+        updated_at: new Date().toISOString()
       }, {
         onConflict: 'user_id'
       })
+
+    if (tokenInsertError) {
+      console.error('[MCP Auth] Error storing CLI status token:', tokenInsertError)
+      // Continue anyway - don't fail authentication over token storage
+    }
 
     console.log('[MCP Auth] CLI status token generated and stored')
 
