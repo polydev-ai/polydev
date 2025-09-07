@@ -1784,11 +1784,10 @@ async function handleCliStatusReport(args: any, user: any): Promise<string> {
 
   // Get user's MCP token
   const { data: mcpToken } = await serviceRoleSupabase
-    .from('mcp_tokens')
-    .select('token')
+    .from('mcp_user_tokens')
+    .select('token_hash')
     .eq('user_id', user.id)
-    .eq('is_active', true)
-    .gt('expires_at', new Date().toISOString())
+    .eq('active', true)
     .single()
 
   if (!mcpToken) {
@@ -1819,14 +1818,13 @@ Your CLI status reporting token has been automatically configured, but you need 
 Visit your [Polydev API Keys dashboard](https://polydev.com/dashboard/api-keys) to get your complete setup instructions.`
   }
 
-  // Helper function to check CLI availability
+  // Helper function to check CLI availability with actual command execution
   const checkCLIStatus = async (cliProvider: string): Promise<{ status: string, message: string, detected: boolean }> => {
-    // Note: This runs on the server, not the user's machine
-    // For actual CLI detection, we need the client-side bridges or environment detection
-    // For now, we'll report based on what we can detect server-side
+    // Import spawn for CLI detection
+    const { spawn } = await import('child_process')
     
     try {
-      // Check if we have existing configuration from the database
+      // Check if we have recent cached result first
       const { data: existingConfig } = await serviceRoleSupabase
         .from('cli_provider_configurations')
         .select('status, last_checked_at, cli_version')
@@ -1839,8 +1837,8 @@ Visit your [Polydev API Keys dashboard](https://polydev.com/dashboard/api-keys) 
         const now = new Date()
         const minutesSinceCheck = (now.getTime() - lastCheck.getTime()) / (1000 * 60)
         
-        // If checked within last 5 minutes, return cached result
-        if (minutesSinceCheck < 5) {
+        // If checked within last 2 minutes, return cached result
+        if (minutesSinceCheck < 2) {
           return {
             status: existingConfig.status,
             message: `Status from recent check (${Math.floor(minutesSinceCheck)} min ago): ${existingConfig.status}`,
@@ -1849,13 +1847,39 @@ Visit your [Polydev API Keys dashboard](https://polydev.com/dashboard/api-keys) 
         }
       }
 
-      // For server-side detection, we can only do basic checks
-      // Real CLI detection requires client-side execution
-      return {
-        status: 'checking',
-        message: `Server-side detection initiated. Real CLI detection requires client-side verification.`,
-        detected: false
+      // Perform actual CLI detection
+      const result = await detectCLI(cliProvider, spawn)
+      
+      // Update database with new result
+      const updateData = {
+        user_id: user.id,
+        provider: cliProvider,
+        status: result.status,
+        last_checked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        status_message: result.message,
+        cli_version: result.version || null,
+        authenticated: result.authenticated || null
       }
+
+      // Update or create configuration
+      if (existingConfig) {
+        await serviceRoleSupabase
+          .from('cli_provider_configurations')
+          .update(updateData)
+          .eq('user_id', user.id)
+          .eq('provider', cliProvider)
+      } else {
+        await serviceRoleSupabase
+          .from('cli_provider_configurations')
+          .insert({
+            ...updateData,
+            enabled: result.status === 'available',
+            created_at: new Date().toISOString()
+          })
+      }
+
+      return result
       
     } catch (error) {
       console.error(`CLI status check error for ${cliProvider}:`, error)
@@ -1865,6 +1889,102 @@ Visit your [Polydev API Keys dashboard](https://polydev.com/dashboard/api-keys) 
         detected: false
       }
     }
+  }
+
+  // Actual CLI detection function
+  const detectCLI = async (cliProvider: string, spawn: any): Promise<{ status: string, message: string, detected: boolean, version?: string, authenticated?: boolean }> => {
+    const commandMap: Record<string, { cmd: string, authCmd: string }> = {
+      claude_code: { cmd: 'claude', authCmd: 'claude auth status' },
+      codex_cli: { cmd: 'codex', authCmd: 'codex auth status' },
+      gemini_cli: { cmd: 'gemini', authCmd: 'gemini auth status' }
+    }
+
+    const commands = commandMap[cliProvider]
+    if (!commands) {
+      return { status: 'error', message: 'Unknown CLI provider', detected: false }
+    }
+
+    try {
+      // Check if CLI is installed
+      const versionResult = await executeCommand(spawn, commands.cmd, ['--version'], 5000)
+      
+      if (!versionResult.success) {
+        return {
+          status: 'not_installed',
+          message: `${formatProvider(cliProvider)} is not installed or not in PATH`,
+          detected: false
+        }
+      }
+
+      // Check authentication status
+      const authArgs = commands.authCmd.split(' ').slice(1) // Remove command name
+      const authResult = await executeCommand(spawn, commands.cmd, authArgs, 5000)
+      
+      const isAuthenticated = authResult.success && 
+                             !authResult.stderr.includes('not authenticated') && 
+                             !authResult.stderr.includes('Please login') &&
+                             !authResult.stdout.includes('not authenticated') &&
+                             !authResult.stdout.includes('Please login')
+
+      return {
+        status: isAuthenticated ? 'available' : 'unavailable',
+        message: isAuthenticated 
+          ? `${formatProvider(cliProvider)} is installed and authenticated`
+          : `${formatProvider(cliProvider)} is installed but requires authentication`,
+        detected: true,
+        version: versionResult.stdout.trim(),
+        authenticated: isAuthenticated
+      }
+
+    } catch (error) {
+      return {
+        status: 'error',
+        message: `Failed to detect ${formatProvider(cliProvider)}: ${error}`,
+        detected: false
+      }
+    }
+  }
+
+  // Execute command helper
+  const executeCommand = async (spawn: any, command: string, args: string[], timeoutMs: number = 5000): Promise<{ success: boolean, stdout: string, stderr: string }> => {
+    return new Promise((resolve) => {
+      const child = spawn(command, args, { shell: true })
+      let stdout = ''
+      let stderr = ''
+      let finished = false
+
+      const timeout = setTimeout(() => {
+        if (!finished) {
+          child.kill('SIGTERM')
+          finished = true
+          resolve({ success: false, stdout, stderr: stderr + ' (timeout)' })
+        }
+      }, timeoutMs)
+
+      child.stdout?.on('data', (data: Buffer) => {
+        stdout += data.toString()
+      })
+
+      child.stderr?.on('data', (data: Buffer) => {
+        stderr += data.toString()
+      })
+
+      child.on('close', (code: number) => {
+        if (!finished) {
+          clearTimeout(timeout)
+          finished = true
+          resolve({ success: code === 0, stdout, stderr })
+        }
+      })
+
+      child.on('error', (error: Error) => {
+        if (!finished) {
+          clearTimeout(timeout)
+          finished = true
+          resolve({ success: false, stdout, stderr: stderr + ' ' + error.message })
+        }
+      })
+    })
   }
 
   const formatProvider = (p: string) => {
