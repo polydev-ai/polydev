@@ -31,15 +31,76 @@ export async function POST(request: NextRequest) {
         apiVersion: '2025-08-27.basil'
       })
 
-      const portalSession = await stripe.billingPortal.sessions.create({
-        customer: subscription.stripe_customer_id,
-        return_url: returnUrl,
-      })
+      // First, try to create with default configuration
+      let portalSession
+      try {
+        portalSession = await stripe.billingPortal.sessions.create({
+          customer: subscription.stripe_customer_id,
+          return_url: returnUrl,
+        })
+      } catch (configError: any) {
+        // If no default configuration exists, create one
+        if (configError.message.includes('No configuration provided')) {
+          console.log('[Subscription] Creating default portal configuration...')
+          
+          const configuration = await stripe.billingPortal.configurations.create({
+            features: {
+              payment_method_update: {
+                enabled: true,
+              },
+              invoice_history: {
+                enabled: true,
+              },
+              subscription_cancel: {
+                enabled: true,
+                mode: 'at_period_end',
+                cancellation_reason: {
+                  enabled: true,
+                  options: [
+                    'too_expensive',
+                    'missing_features',
+                    'switched_service',
+                    'unused',
+                    'other',
+                  ],
+                },
+              },
+              subscription_update: {
+                enabled: true,
+                default_allowed_updates: ['price'],
+                proration_behavior: 'create_prorations',
+              },
+            },
+            business_profile: {
+              headline: 'Manage your Polydev subscription',
+            },
+          })
+
+          // Now create the session with the new configuration
+          portalSession = await stripe.billingPortal.sessions.create({
+            customer: subscription.stripe_customer_id,
+            return_url: returnUrl,
+            configuration: configuration.id,
+          })
+        } else {
+          throw configError
+        }
+      }
 
       return NextResponse.json({ portalUrl: portalSession.url })
 
     } catch (stripeError: any) {
       console.error('[Subscription] Portal session error:', stripeError)
+      
+      // Provide more specific error messages
+      if (stripeError.message.includes('No configuration provided')) {
+        return NextResponse.json({ 
+          error: 'Billing portal not configured',
+          details: 'Please configure the customer portal in your Stripe dashboard at https://dashboard.stripe.com/settings/billing/portal',
+          action: 'contact_support'
+        }, { status: 503 })
+      }
+      
       return NextResponse.json({ 
         error: 'Failed to create portal session',
         details: stripeError.message 
