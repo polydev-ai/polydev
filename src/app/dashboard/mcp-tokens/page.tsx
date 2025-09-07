@@ -13,6 +13,9 @@ interface MCPToken {
   rate_limit_tier: string
   created_at: string
   last_used_at?: string
+  token_type?: 'api' | 'oauth'
+  expires_at?: string
+  full_token?: string
 }
 
 export default function MCPTokensPage() {
@@ -146,11 +149,20 @@ export default function MCPTokensPage() {
     }
   }
 
+  const getTokenToCopy = (token: MCPToken) => {
+    // For OAuth tokens, return the full token if available, otherwise preview
+    if (token.token_type === 'oauth' && token.full_token) {
+      return token.full_token
+    }
+    return token.token_preview
+  }
+
   const getTierBadge = (tier: string) => {
     const styles = {
       standard: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       premium: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      enterprise: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+      enterprise: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      oauth: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
     }
     return styles[tier as keyof typeof styles] || styles.standard
   }
@@ -159,7 +171,8 @@ export default function MCPTokensPage() {
     const limits = {
       standard: '100 requests/minute, 10,000/day',
       premium: '500 requests/minute, 50,000/day', 
-      enterprise: '2,000 requests/minute, unlimited/day'
+      enterprise: '2,000 requests/minute, unlimited/day',
+      oauth: 'OAuth authenticated - no rate limits'
     }
     return limits[tier as keyof typeof limits] || limits.standard
   }
@@ -349,9 +362,18 @@ export default function MCPTokensPage() {
                           <h3 className="font-medium text-gray-900 dark:text-white">
                             {token.token_name}
                           </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                            {token.token_preview}
-                          </p>
+                          <div className="flex items-center space-x-2">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                              {token.token_preview}
+                            </p>
+                            <button
+                              onClick={() => copyToClipboard(getTokenToCopy(token), token.id)}
+                              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                              title={token.token_type === 'oauth' ? 'Copy full OAuth token' : 'Copy token preview'}
+                            >
+                              {copiedToken === token.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                            </button>
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -386,24 +408,35 @@ export default function MCPTokensPage() {
                     </div>
                     
                     <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => toggleTokenActive(token.id, token.active)}
-                        className={`p-2 rounded-lg ${
-                          token.active 
-                            ? 'text-red-600 hover:text-red-900 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
-                            : 'text-green-600 hover:text-green-900 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20'
-                        }`}
-                        title={token.active ? 'Disable token' : 'Enable token'}
-                      >
-                        {token.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => deleteToken(token.id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                        title="Delete token"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {token.token_type === 'oauth' ? (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 px-3 py-2">
+                          OAuth managed
+                          {token.expires_at && (
+                            <div>Expires: {new Date(token.expires_at).toLocaleDateString()}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => toggleTokenActive(token.id, token.active)}
+                            className={`p-2 rounded-lg ${
+                              token.active 
+                                ? 'text-red-600 hover:text-red-900 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
+                                : 'text-green-600 hover:text-green-900 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20'
+                            }`}
+                            title={token.active ? 'Disable token' : 'Enable token'}
+                          >
+                            {token.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={() => deleteToken(token.id)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                            title="Delete token"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -422,7 +455,7 @@ export default function MCPTokensPage() {
         <div className="space-y-4 text-sm text-gray-600 dark:text-gray-300">
           <div>
             <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Claude Desktop (OAuth - Recommended)</h4>
-            <p>Connect using OAuth for the best experience:</p>
+            <p>Connect using OAuth for the best experience. This generates <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">polydev_</span> tokens automatically:</p>
             <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2 text-xs overflow-x-auto">
 {`{
   "mcpServers": {
@@ -443,8 +476,20 @@ export default function MCPTokensPage() {
             </pre>
           </div>
           <div>
-            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Continue.dev (API Token)</h4>
-            <p>Use API token authentication for programmatic access:</p>
+            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Published Package (polydev-perspectives-mcp)</h4>
+            <p>Use <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">pd_</span> tokens for the npm package:</p>
+            <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2 text-xs overflow-x-auto">
+{`npm install -g polydev-perspectives-mcp
+
+# Set environment variable
+export POLYDEV_USER_TOKEN="pd_your_token_here"
+
+# Or pass directly in MCP calls`}
+            </pre>
+          </div>
+          <div>
+            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Continue.dev & Other MCP Clients</h4>
+            <p>Use <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">pd_</span> API tokens for programmatic access:</p>
             <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2 text-xs overflow-x-auto">
 {`{
   "experimental": {

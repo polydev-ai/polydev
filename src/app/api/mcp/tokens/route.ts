@@ -20,21 +20,49 @@ export async function GET() {
     
     console.log('MCP tokens GET - User authenticated:', user.id)
     
-    const { data: tokens, error } = await supabase
+    // Get manual API tokens (pd_) from mcp_user_tokens
+    const { data: userTokens, error: userTokensError } = await supabase
       .from('mcp_user_tokens')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
     
-    if (error) {
-      console.error('Database error fetching MCP tokens:', error)
-      console.error('Error details:', JSON.stringify(error, null, 2))
-      return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 })
+    if (userTokensError) {
+      console.error('Database error fetching user tokens:', userTokensError)
+      return NextResponse.json({ error: `Database error: ${userTokensError.message}` }, { status: 500 })
     }
+
+    // Get OAuth access tokens (polydev_) from mcp_access_tokens
+    const { data: oauthTokens, error: oauthTokensError } = await supabase
+      .from('mcp_access_tokens')
+      .select('token, client_id, created_at, expires_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
     
-    console.log('MCP tokens fetched successfully, count:', tokens?.length || 0)
+    if (oauthTokensError) {
+      console.error('Database error fetching OAuth tokens:', oauthTokensError)
+      // Don't fail - just continue without OAuth tokens
+    }
+
+    // Transform OAuth tokens to match the expected format
+    const transformedOauthTokens = (oauthTokens || []).map(token => ({
+      id: `oauth_${token.token.substring(8, 16)}`, // Use part of token as ID
+      token_name: `OAuth Token (${token.client_id})`,
+      token_preview: token.token.substring(0, 12) + '...' + token.token.slice(-8),
+      active: new Date(token.expires_at) > new Date(), // Active if not expired
+      rate_limit_tier: 'oauth',
+      created_at: token.created_at,
+      token_type: 'oauth',
+      expires_at: token.expires_at,
+      full_token: token.token // Include full token for copying
+    }))
+
+    // Combine both token types
+    const allTokens = [...(userTokens || []).map(t => ({ ...t, token_type: 'api' })), ...transformedOauthTokens]
     
-    return NextResponse.json({ tokens })
+    console.log('All tokens fetched successfully, count:', allTokens?.length || 0)
+    
+    return NextResponse.json({ tokens: allTokens })
   } catch (error) {
     console.error('Unexpected error in GET /api/mcp/tokens:', error)
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
