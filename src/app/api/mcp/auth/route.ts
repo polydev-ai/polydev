@@ -224,6 +224,7 @@ export async function POST(request: NextRequest) {
       .from('mcp_user_tokens')
       .upsert({
         user_id: authData.user_id,
+        token_name: 'CLI Status Token',
         token_hash: require('crypto').createHash('sha256').update(cliStatusToken).digest('hex'),
         token_preview: cliStatusToken.substring(0, 8) + '...',
         active: true,
