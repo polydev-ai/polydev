@@ -60,7 +60,29 @@ export class SubscriptionManager {
         .eq('user_id', userId)
         .single()
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+      if (error && error.code === 'PGRST116') {
+        // User not found - create default FREE subscription
+        console.log(`[SubscriptionManager] Creating default FREE subscription for user: ${userId}`)
+        
+        const { data: newSubscription, error: createError } = await supabase
+          .from('user_subscriptions')
+          .insert({
+            user_id: userId,
+            tier: 'free',
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (createError) {
+          console.error('Error creating user subscription:', createError)
+          return null
+        }
+
+        return newSubscription
+      } else if (error) {
         console.error('Error getting user subscription:', error)
         return null
       }
