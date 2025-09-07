@@ -2470,7 +2470,7 @@ async function detectCLIStatus(cliProvider: string): Promise<{ status: string, m
   } catch (error) {
     return {
       status: 'error',
-      message: `Error checking CLI: ${error.message}`,
+      message: `Error checking CLI: ${error instanceof Error ? error.message : String(error)}`,
       detected: false
     }
   }
