@@ -402,21 +402,7 @@ export async function POST(request: NextRequest) {
       case 'notifications/initialized':
         // Handle initialized notification - Claude Code sends this after initialize
         console.log(`[MCP Server] Initialized notification received from client`)
-        
-        // Automatically trigger CLI status check after client initializes
-        try {
-          console.log(`[MCP Server] Triggering automatic CLI status detection...`)
-          // We'll run this asynchronously to not block the response
-          setImmediate(async () => {
-            try {
-              await triggerCLIStatusCheck(request)
-            } catch (error) {
-              console.error('[MCP Server] Failed to trigger CLI status check:', error)
-            }
-          })
-        } catch (error) {
-          console.error('[MCP Server] Error setting up automatic CLI status check:', error)
-        }
+        console.log(`[MCP Server] Client should now report CLI status using report_cli_status tool`)
         
         // Notifications don't expect a response, but we'll return 200 OK
         return new NextResponse(null, {
@@ -639,17 +625,34 @@ function handleToolsList(id: string) {
     },
     {
       name: 'report_cli_status',
-      description: 'Check and report CLI tool status (Claude Code, Codex CLI, Gemini CLI) to Polydev. This tool automatically detects your CLI installations and authentication status, then reports back to your Polydev dashboard.',
+      description: 'Report CLI tool status (Claude Code, Codex CLI, Gemini CLI) from client-side detection to your Polydev dashboard. The MCP client detects local CLI installations and reports the status.',
       inputSchema: {
         type: 'object',
         properties: {
           provider: {
             type: 'string',
-            enum: ['claude_code', 'codex_cli', 'gemini_cli', 'all'],
-            description: 'Which CLI tool to check, or "all" for all tools'
+            enum: ['claude_code', 'codex_cli', 'gemini_cli'],
+            description: 'Which CLI tool to report status for'
+          },
+          status: {
+            type: 'string',
+            enum: ['available', 'unavailable', 'not_installed', 'error'],
+            description: 'Current status of the CLI tool'
+          },
+          authenticated: {
+            type: 'boolean',
+            description: 'Whether the CLI tool is authenticated'
+          },
+          version: {
+            type: 'string',
+            description: 'Version of the CLI tool (if detected)'
+          },
+          message: {
+            type: 'string',
+            description: 'Additional status message or error details'
           }
         },
-        required: ['provider']
+        required: ['provider', 'status']
       }
     },
     {
@@ -1781,13 +1784,17 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
 // CLI Status Reporting Tool Handlers
 async function handleCliStatusReport(args: any, user: any): Promise<string> {
-  const { provider } = args
+  const { provider, status, authenticated, version, message } = args
   
-  if (!provider || !['claude_code', 'codex_cli', 'gemini_cli', 'all'].includes(provider)) {
-    throw new Error('provider is required and must be one of: claude_code, codex_cli, gemini_cli, all')
+  if (!provider || !['claude_code', 'codex_cli', 'gemini_cli'].includes(provider)) {
+    throw new Error('provider is required and must be one of: claude_code, codex_cli, gemini_cli')
   }
 
-  // Get user's MCP token for CLI status reporting
+  if (!status || !['available', 'unavailable', 'not_installed', 'error'].includes(status)) {
+    throw new Error('status is required and must be one of: available, unavailable, not_installed, error')
+  }
+
+  // Get service role client for database operations
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceRoleKey) {
     throw new Error('CLI status reporting is not properly configured')
@@ -1799,263 +1806,113 @@ async function handleCliStatusReport(args: any, user: any): Promise<string> {
     serviceRoleKey
   )
 
-  // Get user's MCP token
-  const { data: mcpToken } = await serviceRoleSupabase
-    .from('mcp_user_tokens')
-    .select('token_hash')
-    .eq('user_id', user.id)
-    .eq('active', true)
-    .single()
+  console.log(`[MCP] Recording CLI status for ${provider}: ${status}`)
 
-  if (!mcpToken) {
-    return `🔑 **CLI Status Reporting Setup Required**
+  try {
+    // Prepare update data from client-provided information
+    const updateData = {
+      user_id: user.id,
+      provider: provider,
+      status: status,
+      last_checked_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status_message: message || `Client reported status: ${status}`,
+      cli_version: version || null,
+      authenticated: authenticated !== undefined ? authenticated : null
+    }
 
-Your CLI status reporting token has been automatically configured, but you need to set up environment variables:
+    // Check if configuration exists
+    const { data: existingConfig } = await serviceRoleSupabase
+      .from('cli_provider_configurations')
+      .select('user_id, provider')
+      .eq('user_id', user.id)
+      .eq('provider', provider)
+      .single()
 
-1. **Add these environment variables to your shell profile** (~/.bashrc, ~/.zshrc, etc.):
-   \`\`\`bash
-   export POLYDEV_MCP_TOKEN="your_token_here"
-   export POLYDEV_USER_ID="${user.id}"
-   export POLYDEV_API_URL="https://polydev.com/api/cli-status-update"
-   \`\`\`
-
-2. **Reload your shell**:
-   \`\`\`bash
-   source ~/.zshrc  # or ~/.bashrc
-   \`\`\`
-
-3. **The CLI status reporting will happen automatically** once environment variables are set.
-
-💡 **What this enables:**
-- Automatic detection of Claude Code, Codex CLI, and Gemini CLI installations
-- Real-time authentication status monitoring
-- Status updates visible in your Polydev dashboard
-- Helpful guidance for CLI setup and troubleshooting
-
-Visit your [Polydev API Keys dashboard](https://polydev.com/dashboard/api-keys) to get your complete setup instructions.`
-  }
-
-  // Helper function to check CLI availability with actual command execution
-  const checkCLIStatus = async (cliProvider: string): Promise<{ status: string, message: string, detected: boolean }> => {
-    // Import spawn for CLI detection
-    const { spawn } = await import('child_process')
-    
-    try {
-      // Check if we have recent cached result first
-      const { data: existingConfig } = await serviceRoleSupabase
+    // Update existing or create new configuration
+    if (existingConfig) {
+      const { error: updateError } = await serviceRoleSupabase
         .from('cli_provider_configurations')
-        .select('status, last_checked_at, cli_version')
+        .update(updateData)
         .eq('user_id', user.id)
-        .eq('provider', cliProvider)
-        .single()
+        .eq('provider', provider)
 
-      if (existingConfig && existingConfig.last_checked_at) {
-        const lastCheck = new Date(existingConfig.last_checked_at)
-        const now = new Date()
-        const minutesSinceCheck = (now.getTime() - lastCheck.getTime()) / (1000 * 60)
-        
-        // If checked within last 2 minutes, return cached result
-        if (minutesSinceCheck < 2) {
-          return {
-            status: existingConfig.status,
-            message: `Status from recent check (${Math.floor(minutesSinceCheck)} min ago): ${existingConfig.status}`,
-            detected: existingConfig.status === 'available'
-          }
-        }
+      if (updateError) {
+        console.error(`[MCP] Error updating CLI status for ${provider}:`, updateError)
+        throw new Error(`Failed to update CLI status: ${updateError.message}`)
       }
+    } else {
+      const { error: insertError } = await serviceRoleSupabase
+        .from('cli_provider_configurations')
+        .insert({
+          ...updateData,
+          enabled: status === 'available',
+          created_at: new Date().toISOString()
+        })
 
-      // Perform actual CLI detection
-      const result = await detectCLI(cliProvider, spawn)
-      
-      // Update database with new result
-      const updateData = {
-        user_id: user.id,
-        provider: cliProvider,
-        status: result.status,
-        last_checked_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        status_message: result.message,
-        cli_version: result.version || null,
-        authenticated: result.authenticated || null
-      }
-
-      // Update or create configuration
-      if (existingConfig) {
-        await serviceRoleSupabase
-          .from('cli_provider_configurations')
-          .update(updateData)
-          .eq('user_id', user.id)
-          .eq('provider', cliProvider)
-      } else {
-        await serviceRoleSupabase
-          .from('cli_provider_configurations')
-          .insert({
-            ...updateData,
-            enabled: result.status === 'available',
-            created_at: new Date().toISOString()
-          })
-      }
-
-      return result
-      
-    } catch (error) {
-      console.error(`CLI status check error for ${cliProvider}:`, error)
-      return {
-        status: 'error', 
-        message: `Error checking ${cliProvider} status: ${error}`,
-        detected: false
+      if (insertError) {
+        console.error(`[MCP] Error inserting CLI status for ${provider}:`, insertError)
+        throw new Error(`Failed to record CLI status: ${insertError.message}`)
       }
     }
-  }
 
-  // Actual CLI detection function
-  const detectCLI = async (cliProvider: string, spawn: any): Promise<{ status: string, message: string, detected: boolean, version?: string, authenticated?: boolean }> => {
-    const commandMap: Record<string, { cmd: string, authCmd: string }> = {
-      claude_code: { cmd: 'claude', authCmd: 'claude auth status' },
-      codex_cli: { cmd: 'codex', authCmd: 'codex auth status' },
-      gemini_cli: { cmd: 'gemini', authCmd: 'gemini auth status' }
-    }
-
-    const commands = commandMap[cliProvider]
-    if (!commands) {
-      return { status: 'error', message: 'Unknown CLI provider', detected: false }
-    }
-
-    try {
-      // Check if CLI is installed
-      const versionResult = await executeCommand(spawn, commands.cmd, ['--version'], 5000)
-      
-      if (!versionResult.success) {
-        return {
-          status: 'not_installed',
-          message: `${formatProvider(cliProvider)} is not installed or not in PATH`,
-          detected: false
-        }
-      }
-
-      // Check authentication status
-      const authArgs = commands.authCmd.split(' ').slice(1) // Remove command name
-      const authResult = await executeCommand(spawn, commands.cmd, authArgs, 5000)
-      
-      const isAuthenticated = authResult.success && 
-                             !authResult.stderr.includes('not authenticated') && 
-                             !authResult.stderr.includes('Please login') &&
-                             !authResult.stdout.includes('not authenticated') &&
-                             !authResult.stdout.includes('Please login')
-
-      return {
-        status: isAuthenticated ? 'available' : 'unavailable',
-        message: isAuthenticated 
-          ? `${formatProvider(cliProvider)} is installed and authenticated`
-          : `${formatProvider(cliProvider)} is installed but requires authentication`,
-        detected: true,
-        version: versionResult.stdout.trim(),
-        authenticated: isAuthenticated
-      }
-
-    } catch (error) {
-      return {
-        status: 'error',
-        message: `Failed to detect ${formatProvider(cliProvider)}: ${error}`,
-        detected: false
+    // Format provider name for user-friendly display
+    const formatProvider = (provider: string): string => {
+      switch (provider) {
+        case 'claude_code': return 'Claude Code'
+        case 'codex_cli': return 'Codex CLI'
+        case 'gemini_cli': return 'Gemini CLI'
+        default: return provider
       }
     }
-  }
 
-  // Execute command helper
-  const executeCommand = async (spawn: any, command: string, args: string[], timeoutMs: number = 5000): Promise<{ success: boolean, stdout: string, stderr: string }> => {
-    return new Promise((resolve) => {
-      const child = spawn(command, args, { shell: true })
-      let stdout = ''
-      let stderr = ''
-      let finished = false
+    const providerName = formatProvider(provider)
+    const statusIcon = {
+      'available': '✅',
+      'unavailable': '⚠️',
+      'not_installed': '❌',
+      'error': '🔥'
+    }[status] || '❓'
 
-      const timeout = setTimeout(() => {
-        if (!finished) {
-          child.kill('SIGTERM')
-          finished = true
-          resolve({ success: false, stdout, stderr: stderr + ' (timeout)' })
-        }
-      }, timeoutMs)
-
-      child.stdout?.on('data', (data: Buffer) => {
-        stdout += data.toString()
-      })
-
-      child.stderr?.on('data', (data: Buffer) => {
-        stderr += data.toString()
-      })
-
-      child.on('close', (code: number) => {
-        if (!finished) {
-          clearTimeout(timeout)
-          finished = true
-          resolve({ success: code === 0, stdout, stderr })
-        }
-      })
-
-      child.on('error', (error: Error) => {
-        if (!finished) {
-          clearTimeout(timeout)
-          finished = true
-          resolve({ success: false, stdout, stderr: stderr + ' ' + error.message })
-        }
-      })
-    })
-  }
-
-  const formatProvider = (p: string) => {
-    switch(p) {
-      case 'claude_code': return 'Claude Code'
-      case 'codex_cli': return 'Codex CLI'  
-      case 'gemini_cli': return 'Gemini CLI'
-      default: return p
-    }
-  }
-
-  if (provider === 'all') {
-    const claudeCheck = await checkCLIStatus('claude_code')
-    const codexCheck = await checkCLIStatus('codex_cli')
-    const geminiCheck = await checkCLIStatus('gemini_cli')
+    let responseMessage = `${statusIcon} **${providerName} Status Updated**\n\n`
+    responseMessage += `**Status:** ${status}\n`
     
-    return `🔍 **CLI Status Check Results**
+    if (version) {
+      responseMessage += `**Version:** ${version}\n`
+    }
+    
+    if (authenticated !== undefined) {
+      responseMessage += `**Authenticated:** ${authenticated ? '✅ Yes' : '❌ No'}\n`
+    }
+    
+    if (message) {
+      responseMessage += `**Details:** ${message}\n`
+    }
 
-**Claude Code:** ${claudeCheck.status === 'available' ? '✅' : claudeCheck.status === 'checking' ? '🔄' : '❌'} ${claudeCheck.message}
+    responseMessage += `\n**Reported at:** ${new Date().toLocaleString()}`
+    responseMessage += `\n\n💡 Visit your [Polydev dashboard](https://polydev.com/dashboard) to see all CLI status updates.`
 
-**Codex CLI:** ${codexCheck.status === 'available' ? '✅' : codexCheck.status === 'checking' ? '🔄' : '❌'} ${codexCheck.message}
+    console.log(`[MCP] Successfully recorded CLI status for ${provider}`)
+    return responseMessage
 
-**Gemini CLI:** ${geminiCheck.status === 'available' ? '✅' : geminiCheck.status === 'checking' ? '🔄' : '❌'} ${geminiCheck.message}
+  } catch (error) {
+    console.error(`[MCP] Error in CLI status report:`, error)
+    return `❌ **Error Recording CLI Status**
 
-**Important Note:** 🚨
-Server-side CLI detection is limited. For accurate status:
-1. CLI tools must be detected on your local machine
-2. Use the MCP client-side bridges for real-time detection
-3. Status updates will appear in your dashboard as tools are detected
+Failed to record status for ${formatProvider(provider)}: ${error instanceof Error ? error.message : 'Unknown error'}
 
-**Environment Variables:**
-- POLYDEV_MCP_TOKEN: ✅ Configured
-- POLYDEV_USER_ID: ✅ Configured (${user.id})
-- POLYDEV_API_URL: ✅ Configured`
+Please try again or contact support if the issue persists.`
   }
 
-  const statusCheck = await checkCLIStatus(provider)
-  
-  return `🔍 **${formatProvider(provider)} Status Check**
-
-**Status:** ${statusCheck.status === 'available' ? '✅ Available' : statusCheck.status === 'checking' ? '🔄 Checking' : '❌ ' + statusCheck.status}
-
-**Details:** ${statusCheck.message}
-
-**Note:** CLI detection works best with client-side verification. Install and authenticate the CLI on your local machine for accurate status reporting.
-
-**Next Steps:**
-${statusCheck.status !== 'available' ? `- Install ${formatProvider(provider)} on your local machine
-- Authenticate with your account
-- Status will automatically update in your dashboard` : '- CLI tool is properly configured and available'}
-
-**Environment Variables:**
-- POLYDEV_MCP_TOKEN: ✅ Configured  
-- POLYDEV_USER_ID: ✅ Configured (${user.id})`
+  // Helper function to format provider name for display  
+  const formatProvider = (provider: string): string => {
+    switch (provider) {
+      case 'claude_code': return 'Claude Code'
+      case 'codex_cli': return 'Codex CLI'
+      case 'gemini_cli': return 'Gemini CLI'
+      default: return provider
+    }
+  }
 }
 
 async function handleCliMonitoringSetup(args: any, user: any): Promise<string> {
@@ -2424,182 +2281,7 @@ export async function PATCH(request: NextRequest) {
   })
 }
 
-// Helper function to detect CLI status  
-async function detectCLIStatus(cliProvider: string): Promise<{ status: string, message: string, detected: boolean, version?: string, authenticated?: boolean }> {
-  const { spawn } = await import('child_process')
-  
-  const commandMap: Record<string, { cmd: string, authCmd: string }> = {
-    claude_code: { cmd: 'claude', authCmd: 'claude auth status' },
-    codex_cli: { cmd: 'codex', authCmd: 'codex auth status' },  
-    gemini_cli: { cmd: 'gemini', authCmd: 'gemini auth status' }
-  }
 
-  const commands = commandMap[cliProvider]
-  if (!commands) {
-    return { status: 'error', message: 'Unknown CLI provider', detected: false }
-  }
-
-  try {
-    // Check if CLI is installed
-    const versionResult = await executeCommandSimple(spawn, commands.cmd, ['--version'], 5000)
-    
-    if (!versionResult.success) {
-      return {
-        status: 'not_installed',
-        message: `CLI is not installed or not in PATH`,
-        detected: false
-      }
-    }
-
-    // Check authentication status
-    const authArgs = commands.authCmd.split(' ').slice(1)
-    const authResult = await executeCommandSimple(spawn, commands.cmd, authArgs, 5000)
-    
-    const isAuthenticated = authResult.success && 
-                           !authResult.stderr.includes('not authenticated') && 
-                           !authResult.stderr.includes('Please login') &&
-                           !authResult.stdout.includes('not authenticated')
-
-    return {
-      status: isAuthenticated ? 'available' : 'unavailable',
-      message: isAuthenticated ? 'CLI detected and authenticated' : 'CLI detected but not authenticated',
-      detected: true,
-      version: versionResult.stdout.trim(),
-      authenticated: isAuthenticated
-    }
-  } catch (error) {
-    return {
-      status: 'error',
-      message: `Error checking CLI: ${error instanceof Error ? error.message : String(error)}`,
-      detected: false
-    }
-  }
-}
-
-// Helper to execute commands with timeout
-async function executeCommandSimple(spawn: any, command: string, args: string[], timeoutMs: number = 5000): Promise<{ success: boolean, stdout: string, stderr: string }> {
-  return new Promise((resolve) => {
-    const child = spawn(command, args, { shell: true })
-    let stdout = ''
-    let stderr = ''
-    let finished = false
-
-    const timeout = setTimeout(() => {
-      if (!finished) {
-        finished = true
-        child.kill()
-        resolve({ success: false, stdout, stderr: stderr + ' (timeout)' })
-      }
-    }, timeoutMs)
-
-    child.stdout?.on('data', (data: Buffer) => {
-      stdout += data.toString()
-    })
-
-    child.stderr?.on('data', (data: Buffer) => {
-      stderr += data.toString()
-    })
-
-    child.on('close', (code: number) => {
-      if (!finished) {
-        finished = true
-        clearTimeout(timeout)
-        resolve({ success: code === 0, stdout, stderr })
-      }
-    })
-
-    child.on('error', (error: Error) => {
-      if (!finished) {
-        finished = true
-        clearTimeout(timeout)
-        resolve({ success: false, stdout, stderr: error.message })
-      }
-    })
-  })
-}
-
-// Helper to report CLI status to API
-async function reportCLIStatusToAPI(provider: string, cliStatus: any, userId: string) {
-  try {
-    console.log(`[MCP Server] Reporting ${provider} status to API:`, cliStatus)
-    
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!serviceRoleKey) {
-      console.error('[MCP Server] Service role key not available for CLI status reporting')
-      return
-    }
-
-    const { createClient: createServiceClient } = await import('@supabase/supabase-js')
-    const serviceRoleSupabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      serviceRoleKey
-    )
-
-    // Update CLI provider configuration
-    const updateData = {
-      user_id: userId,
-      provider,
-      enabled: cliStatus.status === 'available',
-      cli_path: cliStatus.detected ? 'detected' : null,
-      last_checked_at: new Date().toISOString(),
-      additional_config: {
-        auto_detected: true,
-        version: cliStatus.version,
-        authenticated: cliStatus.authenticated,
-        message: cliStatus.message
-      }
-    }
-
-    const { error } = await serviceRoleSupabase
-      .from('cli_provider_configurations')
-      .upsert(updateData, { onConflict: 'user_id,provider' })
-
-    if (error) {
-      console.error(`[MCP Server] Error updating ${provider} status:`, error)
-    } else {
-      console.log(`[MCP Server] Successfully reported ${provider} status`)
-    }
-  } catch (error) {
-    console.error(`[MCP Server] Error in reportCLIStatusToAPI for ${provider}:`, error)
-  }
-}
-
-// Trigger automatic CLI status check after MCP client initialization
-async function triggerCLIStatusCheck(request: NextRequest) {
-  try {
-    console.log('[MCP Server] Starting automatic CLI status detection...')
-    
-    // Get user information from the Bearer token
-    const authResult = await authenticateBearerToken(request)
-    if (!authResult.success) {
-      console.log('[MCP Server] Cannot trigger CLI check - authentication failed:', authResult.error)
-      return
-    }
-
-    const userId = authResult.user.id
-    console.log('[MCP Server] Authenticated user for CLI check:', userId)
-
-    // Check all three CLI tools
-    const cliProviders = ['claude_code', 'codex_cli', 'gemini_cli']
-    
-    for (const provider of cliProviders) {
-      console.log(`[MCP Server] Checking ${provider} CLI status...`)
-      
-      try {
-        // Execute CLI detection and report status to API
-        const cliStatus = await detectCLIStatus(provider)
-        await reportCLIStatusToAPI(provider, cliStatus, userId)
-        console.log(`[MCP Server] ${provider} status: ${cliStatus.status}`)
-      } catch (error) {
-        console.error(`[MCP Server] Error checking ${provider}:`, error instanceof Error ? error.message : String(error))
-      }
-    }
-    
-    console.log('[MCP Server] Automatic CLI status detection completed')
-  } catch (error) {
-    console.error('[MCP Server] Error in triggerCLIStatusCheck:', error)
-  }
-}
 
 export async function DELETE(request: NextRequest) {
   return NextResponse.json({
