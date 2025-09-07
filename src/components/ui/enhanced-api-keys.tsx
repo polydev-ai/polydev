@@ -56,7 +56,7 @@ interface CLIProviderInfo {
 }
 
 export default function EnhancedApiKeysPage() {
-  const { user, loading: authLoading, reAuthenticateForCLI, validateCLITools, cliValidationInProgress } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
   const [providers, setProviders] = useState<ProviderConfig[]>([])
@@ -70,9 +70,9 @@ export default function EnhancedApiKeysPage() {
   const [expandedProviders, setExpandedProviders] = useState<{[provider: string]: boolean}>({})
   const [updateApiKey, setUpdateApiKey] = useState(false)
   
-  // CLI Configuration State  
-  const [cliConfigs, setCliConfigs] = useState<CLIConfig[]>([])
-  const [showCliSettings, setShowCliSettings] = useState(false)
+  // CLI Status State  
+  const [cliStatuses, setCliStatuses] = useState<CLIConfig[]>([])
+  const [cliStatusLoading, setCliStatusLoading] = useState(false)
   
   // Form state with new fields
   const [formData, setFormData] = useState({
@@ -143,6 +143,9 @@ export default function EnhancedApiKeysPage() {
       setApiKeys(keysData || [])
       setPreferences(prefsError ? null : prefsData)
       setProviders(providersWithKeys)
+
+      // Fetch CLI status from database
+      await fetchCliStatuses()
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -216,19 +219,25 @@ export default function EnhancedApiKeysPage() {
     await updatePreferenceOrder(newPreferences)
   }
 
-  // Simplified CLI status fetch
-  const fetchCliStatus = async () => {
-    if (!user?.id) return []
+  // Fetch CLI status from database (populated by MCP server)
+  const fetchCliStatuses = async () => {
+    if (!user?.id) return
     
     try {
+      setCliStatusLoading(true)
+      
+      // Fetch CLI statuses that were reported by MCP server
       const response = await fetch('/api/cli-status')
-      if (!response.ok) return []
+      if (!response.ok) throw new Error('Failed to fetch CLI status')
       
       const data = await response.json()
-      return data.statuses || []
+      setCliStatuses(data.statuses || [])
+      
     } catch (err: any) {
       console.error('Failed to fetch CLI status:', err.message)
-      return []
+      setCliStatuses([])
+    } finally {
+      setCliStatusLoading(false)
     }
   }
 
@@ -422,56 +431,97 @@ export default function EnhancedApiKeysPage() {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => reAuthenticateForCLI?.()}
-                disabled={cliValidationInProgress}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
+                onClick={fetchCliStatuses}
+                disabled={cliStatusLoading}
+                className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2 text-sm"
               >
-                {cliValidationInProgress ? (
+                {cliStatusLoading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Checking...</span>
+                    <span>Refreshing...</span>
                   </>
                 ) : (
                   <>
                     <RefreshCw className="w-4 h-4" />
-                    <span>Check CLI Status</span>
+                    <span>Refresh Status</span>
                   </>
                 )}
               </button>
             </div>
           </div>
           <p className="text-gray-600 dark:text-gray-300 mt-1 mb-4">
-            CLI tools are checked automatically when you authenticate. Click "Check CLI Status" to refresh.
+            CLI status is automatically updated when MCP clients connect. Click "Refresh Status" to get latest data from server.
           </p>
           
           {/* CLI Status Display */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {CLI_PROVIDERS.map((cliProvider) => (
-              <div key={cliProvider.provider} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      {cliProvider.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                      {cliProvider.description}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-1 text-gray-500">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-xs">Check to see status</span>
+            {CLI_PROVIDERS.map((cliProvider) => {
+              const status = cliStatuses.find(s => s.provider === cliProvider.provider)
+              const statusType = status?.status || 'unchecked'
+              const lastChecked = status?.last_checked_at ? new Date(status.last_checked_at).toLocaleString() : null
+
+              return (
+                <div key={cliProvider.provider} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900 dark:text-white">
+                        {cliProvider.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                        {cliProvider.description}
+                      </p>
+                      {status?.statusMessage && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          {status.statusMessage}
+                        </p>
+                      )}
+                      {lastChecked && (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          Last checked: {lastChecked}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-1 ml-3">
+                      {statusType === 'available' && (
+                        <div className="flex items-center space-x-1 text-green-600">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="text-xs font-medium">Available</span>
+                        </div>
+                      )}
+                      
+                      {statusType === 'unavailable' && (
+                        <div className="flex items-center space-x-1 text-yellow-600">
+                          <XCircle className="w-4 h-4" />
+                          <span className="text-xs font-medium">Not Authenticated</span>
+                        </div>
+                      )}
+                      
+                      {statusType === 'not_installed' && (
+                        <div className="flex items-center space-x-1 text-red-600">
+                          <XCircle className="w-4 h-4" />
+                          <span className="text-xs font-medium">Not Installed</span>
+                        </div>
+                      )}
+                      
+                      {statusType === 'unchecked' && (
+                        <div className="flex items-center space-x-1 text-gray-500">
+                          <Clock className="w-4 h-4" />
+                          <span className="text-xs">No Data</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           
-          {cliValidationInProgress && (
+          {cliStatusLoading && (
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
               <div className="flex items-center space-x-2">
                 <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  <strong>Checking CLI tools...</strong> This will update the status automatically.
+                  <strong>Refreshing CLI status...</strong> Getting latest data from server.
                 </p>
               </div>
             </div>
