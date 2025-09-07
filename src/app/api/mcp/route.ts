@@ -1867,12 +1867,13 @@ async function handleCliStatusReport(args: any, user: any): Promise<string> {
     }
 
     const providerName = formatProvider(provider)
-    const statusIcon = {
+    const statusIconMap: Record<string, string> = {
       'available': '✅',
       'unavailable': '⚠️',
       'not_installed': '❌',
       'error': '🔥'
-    }[status] || '❓'
+    }
+    const statusIcon = statusIconMap[status] || '❓'
 
     let responseMessage = `${statusIcon} **${providerName} Status Updated**\n\n`
     responseMessage += `**Status:** ${status}\n`
