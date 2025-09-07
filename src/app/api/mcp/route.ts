@@ -2576,7 +2576,7 @@ async function triggerCLIStatusCheck(request: NextRequest) {
       return
     }
 
-    const userId = authResult.userId
+    const userId = authResult.user.id
     console.log('[MCP Server] Authenticated user for CLI check:', userId)
 
     // Check all three CLI tools
