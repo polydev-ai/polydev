@@ -116,10 +116,83 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       return
     }
 
-    // This is a one-time payment (credit purchase), but we need to handle it differently
-    // since we don't have the pending_purchases table structure yet
-    console.log(`[Stripe Webhook] One-time payment checkout completed, but no credit purchase system implemented yet`)
-    return
+    // This is a one-time payment (credit purchase)
+    if (session.mode === 'payment') {
+      console.log(`[Stripe Webhook] Processing credit purchase checkout session: ${session.id}`)
+      
+      // Get customer details
+      const customer = await stripe.customers.retrieve(session.customer as string)
+      if (!customer || customer.deleted) {
+        console.error('[Stripe Webhook] Customer not found or deleted')
+        return
+      }
+
+      const customerEmail = (customer as Stripe.Customer).email
+      if (!customerEmail) {
+        console.error('[Stripe Webhook] Customer email not found')
+        return
+      }
+
+      // Find user by email using admin auth API
+      const { data: authUsers, error: userError } = await supabase.auth.admin.listUsers()
+      
+      if (userError || !authUsers.users) {
+        console.error('[Stripe Webhook] Error fetching users:', userError)
+        return
+      }
+
+      const user = authUsers.users.find((u: any) => u.email === customerEmail)
+      if (!user) {
+        console.error('[Stripe Webhook] User not found for email:', customerEmail)
+        return
+      }
+
+      // Parse metadata to get credit amount
+      const creditAmount = parseFloat(session.metadata?.credits || '0')
+      const packageName = session.metadata?.package_name || 'Credit Purchase'
+      
+      if (creditAmount <= 0) {
+        console.error('[Stripe Webhook] Invalid credit amount:', creditAmount)
+        return
+      }
+
+      // Record the purchase in purchase_history
+      const purchaseRecord = {
+        user_id: user.id,
+        stripe_session_id: session.id,
+        stripe_customer_id: session.customer as string,
+        amount_paid: session.amount_total || 0,
+        credits_purchased: creditAmount,
+        status: 'completed',
+        metadata: {
+          package_name: packageName,
+          session_id: session.id
+        },
+        created_at: new Date().toISOString()
+      }
+
+      const { error: purchaseError } = await supabase
+        .from('purchase_history')
+        .insert(purchaseRecord)
+
+      if (purchaseError) {
+        console.error('[Stripe Webhook] Failed to record purchase:', purchaseError)
+        return
+      }
+
+      // Add credits to user account
+      const { error: creditError } = await supabase.rpc('add_user_credits', {
+        p_user_id: user.id,
+        p_amount: creditAmount
+      })
+
+      if (creditError) {
+        console.error('[Stripe Webhook] Failed to add credits:', creditError)
+        return
+      }
+
+      console.log(`[Stripe Webhook] Successfully processed credit purchase: ${creditAmount} credits for user ${user.id}`)
+    }
 
   } catch (error) {
     console.error('[Stripe Webhook] Error handling checkout session completed:', error)
