@@ -2591,7 +2591,7 @@ async function triggerCLIStatusCheck(request: NextRequest) {
         await reportCLIStatusToAPI(provider, cliStatus, userId)
         console.log(`[MCP Server] ${provider} status: ${cliStatus.status}`)
       } catch (error) {
-        console.error(`[MCP Server] Error checking ${provider}:`, error.message)
+        console.error(`[MCP Server] Error checking ${provider}:`, error instanceof Error ? error.message : String(error))
       }
     }
     
