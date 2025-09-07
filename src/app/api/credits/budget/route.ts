@@ -16,12 +16,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user's budget settings
-    const { data: budget } = await serviceSupabase
+    // Get user's budget settings, create default if missing
+    let { data: budget, error: budgetError } = await serviceSupabase
       .from('user_budgets')
       .select('*')
       .eq('user_id', user.id)
       .single()
+    
+    // If no budget exists, create a default one
+    if (budgetError && budgetError.code === 'PGRST116') {
+      const { data: newBudget, error: createError } = await serviceSupabase
+        .from('user_budgets')
+        .insert({
+          user_id: user.id,
+          daily_limit: null,
+          weekly_limit: null,
+          monthly_limit: null,
+          preferred_models: [],
+          auto_top_up_enabled: false,
+          auto_top_up_threshold: null,
+          auto_top_up_amount: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+      
+      if (createError) {
+        console.error('[Budget] Failed to create default budget:', createError)
+      } else {
+        budget = newBudget
+      }
+    }
     
     // Calculate current spending for different periods
     const now = new Date()

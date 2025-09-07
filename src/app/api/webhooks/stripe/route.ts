@@ -156,19 +156,20 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         return
       }
 
-      // Record the purchase in purchase_history
+      // Record the purchase in purchase_history (only include existing columns)
       const purchaseRecord = {
         user_id: user.id,
-        stripe_session_id: session.id,
-        stripe_customer_id: session.customer as string,
+        item_type: 'credits',
+        item_id: packageName,
         amount_paid: session.amount_total || 0,
-        credits_purchased: creditAmount,
         status: 'completed',
+        stripe_session_id: session.id,
+        credits_purchased: creditAmount,
         metadata: {
           package_name: packageName,
-          session_id: session.id
-        },
-        created_at: new Date().toISOString()
+          session_id: session.id,
+          stripe_customer_id: session.customer as string
+        }
       }
 
       const { error: purchaseError } = await supabase
