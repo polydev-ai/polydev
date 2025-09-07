@@ -217,6 +217,83 @@ The Polydev Team
     `
   }),
 
+  creditPurchase: (userEmail: string, creditAmount: number, packageName: string, amountPaid: number): EmailTemplate => ({
+    subject: '🎉 Credits Added to Your Polydev Account',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Credits Added</title>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); padding: 40px 20px; text-align: center; border-radius: 10px; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Credits Added!</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Your credit purchase was successful</p>
+        </div>
+        
+        <div style="background: #f0fdf4; padding: 30px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
+          <h2 style="color: #166534; margin-top: 0;">Purchase Details</h2>
+          <div style="background: white; padding: 20px; border-radius: 8px;">
+            <p style="margin: 5px 0; font-size: 18px;"><strong>Credits Added:</strong> <span style="color: #22c55e; font-size: 24px; font-weight: bold;">$${creditAmount}</span></p>
+            <p style="margin: 5px 0;"><strong>Package:</strong> ${packageName}</p>
+            <p style="margin: 5px 0;"><strong>Amount Paid:</strong> $${amountPaid.toFixed(2)}</p>
+          </div>
+        </div>
+        
+        <div style="background: #eff6ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
+          <h3 style="color: #1d4ed8; margin-top: 0;">What's Next?</h3>
+          <ul style="padding-left: 20px; margin-bottom: 0;">
+            <li style="margin-bottom: 8px;">🚀 Start using premium AI models</li>
+            <li style="margin-bottom: 8px;">⚡ Access advanced features</li>
+            <li style="margin-bottom: 8px;">💬 Get more from your AI conversations</li>
+            <li style="margin-bottom: 8px;">📊 Track your usage in the dashboard</li>
+          </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://www.polydev.ai/dashboard" style="background: #3b82f6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block; margin-right: 10px;">Use Your Credits</a>
+          <a href="https://www.polydev.ai/dashboard/credits" style="background: #6b7280; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">View Balance</a>
+        </div>
+        
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px; text-align: center; color: #6b7280; font-size: 14px;">
+          <p>Questions about credits? Visit our <a href="https://www.polydev.ai/help/credits" style="color: #3b82f6;">help center</a></p>
+          <p style="margin-top: 20px;">
+            Happy coding! 🚀<br>
+            The Polydev Team<br>
+            <a href="https://www.polydev.ai" style="color: #3b82f6;">www.polydev.ai</a>
+          </p>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+🎉 Credits Added to Your Polydev Account!
+
+Your credit purchase was successful.
+
+Purchase Details:
+• Credits Added: $${creditAmount}
+• Package: ${packageName}
+• Amount Paid: $${amountPaid.toFixed(2)}
+
+What's Next?
+• 🚀 Start using premium AI models
+• ⚡ Access advanced features  
+• 💬 Get more from your AI conversations
+• 📊 Track your usage in the dashboard
+
+Use your credits: https://www.polydev.ai/dashboard
+View balance: https://www.polydev.ai/dashboard/credits
+
+Questions about credits? Visit our help center: https://www.polydev.ai/help/credits
+
+Happy coding! 🚀
+The Polydev Team
+    `
+  }),
+
   paymentSucceeded: (userEmail: string, amount: string, periodEnd: string): EmailTemplate => ({
     subject: 'Payment Received - Your Polydev Pro subscription is active',
     html: `

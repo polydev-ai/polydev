@@ -51,3 +51,8 @@ export async function sendPaymentSucceededEmail(userEmail: string, amount: strin
   const template = emailTemplates.paymentSucceeded(userEmail, amount, periodEnd)
   return sendEmail({ to: userEmail, template })
 }
+
+export async function sendCreditPurchaseEmail(userEmail: string, creditAmount: number, packageName: string, amountPaid: number) {
+  const template = emailTemplates.creditPurchase(userEmail, creditAmount, packageName, amountPaid)
+  return sendEmail({ to: userEmail, template })
+}

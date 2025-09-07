@@ -1293,15 +1293,62 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         try {
           const { data: budgetData } = await serviceRoleSupabase
             .from('user_budgets')
-            .select('daily_limit, weekly_limit, monthly_limit, daily_spent, weekly_spent, monthly_spent')
+            .select('daily_limit, weekly_limit, monthly_limit')
             .eq('user_id', user.id)
             .single()
           
           if (budgetData) {
-            if ((budgetData.daily_limit && budgetData.daily_spent >= budgetData.daily_limit) ||
-                (budgetData.weekly_limit && budgetData.weekly_spent >= budgetData.weekly_limit) ||
-                (budgetData.monthly_limit && budgetData.monthly_spent >= budgetData.monthly_limit)) {
-              budgetExceeded = true
+            const now = new Date()
+            
+            // Check daily limit
+            if (budgetData.daily_limit) {
+              const startOfDay = new Date(now)
+              startOfDay.setHours(0, 0, 0, 0)
+              const { data: dailyUsage } = await serviceRoleSupabase
+                .from('model_usage')
+                .select('total_cost')
+                .eq('user_id', user.id)
+                .gte('request_timestamp', startOfDay.toISOString())
+                .lte('request_timestamp', now.toISOString())
+              
+              const dailySpent = (dailyUsage || []).reduce((sum: number, usage: any) => sum + usage.total_cost, 0)
+              if (dailySpent >= budgetData.daily_limit) {
+                budgetExceeded = true
+              }
+            }
+            
+            // Check weekly limit if daily didn't exceed
+            if (!budgetExceeded && budgetData.weekly_limit) {
+              const startOfWeek = new Date(now)
+              startOfWeek.setDate(now.getDate() - now.getDay())
+              startOfWeek.setHours(0, 0, 0, 0)
+              const { data: weeklyUsage } = await serviceRoleSupabase
+                .from('model_usage')
+                .select('total_cost')
+                .eq('user_id', user.id)
+                .gte('request_timestamp', startOfWeek.toISOString())
+                .lte('request_timestamp', now.toISOString())
+              
+              const weeklySpent = (weeklyUsage || []).reduce((sum: number, usage: any) => sum + usage.total_cost, 0)
+              if (weeklySpent >= budgetData.weekly_limit) {
+                budgetExceeded = true
+              }
+            }
+            
+            // Check monthly limit if weekly didn't exceed
+            if (!budgetExceeded && budgetData.monthly_limit) {
+              const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+              const { data: monthlyUsage } = await serviceRoleSupabase
+                .from('model_usage')
+                .select('total_cost')
+                .eq('user_id', user.id)
+                .gte('request_timestamp', startOfMonth.toISOString())
+                .lte('request_timestamp', now.toISOString())
+              
+              const monthlySpent = (monthlyUsage || []).reduce((sum: number, usage: any) => sum + usage.total_cost, 0)
+              if (monthlySpent >= budgetData.monthly_limit) {
+                budgetExceeded = true
+              }
             }
           }
         } catch (budgetError) {

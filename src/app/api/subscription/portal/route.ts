@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { subscriptionManager } from '@/lib/subscriptionManager'
+import Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,30 +25,25 @@ export async function POST(request: NextRequest) {
     const baseUrl = `${protocol}://${host}`
     const returnUrl = `${baseUrl}/dashboard/subscription`
 
-    // Create customer portal session using MCP
+    // Create customer portal session using Stripe SDK
     try {
-      const response = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          customer: subscription.stripe_customer_id,
-          return_url: returnUrl
-        })
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+        apiVersion: '2025-08-27.basil'
       })
 
-      if (!response.ok) {
-        throw new Error(`Stripe API error: ${response.status}`)
-      }
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: subscription.stripe_customer_id,
+        return_url: returnUrl,
+      })
 
-      const portalSession = await response.json()
       return NextResponse.json({ portalUrl: portalSession.url })
 
-    } catch (stripeError) {
+    } catch (stripeError: any) {
       console.error('[Subscription] Portal session error:', stripeError)
-      return NextResponse.json({ error: 'Failed to create portal session' }, { status: 500 })
+      return NextResponse.json({ 
+        error: 'Failed to create portal session',
+        details: stripeError.message 
+      }, { status: 500 })
     }
 
   } catch (error) {
