@@ -183,7 +183,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       }
 
       // Add credits to user account
-      const { error: creditError } = await supabase.rpc('add_user_credits', {
+      const { error: creditError } = await supabase.rpc('allocate_monthly_credits', {
         p_user_id: user.id,
         p_amount: creditAmount
       })

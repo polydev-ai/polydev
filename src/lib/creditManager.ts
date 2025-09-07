@@ -460,14 +460,39 @@ export class CreditManager {
   async getUserBudget(userId: string): Promise<UserBudget | null> {
     try {
       const supabase = await this.getSupabase()
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('user_budgets')
         .select('*')
         .eq('user_id', userId)
         .single()
 
       if (error) {
-        if (error.code === 'PGRST116') return null
+        if (error.code === 'PGRST116') {
+          // No budget exists, create a default one
+          const { data: newBudget, error: createError } = await supabase
+            .from('user_budgets')
+            .insert({
+              user_id: userId,
+              daily_limit: null,
+              weekly_limit: null,
+              monthly_limit: null,
+              preferred_models: [],
+              auto_top_up_enabled: false,
+              auto_top_up_threshold: null,
+              auto_top_up_amount: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single()
+          
+          if (createError) {
+            console.error('[CreditManager] Failed to create default budget:', createError)
+            return null
+          }
+          
+          return newBudget
+        }
         throw error
       }
 

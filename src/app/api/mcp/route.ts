@@ -1291,11 +1291,38 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Check user's budget limits using direct query
         let budgetExceeded = false
         try {
-          const { data: budgetData } = await serviceRoleSupabase
+          let { data: budgetData, error: budgetError } = await serviceRoleSupabase
             .from('user_budgets')
             .select('daily_limit, weekly_limit, monthly_limit')
             .eq('user_id', user.id)
             .single()
+          
+          // If no budget exists, create a default one
+          if (budgetError && budgetError.code === 'PGRST116') {
+            const { data: newBudget, error: createError } = await serviceRoleSupabase
+              .from('user_budgets')
+              .insert({
+                user_id: user.id,
+                daily_limit: null,
+                weekly_limit: null,
+                monthly_limit: null,
+                preferred_models: [],
+                auto_top_up_enabled: false,
+                auto_top_up_threshold: null,
+                auto_top_up_amount: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select('daily_limit, weekly_limit, monthly_limit')
+              .single()
+            
+            if (createError) {
+              console.error('[MCP] Failed to create default budget:', createError)
+              budgetData = null
+            } else {
+              budgetData = newBudget
+            }
+          }
           
           if (budgetData) {
             const now = new Date()
