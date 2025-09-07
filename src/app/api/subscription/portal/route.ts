@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { subscriptionManager } from '@/lib/subscriptionManager'
-import Stripe from 'stripe'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-08-27.basil'
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,13 +18,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No subscription found' }, { status: 404 })
     }
 
-    // Create customer portal session
+    // Get the base URL from the request
+    const protocol = request.headers.get('x-forwarded-proto') || 'https'
+    const host = request.headers.get('host') || 'www.polydev.ai'
+    const baseUrl = `${protocol}://${host}`
+    const returnUrl = `${baseUrl}/dashboard/subscription`
+
+    // Create customer portal session using MCP
     try {
-      const portalSession = await stripe.billingPortal.sessions.create({
-        customer: subscription.stripe_customer_id,
-        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription`
+      const response = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          customer: subscription.stripe_customer_id,
+          return_url: returnUrl
+        })
       })
 
+      if (!response.ok) {
+        throw new Error(`Stripe API error: ${response.status}`)
+      }
+
+      const portalSession = await response.json()
       return NextResponse.json({ portalUrl: portalSession.url })
 
     } catch (stripeError) {
