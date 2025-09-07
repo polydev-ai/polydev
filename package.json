@@ -25,6 +25,7 @@
     "posthog-js": "^1.157.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "resend": "^6.0.2",
     "sonner": "^2.0.7",
     "stripe": "^18.5.0",
     "tailwind-merge": "^3.3.1"

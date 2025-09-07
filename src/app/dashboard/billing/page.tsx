@@ -1,225 +1,314 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '../../../hooks/useAuth'
+import React, { useState, useEffect } from 'react'
+import { useAuth } from '@/app/components/AuthProvider'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { 
+  CreditCard, 
+  Download, 
+  Calendar, 
+  DollarSign, 
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Clock
+} from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
-export default function Billing() {
-  const { user, loading } = useAuth()
-  const [usage, setUsage] = useState({
-    currentPlan: 'Free',
-    queriesUsed: 0,
-    queriesLimit: 50,
-    monthlySpend: 0,
-    nextBilling: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()
-  })
+interface BillingItem {
+  id: string
+  date: string
+  amount: number
+  currency: string
+  description: string
+  status: string
+  invoice_url?: string
+  pdf_url?: string
+  credits_purchased?: number
+  type?: string
+  period_start?: string
+  period_end?: string
+}
+
+interface Subscription {
+  stripe_customer_id: string
+  stripe_subscription_id: string
+  tier: string
+  status: string
+}
+
+export default function BillingPage() {
+  const { user } = useAuth()
+  const [billingHistory, setBillingHistory] = useState<BillingItem[]>([])
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (user) {
+      fetchBillingHistory()
+    }
+  }, [user])
+
+  const fetchBillingHistory = async () => {
+    try {
+      const response = await fetch('/api/billing/history')
+      if (!response.ok) throw new Error('Failed to fetch billing history')
+      
+      const data = await response.json()
+      setBillingHistory(data.billing_history || [])
+      setSubscription(data.subscription)
+    } catch (error) {
+      console.error('Error fetching billing history:', error)
+      setError('Failed to load billing history')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancelSubscription = async (immediately: boolean = false) => {
+    setCancelling(true)
+    try {
+      const response = await fetch('/api/subscription/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ immediately })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to cancel subscription')
+      }
+
+      const result = await response.json()
+      alert(result.message)
+      setCancelDialogOpen(false)
+      fetchBillingHistory() // Refresh data
+    } catch (error) {
+      console.error('Error cancelling subscription:', error)
+      alert(error instanceof Error ? error.message : 'Failed to cancel subscription')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'paid':
+      case 'completed':
+        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Paid</Badge>
+      case 'pending':
+        return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Pending</Badge>
+      case 'failed':
+      case 'canceled':
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Failed</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  const formatCurrency = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency
+    }).format(amount)
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-300 rounded w-1/4 mb-6"></div>
+          <div className="space-y-4">
+            {[1,2,3].map(i => (
+              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Billing & Usage</h1>
-          <p className="text-gray-600">Manage your subscription and monitor usage</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {/* Current Plan */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Current Plan</p>
-                <p className="text-2xl font-semibold text-gray-900">{usage.currentPlan}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Usage */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Queries Used</p>
-                <p className="text-2xl font-semibold text-gray-900">{usage.queriesUsed}/{usage.queriesLimit}</p>
-              </div>
-            </div>
-            <div className="mt-4">
-              <div className="bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-green-500 h-2 rounded-full" 
-                  style={{ width: `${(usage.queriesUsed / usage.queriesLimit) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Monthly Spend */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 0h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v2" />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">This Month</p>
-                <p className="text-2xl font-semibold text-gray-900">${usage.monthlySpend.toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Plans */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Available Plans</h2>
-            <p className="text-sm text-gray-600">Choose the plan that fits your needs</p>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Free Plan */}
-              <div className="border border-gray-200 rounded-lg p-6">
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Free</h3>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900">$0</span>
-                    <span className="text-gray-600">/month</span>
-                  </div>
-                  <ul className="mt-6 space-y-4 text-sm text-gray-600">
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      50 queries/month
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Basic models
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Community support
-                    </li>
-                  </ul>
-                  <button className="mt-8 w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg font-medium">
-                    Current Plan
-                  </button>
-                </div>
-              </div>
-
-              {/* Pro Plan */}
-              <div className="border-2 border-blue-500 rounded-lg p-6 relative">
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-medium">
-                    Popular
-                  </span>
-                </div>
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Pro</h3>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900">$29</span>
-                    <span className="text-gray-600">/month</span>
-                  </div>
-                  <ul className="mt-6 space-y-4 text-sm text-gray-600">
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      1,000 queries/month
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      All premium models
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Priority support
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Advanced analytics
-                    </li>
-                  </ul>
-                  <button className="mt-8 w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700">
-                    Upgrade to Pro
-                  </button>
-                </div>
-              </div>
-
-              {/* Enterprise Plan */}
-              <div className="border border-gray-200 rounded-lg p-6">
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Enterprise</h3>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-gray-900">$99</span>
-                    <span className="text-gray-600">/month</span>
-                  </div>
-                  <ul className="mt-6 space-y-4 text-sm text-gray-600">
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Unlimited queries
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Custom models
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      Dedicated support
-                    </li>
-                    <li className="flex items-center">
-                      <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      SLA guarantee
-                    </li>
-                  </ul>
-                  <button className="mt-8 w-full bg-gray-900 text-white py-2 px-4 rounded-lg font-medium hover:bg-gray-800">
-                    Contact Sales
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="max-w-6xl mx-auto p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Billing & Subscriptions</h1>
+        <p className="text-gray-600 dark:text-gray-400">Manage your subscription and view billing history</p>
       </div>
+
+      {error && (
+        <Alert className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Current Subscription */}
+      {subscription && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Current Subscription
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Plan:</span>
+                  <Badge variant="default" className="capitalize">{subscription.tier}</Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Status:</span>
+                  {getStatusBadge(subscription.status)}
+                </div>
+              </div>
+              <div className="space-x-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => window.open('/api/subscription/portal', '_blank')}
+                >
+                  Manage Billing
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => setCancelDialogOpen(true)}
+                  disabled={subscription.status !== 'active'}
+                >
+                  Cancel Subscription
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Billing History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Billing History
+          </CardTitle>
+          <CardDescription>
+            View all your past transactions and invoices
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {billingHistory.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No billing history found</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {billingHistory.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          {item.description}
+                        </h3>
+                        <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-4 h-4" />
+                            {formatDate(item.date)}
+                          </span>
+                          {item.period_start && item.period_end && (
+                            <span>
+                              Billing period: {formatDate(item.period_start)} - {formatDate(item.period_end)}
+                            </span>
+                          )}
+                          {item.credits_purchased && (
+                            <span>Credits: {item.credits_purchased}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-lg">
+                          {formatCurrency(item.amount, item.currency)}
+                        </div>
+                        {getStatusBadge(item.status)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="ml-4 space-x-2">
+                    {item.invoice_url && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(item.invoice_url, '_blank')}
+                      >
+                        View
+                      </Button>
+                    )}
+                    {item.pdf_url && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(item.pdf_url, '_blank')}
+                      >
+                        <Download className="w-4 h-4 mr-1" />
+                        PDF
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cancel Subscription Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Subscription</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel your subscription? You can choose to cancel immediately or at the end of your current billing period.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={cancelling}
+            >
+              Keep Subscription
+            </Button>
+            <Button 
+              variant="secondary" 
+              onClick={() => handleCancelSubscription(false)}
+              disabled={cancelling}
+            >
+              {cancelling ? 'Processing...' : 'Cancel at Period End'}
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => handleCancelSubscription(true)}
+              disabled={cancelling}
+            >
+              {cancelling ? 'Processing...' : 'Cancel Immediately'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
