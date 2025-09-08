@@ -308,6 +308,10 @@ class MCPServer {
     formatted += `${result.message}\n\n`;
 
     if (result.results && Object.keys(result.results).length > 0) {
+      // Count working vs broken providers
+      let workingProviders = 0;
+      let compatibilityIssues = 0;
+      
       Object.entries(result.results).forEach(([providerId, status]) => {
         formatted += `## ${providerId.toUpperCase().replace('_', ' ')}\n`;
         
@@ -319,10 +323,19 @@ class MCPServer {
           
           if (status.authenticated) {
             formatted += `🔐 **Authenticated** - Ready to use\n`;
+            workingProviders++;
           } else {
             formatted += `❌ **Not Authenticated**\n`;
             if (status.error) {
-              formatted += `💡 ${status.error}\n`;
+              // Special formatting for compatibility issues
+              if (status.error.includes('Compatibility Issue')) {
+                formatted += `\n🚨 **COMPATIBILITY ISSUE**\n`;
+                formatted += `${status.error}\n\n`;
+                formatted += `**Need Help?** Contact support at https://polydev.ai/support with this error message.\n`;
+                compatibilityIssues++;
+              } else {
+                formatted += `💡 ${status.error}\n`;
+              }
             }
           }
         } else {
@@ -334,6 +347,23 @@ class MCPServer {
         
         formatted += `⏰ Last checked: ${new Date(status.last_checked).toLocaleString()}\n\n`;
       });
+      
+      // Add summary
+      formatted += `---\n\n`;
+      formatted += `## 📊 System Status Summary\n`;
+      formatted += `- **Working Providers**: ${workingProviders}/3 CLI tools ready\n`;
+      if (compatibilityIssues > 0) {
+        formatted += `- **⚠️  Compatibility Issues**: ${compatibilityIssues} provider(s) need attention\n`;
+        formatted += `- **Recommendation**: Update Node.js or CLI tools as suggested above\n`;
+      }
+      
+      if (workingProviders >= 2) {
+        formatted += `- **Status**: ✅ System operational with ${workingProviders} working providers\n`;
+      } else if (workingProviders >= 1) {
+        formatted += `- **Status**: ⚠️  Limited functionality - only ${workingProviders} provider working\n`;
+      } else {
+        formatted += `- **Status**: ❌ No CLI providers working - check installations\n`;
+      }
     }
 
     return formatted;
@@ -489,8 +519,8 @@ class MCPServer {
         success: response.success,
         content: response.content,
         error: response.error,
-        tokens_used: response.tokensUsed,
-        latency_ms: response.latencyMs,
+        tokens_used: response.tokens_used,
+        latency_ms: response.latency_ms,
         provider: provider_id,
         mode,
         timestamp: new Date().toISOString()
