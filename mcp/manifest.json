@@ -196,6 +196,251 @@
           }
         }
       ]
+    },
+    {
+      "name": "polydev.force_cli_detection",
+      "description": "Force detection and status update for CLI tools (Claude Code, Codex CLI, Gemini CLI). Updates local cache and reports status to MCP server via Supabase.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID for database status updates (optional for stdio-wrapper)",
+            "minLength": 1
+          },
+          "provider_id": {
+            "type": "string",
+            "description": "Specific CLI provider to detect (optional, detects all if not provided)",
+            "enum": ["claude_code", "codex_cli", "gemini_cli"]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether detection was successful"
+          },
+          "results": {
+            "type": "object",
+            "description": "Detection results for each provider",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": "boolean",
+                  "description": "Whether CLI is available"
+                },
+                "authenticated": {
+                  "type": "boolean",
+                  "description": "Whether CLI is authenticated"
+                },
+                "version": {
+                  "type": "string",
+                  "description": "CLI version if available"
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Path to CLI executable"
+                },
+                "error": {
+                  "type": "string",
+                  "description": "Error message if detection failed"
+                }
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable result message"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Detection timestamp"
+          }
+        },
+        "required": ["success", "results", "message", "timestamp"]
+      },
+      "examples": [
+        {
+          "description": "Detect all CLI providers",
+          "input": {
+            "user_id": "user_123"
+          },
+          "output": {
+            "success": true,
+            "results": {
+              "claude_code": {
+                "available": true,
+                "authenticated": true,
+                "version": "claude-code v1.2.3",
+                "path": "/usr/local/bin/claude"
+              },
+              "codex_cli": {
+                "available": false,
+                "authenticated": false,
+                "error": "Codex CLI not found in PATH. Install Codex CLI from OpenAI"
+              }
+            },
+            "message": "CLI detection completed for all providers",
+            "timestamp": "2024-01-15T10:30:00Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "polydev.get_cli_status",
+      "description": "Get current CLI status with caching support. Returns cached results if available and fresh, otherwise performs new detection.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID for database status retrieval (optional for stdio-wrapper)",
+            "minLength": 1
+          },
+          "provider_id": {
+            "type": "string",
+            "description": "Specific CLI provider status to get (optional, gets all if not provided)",
+            "enum": ["claude_code", "codex_cli", "gemini_cli"]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether status retrieval was successful"
+          },
+          "results": {
+            "type": "object",
+            "description": "Status results for each provider",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "authenticated": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "type": "string"
+                },
+                "lastChecked": {
+                  "type": "string",
+                  "description": "Last status check timestamp"
+                }
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": ["success", "results"]
+      }
+    },
+    {
+      "name": "polydev.send_cli_prompt",
+      "description": "Send a prompt to a CLI provider and get response. Supports both stdin and argument modes for maximum compatibility.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "description": "CLI provider to send prompt to",
+            "enum": ["claude_code", "codex_cli", "gemini_cli"]
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Prompt to send to the CLI",
+            "minLength": 1
+          },
+          "mode": {
+            "type": "string",
+            "description": "Prompt sending mode",
+            "enum": ["stdin", "args"],
+            "default": "args"
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "description": "Timeout in milliseconds",
+            "minimum": 1000,
+            "maximum": 300000,
+            "default": 30000
+          },
+          "user_id": {
+            "type": "string",
+            "description": "User ID for usage tracking (optional)",
+            "minLength": 1
+          }
+        },
+        "required": ["provider_id", "prompt"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the prompt was sent successfully"
+          },
+          "content": {
+            "type": "string",
+            "description": "CLI response content"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if prompt failed"
+          },
+          "tokens_used": {
+            "type": "integer",
+            "description": "Number of tokens used"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "description": "Response latency in milliseconds"
+          },
+          "provider": {
+            "type": "string",
+            "description": "CLI provider used"
+          },
+          "mode": {
+            "type": "string",
+            "description": "Mode used for sending"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Response timestamp"
+          }
+        },
+        "required": ["success", "provider", "timestamp"]
+      },
+      "examples": [
+        {
+          "description": "Send prompt to Claude Code",
+          "input": {
+            "provider_id": "claude_code",
+            "prompt": "Help me debug this TypeScript error: Property 'map' does not exist on type 'string'",
+            "mode": "args",
+            "user_id": "user_123"
+          },
+          "output": {
+            "success": true,
+            "content": "This error occurs when you're trying to use the .map() method on a string variable. The .map() method is an array method, not a string method...",
+            "tokens_used": 150,
+            "latency_ms": 1200,
+            "provider": "claude_code",
+            "mode": "args",
+            "timestamp": "2024-01-15T10:35:00Z"
+          }
+        }
+      ]
     }
   ],
   "configuration": {

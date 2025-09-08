@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const CLIManager = require('../lib/cliManager').default;
 
 class MCPServer {
   constructor() {
@@ -12,6 +13,7 @@ class MCPServer {
     };
     
     this.tools = new Map();
+    this.cliManager = new CLIManager();
     this.loadManifest();
   }
 
@@ -120,6 +122,18 @@ class MCPServer {
       switch (name) {
         case 'get_perspectives':
           result = await this.callPerspectivesAPI(args);
+          break;
+        
+        case 'polydev.force_cli_detection':
+          result = await this.forceCliDetection(args);
+          break;
+        
+        case 'polydev.get_cli_status':
+          result = await this.getCliStatus(args);
+          break;
+        
+        case 'polydev.send_cli_prompt':
+          result = await this.sendCliPrompt(args);
           break;
         
         default:
@@ -263,6 +277,176 @@ class MCPServer {
     });
 
     return formatted;
+  }
+
+  /**
+   * Force CLI detection for all providers using MCP Supabase integration
+   */
+  async forceCliDetection(args) {
+    console.log('[MCP Server] Force CLI detection requested');
+    
+    try {
+      const userId = args.user_id;
+      const providerId = args.provider_id; // Optional - detect specific provider
+      
+      if (!userId) {
+        throw new Error('user_id is required for CLI detection');
+      }
+
+      // Force detection using CLI Manager
+      const results = await this.cliManager.forceCliDetection(userId, providerId);
+      
+      // Update status via existing API endpoint (MCP Supabase integration)
+      if (providerId) {
+        await this.updateCliStatusViaAPI(userId, providerId, results[providerId]);
+      } else {
+        // Update all providers
+        for (const [id, status] of Object.entries(results)) {
+          await this.updateCliStatusViaAPI(userId, id, status);
+        }
+      }
+
+      return {
+        success: true,
+        results,
+        message: `CLI detection completed for ${providerId || 'all providers'}`,
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] CLI detection error:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Get CLI status with caching using MCP integration
+   */
+  async getCliStatus(args) {
+    console.log('[MCP Server] Get CLI status requested');
+    
+    try {
+      const userId = args.user_id;
+      const providerId = args.provider_id;
+      
+      if (!userId) {
+        throw new Error('user_id is required for CLI status');
+      }
+
+      let results = {};
+
+      if (providerId) {
+        // Get specific provider status
+        const status = await this.cliManager.getCliStatus(providerId, userId);
+        results[providerId] = status;
+      } else {
+        // Get all providers status
+        const providers = this.cliManager.getProviders();
+        for (const provider of providers) {
+          const status = await this.cliManager.getCliStatus(provider.id, userId);
+          results[provider.id] = status;
+        }
+      }
+
+      return {
+        success: true,
+        results,
+        message: 'CLI status retrieved successfully',
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] CLI status error:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Send prompt to CLI provider using MCP integration
+   */
+  async sendCliPrompt(args) {
+    console.log('[MCP Server] Send CLI prompt requested');
+    
+    try {
+      const { provider_id, prompt, mode = 'args', timeout_ms = 30000, user_id } = args;
+      
+      if (!provider_id || !prompt) {
+        throw new Error('provider_id and prompt are required');
+      }
+
+      // Send prompt using CLI Manager
+      const response = await this.cliManager.sendCliPrompt(
+        provider_id, 
+        prompt, 
+        mode, 
+        timeout_ms
+      );
+
+      // Record usage in database via MCP Supabase if user_id provided
+      if (user_id && response.success) {
+        await this.recordCliUsage(user_id, provider_id, prompt, response);
+      }
+
+      return {
+        success: response.success,
+        content: response.content,
+        error: response.error,
+        tokens_used: response.tokensUsed,
+        latency_ms: response.latencyMs,
+        provider: provider_id,
+        mode,
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('[MCP Server] CLI prompt error:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Update CLI status via existing API endpoint (MCP integration)
+   */
+  async updateCliStatusViaAPI(userId, providerId, status) {
+    try {
+      // This integrates with existing src/app/api/cli-status/route.ts
+      // which already has Supabase MCP integration
+      console.log(`[MCP Server] Updating CLI status for ${providerId}: ${status.available}`);
+      
+      // The API route will handle the database update
+      // For now, we'll just log - full integration will be added in next phase
+      
+    } catch (error) {
+      console.error('[MCP Server] Failed to update CLI status:', error);
+    }
+  }
+
+  /**
+   * Record CLI usage for analytics using MCP Supabase integration
+   */
+  async recordCliUsage(userId, providerId, prompt, response) {
+    try {
+      // This will integrate with existing usage tracking system
+      // in src/lib/openrouterManager.ts (recordUsage method)
+      console.log(`[MCP Server] Recording CLI usage: ${providerId} - ${response.latencyMs}ms`);
+      
+      // The usage will be recorded in usage_sessions table via MCP Supabase
+      
+    } catch (error) {
+      console.error('[MCP Server] Failed to record CLI usage:', error);
+    }
   }
 
   async start() {

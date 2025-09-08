@@ -61,7 +61,22 @@ By consulting multiple models, your agent can:
 
 ### 3. Use in Your Agent
 
-**With Your Own API Keys (Recommended):**
+**With CLI Providers (Highest Priority):**
+```typescript
+// When your agent gets stuck and you have CLI tools authenticated:
+const cliResponse = await callTool({
+  name: "polydev.send_cli_prompt",
+  arguments: {
+    provider_id: "claude_code",  // or "codex_cli", "gemini_cli"
+    prompt: "I'm debugging a React performance issue. The component re-renders excessively but I can't pinpoint why. Help me identify potential causes and solutions.",
+    mode: "args",  // or "stdin" for different input modes
+    timeout_ms: 30000,
+    user_id: "user_123"  // for usage tracking
+  }
+});
+```
+
+**With Your Own API Keys (Second Priority):**
 ```typescript
 // When your agent gets stuck (user must be signed in):
 const perspectives = await callTool({
@@ -75,7 +90,7 @@ const perspectives = await callTool({
 });
 ```
 
-**With MCP Token (Legacy):**
+**With MCP Token (Third Priority):**
 ```typescript
 const perspectives = await callTool({
   name: "get_perspectives", 
@@ -88,19 +103,117 @@ const perspectives = await callTool({
 });
 ```
 
+## CLI Provider Integration
+
+Polydev now provides seamless integration with popular developer CLI tools as the highest priority in the fallback system:
+
+### Supported CLI Providers
+
+- **Claude Code** (`claude_code`): Official Anthropic CLI - `claude chat`
+- **Codex CLI** (`codex_cli`): OpenAI's developer-focused CLI interface
+- **Gemini CLI** (`gemini_cli`): Google's AI CLI tool for developers
+
+### CLI Integration Benefits
+
+✅ **No API Key Management**: Uses your existing CLI authentication  
+✅ **Subscription-Based**: Uses your existing CLI subscriptions  
+✅ **Full Model Access**: Access to latest models through CLI providers  
+✅ **Seamless Authentication**: Works with your existing login sessions  
+✅ **Cross-Platform**: Works on Windows, macOS, and Linux  
+
+### CLI Provider Tools
+
+#### Detect Available CLIs
+```javascript
+const detection = await callTool({
+  name: "polydev.force_cli_detection",
+  arguments: {
+    user_id: "user_123",  // optional for stdio wrapper
+    provider_id: "claude_code"  // optional, detects all if not provided
+  }
+});
+
+// Returns status for each CLI provider
+console.log(detection.results);
+// {
+//   "claude_code": {
+//     "available": true,
+//     "authenticated": true,
+//     "version": "claude-code v1.2.3",
+//     "path": "/usr/local/bin/claude"
+//   },
+//   "codex_cli": {
+//     "available": false,
+//     "authenticated": false,
+//     "error": "Codex CLI not found in PATH"
+//   }
+// }
+```
+
+#### Check CLI Status (Cached)
+```javascript
+const status = await callTool({
+  name: "polydev.get_cli_status", 
+  arguments: {
+    provider_id: "claude_code"  // optional, gets all if not provided
+  }
+});
+```
+
+#### Send Prompt to CLI
+```javascript
+const response = await callTool({
+  name: "polydev.send_cli_prompt",
+  arguments: {
+    provider_id: "claude_code",
+    prompt: "Help me debug this authentication error in my Node.js app",
+    mode: "args",  // "args" or "stdin"
+    timeout_ms: 30000,
+    user_id: "user_123"  // optional for usage tracking
+  }
+});
+
+// Returns CLI response with metadata
+console.log(response);
+// {
+//   "success": true,
+//   "content": "Looking at your authentication error...",
+//   "tokens_used": 150,
+//   "latency_ms": 1200,
+//   "provider": "claude_code",
+//   "mode": "args"
+// }
+```
+
 ## Agent Use Cases
 
-### 1. **Debugging Roadblocks**
+### 1. **Debugging Roadblocks (CLI First)**
 ```javascript
-{
-  "prompt": "My SQL query is slow despite having indexes. I've tried standard optimizations but performance is still poor. What am I missing?",
-  "mode": "user_keys",  // Use your configured database expertise models
-  "models": ["gpt-4", "claude-3-sonnet", "gemini-pro"],
-  "project_memory": "full"
+// Try CLI provider first
+const cliHelp = await callTool({
+  name: "polydev.send_cli_prompt",
+  arguments: {
+    provider_id: "claude_code",
+    prompt: "My SQL query is slow despite having indexes. I've tried standard optimizations but performance is still poor. What am I missing?",
+    mode: "args"
+  }
+});
+
+// Fallback to multiple perspectives if needed
+if (!cliHelp.success) {
+  const perspectives = await callTool({
+    name: "get_perspectives", 
+    arguments: {
+      prompt: "My SQL query is slow despite having indexes. I've tried standard optimizations but performance is still poor. What am I missing?",
+      mode: "user_keys",
+      models: ["gpt-4", "claude-3-sonnet", "gemini-pro"],
+      project_memory: "full"
+    }
+  });
 }
 ```
 
-### 2. **Architecture Decisions**  
+### 2. **Architecture Decisions (Multiple Perspectives)**
 ```javascript
 {
   "prompt": "I'm choosing between microservices and monolith for a fintech app. I need multiple expert perspectives on trade-offs, security, and scalability.",
@@ -109,26 +222,57 @@ const perspectives = await callTool({
 }
 ```
 
-### 3. **Code Review & Improvements**
+### 3. **Code Review & Improvements (CLI + Context)**
 ```javascript
-{
-  "prompt": "Review this authentication module for security vulnerabilities and suggest improvements. I want multiple security-focused perspectives.",
-  "user_token": "poly_...",
-  "project_memory": "full",
-  "project_context": {
-    "root_path": "/workspace/myapp",
-    "includes": ["**/*.js", "**/*.ts"],
-    "excludes": ["node_modules/**", "tests/**"]
+// Use CLI with project context
+const review = await callTool({
+  name: "polydev.send_cli_prompt",
+  arguments: {
+    provider_id: "claude_code",
+    prompt: "Review this authentication module for security vulnerabilities: [paste code here]. Focus on authentication bypass risks, token handling, and session management.",
+    mode: "args"
   }
-}
+});
+
+// Or use traditional perspectives with project memory
+const perspectives = await callTool({
+  name: "get_perspectives",
+  arguments: {
+    prompt: "Review this authentication module for security vulnerabilities and suggest improvements. I want multiple security-focused perspectives.",
+    user_token: "poly_...",
+    project_memory: "full",
+    project_context: {
+      root_path: "/workspace/myapp",
+      includes: ["**/*.js", "**/*.ts"],
+      excludes: ["node_modules/**", "tests/**"]
+    }
+  }
+});
 ```
 
-### 4. **Problem-Solving Stuck Points**
+### 4. **Problem-Solving Stuck Points (CLI Priority)**
 ```javascript
-{
-  "prompt": "I'm implementing OAuth2 PKCE flow but getting 'invalid_request' errors. The documentation is unclear about parameter encoding. Help me troubleshoot.",
-  "user_token": "poly_...",
-  "temperature": 0.3  // Lower temperature for technical accuracy
+// Try Claude Code first for technical debugging
+const solution = await callTool({
+  name: "polydev.send_cli_prompt",
+  arguments: {
+    provider_id: "claude_code",
+    prompt: "I'm implementing OAuth2 PKCE flow but getting 'invalid_request' errors. The documentation is unclear about parameter encoding. Help me troubleshoot with specific code examples.",
+    mode: "args",
+    timeout_ms: 45000  // Longer timeout for complex problems
+  }
+});
+
+// Fallback to managed tokens if CLI unavailable
+if (!solution.success) {
+  const perspectives = await callTool({
+    name: "get_perspectives",
+    arguments: {
+      prompt: "I'm implementing OAuth2 PKCE flow but getting 'invalid_request' errors. The documentation is unclear about parameter encoding. Help me troubleshoot.",
+      user_token: "poly_...",
+      temperature: 0.3  // Lower temperature for technical accuracy
+    }
+  });
 }
 ```
 

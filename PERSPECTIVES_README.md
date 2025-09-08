@@ -6,11 +6,12 @@ Polydev Perspectives is an MCP (Model Context Protocol) tool specifically design
 
 ## Features
 
-- 🤖 **Multi-LLM Perspectives**: Query 22+ models including GPT-4, Claude 3, Gemini Pro, Groq, Perplexity, Together AI simultaneously
-- 🔑 **Comprehensive API Key Management**: Support for OpenAI, Anthropic, Google, Azure, AWS Bedrock, Cohere, Mistral, Groq, Together, Perplexity, and 12+ more providers
+- 🤖 **Multi-LLM Perspectives**: Query 37+ models across 20+ providers including GPT-4, Claude 3, Gemini Pro, Groq, Perplexity, Together AI simultaneously
+- 🔑 **Comprehensive API Key Management**: Support for OpenAI, Anthropic, Google, Azure, AWS Bedrock, Cohere, Mistral, Groq, Together, Perplexity, and 15+ more providers
+- 🛠️ **CLI Provider Integration**: Direct integration with Claude Code, Codex CLI, and Gemini CLI for authenticated users
 - 🧠 **Smart Project Memory**: TF-IDF-based context selection for better debugging assistance
 - 🛠️ **MCP Native**: Built specifically for Model Context Protocol agent integration
-- ⚡ **Dual Mode Operation**: Use your own API keys or Polydev-managed keys
+- ⚡ **Priority-Based Fallback**: CLI tools → Personal API keys → Provisioned keys → Credits system
 - 🌐 **Modern Dashboard**: Configure API keys, rate limits, budgets, and usage analytics
 - 📊 **Advanced Analytics**: Track token usage, costs, latency, and success rates per provider
 - 💾 **Encrypted Key Storage**: Secure storage with provider-specific configuration options
@@ -98,7 +99,21 @@ Polydev Perspectives is an MCP (Model Context Protocol) tool specifically design
 
 ### 3. Agent Integration - When Stuck, Call Tool
 
-**Using Your Own API Keys (Recommended):**
+**Using CLI Providers (Highest Priority):**
+```javascript
+// If you have Claude Code, Codex CLI, or Gemini CLI authenticated
+const perspectives = await callTool({
+  name: "polydev.send_cli_prompt",
+  arguments: {
+    provider_id: "claude_code",  // or "codex_cli", "gemini_cli"
+    prompt: "I'm debugging this React performance issue but can't identify the root cause. Help me find what's causing excessive re-renders.",
+    mode: "args",  // or "stdin"
+    user_id: "user_123"  // for usage tracking
+  }
+});
+```
+
+**Using Your Own API Keys (Second Priority):**
 ```javascript
 // Agent must be authenticated - uses your configured API keys
 const perspectives = await callTool({
@@ -112,7 +127,7 @@ const perspectives = await callTool({
 });
 ```
 
-**Using MCP Tokens (Legacy):**
+**Using MCP Tokens (Third Priority):**
 ```javascript
 const perspectives = await callTool({
   name: "get_perspectives", 
@@ -121,6 +136,54 @@ const perspectives = await callTool({
     user_token: "poly_your_generated_token_here",  // MCP token
     mode: "managed",  // Use Polydev-managed keys
     models: ["gpt-4", "claude-3-sonnet", "gemini-pro"]  // Limited to managed models
+  }
+});
+```
+
+## CLI Provider Integration
+
+Polydev now includes direct integration with popular CLI tools used by developers:
+
+### Available CLI Providers
+
+- **Claude Code** (`claude_code`): Official Claude CLI from Anthropic
+- **Codex CLI** (`codex_cli`): OpenAI's code-focused CLI interface
+- **Gemini CLI** (`gemini_cli`): Google's AI CLI tool
+
+### CLI Provider Tools
+
+#### Force CLI Detection
+```javascript
+await callTool({
+  name: "polydev.force_cli_detection",
+  arguments: {
+    user_id: "user_123",  // optional for stdio wrapper
+    provider_id: "claude_code"  // optional, detects all if not provided
+  }
+});
+```
+
+#### Get CLI Status
+```javascript
+await callTool({
+  name: "polydev.get_cli_status", 
+  arguments: {
+    user_id: "user_123",  // optional for stdio wrapper
+    provider_id: "claude_code"  // optional, gets all if not provided
+  }
+});
+```
+
+#### Send CLI Prompt
+```javascript
+await callTool({
+  name: "polydev.send_cli_prompt",
+  arguments: {
+    provider_id: "claude_code",
+    prompt: "Debug this TypeScript error: Property 'map' does not exist on type 'string'",
+    mode: "args",  // or "stdin"
+    timeout_ms: 30000,
+    user_id: "user_123"  // optional for usage tracking
   }
 });
 ```

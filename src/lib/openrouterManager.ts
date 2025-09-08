@@ -6,6 +6,7 @@
 
 import OpenRouterClient from './openrouter'
 import { createClient } from '@/app/utils/supabase/server'
+import CLIManager from './cliManager'
 
 export interface UserOpenRouterConfig {
   id: string
@@ -35,9 +36,11 @@ export interface APIKeyResult {
 
 export class OpenRouterManager {
   private openRouterClient: OpenRouterClient
+  private cliManager: CLIManager
 
   constructor() {
     this.openRouterClient = new OpenRouterClient()
+    this.cliManager = new CLIManager()
   }
 
   /**
@@ -174,24 +177,33 @@ export class OpenRouterManager {
     userId: string,
     userProvidedKey?: string,
     estimatedCost: number = 0.01,
-    isCliRequest: boolean = false
+    isCliRequest: boolean = false,
+    preferredCliProvider?: 'claude_code' | 'codex_cli' | 'gemini_cli',
+    prompt?: string
   ): Promise<{
     apiKey: string
     strategy: 'cli' | 'personal' | 'provisioned' | 'credits'
     canProceed: boolean
     error?: string
+    cliResponse?: any
   }> {
     // Strategy 1: CLI tools (highest priority)
-    if (isCliRequest) {
-      // For CLI requests, check if user has CLI access
+    if (isCliRequest || preferredCliProvider) {
       try {
-        // This would check if user has valid CLI configuration
-        // For now, we'll let CLI handle its own API keys
-        console.log(`[OpenRouter Manager] CLI request detected - letting CLI handle authentication`)
-        return {
-          apiKey: '', // CLI handles its own keys
-          strategy: 'cli',
-          canProceed: true
+        console.log(`[OpenRouter Manager] Attempting CLI provider: ${preferredCliProvider || 'any available'}`)
+        
+        const cliResult = await this.tryCliProvider(preferredCliProvider, prompt, userId)
+        
+        if (cliResult.success) {
+          console.log(`[OpenRouter Manager] CLI request successful via ${cliResult.provider}`)
+          return {
+            apiKey: '', // CLI doesn't use API keys
+            strategy: 'cli',
+            canProceed: true,
+            cliResponse: cliResult
+          }
+        } else {
+          console.log(`[OpenRouter Manager] CLI request failed: ${cliResult.error}`)
         }
       } catch (error) {
         console.log(`[OpenRouter Manager] CLI authentication failed, falling back...`)
@@ -263,6 +275,142 @@ export class OpenRouterManager {
   }
 
   /**
+   * Try CLI provider for prompt handling (Strategy 1 - Highest Priority)
+   */
+  private async tryCliProvider(
+    preferredProvider?: 'claude_code' | 'codex_cli' | 'gemini_cli',
+    prompt?: string,
+    userId?: string
+  ): Promise<{
+    success: boolean
+    provider?: string
+    content?: string
+    error?: string
+    latencyMs?: number
+    tokensUsed?: number
+  }> {
+    try {
+      // If specific provider requested, try that first
+      if (preferredProvider && prompt) {
+        console.log(`[OpenRouter Manager] Trying specific CLI provider: ${preferredProvider}`)
+        
+        const allStatus = await this.cliManager.getCliStatus(preferredProvider)
+        const status = allStatus[preferredProvider]
+        if (status?.available && status.authenticated) {
+          const response = await this.cliManager.sendCliPrompt(
+            preferredProvider, 
+            prompt, 
+            'args', // Default to args mode for better compatibility
+            30000 // 30 second timeout
+          )
+          
+          if (response.success) {
+            // Record CLI usage via MCP Supabase integration
+            if (userId) {
+              await this.recordUsage(
+                userId,
+                `cli_${preferredProvider}`,
+                0, // CLI doesn't report prompt tokens
+                response.tokens_used || 0,
+                0, // No cost for CLI usage
+                'cli'
+              )
+            }
+            
+            return {
+              success: true,
+              provider: preferredProvider,
+              content: response.content,
+              latencyMs: response.latency_ms,
+              tokensUsed: response.tokens_used
+            }
+          } else {
+            return {
+              success: false,
+              provider: preferredProvider,
+              error: response.error || 'CLI request failed'
+            }
+          }
+        }
+      }
+      
+      // If no specific provider or it failed, try all available providers in order
+      if (prompt) {
+        console.log(`[OpenRouter Manager] Trying all available CLI providers...`)
+        
+        const providers = ['claude_code', 'codex_cli', 'gemini_cli'] as const
+        
+        for (const providerId of providers) {
+          try {
+            const allStatus = await this.cliManager.getCliStatus(providerId)
+            const status = allStatus[providerId]
+            if (status?.available && status.authenticated) {
+              console.log(`[OpenRouter Manager] Trying CLI provider: ${providerId}`)
+              
+              const response = await this.cliManager.sendCliPrompt(
+                providerId,
+                prompt,
+                'args',
+                30000
+              )
+              
+              if (response.success) {
+                // Record CLI usage
+                if (userId) {
+                  await this.recordUsage(
+                    userId,
+                    `cli_${providerId}`,
+                    0,
+                    response.tokens_used || 0,
+                    0,
+                    'cli'
+                  )
+                }
+                
+                return {
+                  success: true,
+                  provider: providerId,
+                  content: response.content,
+                  latencyMs: response.latency_ms,
+                  tokensUsed: response.tokens_used
+                }
+              }
+            }
+          } catch (error) {
+            console.log(`[OpenRouter Manager] CLI provider ${providerId} failed: ${error}`)
+            continue
+          }
+        }
+      }
+      
+      return {
+        success: false,
+        error: 'No CLI providers available or authenticated'
+      }
+      
+    } catch (error) {
+      console.error('[OpenRouter Manager] CLI provider error:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'CLI provider error'
+      }
+    }
+  }
+
+  /**
+   * Get available CLI providers status
+   */
+  async getAvailableCliProviders(userId?: string): Promise<Record<string, any>> {
+    try {
+      const results = await this.cliManager.forceCliDetection(userId)
+      return results
+    } catch (error) {
+      console.error('[OpenRouter Manager] Failed to get CLI providers:', error)
+      return {}
+    }
+  }
+
+  /**
    * Get user's provisioned OpenRouter key (would be better with Supabase MCP)
    */
   private async getUserProvisionedKey(userId: string): Promise<any> {
@@ -324,7 +472,7 @@ export class OpenRouterManager {
     promptTokens: number,
     completionTokens: number,
     cost: number,
-    strategy: 'personal' | 'provisioned' | 'credits'
+    strategy: 'personal' | 'provisioned' | 'credits' | 'cli'
   ): Promise<void> {
     try {
       const supabase = await createClient()
