@@ -147,7 +147,7 @@ class MCPServer {
           content: [
             {
               type: 'text',
-              text: this.formatPerspectivesResponse(result)
+              text: this.formatResponse(name, result)
             }
           ]
         }
@@ -243,6 +243,25 @@ class MCPServer {
     return result;
   }
 
+  formatResponse(toolName, result) {
+    switch (toolName) {
+      case 'get_perspectives':
+        return this.formatPerspectivesResponse(result);
+      
+      case 'polydev.force_cli_detection':
+        return this.formatCliDetectionResponse(result);
+      
+      case 'polydev.get_cli_status':
+        return this.formatCliStatusResponse(result);
+      
+      case 'polydev.send_cli_prompt':
+        return this.formatCliPromptResponse(result);
+      
+      default:
+        return JSON.stringify(result, null, 2);
+    }
+  }
+
   formatPerspectivesResponse(result) {
     // Handle MCP response format (already formatted text)
     if (result.content) {
@@ -279,6 +298,94 @@ class MCPServer {
     return formatted;
   }
 
+  formatCliDetectionResponse(result) {
+    if (!result.success) {
+      return `❌ CLI Detection Failed: ${result.error}`;
+    }
+
+    let formatted = `# CLI Provider Detection Results\n\n`;
+    formatted += `✅ Detection completed at ${result.timestamp}\n`;
+    formatted += `${result.message}\n\n`;
+
+    if (result.results && Object.keys(result.results).length > 0) {
+      Object.entries(result.results).forEach(([providerId, status]) => {
+        formatted += `## ${providerId.toUpperCase().replace('_', ' ')}\n`;
+        
+        if (status.available) {
+          formatted += `✅ **Available** at ${status.path}\n`;
+          if (status.version) {
+            formatted += `📦 Version: ${status.version}\n`;
+          }
+          
+          if (status.authenticated) {
+            formatted += `🔐 **Authenticated** - Ready to use\n`;
+          } else {
+            formatted += `❌ **Not Authenticated**\n`;
+            if (status.error) {
+              formatted += `💡 ${status.error}\n`;
+            }
+          }
+        } else {
+          formatted += `❌ **Not Available**\n`;
+          if (status.error) {
+            formatted += `💡 ${status.error}\n`;
+          }
+        }
+        
+        formatted += `⏰ Last checked: ${new Date(status.last_checked).toLocaleString()}\n\n`;
+      });
+    }
+
+    return formatted;
+  }
+
+  formatCliStatusResponse(result) {
+    if (!result.success) {
+      return `❌ CLI Status Check Failed: ${result.error}`;
+    }
+
+    let formatted = `# CLI Provider Status\n\n`;
+    formatted += `Status retrieved at ${result.timestamp}\n\n`;
+
+    if (result.results && Object.keys(result.results).length > 0) {
+      Object.entries(result.results).forEach(([providerId, status]) => {
+        const providerName = providerId.toUpperCase().replace('_', ' ');
+        const statusIcon = status.available && status.authenticated ? '🟢' : 
+                          status.available ? '🟡' : '🔴';
+        
+        formatted += `${statusIcon} **${providerName}**: `;
+        
+        if (status.available && status.authenticated) {
+          formatted += `Ready to use`;
+        } else if (status.available) {
+          formatted += `Available but not authenticated`;
+        } else {
+          formatted += `Not available`;
+        }
+        
+        formatted += `\n`;
+      });
+    } else {
+      formatted += `No CLI providers detected.\n`;
+    }
+
+    return formatted;
+  }
+
+  formatCliPromptResponse(result) {
+    if (!result.success) {
+      return `❌ CLI Prompt Failed: ${result.error}`;
+    }
+
+    let formatted = `# CLI Response from ${result.provider.toUpperCase().replace('_', ' ')}\n\n`;
+    formatted += `${result.content}\n\n`;
+    formatted += `---\n`;
+    formatted += `📊 **Stats**: ${result.tokens_used} tokens, ${result.latency_ms}ms latency\n`;
+    formatted += `⚙️ **Mode**: ${result.mode} | **Time**: ${result.timestamp}`;
+
+    return formatted;
+  }
+
   /**
    * Force CLI detection for all providers using MCP Supabase integration
    */
@@ -286,25 +393,15 @@ class MCPServer {
     console.log('[MCP Server] Force CLI detection requested');
     
     try {
-      const userId = args.user_id;
       const providerId = args.provider_id; // Optional - detect specific provider
+      console.log('[MCP Server] Calling CLI Manager forceCliDetection with providerId:', providerId);
       
-      if (!userId) {
-        throw new Error('user_id is required for CLI detection');
-      }
-
       // Force detection using CLI Manager
-      const results = await this.cliManager.forceCliDetection(userId, providerId);
+      const results = await this.cliManager.forceCliDetection(providerId);
+      console.log('[MCP Server] CLI detection completed, results:', Object.keys(results));
       
-      // Update status via existing API endpoint (MCP Supabase integration)
-      if (providerId) {
-        await this.updateCliStatusViaAPI(userId, providerId, results[providerId]);
-      } else {
-        // Update all providers
-        for (const [id, status] of Object.entries(results)) {
-          await this.updateCliStatusViaAPI(userId, id, status);
-        }
-      }
+      // CLI status is cached locally in CLIManager - no database updates needed
+      // This MCP server runs in customer environments independently
 
       return {
         success: true,
@@ -330,25 +427,20 @@ class MCPServer {
     console.log('[MCP Server] Get CLI status requested');
     
     try {
-      const userId = args.user_id;
       const providerId = args.provider_id;
-      
-      if (!userId) {
-        throw new Error('user_id is required for CLI status');
-      }
 
       let results = {};
 
       if (providerId) {
         // Get specific provider status
-        const status = await this.cliManager.getCliStatus(providerId, userId);
-        results[providerId] = status;
+        const allStatus = await this.cliManager.getCliStatus(providerId);
+        results[providerId] = allStatus[providerId];
       } else {
         // Get all providers status
-        const providers = this.cliManager.getProviders();
+        const providers = this.cliManager.getAvailableProviders();
         for (const provider of providers) {
-          const status = await this.cliManager.getCliStatus(provider.id, userId);
-          results[provider.id] = status;
+          const allStatus = await this.cliManager.getCliStatus(provider.id);
+          results[provider.id] = allStatus[provider.id];
         }
       }
 
@@ -390,10 +482,8 @@ class MCPServer {
         timeout_ms
       );
 
-      // Record usage in database via MCP Supabase if user_id provided
-      if (user_id && response.success) {
-        await this.recordCliUsage(user_id, provider_id, prompt, response);
-      }
+      // CLI usage is tracked locally - no database integration needed
+      // This MCP server runs independently in customer environments
 
       return {
         success: response.success,
@@ -416,38 +506,8 @@ class MCPServer {
     }
   }
 
-  /**
-   * Update CLI status via existing API endpoint (MCP integration)
-   */
-  async updateCliStatusViaAPI(userId, providerId, status) {
-    try {
-      // This integrates with existing src/app/api/cli-status/route.ts
-      // which already has Supabase MCP integration
-      console.log(`[MCP Server] Updating CLI status for ${providerId}: ${status.available}`);
-      
-      // The API route will handle the database update
-      // For now, we'll just log - full integration will be added in next phase
-      
-    } catch (error) {
-      console.error('[MCP Server] Failed to update CLI status:', error);
-    }
-  }
-
-  /**
-   * Record CLI usage for analytics using MCP Supabase integration
-   */
-  async recordCliUsage(userId, providerId, prompt, response) {
-    try {
-      // This will integrate with existing usage tracking system
-      // in src/lib/openrouterManager.ts (recordUsage method)
-      console.log(`[MCP Server] Recording CLI usage: ${providerId} - ${response.latencyMs}ms`);
-      
-      // The usage will be recorded in usage_sessions table via MCP Supabase
-      
-    } catch (error) {
-      console.error('[MCP Server] Failed to record CLI usage:', error);
-    }
-  }
+  // CLI status and usage tracking is handled locally by CLIManager
+  // No database integration needed - this MCP server runs independently
 
   async start() {
     console.log('Starting Polydev Perspectives MCP Server...');
