@@ -331,7 +331,7 @@ export default function PerspectivesSettings() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                BYO API Keys
+                BYO Models
               </h2>
               <button
                 onClick={() => setShowAddKey(!showAddKey)}

@@ -400,7 +400,7 @@ export async function POST(request: NextRequest) {
       
       if (Object.keys(availableKeys).length === 0) {
         return NextResponse.json({ 
-          error: 'No API keys configured. Please add API keys in your dashboard at: https://polydev.ai/dashboard/api-keys' 
+          error: 'No API keys configured. Please add API keys in your dashboard at: https://polydev.ai/dashboard/models' 
         }, { status: 400 })
       }
     } else {

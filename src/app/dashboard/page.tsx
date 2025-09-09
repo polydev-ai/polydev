@@ -513,7 +513,7 @@ export default function Dashboard() {
             </div>
             <div className="flex flex-col sm:flex-row gap-3 mt-4 md:mt-0">
               <Link 
-                href="/dashboard/api-keys" 
+                href="/dashboard/models" 
                 className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1415,7 +1415,7 @@ export default function Dashboard() {
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">LLM Providers</h2>
               <Link 
-                href="/dashboard/api-keys"
+                href="/dashboard/models"
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1478,7 +1478,7 @@ export default function Dashboard() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
                           <Link
-                            href="/dashboard/api-keys"
+                            href="/dashboard/models"
                             className="text-blue-600 hover:text-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
                           >
                             Configure
@@ -1519,7 +1519,7 @@ export default function Dashboard() {
                   </p>
                   <div className="flex space-x-3">
                     <Link
-                      href="/dashboard/api-keys"
+                      href="/dashboard/models"
                       className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

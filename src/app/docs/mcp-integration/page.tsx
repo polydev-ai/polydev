@@ -398,7 +398,7 @@ const completion = await client.chat.completions.create({
             <span>Create MCP Token</span>
           </a>
           <a 
-            href="/dashboard/api-keys"
+            href="/dashboard/models"
             className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
             <Settings className="w-4 h-4" />

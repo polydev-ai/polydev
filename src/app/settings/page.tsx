@@ -157,10 +157,10 @@ export default function Settings() {
                   </li>
                   <li>
                     <Link 
-                      href="/dashboard/api-keys"
+                      href="/dashboard/models"
                       className="w-full inline-block text-left px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                     >
-                      API Keys
+                      Models
                     </Link>
                   </li>
                   <li>

@@ -79,7 +79,7 @@ export default function Navigation() {
   const authenticatedNavigation = [
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Chat', href: '/chat' },
-    { name: 'API Keys', href: '/dashboard/api-keys' },
+    { name: 'Models', href: '/dashboard/models' },
     { name: 'Documentation', href: '/docs' },
     { name: 'CLI Integration', href: '/cli' },
   ]
@@ -163,11 +163,11 @@ export default function Navigation() {
                         Profile
                       </Link>
                       <Link
-                        href="/dashboard/api-keys"
+                        href="/dashboard/models"
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setUserDropdownOpen(false)}
                       >
-                        API Keys
+                        Models
                       </Link>
                       <Link
                         href="/dashboard/mcp-tokens"
@@ -319,11 +319,11 @@ export default function Navigation() {
                       Profile
                     </Link>
                     <Link
-                      href="/dashboard/api-keys"
+                      href="/dashboard/models"
                       onClick={() => setIsOpen(false)}
                       className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
-                      API Keys
+                      Models
                     </Link>
                     <Link
                       href="/dashboard/mcp-tokens"

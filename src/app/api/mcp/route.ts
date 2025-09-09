@@ -2313,7 +2313,7 @@ ${enabled ? '✅ **Enabled**' : '❌ **Disabled**'} - Check every ${interval_min
 - Installation detection
 - Error diagnostics and resolution hints
 
-**Monitor your CLI status** at: [Polydev Dashboard → API Keys → CLI Providers](https://polydev.com/dashboard/api-keys)`
+**Monitor your CLI status** at: [Polydev Dashboard → API Keys → CLI Providers](https://polydev.com/dashboard/models)`
 }
 
 // Helper function to get default model for a provider
@@ -2542,7 +2542,7 @@ async function searchDocumentation(args: any): Promise<string> {
     {
       title: 'API Configuration',
       content: 'Configure API keys for OpenAI, Anthropic, Google, and other LLM providers.',
-      url: '/dashboard/api-keys'
+      url: '/dashboard/models'
     }
   ]
 

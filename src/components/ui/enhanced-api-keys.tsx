@@ -6,6 +6,7 @@ import { createClient } from '../../app/utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw } from 'lucide-react'
 import { CLINE_PROVIDERS, ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
+// Remove direct import of modelsDevService to avoid server-side imports in client component
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
 interface ApiKey {
@@ -55,11 +56,40 @@ interface CLIProviderInfo {
   description: string
 }
 
+interface ModelsDevProvider {
+  id: string
+  name: string
+  display_name: string
+  description: string
+  logo_url?: string
+  website?: string
+  base_url?: string
+}
+
+interface ModelsDevModel {
+  id: string
+  provider_id: string
+  name: string
+  display_name: string
+  friendly_id: string
+  max_tokens: number
+  context_length: number
+  input_cost_per_million: number
+  output_cost_per_million: number
+  supports_vision: boolean
+  supports_tools: boolean
+  supports_reasoning: boolean
+  reasoning_levels?: number
+}
+
 export default function EnhancedApiKeysPage() {
   const { user, loading: authLoading } = useAuth()
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
   const [providers, setProviders] = useState<ProviderConfig[]>([])
+  const [modelsDevProviders, setModelsDevProviders] = useState<ModelsDevProvider[]>([])
+  const [providerModels, setProviderModels] = useState<Record<string, ModelsDevModel[]>>({})
+  const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,10 +112,106 @@ export default function EnhancedApiKeysPage() {
     default_model: '',
     is_preferred: false,
     additional_models: [] as string[],
-    budget_limit: null as number | null
+    budget_limit: null as number | null,
+    reasoning_level: 5
   })
 
   const supabase = createClient()
+
+  // Get enhanced provider display data by combining CLINE_PROVIDERS with models.dev data
+  const getProviderDisplayData = useCallback((providerId: string) => {
+    const clineProvider = CLINE_PROVIDERS[providerId as keyof typeof CLINE_PROVIDERS]
+    const modelsDevProvider = modelsDevProviders.find(p => p.id === providerId)
+    
+    // If neither exists, return null
+    if (!clineProvider && !modelsDevProvider) return null
+    
+    // If only models.dev provider exists, create a basic provider config
+    if (!clineProvider && modelsDevProvider) {
+      return {
+        name: modelsDevProvider.display_name || modelsDevProvider.name,
+        displayName: modelsDevProvider.display_name || modelsDevProvider.name,
+        description: modelsDevProvider.description,
+        logoUrl: modelsDevProvider.logo_url,
+        websiteUrl: modelsDevProvider.website,
+        baseUrl: modelsDevProvider.base_url || 'https://api.openai.com/v1',
+        modelsDevData: modelsDevProvider
+      }
+    }
+    
+    // If both exist, merge them with models.dev taking precedence for display data
+    return {
+      ...clineProvider,
+      // Use models.dev logo if available, fallback to PROVIDER_ICONS
+      logoUrl: modelsDevProvider?.logo_url || PROVIDER_ICONS[providerId as keyof typeof PROVIDER_ICONS],
+      // Use models.dev display name if available
+      displayName: modelsDevProvider?.display_name || clineProvider.name,
+      // Enhanced description from models.dev
+      enhancedDescription: modelsDevProvider?.description || clineProvider.description,
+      // Website URL from models.dev
+      websiteUrl: modelsDevProvider?.website,
+      // Additional metadata
+      modelsDevData: modelsDevProvider
+    }
+  }, [modelsDevProviders])
+
+  // Fetch and cache models for a specific provider
+  const fetchProviderModels = useCallback(async (providerId: string) => {
+    if (providerModels[providerId] || loadingModels[providerId]) {
+      return providerModels[providerId] || []
+    }
+
+    setLoadingModels(prev => ({ ...prev, [providerId]: true }))
+    
+    try {
+      const response = await fetch(`/api/models-dev/providers?provider=${providerId}&include_models=true`)
+      if (!response.ok) {
+        throw new Error('Failed to fetch models')
+      }
+      const data = await response.json()
+      const models = (data.models || []).map((model: any) => ({
+        id: model.id,
+        provider_id: model.provider_id,
+        name: model.name,
+        display_name: model.display_name,
+        friendly_id: model.friendly_id,
+        max_tokens: model.max_tokens,
+        context_length: model.context_length,
+        input_cost_per_million: model.input_cost_per_million,
+        output_cost_per_million: model.output_cost_per_million,
+        supports_vision: model.supports_vision,
+        supports_tools: model.supports_tools,
+        supports_reasoning: model.supports_reasoning
+      }))
+      
+      setProviderModels(prev => ({ ...prev, [providerId]: models }))
+      setLoadingModels(prev => ({ ...prev, [providerId]: false }))
+      return models
+    } catch (error) {
+      console.warn(`Failed to fetch models for provider ${providerId}:`, error)
+      setLoadingModels(prev => ({ ...prev, [providerId]: false }))
+      return []
+    }
+  }, [providerModels, loadingModels])
+
+  // Get models with pricing and capabilities from models.dev (legacy function for compatibility)
+  const getProviderModelsWithPricing = useCallback(async (providerId: string) => {
+    const models = await fetchProviderModels(providerId)
+    return models.map((model: ModelsDevModel) => ({
+      id: model.id,
+      friendlyId: model.friendly_id,
+      name: model.display_name || model.name,
+      inputPrice: model.input_cost_per_million / 1000, // Convert to per 1K tokens
+      outputPrice: model.output_cost_per_million / 1000,
+      contextLength: model.context_length,
+      supportsVision: model.supports_vision,
+      supportsTools: model.supports_tools,
+      supportsReasoning: model.supports_reasoning,
+      reasoningLevels: model.supports_reasoning ? 5 : null,
+      cacheReadPrice: null, // Will be available from model metadata
+      cacheWritePrice: null
+    }))
+  }, [fetchProviderModels])
 
   // CLI Provider Information
   const CLI_PROVIDERS: CLIProviderInfo[] = [
@@ -140,6 +266,20 @@ export default function EnhancedApiKeysPage() {
         (keysData || []).some(key => key.provider === provider.id)
       )
 
+      // Fetch models.dev providers for enhanced UI data
+      try {
+        const response = await fetch('/api/models-dev/providers')
+        if (response.ok) {
+          const data = await response.json()
+          setModelsDevProviders(data.providers || [])
+        } else {
+          throw new Error('Failed to fetch providers')
+        }
+      } catch (err) {
+        console.warn('Failed to fetch models.dev providers:', err)
+        setModelsDevProviders([])
+      }
+
       setApiKeys(keysData || [])
       setPreferences(prefsError ? null : prefsData)
       setProviders(providersWithKeys)
@@ -158,6 +298,18 @@ export default function EnhancedApiKeysPage() {
       fetchData()
     }
   }, [user])
+
+  // Preload models for existing providers
+  useEffect(() => {
+    if (apiKeys.length > 0) {
+      const uniqueProviders = [...new Set(apiKeys.map(key => key.provider))]
+      uniqueProviders.forEach(provider => {
+        if (!providerModels[provider] && !loadingModels[provider]) {
+          fetchProviderModels(provider)
+        }
+      })
+    }
+  }, [apiKeys, providerModels, loadingModels, fetchProviderModels])
 
   const updatePreferenceOrder = async (newPreferences: Record<string, ModelPreference>) => {
     try {
@@ -293,7 +445,8 @@ export default function EnhancedApiKeysPage() {
         default_model: '',
         is_preferred: false,
         additional_models: [],
-        budget_limit: null
+        budget_limit: null,
+        reasoning_level: 1
       })
     } catch (err: any) {
       setError(err.message)
@@ -379,9 +532,9 @@ export default function EnhancedApiKeysPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">API Keys & Model Preferences</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Models</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-1">
-            Manage your API keys and configure model preferences in one place
+            Configure providers, manage API keys, and access AI models via API keys, CLI, or credits
           </p>
         </div>
         <button
@@ -389,7 +542,7 @@ export default function EnhancedApiKeysPage() {
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
         >
           <Plus className="w-4 h-4" />
-          <span>Add API Key</span>
+          <span>Add Provider</span>
         </button>
       </div>
 
@@ -629,7 +782,8 @@ export default function EnhancedApiKeysPage() {
                                             default_model: key.default_model || '',
                                             is_preferred: key.is_preferred || false,
                                             additional_models: key.additional_models || [],
-                                            budget_limit: key.budget_limit ?? null
+                                            budget_limit: key.budget_limit ?? null,
+                                            reasoning_level: (key as any).reasoning_level || 1
                                           })
                                           setShowAddForm(true)
                                         }}
@@ -677,48 +831,103 @@ export default function EnhancedApiKeysPage() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Provider
                 </label>
-                <select
-                  value={formData.provider}
-                  onChange={(e) => setFormData(prev => ({...prev, provider: e.target.value, default_model: ''}))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-                >
-                  {Object.entries(CLINE_PROVIDERS).map(([id, provider]) => (
-                    <option key={id} value={id}>
-                      {provider.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={formData.provider}
+                    onChange={async (e) => {
+                      const providerId = e.target.value
+                      setFormData(prev => ({...prev, provider: providerId, default_model: '', additional_models: []}))
+                      if (providerId) {
+                        await fetchProviderModels(providerId)
+                      }
+                    }}
+                    className="w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  >
+                    <option value="">Select a provider</option>
+                    {modelsDevProviders.length > 0 ? (
+                      modelsDevProviders.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.display_name || provider.name}
+                        </option>
+                      ))
+                    ) : (
+                      Object.entries(CLINE_PROVIDERS).map(([id, provider]) => (
+                        <option key={id} value={id}>
+                          {provider.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {/* Show selected provider logo */}
+                  {formData.provider && (() => {
+                    const providerData = getProviderDisplayData(formData.provider)
+                    return providerData?.logoUrl && (
+                      <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                        <img 
+                          src={providerData.logoUrl} 
+                          alt={providerData.displayName}
+                          className="w-4 h-4"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                          }}
+                        />
+                      </div>
+                    )
+                  })()}
+                </div>
               </div>
 
               {/* Provider Information */}
-              {formData.provider && CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS] && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
-                      {PROVIDER_ICONS[formData.provider as keyof typeof PROVIDER_ICONS] && (
-                        <img 
-                          src={PROVIDER_ICONS[formData.provider as keyof typeof PROVIDER_ICONS]} 
-                          alt={CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].name}
-                          className="w-6 h-6"
-                        />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                        {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].name}
-                      </h4>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].description}
-                      </p>
-                      <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
-                        <div>API URL: <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].baseUrl}</code></div>
-                        <div className="mt-1">Models: {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].modelCount} available</div>
-                        <div className="mt-1">Auth: {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].authType === 'api_key' ? 'API Key Required' : CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS].authType}</div>
+              {formData.provider && (() => {
+                const providerData = getProviderDisplayData(formData.provider)
+                return providerData && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        {providerData.logoUrl && (
+                          <img 
+                            src={providerData.logoUrl} 
+                            alt={providerData.displayName}
+                            className="w-6 h-6"
+                            onError={(e) => {
+                              // Fallback to Lucide icon if image fails to load
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                          {providerData.displayName}
+                        </h4>
+                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                          {'enhancedDescription' in providerData ? providerData.enhancedDescription : providerData.description}
+                        </p>
+                        <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                          <div>API URL: <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{providerData.baseUrl}</code></div>
+                          <div className="mt-1">Models: {'modelCount' in providerData ? providerData.modelCount : 'Multiple'} available</div>
+                          <div className="mt-1">Auth: {'authType' in providerData ? (providerData.authType === 'api_key' ? 'API Key Required' : providerData.authType) : 'API Key Required'}</div>
+                          {providerData.modelsDevData && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {'supportsVision' in providerData && providerData.supportsVision && <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-1 rounded text-xs">Vision</span>}
+                              {'supportsTools' in providerData && providerData.supportsTools && <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-1 rounded text-xs">Tools</span>}
+                              {'supportsReasoning' in providerData && providerData.supportsReasoning && <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 px-1 rounded text-xs">Reasoning</span>}
+                              {'supportsPromptCaching' in providerData && providerData.supportsPromptCaching && <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-1 rounded text-xs">Cache</span>}
+                            </div>
+                          )}
+                          {providerData.websiteUrl && (
+                            <div className="mt-1">
+                              Website: <a href={providerData.websiteUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-800">
+                                {providerData.websiteUrl.replace(/^https?:\/\//, '')}
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )
+              })()}
 
               {/* API Base URL */}
               <div>
@@ -726,16 +935,24 @@ export default function EnhancedApiKeysPage() {
                   API Base URL
                 </label>
                 <div className="space-y-2">
-                  <input
-                    type="url"
-                    value={formData.api_base || CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.baseUrl || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, api_base: e.target.value}))}
-                    placeholder={CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.baseUrl || 'Enter custom API base URL'}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Default: {CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.baseUrl || 'No default URL'}
-                  </p>
+                  {(() => {
+                    const providerData = getProviderDisplayData(formData.provider)
+                    const defaultBaseUrl = providerData?.baseUrl || CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.baseUrl
+                    return (
+                      <>
+                        <input
+                          type="url"
+                          value={formData.api_base || defaultBaseUrl || ''}
+                          onChange={(e) => setFormData(prev => ({...prev, api_base: e.target.value}))}
+                          placeholder={defaultBaseUrl || 'Enter custom API base URL'}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Default: {defaultBaseUrl || 'No default URL'}
+                        </p>
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
 
@@ -790,13 +1007,57 @@ export default function EnhancedApiKeysPage() {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="">Select model</option>
-                  {Object.keys(CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.supportedModels || {}).map(model => (
-                    <option key={model} value={model}>
-                      {model}
+                  {loadingModels[formData.provider] && (
+                    <option disabled>Loading models...</option>
+                  )}
+                  {(providerModels[formData.provider] || []).map(model => (
+                    <option key={model.id} value={model.id}>
+                      {model.display_name || model.name}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {/* Reasoning Level Slider for Reasoning Models */}
+              {formData.default_model && (() => {
+                const selectedModel = (providerModels[formData.provider] || []).find(m => m.id === formData.default_model)
+                return selectedModel?.supports_reasoning ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Reasoning Level: {formData.reasoning_level}
+                    </label>
+                    <input
+                      type="range"
+                      min="1"
+                      max={selectedModel.reasoning_levels || 5}
+                      value={formData.reasoning_level}
+                      onChange={(e) => setFormData(prev => ({...prev, reasoning_level: parseInt(e.target.value)}))}
+                      className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer dark:bg-orange-700 slider"
+                      style={{
+                        background: `linear-gradient(to right, #ea580c 0%, #ea580c ${((formData.reasoning_level - 1) / ((selectedModel.reasoning_levels || 5) - 1)) * 100}%, #fed7aa ${((formData.reasoning_level - 1) / ((selectedModel.reasoning_levels || 5) - 1)) * 100}%, #fed7aa 100%)`
+                      }}
+                    />
+                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <span>Faster</span>
+                      <span>More thorough</span>
+                    </div>
+                    <div className="mt-2 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <p className="text-xs text-orange-800 dark:text-orange-300">
+                        <strong>⚡ Reasoning Model:</strong> This model supports advanced reasoning. Higher levels provide more thorough analysis but take longer to respond.
+                      </p>
+                      <div className="mt-1 text-xs text-orange-600 dark:text-orange-400">
+                        Level {formData.reasoning_level}: {
+                          formData.reasoning_level === 1 ? "Quick reasoning" :
+                          formData.reasoning_level === 2 ? "Basic reasoning" :
+                          formData.reasoning_level === 3 ? "Moderate reasoning" :
+                          formData.reasoning_level === 4 ? "Deep reasoning" :
+                          "Maximum reasoning"
+                        }
+                      </div>
+                    </div>
+                  </div>
+                ) : null
+              })()}
 
               {/* Make Preferred Toggle */}
               <div className="flex items-center space-x-2">
@@ -824,9 +1085,12 @@ export default function EnhancedApiKeysPage() {
                     onChange={(e) => setFormData(prev => ({...prev, additional_models: Array.from(e.target.selectedOptions, option => option.value)}))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                   >
-                    {Object.keys(CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.supportedModels || {}).map(model => (
-                      <option key={model} value={model} disabled={model === formData.default_model}>
-                        {model}
+                    {loadingModels[formData.provider] && (
+                      <option disabled>Loading models...</option>
+                    )}
+                    {(providerModels[formData.provider] || []).map(model => (
+                      <option key={model.id} value={model.id} disabled={model.id === formData.default_model}>
+                        {model.display_name || model.name}
                       </option>
                     ))}
                   </select>
@@ -884,7 +1148,8 @@ export default function EnhancedApiKeysPage() {
                     default_model: '',
                     is_preferred: false,
                     additional_models: [],
-                    budget_limit: null
+                    budget_limit: null,
+                    reasoning_level: 5
                   })
                 }}
                 className="text-gray-600 dark:text-gray-300 px-4 py-2 hover:text-gray-900 dark:hover:text-white"

@@ -145,7 +145,7 @@ export default function PreferencesPage() {
           General Preferences
         </h1>
         <p className="text-gray-600 dark:text-gray-300 mb-6">
-          Configure your general preferences and MCP client settings. Model preferences are now managed on the <Link href="/dashboard/api-keys" className="text-blue-600 hover:text-blue-800 underline">API Keys page</Link>.
+          Configure your general preferences and MCP client settings. Model preferences are now managed on the <Link href="/dashboard/models" className="text-blue-600 hover:text-blue-800 underline">Models page</Link>.
         </p>
 
         {error && (
@@ -177,7 +177,7 @@ export default function PreferencesPage() {
           </h2>
           
           <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Provider and model preferences are now managed in the <Link href="/dashboard/api-keys" className="text-blue-600 hover:text-blue-800 underline">API Keys page</Link>.
+            Provider and model preferences are now managed in the <Link href="/dashboard/models" className="text-blue-600 hover:text-blue-800 underline">Models page</Link>.
           </div>
 
           {/* Usage Method Preference */}

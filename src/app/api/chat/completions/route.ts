@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     
     // Parse request body - support both OpenAI format and Polydev format
     const body = await request.json()
-    let { messages, model, models, temperature = 0.7, max_tokens, stream = false } = body
+    let { messages, model, models, temperature = 0.7, max_tokens, stream = false, reasoning_effort } = body
     
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ 
@@ -210,24 +210,109 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    // Process requests for each model
+    // Get model mappings for intelligent fallback
+    const { data: modelMappings } = await supabase
+      .from('model_mappings')
+      .select('friendly_id, providers_mapping')
+      .in('friendly_id', targetModels)
+    
+    // Get user credit balance for OpenRouter fallback
+    const { data: userCredits } = await supabase
+      .from('user_credits')
+      .select('balance, promotional_balance')
+      .eq('user_id', user.id)
+      .single()
+    
+    const totalCredits = (parseFloat(userCredits?.balance || '0') + parseFloat(userCredits?.promotional_balance || '0'))
+    
+    // Check which models support reasoning and get their data
+    const modelDataMap = new Map()
+    const modelMappingMap = new Map()
+    
+    for (const modelId of targetModels) {
+      // Store model mapping for this model
+      const mapping = modelMappings?.find(m => m.friendly_id === modelId)
+      if (mapping) {
+        modelMappingMap.set(modelId, mapping.providers_mapping)
+      }
+      
+      try {
+        const response = await fetch(`${request.nextUrl.origin}/api/models-dev/providers?models_only=true&model_id=${encodeURIComponent(modelId)}`)
+        if (response.ok) {
+          const data = await response.json()
+          const modelData = data.models?.find((m: any) => m.id === modelId)
+          if (modelData) {
+            modelDataMap.set(modelId, modelData)
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to fetch model data for ${modelId}:`, error)
+      }
+    }
+
+    // Process requests for each model with intelligent fallback
     const responses = await Promise.all(
       targetModels.map(async (modelId: string) => {
-        const provider = getProviderFromModel(modelId)
-        const providerConfig = providerConfigs[provider]
+        const modelMapping = modelMappingMap.get(modelId)
+        const modelData = modelDataMap.get(modelId)
         
-        if (!providerConfig) {
+        // Determine the best provider using intelligent fallback
+        let selectedProvider: string | null = null
+        let selectedConfig: any = null
+        let fallbackMethod: 'cli' | 'api' | 'credits' = 'api'
+        let actualModelId = modelId
+        
+        // Priority 1: CLI Tools (if available and user preference allows)
+        if (preferences.usage_preference !== 'api_keys' && preferences.usage_preference !== 'credits') {
+          const provider = getProviderFromModel(modelId)
+          if (providerConfigs[provider]?.type === 'cli') {
+            selectedProvider = provider
+            selectedConfig = providerConfigs[provider]
+            fallbackMethod = 'cli'
+          }
+        }
+        
+        // Priority 2: Direct API Keys (if CLI not available or preference set)
+        if (!selectedProvider && preferences.usage_preference !== 'cli' && preferences.usage_preference !== 'credits') {
+          const provider = getProviderFromModel(modelId)
+          if (providerConfigs[provider]?.type === 'api') {
+            selectedProvider = provider
+            selectedConfig = providerConfigs[provider]
+            fallbackMethod = 'api'
+          }
+        }
+        
+        // Priority 3: Credits via OpenRouter (fallback)
+        if (!selectedProvider && totalCredits > 0) {
+          if (modelMapping?.openrouter) {
+            selectedProvider = 'openrouter'
+            selectedConfig = {
+              type: 'credits',
+              apiKey: process.env.OPENROUTER_API_KEY || 'fallback-credits-key'
+            }
+            actualModelId = modelMapping.openrouter.api_model_id
+            fallbackMethod = 'credits'
+          }
+        }
+        
+        if (!selectedProvider || !selectedConfig) {
+          let errorMessage = `No provider available for model: ${modelId}`
+          if (totalCredits <= 0 && !Object.keys(providerConfigs).length) {
+            errorMessage += '. No API keys configured and insufficient credits.'
+          }
+          
           return {
             model: modelId,
-            error: `No CLI provider or API key configured for provider: ${provider}`,
-            usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+            error: errorMessage,
+            usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+            fallback_method: 'none'
           }
         }
         
         try {
           let response
           
-          if (providerConfig.type === 'cli') {
+          if (selectedConfig.type === 'cli') {
             // Use CLI provider through existing handler
             const cliProviderMap: Record<string, string> = {
               'claude_code': 'claude-code',
@@ -235,98 +320,91 @@ export async function POST(request: NextRequest) {
               'gemini_cli': 'gemini-cli'
             }
             
-            const handlerName = cliProviderMap[providerConfig.cliProvider]
+            const handlerName = cliProviderMap[selectedConfig.cliProvider]
             if (!handlerName) {
-              throw new Error(`Unsupported CLI provider: ${providerConfig.cliProvider}`)
+              throw new Error(`Unsupported CLI provider: ${selectedConfig.cliProvider}`)
             }
             
             const handler = apiManager.getHandler(handlerName)
-            response = await handler.createMessage({
+            const messageParams: any = {
               messages: messages.map((msg: any) => ({
                 role: msg.role,
                 content: msg.content
               })),
-              model: modelId,
+              model: actualModelId,
               temperature,
               maxTokens: max_tokens,
               apiKey: '' // CLI handlers don't use API keys
-            })
+            }
+            
+            // Add reasoning effort for reasoning models
+            if (modelData?.supports_reasoning && reasoning_effort) {
+              messageParams.reasoning_effort = reasoning_effort
+            }
+            
+            response = await handler.createMessage(messageParams)
             
             const responseData = await response.json()
             return {
               model: modelId,
               content: responseData.content?.[0]?.text || responseData.choices?.[0]?.message?.content || '',
               usage: responseData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-              provider: `${provider} (CLI)`
+              provider: `${selectedProvider} (CLI)`,
+              fallback_method: fallbackMethod
             }
-          } else {
-            // Use API key provider (existing logic)
+          } else if (selectedConfig.type === 'api') {
+            // Use API key provider
             const apiOptions: any = {
               messages: messages.map((msg: any) => ({
                 role: msg.role,
                 content: msg.content
               })),
-              model: modelId,
+              model: actualModelId,
               temperature,
               maxTokens: max_tokens,
               stream: false,
-              apiKey: providerConfig.apiKey
+              apiKey: selectedConfig.apiKey
+            }
+            
+            // Add reasoning effort for reasoning models
+            if (modelData?.supports_reasoning && reasoning_effort) {
+              apiOptions.reasoning_effort = reasoning_effort
             }
             
             // Use provider configuration for correct baseUrl property name
-            const apiProviderConfig = apiManager.getProviderConfiguration(provider)
-            if (providerConfig.baseUrl && apiProviderConfig) {
+            const apiProviderConfig = apiManager.getProviderConfiguration(selectedProvider)
+            if (selectedConfig.baseUrl && apiProviderConfig) {
               // Set the baseUrl using the provider's expected property name
               if (apiProviderConfig.baseUrlProperty) {
-                apiOptions[apiProviderConfig.baseUrlProperty] = providerConfig.baseUrl
+                apiOptions[apiProviderConfig.baseUrlProperty] = selectedConfig.baseUrl
               } else {
                 // Fallback to common patterns
-                switch (provider) {
+                switch (selectedProvider) {
                   case 'openai':
                   case 'groq':
                   case 'deepseek':
                   case 'xai':
-                    apiOptions.openAiBaseUrl = providerConfig.baseUrl
+                    apiOptions.openAiBaseUrl = selectedConfig.baseUrl
                     break
                   case 'anthropic':
-                    apiOptions.anthropicBaseUrl = providerConfig.baseUrl
+                    apiOptions.anthropicBaseUrl = selectedConfig.baseUrl
                     break
                   case 'gemini':
                   case 'google':
-                    apiOptions.googleBaseUrl = providerConfig.baseUrl
+                    apiOptions.googleBaseUrl = selectedConfig.baseUrl
                     break
                   default:
-                    apiOptions.openAiBaseUrl = providerConfig.baseUrl
+                    apiOptions.openAiBaseUrl = selectedConfig.baseUrl
                 }
               }
             }
             
-            // Get estimated token count before request
-            const estimatedTokens = apiManager.getTokenCount(provider, apiOptions)
-            console.log(`Estimated tokens for ${provider}:`, estimatedTokens)
-            
-            // Check rate limit status
-            const rateLimitStatus = apiManager.getRateLimitStatus(provider)
-            if (rateLimitStatus) {
-              console.log(`Rate limit status for ${provider}:`, rateLimitStatus)
-            }
-            
             // Make API call through enhanced provider system
-            response = await apiManager.createMessage(provider, apiOptions)
+            response = await apiManager.createMessage(selectedProvider, apiOptions)
             const result = await response.json()
             
             if (!response.ok) {
               throw new Error(result.error?.message || 'API call failed')
-            }
-            
-            // Validate response using comprehensive validator
-            const validation = apiManager.validateResponse(result, provider, modelId)
-            if (!validation.isValid) {
-              console.warn(`Response validation failed for ${provider}:`, validation.errors)
-            }
-            
-            if (validation.warnings.length > 0) {
-              console.warn(`Response validation warnings for ${provider}:`, validation.warnings)
             }
             
             // Extract content based on provider format
@@ -343,17 +421,76 @@ export async function POST(request: NextRequest) {
               model: modelId,
               content: content,
               usage: result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-              provider: `${provider} (API)`
+              provider: `${selectedProvider} (API)`,
+              fallback_method: fallbackMethod
+            }
+          } else {
+            // Use credits via OpenRouter
+            const apiOptions: any = {
+              messages: messages.map((msg: any) => ({
+                role: msg.role,
+                content: msg.content
+              })),
+              model: actualModelId,
+              temperature,
+              maxTokens: max_tokens,
+              stream: false,
+              apiKey: selectedConfig.apiKey,
+              openAiBaseUrl: 'https://openrouter.ai/api/v1'
+            }
+            
+            // Add reasoning effort for reasoning models if supported
+            if (modelData?.supports_reasoning && reasoning_effort && modelMapping?.openrouter?.capabilities?.reasoning_levels) {
+              apiOptions.reasoning_effort = reasoning_effort
+            }
+            
+            // Make API call through OpenRouter
+            response = await apiManager.createMessage('openai', apiOptions) // Use openai handler for OpenRouter compatibility
+            const result = await response.json()
+            
+            if (!response.ok) {
+              throw new Error(result.error?.message || 'Credits API call failed')
+            }
+            
+            // Deduct credits based on usage (simplified - you may want more sophisticated cost calculation)
+            const usageTokens = result.usage?.total_tokens || 0
+            const costEstimate = (usageTokens / 1000000) * (modelMapping.openrouter?.cost?.input || 1)
+            
+            if (costEstimate > 0 && userCredits) {
+              await supabase
+                .from('user_credits')
+                .update({ 
+                  balance: Math.max(0, parseFloat(userCredits.balance) - costEstimate).toFixed(6)
+                })
+                .eq('user_id', user.id)
+            }
+            
+            // Extract content
+            let content = ''
+            if (result.content?.[0]?.text) {
+              content = result.content[0].text
+            } else if (result.choices?.[0]?.message?.content) {
+              content = result.choices[0].message.content
+            }
+            
+            return {
+              model: modelId,
+              content: content,
+              usage: result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+              provider: `OpenRouter (Credits)`,
+              fallback_method: fallbackMethod,
+              credits_used: costEstimate
             }
           }
         } catch (error: any) {
-          console.error(`Error with ${provider} for model ${modelId}:`, error)
+          console.error(`Error with ${selectedProvider} for model ${modelId}:`, error)
           return {
             model: modelId,
             content: '',
             error: error.message,
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-            provider: providerConfig.type === 'cli' ? `${provider} (CLI)` : `${provider} (API)`
+            provider: `${selectedProvider} (${fallbackMethod.toUpperCase()})`,
+            fallback_method: fallbackMethod
           }
         }
       })
