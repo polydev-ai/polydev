@@ -441,6 +441,232 @@
           }
         }
       ]
+    },
+    {
+      "name": "polydev.detect_memory_sources",
+      "description": "Detect all available memory sources across CLI tools (Claude Code, Cline, Codex, Cursor, Continue, Aider). Returns file paths for global memory, project memory, and recent conversations.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_path": {
+            "type": "string",
+            "description": "Project directory path to scan for memory sources",
+            "default": "."
+          },
+          "cli_tools": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["claude_code", "cline", "codex_cli", "cursor", "continue", "aider", "generic", "all"]
+            },
+            "description": "CLI tools to detect memory for",
+            "default": ["all"]
+          },
+          "memory_types": {
+            "type": "array", 
+            "items": {
+              "type": "string",
+              "enum": ["global", "project", "conversation", "config"]
+            },
+            "description": "Types of memory to detect",
+            "default": ["global", "project", "conversation"]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object", 
+              "properties": {
+                "cli_tool": { "type": "string" },
+                "memory_type": { "type": "string" },
+                "file_path": { "type": "string" },
+                "exists": { "type": "boolean" },
+                "size_bytes": { "type": "number" },
+                "last_modified": { "type": "string" }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "total_sources": { "type": "number" },
+              "sources_by_tool": { "type": "object" },
+              "sources_by_type": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "polydev.extract_memory", 
+      "description": "Extract and optionally encrypt memory content from detected CLI tool sources. Provides TF-IDF relevance scoring and content analysis.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token for server storage",
+            "minLength": 1
+          },
+          "project_path": {
+            "type": "string", 
+            "description": "Project directory path",
+            "default": "."
+          },
+          "cli_tools": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["all"]
+          },
+          "memory_types": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["global", "project", "conversation"]
+          },
+          "encryption_enabled": { 
+            "type": "boolean", 
+            "description": "Enable zero-knowledge encryption for extracted content",
+            "default": true 
+          },
+          "max_file_size_kb": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 500
+          },
+          "relevance_threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.3
+          }
+        },
+        "required": ["user_token"]
+      }
+    },
+    {
+      "name": "polydev.get_recent_conversations",
+      "description": "Get recent conversations from CLI tools with TF-IDF relevance scoring against query context. Supports encrypted storage and retrieval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token",
+            "minLength": 1
+          },
+          "query_context": { 
+            "type": "string", 
+            "description": "Current query for relevance scoring and context matching"
+          },
+          "limit": { 
+            "type": "integer", 
+            "minimum": 1, 
+            "maximum": 50, 
+            "default": 6 
+          },
+          "cli_tools": { 
+            "type": "array", 
+            "items": { "type": "string" },
+            "default": ["all"] 
+          },
+          "time_range_hours": { 
+            "type": "integer", 
+            "minimum": 1, 
+            "maximum": 168, 
+            "default": 24 
+          },
+          "project_path": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": ["user_token"]
+      }
+    },
+    {
+      "name": "polydev.get_memory_context",
+      "description": "Get formatted memory and conversation context for injection into prompts. Automatically handles decryption and relevance scoring.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token", 
+            "minLength": 1
+          },
+          "query_context": {
+            "type": "string",
+            "description": "Query to find relevant memory and conversations for"
+          },
+          "max_memory_kb": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50
+          },
+          "max_conversations": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 6
+          },
+          "cli_tools": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["all"]
+          },
+          "memory_types": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["project", "conversation"]
+          }
+        },
+        "required": ["user_token"]
+      }
+    },
+    {
+      "name": "polydev.manage_memory_preferences", 
+      "description": "Configure memory extraction and privacy preferences. Control which CLI tools and memory types are enabled, encryption settings, and context injection behavior.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": ["get", "update"],
+            "description": "Action to perform",
+            "default": "get"
+          },
+          "preferences": {
+            "type": "object",
+            "description": "Memory preferences to update",
+            "properties": {
+              "memory_enabled": { "type": "boolean" },
+              "privacy_mode": { "type": "boolean" },
+              "auto_extraction": { "type": "boolean" },
+              "cli_tools_enabled": { "type": "object" },
+              "memory_types_enabled": { "type": "object" },
+              "auto_inject_context": { "type": "boolean" },
+              "context_relevance_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+              "max_conversations_inject": { "type": "integer" },
+              "max_memory_inject_kb": { "type": "integer" },
+              "key_rotation_days": { "type": "integer" },
+              "cache_ttl_minutes": { "type": "integer" }
+            }
+          }
+        },
+        "required": ["user_token"]
+      }
     }
   ],
   "configuration": {

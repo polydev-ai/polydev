@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
-import { Clock, MessageSquare, Folder, Tag, Search, Trash2, RefreshCw } from 'lucide-react'
+import { Clock, MessageSquare, Folder, Tag, Search, Trash2, RefreshCw, Shield, Key, Database, AlertTriangle, CheckCircle } from 'lucide-react'
 
 interface ConversationMemory {
   id: string
@@ -41,7 +41,7 @@ export default function MemoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedMemory, setSelectedMemory] = useState<ConversationMemory | ProjectMemory | null>(null)
   const [showModal, setShowModal] = useState(false)
-  const [isFeatureDisabled] = useState(true) // Feature flag to disable memory features
+  const [isFeatureDisabled] = useState(false) // Enable zero-knowledge memory features
 
   useEffect(() => {
     if (user && !isFeatureDisabled) {
@@ -154,11 +154,12 @@ export default function MemoryPage() {
     return (
       <div className="max-w-7xl mx-auto p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-            Memory Management
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+            <Shield className="w-8 h-8 mr-3 text-blue-500" />
+            Zero-Knowledge Memory Management
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            View and manage your stored conversation history and project memories
+            Securely manage CLI tool memories with enterprise-grade client-side encryption
           </p>
         </div>
 
@@ -215,11 +216,12 @@ export default function MemoryPage() {
   return (
     <div className="max-w-7xl mx-auto p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          Memory Management
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 flex items-center">
+          <Shield className="w-8 h-8 mr-3 text-blue-500" />
+          Zero-Knowledge Memory Management
         </h1>
         <p className="text-lg text-gray-600 dark:text-gray-400">
-          View and manage your stored conversation history and project memories
+          Securely manage CLI tool memories with enterprise-grade client-side encryption
         </p>
       </div>
 

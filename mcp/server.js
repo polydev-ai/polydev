@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const CLIManager = require('../lib/cliManager').default;
+const UniversalMemoryExtractor = require('../src/lib/universalMemoryExtractor').UniversalMemoryExtractor;
 
 class MCPServer {
   constructor() {
@@ -14,6 +15,7 @@ class MCPServer {
     
     this.tools = new Map();
     this.cliManager = new CLIManager();
+    this.memoryExtractor = new UniversalMemoryExtractor();
     this.loadManifest();
   }
 
@@ -136,6 +138,26 @@ class MCPServer {
           result = await this.sendCliPrompt(args);
           break;
         
+        case 'polydev.detect_memory_sources':
+          result = await this.detectMemorySources(args);
+          break;
+        
+        case 'polydev.extract_memory':
+          result = await this.extractMemory(args);
+          break;
+        
+        case 'polydev.get_recent_conversations':
+          result = await this.getRecentConversations(args);
+          break;
+        
+        case 'polydev.get_memory_context':
+          result = await this.getMemoryContext(args);
+          break;
+        
+        case 'polydev.manage_memory_preferences':
+          result = await this.manageMemoryPreferences(args);
+          break;
+        
         default:
           throw new Error(`Tool ${name} not implemented`);
       }
@@ -172,6 +194,30 @@ class MCPServer {
       throw new Error('prompt is required and must be a string');
     }
 
+    // Auto-inject memory context if enabled and not already provided
+    let enhancedPrompt = args.prompt;
+    if (!args.project_memory && args.auto_inject_memory !== false) {
+      try {
+        console.error('[Polydev MCP] Attempting to inject memory context...');
+        const memoryContext = await this.getMemoryContext({
+          prompt: args.prompt,
+          cli_tools: ['all'],
+          max_entries: 3
+        });
+        
+        if (memoryContext.success && memoryContext.context.entries.length > 0) {
+          const contextText = memoryContext.context.entries
+            .map(entry => `[${entry.source}] ${entry.content.substring(0, 500)}`)
+            .join('\n\n');
+          
+          enhancedPrompt = `Context from previous work:\n${contextText}\n\nCurrent request:\n${args.prompt}`;
+          console.error(`[Polydev MCP] Injected ${memoryContext.context.entries.length} memory entries`);
+        }
+      } catch (error) {
+        console.error('[Polydev MCP] Memory injection failed, continuing without:', error.message);
+      }
+    }
+
     // Support both parameter token (Claude Code) and environment token (Cline)
     const userToken = args.user_token || process.env.POLYDEV_USER_TOKEN;
     
@@ -204,7 +250,11 @@ class MCPServer {
         method: 'tools/call',
         params: {
           name: 'get_perspectives',
-          arguments: args
+          arguments: {
+            ...args,
+            prompt: enhancedPrompt,
+            project_memory: enhancedPrompt !== args.prompt ? 'auto-injected' : args.project_memory
+          }
         },
         id: 1
       })
@@ -256,6 +306,13 @@ class MCPServer {
       
       case 'polydev.send_cli_prompt':
         return this.formatCliPromptResponse(result);
+      
+      case 'polydev.detect_memory_sources':
+      case 'polydev.extract_memory':
+      case 'polydev.get_recent_conversations':
+      case 'polydev.get_memory_context':
+      case 'polydev.manage_memory_preferences':
+        return this.formatMemoryResponse(result);
       
       default:
         return JSON.stringify(result, null, 2);
@@ -534,6 +591,281 @@ class MCPServer {
         timestamp: new Date().toISOString()
       };
     }
+  }
+
+  /**
+   * Detect available memory sources across CLI tools
+   */
+  async detectMemorySources(args) {
+    console.log('[MCP Server] Detect memory sources requested');
+    
+    try {
+      const { cli_tools = ['all'] } = args;
+      
+      const sources = await this.memoryExtractor.detectMemorySources(cli_tools);
+      
+      return {
+        success: true,
+        sources,
+        message: `Detected ${Object.keys(sources).length} memory sources`,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('[MCP Server] Memory detection error:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Extract memory from detected sources
+   */
+  async extractMemory(args) {
+    console.log('[MCP Server] Extract memory requested');
+    
+    try {
+      const { cli_tools = ['all'], memory_types = ['all'], project_path } = args;
+      
+      const extractedMemory = await this.memoryExtractor.extractMemory({
+        cliTools: cli_tools,
+        memoryTypes: memory_types,
+        projectPath: project_path
+      });
+      
+      return {
+        success: true,
+        memory: extractedMemory,
+        message: `Extracted ${extractedMemory.totalEntries} memory entries`,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('[MCP Server] Memory extraction error:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Get recent conversations from CLI tools
+   */
+  async getRecentConversations(args) {
+    console.log('[MCP Server] Get recent conversations requested');
+    
+    try {
+      const { cli_tools = ['all'], limit = 10, project_path } = args;
+      
+      const conversations = await this.memoryExtractor.getRecentConversations({
+        cliTools: cli_tools,
+        limit,
+        projectPath: project_path
+      });
+      
+      return {
+        success: true,
+        conversations,
+        message: `Retrieved ${conversations.length} recent conversations`,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('[MCP Server] Conversation retrieval error:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Get relevant memory context for current prompt
+   */
+  async getMemoryContext(args) {
+    console.log('[MCP Server] Get memory context requested');
+    
+    try {
+      const { prompt, cli_tools = ['all'], max_entries = 5, project_path } = args;
+      
+      if (!prompt) {
+        throw new Error('prompt is required for context retrieval');
+      }
+      
+      const context = await this.memoryExtractor.getRelevantContext({
+        prompt,
+        cliTools: cli_tools,
+        maxEntries: max_entries,
+        projectPath: project_path
+      });
+      
+      return {
+        success: true,
+        context,
+        message: `Found ${context.entries.length} relevant context entries`,
+        relevanceScore: context.averageRelevance,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('[MCP Server] Context retrieval error:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Manage memory preferences and settings
+   */
+  async manageMemoryPreferences(args) {
+    console.log('[MCP Server] Manage memory preferences requested');
+    
+    try {
+      const { action = 'get', preferences = {} } = args;
+      
+      let result;
+      
+      switch (action) {
+        case 'get':
+          result = await this.memoryExtractor.getPreferences();
+          break;
+        
+        case 'set':
+          result = await this.memoryExtractor.updatePreferences(preferences);
+          break;
+        
+        case 'reset':
+          result = await this.memoryExtractor.resetPreferences();
+          break;
+        
+        default:
+          throw new Error(`Unknown action: ${action}`);
+      }
+      
+      return {
+        success: true,
+        preferences: result,
+        message: `Memory preferences ${action} completed`,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('[MCP Server] Preferences management error:', error);
+      return {
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Format memory tool responses
+   */
+  formatMemoryResponse(result) {
+    if (!result.success) {
+      return `❌ Memory Operation Failed: ${result.error}`;
+    }
+
+    let formatted = `# Memory Operation Results\n\n`;
+    formatted += `✅ ${result.message}\n`;
+    formatted += `⏰ ${result.timestamp}\n\n`;
+
+    // Format specific results based on operation type
+    if (result.sources) {
+      formatted += this.formatMemorySourcesResult(result.sources);
+    } else if (result.memory) {
+      formatted += this.formatExtractedMemoryResult(result.memory);
+    } else if (result.conversations) {
+      formatted += this.formatConversationsResult(result.conversations);
+    } else if (result.context) {
+      formatted += this.formatContextResult(result.context, result.relevanceScore);
+    } else if (result.preferences) {
+      formatted += this.formatPreferencesResult(result.preferences);
+    }
+
+    return formatted;
+  }
+
+  formatMemorySourcesResult(sources) {
+    let formatted = `## 📁 Memory Sources Detected\n\n`;
+    
+    Object.entries(sources).forEach(([cliTool, toolSources]) => {
+      formatted += `### ${cliTool.toUpperCase().replace('_', ' ')}\n`;
+      
+      Object.entries(toolSources).forEach(([memoryType, files]) => {
+        const icon = memoryType === 'global' ? '🌍' : memoryType === 'project' ? '📂' : '💬';
+        formatted += `${icon} **${memoryType}**: ${files.length} sources\n`;
+        
+        files.forEach(file => {
+          const status = file.exists ? '✅' : '❌';
+          formatted += `  ${status} \`${file.path}\`\n`;
+        });
+      });
+      
+      formatted += `\n`;
+    });
+    
+    return formatted;
+  }
+
+  formatExtractedMemoryResult(memory) {
+    let formatted = `## 🧠 Extracted Memory\n\n`;
+    formatted += `📊 **Total Entries**: ${memory.totalEntries}\n`;
+    formatted += `💾 **Total Size**: ${(memory.totalSize / 1024).toFixed(1)}KB\n\n`;
+    
+    Object.entries(memory.byCliTool).forEach(([cliTool, toolMemory]) => {
+      formatted += `### ${cliTool.toUpperCase().replace('_', ' ')}\n`;
+      formatted += `- Global: ${toolMemory.global.length} entries\n`;
+      formatted += `- Project: ${toolMemory.project.length} entries\n`;
+      formatted += `- Conversations: ${toolMemory.conversations.length} entries\n\n`;
+    });
+    
+    return formatted;
+  }
+
+  formatConversationsResult(conversations) {
+    let formatted = `## 💬 Recent Conversations\n\n`;
+    
+    conversations.forEach((conv, index) => {
+      formatted += `### ${index + 1}. ${conv.cliTool.toUpperCase().replace('_', ' ')}\n`;
+      formatted += `📅 ${new Date(conv.timestamp).toLocaleString()}\n`;
+      formatted += `💭 ${conv.messageCount} messages, ${(conv.size / 1024).toFixed(1)}KB\n`;
+      
+      if (conv.topics && conv.topics.length > 0) {
+        formatted += `🏷️ Topics: ${conv.topics.join(', ')}\n`;
+      }
+      
+      formatted += `\n`;
+    });
+    
+    return formatted;
+  }
+
+  formatContextResult(context, relevanceScore) {
+    let formatted = `## 🎯 Relevant Context\n\n`;
+    formatted += `📊 **Average Relevance**: ${(relevanceScore * 100).toFixed(1)}%\n\n`;
+    
+    context.entries.forEach((entry, index) => {
+      formatted += `### ${index + 1}. ${entry.source} (${(entry.relevance * 100).toFixed(1)}%)\n`;
+      formatted += `${entry.content.substring(0, 200)}...\n\n`;
+    });
+    
+    return formatted;
+  }
+
+  formatPreferencesResult(preferences) {
+    let formatted = `## ⚙️ Memory Preferences\n\n`;
+    
+    Object.entries(preferences).forEach(([key, value]) => {
+      formatted += `- **${key}**: ${typeof value === 'object' ? JSON.stringify(value) : value}\n`;
+    });
+    
+    return formatted;
   }
 
   // CLI status and usage tracking is handled locally by CLIManager
