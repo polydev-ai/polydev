@@ -90,7 +90,7 @@ export default function Documentation() {
       const response = await fetch(filePath)
       if (response.ok) {
         const markdown = await response.text()
-        const html = marked(markdown)
+        const html = await marked(markdown)
         setContent(html)
       } else {
         setContent('<p>Documentation content not found. Please check back later.</p>')
