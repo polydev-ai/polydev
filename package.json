@@ -1,6 +1,6 @@
 {
   "name": "polydev-perspectives-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Agentic workflow assistant with CLI integration - get diverse perspectives from multiple LLMs when stuck or need enhanced reasoning",
   "keywords": [
     "mcp",
@@ -23,8 +23,7 @@
   "files": [
     "mcp/",
     "lib/",
-    "src/",
-    "*.md",
+    "README.md",
     "LICENSE"
   ],
   "scripts": {
