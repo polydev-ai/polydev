@@ -87,7 +87,7 @@ export default function Documentation() {
 
     setLoading(true)
     try {
-      const response = await fetch(filePath)
+      const response = await fetch(`/api/docs?path=${encodeURIComponent(filePath)}`)
       if (response.ok) {
         const markdown = await response.text()
         const html = await marked(markdown)
