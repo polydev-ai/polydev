@@ -145,6 +145,10 @@ export class UniversalMemoryExtractor {
       config: ['.aider.conf.yml']
     },
     generic: {
+      global: [
+        '~/.ai/global_memory.md',
+        '~/.ai/config.json'
+      ],
       project: [
         'ai_memory.md',
         'project_context.md',
@@ -155,7 +159,8 @@ export class UniversalMemoryExtractor {
         'ai_conversations.json',
         '.ai/history.json',
         'chat_history.json'
-      ]
+      ],
+      config: ['~/.ai/config.json']
     }
   };
 

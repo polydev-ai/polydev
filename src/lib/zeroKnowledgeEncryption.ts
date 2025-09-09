@@ -197,9 +197,9 @@ export class ZeroKnowledgeEncryption {
     const authTag = encryptedArray.slice(-ZeroKnowledgeEncryption.AUTH_TAG_LENGTH);
 
     return {
-      ciphertext: this.arrayBufferToBase64(ciphertext),
-      iv: this.arrayBufferToBase64(iv),
-      authTag: this.arrayBufferToBase64(authTag),
+      ciphertext: this.arrayBufferToBase64(ciphertext.buffer),
+      iv: this.arrayBufferToBase64(iv.buffer),
+      authTag: this.arrayBufferToBase64(authTag.buffer),
       keyId: this.activeKey.keyId,
       version: 1
     };
