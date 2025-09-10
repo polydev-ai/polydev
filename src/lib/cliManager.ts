@@ -232,14 +232,10 @@ export class CLIManager {
     // Parse different CLI authentication outputs
     switch (providerId) {
       case 'claude_code':
-        return !authOutput.includes('not authenticated') && 
-               !authOutput.includes('please log in') &&
-               (authOutput.includes('authenticated') || authOutput.includes('logged in'));
+        return authOutput.includes('authenticated');
       
       case 'codex_cli':
-        return !authOutput.includes('not authenticated') && 
-               !authOutput.includes('please authenticate') &&
-               (authOutput.includes('authenticated') || authOutput.includes('logged in'));
+        return authOutput.includes('logged in using');
       
       case 'gemini_cli':
         return !authOutput.includes('not authenticated') && 

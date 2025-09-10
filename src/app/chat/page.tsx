@@ -265,73 +265,43 @@ export default function Chat() {
               )}
               
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {(() => {
-                  // Group dashboard models by tier
-                  const modelsByTier = dashboardModels.reduce((acc, model) => {
-                    if (!acc[model.tier]) {
-                      acc[model.tier] = []
-                    }
-                    acc[model.tier].push(model)
-                    return acc
-                  }, {} as Record<string, DashboardModel[]>)
-
-                  return ['cli', 'api', 'credits'].map((tier) => {
-                    const models = modelsByTier[tier] || []
-                    if (models.length === 0) return null
-
-                    return (
-                      <div key={tier} className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTierBadgeColor(tier as 'cli' | 'api' | 'credits')}`}>
-                            {getTierLabel(tier as 'cli' | 'api' | 'credits')}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {dashboardModels.map((model) => (
+                    <label key={model.id} className="flex items-start space-x-3 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={selectedModels.includes(model.id)}
+                        onChange={() => toggleModel(model.id)}
+                        className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {model.name}
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {tier === 'cli' ? 'Highest priority - CLI available' : 
-                             tier === 'api' ? 'API key required' : 
-                             'Credit-based or free'}
-                          </span>
+                          {model.features?.supportsImages && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+                              Vision
+                            </span>
+                          )}
+                          {model.features?.supportsReasoning && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
+                              Reasoning
+                            </span>
+                          )}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {models.map((model) => (
-                            <label key={model.id} className="flex items-start space-x-3 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors">
-                              <input
-                                type="checkbox"
-                                checked={selectedModels.includes(model.id)}
-                                onChange={() => toggleModel(model.id)}
-                                className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                    {model.name}
-                                  </span>
-                                  {model.features?.supportsImages && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
-                                      Vision
-                                    </span>
-                                  )}
-                                  {model.features?.supportsReasoning && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
-                                      Reasoning
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                  {model.providerName} • {model.contextWindow ? `${(model.contextWindow / 1000).toFixed(0)}K context` : 'Standard'}
-                                </div>
-                                {model.price && (
-                                  <div className="text-xs text-gray-400 dark:text-gray-500">
-                                    ${model.price.input}/1M in • ${model.price.output}/1M out
-                                  </div>
-                                )}
-                              </div>
-                            </label>
-                          ))}
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          {model.providerName} • {model.contextWindow ? `${(model.contextWindow / 1000).toFixed(0)}K context` : 'Standard'}
                         </div>
+                        {model.price && (
+                          <div className="text-xs text-gray-400 dark:text-gray-500">
+                            ${model.price.input}/1M in • ${model.price.output}/1M out
+                          </div>
+                        )}
                       </div>
-                    )
-                  }).filter(Boolean)
-                })()}
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           )}
