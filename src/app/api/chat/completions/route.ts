@@ -99,7 +99,7 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
         
         // Sort providers by user's preference order
         const sortedProviders = Object.entries(modelPrefs)
-          .sort(([,a], [,b]) => (a.order || 999) - (b.order || 999))
+          .sort(([,a], [,b]) => ((a as any)?.order || 999) - ((b as any)?.order || 999))
         
         for (const [providerKey, providerConfig] of sortedProviders) {
           // Check if this provider supports the requested model and user has it in their preferences
@@ -107,7 +107,7 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
             mp.provider_id === providerKey || mp.provider_name?.toLowerCase() === providerKey.toLowerCase()
           )
           
-          if (isProviderInRegistry && providerConfig.models?.includes(model)) {
+          if (isProviderInRegistry && (providerConfig as any)?.models?.includes(model)) {
             console.log(`Found user preferred provider for ${model}: ${providerKey}`)
             return providerKey
           }
@@ -121,10 +121,7 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
     return firstProvider.provider_id
   } catch (error) {
     console.warn(`Failed to lookup provider for model ${model}:`, error)
-    // Try to suggest similar models if the exact model is not found
-    if (modelProviders.length === 0) {
-      console.log(`Model ${model} not found in models_registry. Consider checking for similar models or updating the registry.`)
-    }
+    console.log(`Model ${model} not found in models_registry. Consider checking for similar models or updating the registry.`)
     return 'openai' // Fallback to OpenAI
   }
 }
