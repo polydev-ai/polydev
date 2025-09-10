@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-import { getAvailableModels, getAllAvailableModels, getDefaultSelectedModels, getModelById, type AvailableModel, type ModelsByTier } from '../../utils/modelUtils'
+import { useDashboardModels, type DashboardModel } from '../../hooks/useDashboardModels'
 
 interface Message {
   id: string
@@ -14,19 +14,43 @@ interface Message {
 
 export default function Chat() {
   const { user, loading, isAuthenticated } = useAuth()
+  const { models: dashboardModels, loading: modelsLoading, error: modelsError, hasModels } = useDashboardModels()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedModels, setSelectedModels] = useState<string[]>(() => getDefaultSelectedModels())
-  const [modelsByTier, setModelsByTier] = useState<ModelsByTier | null>(null)
+  const [selectedModels, setSelectedModels] = useState<string[]>([])
   const [showModelSelector, setShowModelSelector] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Load available models on component mount
+  // Set default selected models when dashboard models load
   useEffect(() => {
-    const models = getAvailableModels()
-    setModelsByTier(models)
-  }, [])
+    if (dashboardModels.length > 0 && selectedModels.length === 0) {
+      // Select the first model from each tier (CLI, API, Credits)
+      const modelsByTier = dashboardModels.reduce((acc, model) => {
+        if (!acc[model.tier]) {
+          acc[model.tier] = []
+        }
+        acc[model.tier].push(model)
+        return acc
+      }, {} as Record<string, DashboardModel[]>)
+
+      const defaults: string[] = []
+      // Prefer CLI models first
+      if (modelsByTier.cli?.length > 0) {
+        defaults.push(modelsByTier.cli[0].id)
+      }
+      // Then API models
+      if (modelsByTier.api?.length > 0 && defaults.length < 2) {
+        defaults.push(modelsByTier.api[0].id)
+      }
+      // Then credits models
+      if (modelsByTier.credits?.length > 0 && defaults.length === 0) {
+        defaults.push(modelsByTier.credits[0].id)
+      }
+      
+      setSelectedModels(defaults)
+    }
+  }, [dashboardModels, selectedModels.length])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -76,7 +100,7 @@ export default function Chat() {
       }
 
       const assistantMessages = data.responses.map((resp: any) => {
-        const model = getModelById(resp.model)
+        const model = dashboardModels.find(m => m.id === resp.model)
         return {
           id: `${Date.now()}-${resp.model}-${user?.id}`,
           role: 'assistant' as const,
@@ -139,7 +163,7 @@ export default function Chat() {
     setMessages([])
   }
 
-  if (loading) {
+  if (loading || modelsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -207,11 +231,11 @@ export default function Chat() {
           </div>
 
           {/* Model Selector Dropdown */}
-          {showModelSelector && modelsByTier && (
+          {showModelSelector && (
             <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                  Select Models ({selectedModels.length} selected)
+                  Your Dashboard Models ({selectedModels.length} selected)
                 </h3>
                 <button
                   onClick={() => setShowModelSelector(false)}
@@ -223,53 +247,91 @@ export default function Chat() {
                 </button>
               </div>
               
+              {/* Show error or no models message */}
+              {modelsError && (
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    Error loading models: {modelsError}
+                  </p>
+                </div>
+              )}
+              
+              {!hasModels && !modelsError && (
+                <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    No models configured yet. Go to the <a href="/dashboard/models" className="underline hover:text-blue-800">Models Dashboard</a> to add your API keys and configure models.
+                  </p>
+                </div>
+              )}
+              
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {(Object.entries(modelsByTier) as [keyof ModelsByTier, AvailableModel[]][]).map(([tier, models]) => (
-                  models.length > 0 && (
-                    <div key={tier} className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTierBadgeColor(tier)}`}>
-                          {getTierLabel(tier)}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {tier === 'cli' ? 'Highest priority - CLI available' : 
-                           tier === 'api' ? 'API key required' : 
-                           'Credit-based or free'}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {models.map((model) => (
-                          <label key={model.id} className="flex items-start space-x-3 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={selectedModels.includes(model.id)}
-                              onChange={() => toggleModel(model.id)}
-                              className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                  {model.name}
-                                </span>
-                                {model.features.supportsImages && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
-                                    Vision
+                {(() => {
+                  // Group dashboard models by tier
+                  const modelsByTier = dashboardModels.reduce((acc, model) => {
+                    if (!acc[model.tier]) {
+                      acc[model.tier] = []
+                    }
+                    acc[model.tier].push(model)
+                    return acc
+                  }, {} as Record<string, DashboardModel[]>)
+
+                  return ['cli', 'api', 'credits'].map((tier) => {
+                    const models = modelsByTier[tier] || []
+                    if (models.length === 0) return null
+
+                    return (
+                      <div key={tier} className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTierBadgeColor(tier as 'cli' | 'api' | 'credits')}`}>
+                            {getTierLabel(tier as 'cli' | 'api' | 'credits')}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {tier === 'cli' ? 'Highest priority - CLI available' : 
+                             tier === 'api' ? 'API key required' : 
+                             'Credit-based or free'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {models.map((model) => (
+                            <label key={model.id} className="flex items-start space-x-3 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={selectedModels.includes(model.id)}
+                                onChange={() => toggleModel(model.id)}
+                                className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                    {model.name}
                                   </span>
+                                  {model.features?.supportsImages && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+                                      Vision
+                                    </span>
+                                  )}
+                                  {model.features?.supportsReasoning && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
+                                      Reasoning
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                  {model.providerName} • {model.contextWindow ? `${(model.contextWindow / 1000).toFixed(0)}K context` : 'Standard'}
+                                </div>
+                                {model.price && (
+                                  <div className="text-xs text-gray-400 dark:text-gray-500">
+                                    ${model.price.input}/1M in • ${model.price.output}/1M out
+                                  </div>
                                 )}
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                {model.providerName} • {(model.contextWindow / 1000).toFixed(0)}K context
-                              </div>
-                              <div className="text-xs text-gray-400 dark:text-gray-500">
-                                ${model.price.input}/1M in • ${model.price.output}/1M out
-                              </div>
-                            </div>
-                          </label>
-                        ))}
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )
-                ))}
+                    )
+                  }).filter(Boolean)
+                })()}
               </div>
             </div>
           )}
@@ -288,7 +350,7 @@ export default function Chat() {
                     Welcome to Polydev Multi-Model Chat
                   </h2>
                   <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                    Get perspectives from multiple AI models simultaneously. Select your preferred models above and start chatting.
+                    Get perspectives from your configured dashboard models simultaneously. {hasModels ? 'Select your models above and start chatting.' : 'Configure models in your dashboard to get started.'}
                   </p>
                 </div>
                 

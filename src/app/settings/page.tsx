@@ -3,13 +3,16 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
+import { useMemorySettings } from '../../hooks/useMemorySettings'
 import { createClient } from '../utils/supabase/client'
 
 export default function Settings() {
   const { user, loading } = useAuth()
+  const { memorySettings, updateMemorySettings, loading: memoryLoading } = useMemorySettings()
   const [profile, setProfile] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [memoryMessage, setMemoryMessage] = useState('')
   const [formData, setFormData] = useState({
     displayName: '',
     email: '',
@@ -87,6 +90,21 @@ export default function Settings() {
       setMessage(error.message || 'Error updating profile')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleMemorySettingChange = async (setting: keyof typeof memorySettings, value: boolean | number) => {
+    setMemoryMessage('')
+    
+    try {
+      const result = await updateMemorySettings({ [setting]: value })
+      if (result.success) {
+        setMemoryMessage('Memory settings updated successfully!')
+      } else {
+        setMemoryMessage(result.error || 'Failed to update memory settings')
+      }
+    } catch (error) {
+      setMemoryMessage('Failed to update memory settings')
     }
   }
 
@@ -177,6 +195,14 @@ export default function Settings() {
                       className="w-full inline-block text-left px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                     >
                       Security
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href="/dashboard/memory"
+                      className="w-full inline-block text-left px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      Memory
                     </Link>
                   </li>
                 </ul>
@@ -349,6 +375,100 @@ export default function Settings() {
                       />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Memory Settings */}
+              <div className="bg-white rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-medium text-gray-900">Memory Settings</h3>
+                  <p className="text-sm text-gray-600">Configure how AI remembers your conversations and projects</p>
+                </div>
+                <div className="px-6 py-4 space-y-6">
+                  {memoryMessage && (
+                    <div className={`p-3 rounded-lg text-sm ${
+                      memoryMessage.includes('successfully') 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {memoryMessage}
+                    </div>
+                  )}
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900">Conversation Memory</h4>
+                        <p className="text-sm text-gray-600">Remember conversations to provide better context in future chats</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={memorySettings.enable_conversation_memory}
+                          onChange={(e) => handleMemorySettingChange('enable_conversation_memory', e.target.checked)}
+                          disabled={memoryLoading}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900">Project Memory</h4>
+                        <p className="text-sm text-gray-600">Remember project-specific information and patterns</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={memorySettings.enable_project_memory}
+                          onChange={(e) => handleMemorySettingChange('enable_project_memory', e.target.checked)}
+                          disabled={memoryLoading}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900">Auto-Extract Patterns</h4>
+                        <p className="text-sm text-gray-600">Automatically identify and learn from recurring patterns</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={memorySettings.auto_extract_patterns}
+                          onChange={(e) => handleMemorySettingChange('auto_extract_patterns', e.target.checked)}
+                          disabled={memoryLoading}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label htmlFor="max-conversation-history" className="block text-sm font-medium text-gray-700 mb-2">
+                          Max Conversation History
+                        </label>
+                        <select
+                          id="max-conversation-history"
+                          value={memorySettings.max_conversation_history}
+                          onChange={(e) => handleMemorySettingChange('max_conversation_history', parseInt(e.target.value))}
+                          disabled={memoryLoading}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                        >
+                          <option value={5}>5 conversations</option>
+                          <option value={10}>10 conversations</option>
+                          <option value={20}>20 conversations</option>
+                          <option value={50}>50 conversations</option>
+                          <option value={100}>100 conversations</option>
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">Number of recent conversations to remember</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
