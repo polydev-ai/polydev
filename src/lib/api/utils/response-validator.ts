@@ -71,9 +71,19 @@ export class ResponseValidator {
       warnings.push(...formatResult.warnings)
     }
     
-    // Model validation
+    // Model validation - allow for versioned model names
     if (expectedModel && response.model && response.model !== expectedModel) {
-      warnings.push(`Expected model '${expectedModel}' but got '${response.model}'`)
+      // Check if the response model is a versioned variant of the expected model
+      const isVersionedVariant = 
+        response.model.includes(expectedModel) || 
+        expectedModel.includes(response.model) ||
+        // Common versioning patterns
+        response.model.replace(/-\d{4,}(-\d{2})?(-\d{2})?$/, '') === expectedModel ||
+        expectedModel.replace(/-\d{4,}(-\d{2})?(-\d{2})?$/, '') === response.model
+      
+      if (!isVersionedVariant) {
+        warnings.push(`Expected model '${expectedModel}' but got '${response.model}'`)
+      }
     }
     
     // Content validation

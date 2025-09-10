@@ -575,10 +575,125 @@ export async function POST(request: NextRequest) {
           }
         } catch (error: any) {
           console.error(`Error with ${selectedProvider} for model ${modelId}:`, error)
+          
+          // FALLBACK LOGIC: If CLI fails, try API keys, then credits
+          if (fallbackMethod === 'cli') {
+            console.log(`CLI failed for ${modelId}, trying API fallback...`)
+            
+            // Try API key for the same provider first
+            if (providerConfigs[requiredProvider]?.type === 'api') {
+              try {
+                const apiOptions: any = {
+                  messages: messages.map((msg: any) => ({
+                    role: msg.role,
+                    content: msg.content
+                  })),
+                  model: await resolveProviderModelId(modelId, requiredProvider),
+                  temperature: adjustedTemperature,
+                  maxTokens: adjustedMaxTokens,
+                  stream: false,
+                  apiKey: providerConfigs[requiredProvider].apiKey
+                }
+                
+                if (modelData?.supports_reasoning && reasoning_effort) {
+                  apiOptions.reasoning_effort = reasoning_effort
+                }
+                
+                const apiResponse = await apiManager.createMessage(requiredProvider, apiOptions)
+                const apiResult = await apiResponse.json()
+                
+                if (apiResponse.ok) {
+                  console.log(`API fallback successful for ${modelId} with ${requiredProvider}`)
+                  return {
+                    model: modelId,
+                    content: apiResult.choices?.[0]?.message?.content || apiResult.content?.[0]?.text || '',
+                    usage: apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                    provider: `${requiredProvider} (API - CLI Fallback)`,
+                    fallback_method: 'api'
+                  }
+                }
+              } catch (apiError) {
+                console.error(`API fallback also failed for ${modelId}:`, apiError)
+              }
+            }
+            
+            // Try OpenRouter API key fallback
+            if (providerConfigs['openrouter']?.type === 'api') {
+              try {
+                const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
+                const apiOptions: any = {
+                  messages: messages.map((msg: any) => ({
+                    role: msg.role,
+                    content: msg.content
+                  })),
+                  model: openrouterModelId,
+                  temperature: adjustedTemperature,
+                  maxTokens: adjustedMaxTokens,
+                  stream: false,
+                  apiKey: providerConfigs['openrouter'].apiKey
+                }
+                
+                const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
+                const apiResult = await apiResponse.json()
+                
+                if (apiResponse.ok) {
+                  console.log(`OpenRouter API fallback successful for ${modelId}`)
+                  return {
+                    model: modelId,
+                    content: apiResult.choices?.[0]?.message?.content || '',
+                    usage: apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                    provider: 'OpenRouter (API - CLI Fallback)',
+                    fallback_method: 'api'
+                  }
+                }
+              } catch (openrouterError) {
+                console.error(`OpenRouter API fallback also failed for ${modelId}:`, openrouterError)
+              }
+            }
+            
+            // Final fallback: OpenRouter credits
+            if (totalCredits > 0 && process.env.OPENROUTER_API_KEY) {
+              try {
+                const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
+                if (openrouterModelId !== modelId) {
+                  const apiOptions: any = {
+                    messages: messages.map((msg: any) => ({
+                      role: msg.role,
+                      content: msg.content
+                    })),
+                    model: openrouterModelId,
+                    temperature: adjustedTemperature,
+                    maxTokens: adjustedMaxTokens,
+                    stream: false,
+                    apiKey: process.env.OPENROUTER_API_KEY
+                  }
+                  
+                  const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
+                  const apiResult = await apiResponse.json()
+                  
+                  if (apiResponse.ok) {
+                    console.log(`OpenRouter credits fallback successful for ${modelId}`)
+                    return {
+                      model: modelId,
+                      content: apiResult.choices?.[0]?.message?.content || '',
+                      usage: apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                      provider: 'OpenRouter (Credits - CLI Fallback)',
+                      fallback_method: 'credits',
+                      credits_used: (apiResult.usage?.total_tokens || 0) / 1000000 * 50
+                    }
+                  }
+                }
+              } catch (creditsError) {
+                console.error(`OpenRouter credits fallback also failed for ${modelId}:`, creditsError)
+              }
+            }
+          }
+          
+          // All fallbacks failed, return error
           return {
             model: modelId,
             content: '',
-            error: error.message,
+            error: `${selectedProvider} failed: ${error.message}. All fallback methods also failed.`,
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
             provider: `${selectedProvider} (${fallbackMethod.toUpperCase()})`,
             fallback_method: fallbackMethod
@@ -614,6 +729,33 @@ export async function POST(request: NextRequest) {
         }, { status: 500 })
       }
       
+      // Calculate cost information
+      const usage = response?.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+      let costInfo = { input_cost: 0, output_cost: 0, total_cost: 0 }
+      
+      if (response?.fallback_method === 'cli') {
+        costInfo = { input_cost: 0, output_cost: 0, total_cost: 0 } // CLI is free
+      } else if (response?.credits_used) {
+        costInfo = { 
+          input_cost: response.credits_used, 
+          output_cost: 0, 
+          total_cost: response.credits_used,
+          credits_used: response.credits_used
+        }
+      } else {
+        // Try to get pricing from model data
+        const modelData = modelDataMap.get(response?.model || model)
+        if (modelData?.pricing) {
+          const inputCost = (usage.prompt_tokens / 1000000) * (modelData.pricing.input || 0)
+          const outputCost = (usage.completion_tokens / 1000000) * (modelData.pricing.output || 0)
+          costInfo = {
+            input_cost: inputCost,
+            output_cost: outputCost,
+            total_cost: inputCost + outputCost
+          }
+        }
+      }
+
       return NextResponse.json({
         id: `chatcmpl-${randomBytes(16).toString('hex')}`,
         object: 'chat.completion',
@@ -627,17 +769,72 @@ export async function POST(request: NextRequest) {
           },
           finish_reason: 'stop'
         }],
-        usage: response?.usage
+        usage: usage,
+        // Enhanced Polydev metadata
+        polydev_metadata: {
+          provider: response?.provider || 'unknown',
+          source_type: response?.fallback_method || 'api',
+          cost_info: costInfo,
+          model_resolved: response?.model || model
+        }
       })
     }
     
     // Polydev format for multiple models
+    const totalUsage = {
+      total_prompt_tokens: responses.reduce((sum, r) => sum + (r?.usage?.prompt_tokens || 0), 0),
+      total_completion_tokens: responses.reduce((sum, r) => sum + (r?.usage?.completion_tokens || 0), 0),
+      total_tokens: responses.reduce((sum, r) => sum + (r?.usage?.total_tokens || 0), 0)
+    }
+    
+    // Calculate total cost across all models
+    let totalCost = 0
+    let totalCreditsUsed = 0
+    const providerBreakdown: Record<string, any> = {}
+    
+    responses.forEach(response => {
+      if (response?.fallback_method === 'cli') {
+        // CLI is free
+        if (!providerBreakdown[response.provider]) {
+          providerBreakdown[response.provider] = { cost: 0, tokens: 0, type: 'cli' }
+        }
+        providerBreakdown[response.provider].tokens += (response.usage?.total_tokens || 0)
+      } else if (response?.credits_used) {
+        totalCreditsUsed += response.credits_used
+        if (!providerBreakdown[response.provider]) {
+          providerBreakdown[response.provider] = { cost: 0, credits: 0, tokens: 0, type: 'credits' }
+        }
+        providerBreakdown[response.provider].credits += response.credits_used
+        providerBreakdown[response.provider].tokens += (response.usage?.total_tokens || 0)
+      } else {
+        // API key usage - calculate cost from model data
+        const modelData = modelDataMap.get(response?.model)
+        if (modelData?.pricing && response?.usage) {
+          const inputCost = (response.usage.prompt_tokens / 1000000) * (modelData.pricing.input || 0)
+          const outputCost = (response.usage.completion_tokens / 1000000) * (modelData.pricing.output || 0)
+          const responseCost = inputCost + outputCost
+          totalCost += responseCost
+          
+          if (!providerBreakdown[response.provider]) {
+            providerBreakdown[response.provider] = { cost: 0, tokens: 0, type: 'api' }
+          }
+          providerBreakdown[response.provider].cost += responseCost
+          providerBreakdown[response.provider].tokens += (response.usage?.total_tokens || 0)
+        }
+      }
+    })
+
     return NextResponse.json({
       responses,
-      usage: {
-        total_prompt_tokens: responses.reduce((sum, r) => sum + (r?.usage?.prompt_tokens || 0), 0),
-        total_completion_tokens: responses.reduce((sum, r) => sum + (r?.usage?.completion_tokens || 0), 0),
-        total_tokens: responses.reduce((sum, r) => sum + (r?.usage?.total_tokens || 0), 0)
+      usage: totalUsage,
+      // Enhanced Polydev metadata for multiple models
+      polydev_metadata: {
+        total_cost: totalCost,
+        total_credits_used: totalCreditsUsed,
+        provider_breakdown: providerBreakdown,
+        models_processed: responses.length,
+        successful_models: responses.filter(r => !r.error).length,
+        failed_models: responses.filter(r => r.error).length
       }
     })
     
