@@ -90,7 +90,7 @@ export function useDashboardModels() {
                 
                 if (modelData) {
                   dashboardModels.push({
-                    id: modelData.id,
+                    id: modelData.friendly_id || modelData.id,
                     name: modelData.display_name || modelData.name,
                     provider: providerId,
                     providerName: providerConfig?.name || providerId,
