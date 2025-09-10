@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     
     // Parse request body - support both OpenAI format and Polydev format
     const body = await request.json()
-    let { messages, model, models, temperature = 0.7, max_tokens = 4096, stream = false, reasoning_effort } = body
+    let { messages, model, models, temperature = 0.7, max_tokens = 65536, stream = false, reasoning_effort } = body
     
     // Validate and sanitize messages to prevent transformation errors
     if (!messages || !Array.isArray(messages)) {
@@ -393,8 +393,8 @@ export async function POST(request: NextRequest) {
         }
         
         // Ensure maxTokens is valid (not undefined, null, Infinity, or negative)
-        if (!adjustedMaxTokens || adjustedMaxTokens === Infinity || adjustedMaxTokens < 1 || adjustedMaxTokens > 128000) {
-          adjustedMaxTokens = 4096
+        if (!adjustedMaxTokens || adjustedMaxTokens === Infinity || adjustedMaxTokens < 1 || adjustedMaxTokens > 200000) {
+          adjustedMaxTokens = 65536
         }
         
         if (!selectedProvider || !selectedConfig) {
@@ -466,6 +466,13 @@ export async function POST(request: NextRequest) {
             // Add reasoning effort for reasoning models
             if (modelData?.supports_reasoning && reasoning_effort) {
               apiOptions.reasoning_effort = reasoning_effort
+            }
+            
+            // Handle model-specific parameter requirements
+            if (modelId === 'gpt-5' || modelId.includes('gpt-5')) {
+              // GPT-5 uses max_completion_tokens instead of maxTokens
+              apiOptions.max_completion_tokens = adjustedMaxTokens
+              delete apiOptions.maxTokens
             }
             
             // Use provider configuration for correct baseUrl property name
@@ -613,6 +620,12 @@ export async function POST(request: NextRequest) {
                 
                 if (modelData?.supports_reasoning && reasoning_effort) {
                   apiOptions.reasoning_effort = reasoning_effort
+                }
+                
+                // Handle model-specific parameter requirements for fallback
+                if (modelId === 'gpt-5' || modelId.includes('gpt-5')) {
+                  apiOptions.max_completion_tokens = adjustedMaxTokens
+                  delete apiOptions.maxTokens
                 }
                 
                 const apiResponse = await apiManager.createMessage(apiConfig.provider || requiredProvider, apiOptions)
