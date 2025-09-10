@@ -186,88 +186,12 @@ export async function GET(request: NextRequest) {
     
     console.log(`[CLI Status] Real-time CLI detection for user: ${user.id}`)
     
-    // Call the CLI detection endpoint internally to get real status
-    try {
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-      const detectionResponse = await fetch(`${baseUrl}/api/cli-detect`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: 'dashboard-check',
-          mcp_token: 'temp-token'
-        })
-      })
-      
-      if (detectionResponse.ok) {
-        const detectionResults = await detectionResponse.json()
-        
-        // Format results for dashboard
-        const cliStatus: {
-          claude_code: any,
-          codex_cli: any,
-          gemini_cli: any
-        } = {
-          claude_code: null,
-          codex_cli: null,
-          gemini_cli: null
-        }
-        
-        detectionResults.forEach((result: any) => {
-          const isAvailable = result.status === 'available' && result.authenticated
-          
-          cliStatus[result.provider as keyof typeof cliStatus] = {
-            available: isAvailable,
-            status: result.status,
-            last_checked_at: new Date().toISOString(),
-            enabled: true,
-            custom_path: result.provider === 'claude_code' ? '/usr/local/bin/claude' :
-                        result.provider === 'codex_cli' ? '/usr/local/bin/codex' :
-                        '/usr/local/bin/gcloud',
-            cli_version: result.cli_version,
-            authenticated: result.authenticated,
-            message: result.message
-          }
-        })
-        
-        // Update database with fresh results
-        for (const result of detectionResults) {
-          const { data: existingConfig } = await supabase
-            .from('cli_provider_configurations')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('provider', result.provider)
-            .single()
-          
-          const dbData = {
-            user_id: user.id,
-            provider: result.provider,
-            status: result.status,
-            enabled: true,
-            last_checked_at: new Date().toISOString()
-          }
-          
-          if (existingConfig) {
-            await supabase
-              .from('cli_provider_configurations')
-              .update(dbData)
-              .eq('id', existingConfig.id)
-          } else {
-            await supabase
-              .from('cli_provider_configurations')
-              .insert(dbData)
-          }
-        }
-        
-        return NextResponse.json(cliStatus)
-        
-      } else {
-        console.error(`[CLI Status] Detection endpoint failed:`, await detectionResponse.text())
-      }
-    } catch (fetchError) {
-      console.error(`[CLI Status] Failed to call detection endpoint:`, fetchError)
-    }
+    // In serverless environment, CLI detection is not available
+    // Return serverless-appropriate CLI status based on database only
+    console.log(`[CLI Status] Using serverless-compatible CLI status (database only)`)
+    
+    // Note: Direct CLI detection requires a local environment
+    // In production/serverless, we rely on cached database results
     
     // Fallback to database if real-time detection fails
     const { data: cliConfigs, error: configError } = await supabase

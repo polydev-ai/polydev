@@ -32,20 +32,20 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
       .update({ last_used_at: new Date().toISOString() })
       .eq('token_hash', tokenHash)
     
-    // Get user preferences
+    // Get user preferences - NO HARDCODED DEFAULTS
     const { data: preferences } = await supabase
       .from('user_preferences')
       .select('*')
       .eq('user_id', token.user_id)
       .single()
     
+    if (!preferences) {
+      throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
+    }
+    
     return {
       user: { id: token.user_id },
-      preferences: preferences || {
-        default_provider: 'openai',
-        default_model: 'gpt-4o',
-        model_preferences: { openai: 'gpt-4o' }
-      }
+      preferences
     }
   }
   
@@ -61,13 +61,13 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
     .eq('user_id', user.id)
     .single()
   
+  if (!preferences) {
+    throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
+  }
+  
   return {
     user,
-    preferences: preferences || {
-      default_provider: 'openai',
-      default_model: 'gpt-4o',
-      model_preferences: { openai: 'gpt-4o' }
-    }
+    preferences
   }
 }
 
@@ -113,7 +113,7 @@ async function getProviderFromModel(model: string, supabase: any): Promise<strin
   if (model.includes('mixtral')) return 'groq'
   if (model.includes('deepseek')) return 'deepseek'
   if (model.includes('grok')) return 'xai'
-  if (model.includes('kimi')) return 'moonshot'
+  if (model.includes('kimi')) return 'groq'  // Kimi K2 is available via Groq
   
   // Default fallback
   return 'openai'
@@ -162,18 +162,19 @@ export async function POST(request: NextRequest) {
       // OpenAI format - single model
       targetModels = [model]
     } else if (models && Array.isArray(models) && models.length > 0) {
-      // Polydev format - multiple models
+      // Polydev format - multiple models (no limit)
       targetModels = models
     } else {
-      // No model specified - use user preferences
-      const defaultModel = preferences.default_model || 'gpt-4o'
-      targetModels = [defaultModel]
+      // No model specified - use user's preferred models from dashboard
+      if (!preferences.default_model) {
+        throw new Error('No model specified and no default model configured. Please set up models at https://www.polydev.ai/dashboard/models')
+      }
+      targetModels = [preferences.default_model]
     }
     
-    // Get user's provider configurations (CLI + API keys) for required providers
-    const requiredProviders = [...new Set(await Promise.all(targetModels.map(model => getProviderFromModel(model, supabase))))]
+    // PRIORITY SYSTEM: CLI > API KEYS > OPENROUTER (CREDITS)
     
-    // Priority 1: Check for enabled CLI providers
+    // Step 1: Get all CLI configurations
     const { data: cliConfigs } = await supabase
       .from('cli_provider_configurations')
       .select('provider, custom_path, enabled, status')
@@ -181,77 +182,21 @@ export async function POST(request: NextRequest) {
       .eq('enabled', true)
       .eq('status', 'available')
       .in('provider', ['claude_code', 'codex_cli', 'gemini_cli'])
-      
-    // Priority 2: Get API keys for providers not covered by CLI
-    const cliProviderMappings: Record<string, string> = {
-      'claude_code': 'anthropic',
-      'codex_cli': 'openai', 
-      'gemini_cli': 'google'
-    }
     
-    const enabledCliProviders = (cliConfigs || [])
-      .map(cli => cliProviderMappings[cli.provider])
-      .filter(Boolean)
-    
-    const providersNeedingApiKeys = requiredProviders.filter(p => !enabledCliProviders.includes(p))
-    
+    // Step 2: Get ALL API keys (including OpenRouter as a provider)
     const { data: apiKeys } = await supabase
       .from('user_api_keys')
       .select('provider, encrypted_key, api_base, active')
       .eq('user_id', user.id)
       .eq('active', true)
-      .in('provider', providersNeedingApiKeys)
     
-    // Check if we have any way to handle the required providers (CLI or API keys)
-    const availableProviders = [
-      ...enabledCliProviders,
-      ...(apiKeys || []).map(key => key.provider)
-    ]
-    
-    const missingProviders = requiredProviders.filter(p => !availableProviders.includes(p))
-    
-    if (missingProviders.length > 0 && availableProviders.length === 0) {
-      return NextResponse.json({ 
-        error: { 
-          message: `No active API keys or CLI providers found for required providers: ${requiredProviders.join(', ')}. Please configure API keys or enable CLI tools in your settings.`, 
-          type: 'authentication_error' 
-        } 
-      }, { status: 401 })
-    }
-    
-    // Create a comprehensive provider configuration map (CLI first, then API keys)
-    const providerConfigs: Record<string, any> = {}
-    
-    // Priority 1: CLI providers
-    ;(cliConfigs || []).forEach(cli => {
-      const mappedProvider = cliProviderMappings[cli.provider]
-      if (mappedProvider) {
-        providerConfigs[mappedProvider] = {
-          type: 'cli',
-          cliProvider: cli.provider,
-          customPath: cli.custom_path
-        }
-      }
-    })
-    
-    // Priority 2: API keys (only for providers not handled by CLI)
-    ;(apiKeys || []).forEach(key => {
-      if (!providerConfigs[key.provider]) {
-        providerConfigs[key.provider] = {
-          type: 'api',
-          apiKey: atob(key.encrypted_key), // Decrypt (basic base64 for now)
-          baseUrl: key.api_base
-        }
-      }
-    })
-    
-    // Get model mappings for intelligent fallback
+    // Step 3: Get model mappings for OpenRouter credits fallback
     const { data: modelMappings } = await supabase
       .from('model_mappings')
       .select('friendly_id, providers_mapping')
       .in('friendly_id', targetModels)
     
-    // Get user credit balance for OpenRouter fallback
+    // Step 4: Get user credit balance for OpenRouter credits
     const { data: userCredits } = await supabase
       .from('user_credits')
       .select('balance, promotional_balance')
@@ -260,7 +205,43 @@ export async function POST(request: NextRequest) {
     
     const totalCredits = (parseFloat(userCredits?.balance || '0') + parseFloat(userCredits?.promotional_balance || '0'))
     
-    // Check which models support reasoning and get their data
+    // Build provider configuration map with strict priority
+    const cliProviderMappings: Record<string, string> = {
+      'claude_code': 'anthropic',
+      'codex_cli': 'openai', 
+      'gemini_cli': 'google'
+    }
+    
+    const providerConfigs: Record<string, any> = {}
+    
+    // PRIORITY 1: CLI providers (highest priority)
+    ;(cliConfigs || []).forEach(cli => {
+      const mappedProvider = cliProviderMappings[cli.provider]
+      if (mappedProvider) {
+        providerConfigs[mappedProvider] = {
+          type: 'cli',
+          priority: 1,
+          cliProvider: cli.provider,
+          customPath: cli.custom_path
+        }
+      }
+    })
+    
+    // PRIORITY 2: API keys (including OpenRouter as a provider, not credits)
+    ;(apiKeys || []).forEach(key => {
+      if (!providerConfigs[key.provider]) { // Only if not already covered by CLI
+        providerConfigs[key.provider] = {
+          type: 'api',
+          priority: 2,
+          apiKey: atob(key.encrypted_key),
+          baseUrl: key.api_base
+        }
+      }
+    })
+    
+    // PRIORITY 3: OpenRouter credits will be handled per-model in the loop below
+    
+    // Get additional model data (reasoning support, etc.)
     const modelDataMap = new Map()
     const modelMappingMap = new Map()
     
@@ -285,35 +266,53 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Process requests for each model with intelligent fallback
+    // Process requests for each model with STRICT PRIORITY: CLI > API > OPENROUTER(CREDITS)
     const responses = await Promise.all(
       targetModels.map(async (modelId: string) => {
         const modelMapping = modelMappingMap.get(modelId)
         const modelData = modelDataMap.get(modelId)
         
-        // Determine the best provider using intelligent fallback
         let selectedProvider: string | null = null
         let selectedConfig: any = null
         let fallbackMethod: 'cli' | 'api' | 'credits' = 'api'
         let actualModelId = modelId
         
-        // Priority 1: CLI Tools (if available and user preference allows)
-        if (preferences.usage_preference !== 'api_keys' && preferences.usage_preference !== 'credits') {
-          const provider = await getProviderFromModel(modelId, supabase)
-          if (providerConfigs[provider]?.type === 'cli') {
-            selectedProvider = provider
-            selectedConfig = providerConfigs[provider]
-            fallbackMethod = 'cli'
-          }
+        // STEP 1: PRIORITY 1 - CLI Tools (highest priority, ignore preferences)
+        const requiredProvider = await getProviderFromModel(modelId, supabase)
+        if (providerConfigs[requiredProvider]?.type === 'cli' && providerConfigs[requiredProvider]?.priority === 1) {
+          selectedProvider = requiredProvider
+          selectedConfig = providerConfigs[requiredProvider]
+          fallbackMethod = 'cli'
         }
         
-        // Priority 2: Direct API Keys (if CLI not available or preference set)
-        if (!selectedProvider && preferences.usage_preference !== 'cli' && preferences.usage_preference !== 'credits') {
-          const provider = await getProviderFromModel(modelId, supabase)
-          if (providerConfigs[provider]?.type === 'api') {
-            selectedProvider = provider
-            selectedConfig = providerConfigs[provider]
-            fallbackMethod = 'api'
+        // STEP 2: PRIORITY 2 - Direct API Keys (if CLI not available)
+        if (!selectedProvider && providerConfigs[requiredProvider]?.type === 'api' && providerConfigs[requiredProvider]?.priority === 2) {
+          selectedProvider = requiredProvider
+          selectedConfig = providerConfigs[requiredProvider]
+          fallbackMethod = 'api'
+        }
+        
+        // STEP 3: Check if user has OpenRouter as API provider for this model
+        if (!selectedProvider && providerConfigs['openrouter']?.type === 'api') {
+          // User has OpenRouter API key - treat as regular API provider
+          selectedProvider = 'openrouter'
+          selectedConfig = providerConfigs['openrouter']
+          fallbackMethod = 'api'
+          // Keep original model ID for OpenRouter API usage
+        }
+        
+        // STEP 4: PRIORITY 3 - OpenRouter Credits (lowest priority, last resort)
+        if (!selectedProvider && totalCredits > 0 && modelMapping?.openrouter) {
+          // Use system OpenRouter key for credits
+          if (process.env.OPENROUTER_API_KEY) {
+            selectedProvider = 'openrouter'
+            selectedConfig = {
+              type: 'credits',
+              priority: 3,
+              apiKey: process.env.OPENROUTER_API_KEY
+            }
+            actualModelId = modelMapping.openrouter.api_model_id // Use OpenRouter-specific model ID
+            fallbackMethod = 'credits'
           }
         }
         
@@ -331,28 +330,10 @@ export async function POST(request: NextRequest) {
           adjustedTemperature = 0.7
         }
         
-        // Priority 3: Credits via OpenRouter (fallback)
-        if (!selectedProvider && totalCredits > 0) {
-          if (modelMapping?.openrouter) {
-            selectedProvider = 'openrouter'
-            selectedConfig = {
-              type: 'credits',
-              apiKey: process.env.OPENROUTER_API_KEY || 'fallback-credits-key'
-            }
-            actualModelId = modelMapping.openrouter.api_model_id
-            fallbackMethod = 'credits'
-          }
-        }
-        
         if (!selectedProvider || !selectedConfig) {
-          let errorMessage = `No provider available for model: ${modelId}`
-          if (totalCredits <= 0 && !Object.keys(providerConfigs).length) {
-            errorMessage += '. No API keys configured and insufficient credits.'
-          }
-          
           return {
             model: modelId,
-            error: errorMessage,
+            error: `No provider available for model: ${modelId}. Please configure API keys at https://www.polydev.ai/dashboard/models or ensure you have sufficient credits.`,
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
             fallback_method: 'none'
           }
@@ -473,45 +454,47 @@ export async function POST(request: NextRequest) {
               provider: `${selectedProvider} (API)`,
               fallback_method: fallbackMethod
             }
-          } else {
-            // Use credits via OpenRouter
+          } else if (selectedProvider === 'openrouter') {
+            // Handle OpenRouter (either as API provider or credits)
             const apiOptions: any = {
               messages: messages.map((msg: any) => ({
                 role: msg.role,
                 content: msg.content
               })),
-              model: actualModelId,
+              model: actualModelId, // This will be the OpenRouter model ID for credits, or original for API
               temperature: adjustedTemperature,
               maxTokens: adjustedMaxTokens,
               stream: false,
               apiKey: selectedConfig.apiKey,
-              openAiBaseUrl: 'https://openrouter.ai/api/v1'
+              openAiBaseUrl: selectedConfig.baseUrl || 'https://openrouter.ai/api/v1'
             }
             
             // Add reasoning effort for reasoning models if supported
-            if (modelData?.supports_reasoning && reasoning_effort && modelMapping?.openrouter?.capabilities?.reasoning_levels) {
+            if (modelData?.supports_reasoning && reasoning_effort) {
               apiOptions.reasoning_effort = reasoning_effort
             }
             
-            // Make API call through OpenRouter
-            response = await apiManager.createMessage('openai', apiOptions) // Use openai handler for OpenRouter compatibility
+            // Make API call through OpenRouter (always use openai handler for compatibility)
+            response = await apiManager.createMessage('openai', apiOptions)
             const result = await response.json()
             
             if (!response.ok) {
-              throw new Error(result.error?.message || 'Credits API call failed')
+              throw new Error(result.error?.message || 'OpenRouter API call failed')
             }
             
-            // Deduct credits based on usage (simplified - you may want more sophisticated cost calculation)
-            const usageTokens = result.usage?.total_tokens || 0
-            const costEstimate = (usageTokens / 1000000) * (modelMapping.openrouter?.cost?.input || 1)
-            
-            if (costEstimate > 0 && userCredits) {
-              await supabase
-                .from('user_credits')
-                .update({ 
-                  balance: Math.max(0, parseFloat(userCredits.balance) - costEstimate).toFixed(6)
-                })
-                .eq('user_id', user.id)
+            // If using credits, deduct from balance
+            if (selectedConfig.type === 'credits') {
+              const usageTokens = result.usage?.total_tokens || 0
+              const costEstimate = (usageTokens / 1000000) * (modelMapping?.openrouter?.cost?.input || 1)
+              
+              if (costEstimate > 0 && userCredits) {
+                await supabase
+                  .from('user_credits')
+                  .update({ 
+                    balance: Math.max(0, parseFloat(userCredits.balance) - costEstimate).toFixed(6)
+                  })
+                  .eq('user_id', user.id)
+              }
             }
             
             // Extract content
@@ -526,9 +509,9 @@ export async function POST(request: NextRequest) {
               model: modelId,
               content: content,
               usage: result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-              provider: `OpenRouter (Credits)`,
+              provider: selectedConfig.type === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)',
               fallback_method: fallbackMethod,
-              credits_used: costEstimate
+              credits_used: selectedConfig.type === 'credits' ? (result.usage?.total_tokens || 0) / 1000000 * (modelMapping?.openrouter?.cost?.input || 1) : undefined
             }
           }
         } catch (error: any) {
