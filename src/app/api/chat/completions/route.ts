@@ -276,7 +276,18 @@ export async function POST(request: NextRequest) {
     
     // PRIORITY 2: API keys (including OpenRouter as a provider, not credits)
     ;(apiKeys || []).forEach(key => {
-      if (!providerConfigs[key.provider]) { // Only if not already covered by CLI
+      // Always add API key config, even if CLI exists for the provider
+      const apiConfigKey = `${key.provider}_api`
+      providerConfigs[apiConfigKey] = {
+        type: 'api',
+        priority: 2,
+        provider: key.provider,
+        apiKey: atob(key.encrypted_key),
+        baseUrl: key.api_base
+      }
+      
+      // Also add under the original provider name if no CLI config exists
+      if (!providerConfigs[key.provider]) {
         providerConfigs[key.provider] = {
           type: 'api',
           priority: 2,
@@ -584,8 +595,9 @@ export async function POST(request: NextRequest) {
             console.log(`Checking if ${requiredProvider} has API key configured...`)
             console.log(`Provider configs for ${requiredProvider}:`, providerConfigs[requiredProvider] || 'NOT FOUND')
             
-            // Try API key for the same provider first
-            if (providerConfigs[requiredProvider]?.type === 'api') {
+            // Try API key for the same provider first (check both original and _api versions)
+            const apiConfig = providerConfigs[requiredProvider]?.type === 'api' ? providerConfigs[requiredProvider] : providerConfigs[`${requiredProvider}_api`]
+            if (apiConfig) {
               console.log(`✅ ${requiredProvider} API key found, attempting API fallback...`)
               try {
                 const apiOptions: any = {
@@ -597,14 +609,14 @@ export async function POST(request: NextRequest) {
                   temperature: adjustedTemperature,
                   maxTokens: adjustedMaxTokens,
                   stream: false,
-                  apiKey: providerConfigs[requiredProvider].apiKey
+                  apiKey: apiConfig.apiKey
                 }
                 
                 if (modelData?.supports_reasoning && reasoning_effort) {
                   apiOptions.reasoning_effort = reasoning_effort
                 }
                 
-                const apiResponse = await apiManager.createMessage(requiredProvider, apiOptions)
+                const apiResponse = await apiManager.createMessage(apiConfig.provider || requiredProvider, apiOptions)
                 const apiResult = await apiResponse.json()
                 
                 if (apiResponse.ok) {
