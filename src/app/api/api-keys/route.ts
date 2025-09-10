@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { provider, api_key, key_name, api_base, default_model, is_preferred = false, budget_limit = null } = await request.json()
+    const { provider, api_key, key_name, api_base, default_model, is_preferred = false, monthly_budget = null } = await request.json()
     
     // Validate required fields - API key is now optional
     if (!provider) {
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       api_base: api_base || null,
       default_model: default_model || null,
       is_preferred,
-      budget_limit,
+      monthly_budget,
       display_order: maxOrder + 1,
       active: true
     }

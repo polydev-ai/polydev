@@ -17,7 +17,7 @@ interface ApiKey {
   api_base?: string
   default_model?: string
   is_preferred?: boolean
-  budget_limit?: number
+  monthly_budget?: number
   display_order?: number
   created_at: string
   last_used_at?: string
@@ -110,7 +110,7 @@ export default function EnhancedApiKeysPage() {
     api_base: '',
     default_model: '',
     is_preferred: false,
-    budget_limit: null as number | null,
+    monthly_budget: null as number | null,
     reasoning_level: 5
   })
 
@@ -402,7 +402,7 @@ export default function EnhancedApiKeysPage() {
           api_base: formData.api_base,
           default_model: formData.default_model,
           is_preferred: formData.is_preferred,
-          budget_limit: formData.budget_limit
+          monthly_budget: formData.monthly_budget
         }
         
         // Only include API key if user chose to update it
@@ -441,7 +441,7 @@ export default function EnhancedApiKeysPage() {
         api_base: '',
         default_model: '',
         is_preferred: false,
-        budget_limit: null,
+        monthly_budget: null,
         reasoning_level: 1
       })
     } catch (err: any) {
@@ -736,9 +736,9 @@ export default function EnhancedApiKeysPage() {
                                     </button>
                                   </div>
                                   <div className="flex items-center space-x-2">
-                                    {key.budget_limit && (
+                                    {key.monthly_budget && (
                                       <span className="text-sm text-green-600 dark:text-green-400">
-                                        ${key.budget_limit}/month
+                                        ${key.monthly_budget}/month
                                       </span>
                                     )}
                                     <span className="text-sm text-gray-500">
@@ -765,7 +765,7 @@ export default function EnhancedApiKeysPage() {
                                             api_base: key.api_base || '',
                                             default_model: key.default_model || '',
                                             is_preferred: key.is_preferred || false,
-                                            budget_limit: key.budget_limit ?? null,
+                                            monthly_budget: key.monthly_budget ?? null,
                                             reasoning_level: (key as any).reasoning_level || 1
                                           })
                                           setShowAddForm(true)
@@ -1064,8 +1064,8 @@ export default function EnhancedApiKeysPage() {
                 </label>
                 <input
                   type="number"
-                  value={formData.budget_limit || ''}
-                  onChange={(e) => setFormData(prev => ({...prev, budget_limit: e.target.value ? parseFloat(e.target.value) : null}))}
+                  value={formData.monthly_budget || ''}
+                  onChange={(e) => setFormData(prev => ({...prev, monthly_budget: e.target.value ? parseFloat(e.target.value) : null}))}
                   placeholder="e.g. 100.00"
                   min="0"
                   step="0.01"
@@ -1106,7 +1106,7 @@ export default function EnhancedApiKeysPage() {
                     api_base: '',
                     default_model: '',
                     is_preferred: false,
-                                budget_limit: null,
+                                monthly_budget: null,
                     reasoning_level: 5
                   })
                 }}
