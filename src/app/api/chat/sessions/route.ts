@@ -1,6 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '../../../../lib/supabase'
-import { authenticateRequest } from '../../../../lib/api/auth'
+import { createClient } from '@/app/utils/supabase/server'
+import { createHash } from 'crypto'
+
+async function authenticateRequest(request: NextRequest): Promise<{ user: any; preferences: any } | null> {
+  const supabase = await createClient()
+  
+  // Check for MCP API key in Authorization header
+  const authorization = request.headers.get('Authorization')
+  if (authorization?.startsWith('Bearer pd_')) {
+    const apiKey = authorization.replace('Bearer ', '')
+    const tokenHash = createHash('sha256').update(apiKey).digest('hex')
+    
+    // Find user by token hash
+    const { data: token, error } = await supabase
+      .from('mcp_user_tokens')
+      .select('user_id, active, last_used_at')
+      .eq('token_hash', tokenHash)
+      .eq('active', true)
+      .single()
+    
+    if (error || !token) {
+      return null
+    }
+    
+    // Update last_used_at
+    await supabase
+      .from('mcp_user_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('token_hash', tokenHash)
+    
+    // Get user preferences - NO HARDCODED DEFAULTS
+    const { data: preferences } = await supabase
+      .from('user_preferences')
+      .select('*')
+      .eq('user_id', token.user_id)
+      .single()
+    
+    if (!preferences) {
+      throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
+    }
+    
+    return {
+      user: { id: token.user_id },
+      preferences
+    }
+  }
+  
+  // Check for session-based authentication (cookies)
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  
+  if (!authUser) {
+    return null
+  }
+  
+  // Get user preferences
+  const { data: preferences } = await supabase
+    .from('user_preferences')
+    .select('*')
+    .eq('user_id', authUser.id)
+    .single()
+  
+  if (!preferences) {
+    throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
+  }
+  
+  return {
+    user: authUser,
+    preferences
+  }
+}
 
 // GET /api/chat/sessions - List user's chat sessions
 export async function GET(request: NextRequest) {

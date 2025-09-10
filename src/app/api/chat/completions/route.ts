@@ -700,7 +700,6 @@ export async function POST(request: NextRequest) {
                 console.error(`OpenRouter credits fallback also failed for ${modelId}:`, creditsError)
               }
             }
-          }
           
           // All fallbacks failed, return error
           return {
@@ -718,7 +717,7 @@ export async function POST(request: NextRequest) {
     // Save chat history and log the interaction
     try {
       const totalTokens = responses.reduce((sum, r) => sum + (r?.usage?.total_tokens || 0), 0)
-      const totalCost = responses.reduce((sum, r) => sum + (r?.costInfo?.total_cost || 0), 0)
+      const totalCost = responses.reduce((sum, r) => sum + ((r as any)?.costInfo?.total_cost || 0), 0)
       
       // Get or create chat session if session_id is provided
       const sessionId = body.session_id
@@ -757,6 +756,7 @@ export async function POST(request: NextRequest) {
         // Save assistant responses
         const assistantMessages = responses
           .filter(r => r && !r.error)
+          .map(r => r!)
           .map(r => ({
             session_id: currentSessionId,
             role: 'assistant',
@@ -764,7 +764,7 @@ export async function POST(request: NextRequest) {
             model_id: r.model,
             provider_info: r.provider ? { provider: r.provider, fallback_method: r.fallback_method } : null,
             usage_info: r.usage || null,
-            cost_info: r.costInfo || null,
+            cost_info: (r as any).costInfo || null,
             metadata: r.credits_used ? { credits_used: r.credits_used } : null
           }))
         

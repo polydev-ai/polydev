@@ -1,11 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '../../../../../lib/supabase'
-import { authenticateRequest } from '../../../../../lib/api/auth'
+import { createClient } from '@/app/utils/supabase/server'
+import { createHash } from 'crypto'
+
+async function authenticateRequest(request: NextRequest): Promise<{ user: any; preferences: any } | null> {
+  const supabase = await createClient()
+  
+  // Check for MCP API key in Authorization header
+  const authorization = request.headers.get('Authorization')
+  if (authorization?.startsWith('Bearer pd_')) {
+    const apiKey = authorization.replace('Bearer ', '')
+    const tokenHash = createHash('sha256').update(apiKey).digest('hex')
+    
+    // Find user by token hash
+    const { data: token, error } = await supabase
+      .from('mcp_user_tokens')
+      .select('user_id, active, last_used_at')
+      .eq('token_hash', tokenHash)
+      .eq('active', true)
+      .single()
+    
+    if (error || !token) {
+      return null
+    }
+    
+    // Update last_used_at
+    await supabase
+      .from('mcp_user_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('token_hash', tokenHash)
+    
+    // Get user preferences - NO HARDCODED DEFAULTS
+    const { data: preferences } = await supabase
+      .from('user_preferences')
+      .select('*')
+      .eq('user_id', token.user_id)
+      .single()
+    
+    if (!preferences) {
+      throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
+    }
+    
+    return {
+      user: { id: token.user_id },
+      preferences
+    }
+  }
+  
+  // Check for session-based authentication (cookies)
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  
+  if (!authUser) {
+    return null
+  }
+  
+  // Get user preferences
+  const { data: preferences } = await supabase
+    .from('user_preferences')
+    .select('*')
+    .eq('user_id', authUser.id)
+    .single()
+  
+  if (!preferences) {
+    throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
+  }
+  
+  return {
+    user: authUser,
+    preferences
+  }
+}
 
 // GET /api/chat/sessions/[sessionId] - Get session with messages
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     const authResult = await authenticateRequest(request)
@@ -15,7 +83,7 @@ export async function GET(
 
     const { user } = authResult
     const supabase = await createClient()
-    const { sessionId } = params
+    const { sessionId } = await params
 
     // Fetch session with messages
     const { data: session, error: sessionError } = await supabase
@@ -68,7 +136,7 @@ export async function GET(
 // PUT /api/chat/sessions/[sessionId] - Update session (title, archive status)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     const authResult = await authenticateRequest(request)
@@ -78,7 +146,7 @@ export async function PUT(
 
     const { user } = authResult
     const supabase = await createClient()
-    const { sessionId } = params
+    const { sessionId } = await params
     const body = await request.json()
 
     const updateData: any = {}
@@ -112,7 +180,7 @@ export async function PUT(
 // DELETE /api/chat/sessions/[sessionId] - Delete session
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
     const authResult = await authenticateRequest(request)
@@ -122,7 +190,7 @@ export async function DELETE(
 
     const { user } = authResult
     const supabase = await createClient()
-    const { sessionId } = params
+    const { sessionId } = await params
 
     const { error } = await supabase
       .from('chat_sessions')
