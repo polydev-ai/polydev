@@ -103,7 +103,7 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
         
         for (const [providerKey, providerConfig] of sortedProviders) {
           // Check if this provider supports the requested model and user has it in their preferences
-          const isProviderInRegistry = modelProviders.some(mp => 
+          const isProviderInRegistry = modelProviders.some((mp: any) => 
             mp.provider_id === providerKey || mp.provider_name?.toLowerCase() === providerKey.toLowerCase()
           )
           
