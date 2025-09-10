@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { createClient } from '../../app/utils/supabase/client'
-import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw } from 'lucide-react'
+import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw, Copy } from 'lucide-react'
 import { CLINE_PROVIDERS, ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
 // Remove direct import of modelsDevService to avoid server-side imports in client component
@@ -13,6 +13,7 @@ interface ApiKey {
   id: string
   provider: string
   key_preview: string
+  encrypted_key: string | null
   active: boolean
   api_base?: string
   default_model?: string
@@ -115,6 +116,25 @@ export default function EnhancedApiKeysPage() {
   })
 
   const supabase = createClient()
+
+  // Copy API key to clipboard
+  const copyApiKey = async (apiKey: ApiKey) => {
+    try {
+      if (!apiKey.encrypted_key) {
+        setError('No API key available to copy')
+        return
+      }
+      
+      // Decrypt the API key
+      const decryptedKey = atob(apiKey.encrypted_key)
+      await navigator.clipboard.writeText(decryptedKey)
+      setSuccess('API key copied to clipboard!')
+      setTimeout(() => setSuccess(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy API key:', err)
+      setError('Failed to copy API key to clipboard')
+    }
+  }
 
   // Get enhanced provider display data by combining CLINE_PROVIDERS with models.dev data
   const getProviderDisplayData = useCallback((providerId: string) => {
@@ -741,9 +761,32 @@ export default function EnhancedApiKeysPage() {
                                         ${key.monthly_budget}/month
                                       </span>
                                     )}
-                                    <span className="text-sm text-gray-500">
-                                      {key.key_preview}
-                                    </span>
+                                    <div className="flex items-center space-x-2">
+                                      <span className="text-sm text-gray-500 font-mono">
+                                        {showApiKey[key.id] && key.encrypted_key 
+                                          ? atob(key.encrypted_key) 
+                                          : key.key_preview
+                                        }
+                                      </span>
+                                      {key.encrypted_key && (
+                                        <div className="flex items-center space-x-1">
+                                          <button
+                                            onClick={() => setShowApiKey(prev => ({...prev, [key.id]: !prev[key.id]}))}
+                                            className="text-gray-400 hover:text-gray-600 p-1"
+                                            title={showApiKey[key.id] ? "Hide API key" : "Show API key"}
+                                          >
+                                            {showApiKey[key.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                          </button>
+                                          <button
+                                            onClick={() => copyApiKey(key)}
+                                            className="text-gray-400 hover:text-gray-600 p-1"
+                                            title="Copy API key"
+                                          >
+                                            <Copy className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                                 

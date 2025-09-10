@@ -58,6 +58,13 @@ export async function POST(request: NextRequest) {
         : `${api_key.slice(0, 4)}***`
     }
     
+    // Strip provider prefix from default_model (e.g., "openai/gpt-4o" -> "gpt-4o")
+    let cleanDefaultModel = default_model
+    if (default_model && default_model.includes('/')) {
+      const parts = default_model.split('/')
+      cleanDefaultModel = parts[parts.length - 1] // Get the last part after the final slash
+    }
+    
     // Get the current max display_order for this user to append new key at the end
     const { data: maxOrderData, error: maxOrderError } = await supabase
       .from('user_api_keys')
@@ -77,7 +84,7 @@ export async function POST(request: NextRequest) {
       encrypted_key: encryptedKey,
       key_preview: keyPreview,
       api_base: api_base || null,
-      default_model: default_model || null,
+      default_model: cleanDefaultModel || null,
       is_preferred,
       monthly_budget,
       display_order: maxOrder + 1,
@@ -114,8 +121,8 @@ export async function POST(request: NextRequest) {
           .map((pref: any) => pref.order)
         const maxOrder = orders.length > 0 ? Math.max(...orders) : 0
         
-        // Build models array
-        const models = [default_model].filter(Boolean)
+        // Build models array using cleaned model name
+        const models = [cleanDefaultModel].filter(Boolean)
         
         const updatedPrefs = {
           ...currentPrefs,
