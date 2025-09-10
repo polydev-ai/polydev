@@ -543,7 +543,7 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           models_used: targetModels,
           message_count: messages.length,
-          total_tokens: responses.reduce((sum, r) => sum + (r.usage?.total_tokens || 0), 0),
+          total_tokens: responses.reduce((sum, r) => sum + (r?.usage?.total_tokens || 0), 0),
           created_at: new Date().toISOString()
         })
     } catch (logError) {
@@ -553,7 +553,7 @@ export async function POST(request: NextRequest) {
     // Return response in OpenAI format for single model, Polydev format for multiple
     if (targetModels.length === 1 && model) {
       const response = responses[0]
-      if (response.error) {
+      if (response?.error) {
         return NextResponse.json({ 
           error: { 
             message: response.error, 
@@ -566,16 +566,16 @@ export async function POST(request: NextRequest) {
         id: `chatcmpl-${randomBytes(16).toString('hex')}`,
         object: 'chat.completion',
         created: Math.floor(Date.now() / 1000),
-        model: response.model,
+        model: response?.model || model,
         choices: [{
           index: 0,
           message: {
             role: 'assistant',
-            content: response.content
+            content: response?.content || ''
           },
           finish_reason: 'stop'
         }],
-        usage: response.usage
+        usage: response?.usage
       })
     }
     
@@ -583,9 +583,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       responses,
       usage: {
-        total_prompt_tokens: responses.reduce((sum, r) => sum + (r.usage?.prompt_tokens || 0), 0),
-        total_completion_tokens: responses.reduce((sum, r) => sum + (r.usage?.completion_tokens || 0), 0),
-        total_tokens: responses.reduce((sum, r) => sum + (r.usage?.total_tokens || 0), 0)
+        total_prompt_tokens: responses.reduce((sum, r) => sum + (r?.usage?.prompt_tokens || 0), 0),
+        total_completion_tokens: responses.reduce((sum, r) => sum + (r?.usage?.completion_tokens || 0), 0),
+        total_tokens: responses.reduce((sum, r) => sum + (r?.usage?.total_tokens || 0), 0)
       }
     })
     
