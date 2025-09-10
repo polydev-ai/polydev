@@ -1,6 +1,10 @@
 {
   "name": "polydev-ai",
+<<<<<<< Updated upstream
   "version": "1.2.0",
+=======
+  "version": "1.2.2",
+>>>>>>> Stashed changes
   "description": "Agentic workflow assistant with CLI integration - get diverse perspectives from multiple LLMs when stuck or need enhanced reasoning",
   "keywords": [
     "mcp",
@@ -59,6 +63,7 @@
     "lucide-react": "^0.542.0",
     "marked": "^16.2.1",
     "next": "15.0.0",
+    "polydev-ai": "^1.2.0",
     "posthog-js": "^1.157.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
