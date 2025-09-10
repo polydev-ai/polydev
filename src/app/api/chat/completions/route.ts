@@ -71,52 +71,62 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
   }
 }
 
-async function getProviderFromModel(model: string, supabase: any): Promise<string> {
+async function getProviderFromModel(model: string, supabase: any, userId?: string): Promise<string> {
   try {
-    // First try to find the model in our models_registry
-    const { data: modelData } = await supabase
+    // Get all providers that support this model from models_registry
+    const { data: modelProviders } = await supabase
       .from('models_registry')
-      .select('provider_id')
+      .select('provider_id, provider_name')
       .eq('friendly_id', model)
       .eq('is_active', true)
-      .limit(1)
-      .single()
     
-    if (modelData?.provider_id) {
-      // Map provider IDs to our internal provider names
-      const providerMapping: Record<string, string> = {
-        'anthropic': 'anthropic',
-        'openai': 'openai',
-        'google': 'gemini',
-        'groq': 'groq',
-        'deepseek': 'deepseek',
-        'xai': 'xai',
-        'moonshotai': 'openai', // Moonshot uses OpenAI-compatible API
-        'moonshotai-cn': 'openai', // Moonshot CN uses OpenAI-compatible API
-        'vercel': 'openai', // Vercel uses OpenAI-compatible API
-        'github-models': 'openai', // GitHub Models uses OpenAI-compatible API
-        'nvidia': 'openai', // NVIDIA uses OpenAI-compatible API
-        'fireworks-ai': 'openai' // Fireworks uses OpenAI-compatible API
-      }
-      
-      return providerMapping[modelData.provider_id] || modelData.provider_id
+    if (!modelProviders || modelProviders.length === 0) {
+      console.log(`No providers found for model: ${model}`)
+      return 'openai' // Fallback
     }
+    
+    // If we have a user ID, check their preferences to determine which provider they want to use for this model
+    if (userId) {
+      const { data: userPrefs } = await supabase
+        .from('user_preferences')
+        .select('model_preferences')
+        .eq('user_id', userId)
+        .single()
+      
+      if (userPrefs?.model_preferences) {
+        // Check each provider in user's preference order to see if they have this model configured
+        const modelPrefs = userPrefs.model_preferences
+        
+        // Sort providers by user's preference order
+        const sortedProviders = Object.entries(modelPrefs)
+          .sort(([,a], [,b]) => (a.order || 999) - (b.order || 999))
+        
+        for (const [providerKey, providerConfig] of sortedProviders) {
+          // Check if this provider supports the requested model and user has it in their preferences
+          const isProviderInRegistry = modelProviders.some(mp => 
+            mp.provider_id === providerKey || mp.provider_name?.toLowerCase() === providerKey.toLowerCase()
+          )
+          
+          if (isProviderInRegistry && providerConfig.models?.includes(model)) {
+            console.log(`Found user preferred provider for ${model}: ${providerKey}`)
+            return providerKey
+          }
+        }
+      }
+    }
+    
+    // If no user preference found, return the first available provider
+    const firstProvider = modelProviders[0]
+    console.log(`Using first available provider for ${model}: ${firstProvider.provider_id}`)
+    return firstProvider.provider_id
   } catch (error) {
     console.warn(`Failed to lookup provider for model ${model}:`, error)
+    // Try to suggest similar models if the exact model is not found
+    if (modelProviders.length === 0) {
+      console.log(`Model ${model} not found in models_registry. Consider checking for similar models or updating the registry.`)
+    }
+    return 'openai' // Fallback to OpenAI
   }
-  
-  // Fallback to legacy string matching if database lookup fails
-  if (model.includes('gpt') || model.includes('openai')) return 'openai'
-  if (model.includes('claude')) return 'anthropic'
-  if (model.includes('gemini')) return 'gemini'
-  if (model.includes('llama')) return 'groq'
-  if (model.includes('mixtral')) return 'groq'
-  if (model.includes('deepseek')) return 'deepseek'
-  if (model.includes('grok')) return 'xai'
-  if (model.includes('kimi')) return 'groq'  // Kimi K2 is available via Groq
-  
-  // Default fallback
-  return 'openai'
 }
 
 export async function POST(request: NextRequest) {
@@ -278,7 +288,7 @@ export async function POST(request: NextRequest) {
         let actualModelId = modelId
         
         // STEP 1: PRIORITY 1 - CLI Tools (highest priority, ignore preferences)
-        const requiredProvider = await getProviderFromModel(modelId, supabase)
+        const requiredProvider = await getProviderFromModel(modelId, supabase, user.id)
         if (providerConfigs[requiredProvider]?.type === 'cli' && providerConfigs[requiredProvider]?.priority === 1) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider]
