@@ -81,8 +81,29 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
       .eq('is_active', true)
     
     if (!modelProviders || modelProviders.length === 0) {
-      console.log(`No providers found for model: ${model}`)
-      return 'openai' // Fallback
+      console.log(`No providers found for model: ${model} in models_registry`)
+      // Fall back to user preferences to determine provider
+      if (userId) {
+        const { data: userPrefs } = await supabase
+          .from('user_preferences')
+          .select('model_preferences')
+          .eq('user_id', userId)
+          .single()
+        
+        if (userPrefs?.model_preferences) {
+          // Find which provider the user has configured this model under
+          for (const [providerId, providerConfig] of Object.entries(userPrefs.model_preferences)) {
+            const config = providerConfig as any
+            if (config?.models?.includes(model)) {
+              console.log(`Found model ${model} in user preferences under provider: ${providerId}`)
+              return providerId
+            }
+          }
+        }
+      }
+      
+      console.warn(`Model ${model} not found in registry or user preferences, falling back to openai`)
+      return 'openai'
     }
     
     // If we have a user ID, check their preferences to determine which provider they want to use for this model
@@ -481,7 +502,7 @@ export async function POST(request: NextRequest) {
               apiOptions.reasoning_effort = reasoning_effort
             }
             
-            // Make API call through OpenRouter (always use openai handler for compatibility)
+            // Make API call through OpenRouter
             response = await apiManager.createMessage('openai', apiOptions)
             const result = await response.json()
             
