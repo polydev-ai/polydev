@@ -313,6 +313,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let currentSessionId: string | null = null // For chat history tracking
+    
     // Process requests for each model with STRICT PRIORITY: CLI > API > OPENROUTER(CREDITS)
     const responses = await Promise.all(
       targetModels.map(async (modelId: string) => {
@@ -713,19 +715,80 @@ export async function POST(request: NextRequest) {
       })
     )
     
-    // Log the interaction
+    // Save chat history and log the interaction
     try {
+      const totalTokens = responses.reduce((sum, r) => sum + (r?.usage?.total_tokens || 0), 0)
+      const totalCost = responses.reduce((sum, r) => sum + (r?.costInfo?.total_cost || 0), 0)
+      
+      // Get or create chat session if session_id is provided
+      const sessionId = body.session_id
+      currentSessionId = sessionId
+      
+      if (!currentSessionId) {
+        // Create new session for new conversations
+        const { data: newSession, error: sessionError } = await supabase
+          .from('chat_sessions')
+          .insert({
+            user_id: user.id,
+            title: 'New Chat'
+          })
+          .select('id')
+          .single()
+          
+        if (sessionError) {
+          console.warn('Failed to create chat session:', sessionError)
+        } else {
+          currentSessionId = newSession.id
+        }
+      }
+      
+      // Save messages to chat history if we have a session
+      if (currentSessionId) {
+        // Save user message
+        const userMessage = messages[messages.length - 1] // Last message is the current user input
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: currentSessionId,
+            role: 'user',
+            content: userMessage.content
+          })
+        
+        // Save assistant responses
+        const assistantMessages = responses
+          .filter(r => r && !r.error)
+          .map(r => ({
+            session_id: currentSessionId,
+            role: 'assistant',
+            content: r.content,
+            model_id: r.model,
+            provider_info: r.provider ? { provider: r.provider, fallback_method: r.fallback_method } : null,
+            usage_info: r.usage || null,
+            cost_info: r.costInfo || null,
+            metadata: r.credits_used ? { credits_used: r.credits_used } : null
+          }))
+        
+        if (assistantMessages.length > 0) {
+          await supabase
+            .from('chat_messages')
+            .insert(assistantMessages)
+        }
+      }
+      
+      // Log the interaction for analytics
       await supabase
         .from('chat_logs')
         .insert({
           user_id: user.id,
+          session_id: currentSessionId,
           models_used: targetModels,
           message_count: messages.length,
-          total_tokens: responses.reduce((sum, r) => sum + (r?.usage?.total_tokens || 0), 0),
+          total_tokens: totalTokens,
+          total_cost: totalCost,
           created_at: new Date().toISOString()
         })
     } catch (logError) {
-      console.warn('Failed to log chat interaction:', logError)
+      console.warn('Failed to save chat history/log interaction:', logError)
     }
     
     // Return response in OpenAI format for single model, Polydev format for multiple
@@ -786,7 +849,8 @@ export async function POST(request: NextRequest) {
           provider: response?.provider || 'unknown',
           source_type: response?.fallback_method || 'api',
           cost_info: costInfo,
-          model_resolved: response?.model || model
+          model_resolved: response?.model || model,
+          session_id: currentSessionId
         }
       })
     }
@@ -847,7 +911,8 @@ export async function POST(request: NextRequest) {
         provider_breakdown: providerBreakdown,
         models_processed: responses.length,
         successful_models: responses.filter(r => r && !r.error).length,
-        failed_models: responses.filter(r => r && r.error).length
+        failed_models: responses.filter(r => r && r.error).length,
+        session_id: currentSessionId
       }
     })
     

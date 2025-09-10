@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboardModels, type DashboardModel } from '../../hooks/useDashboardModels'
+import { useChatSessions, type ChatSession, type ChatMessage } from '../../hooks/useChatSessions'
 
 interface Message {
   id: string
@@ -29,11 +30,21 @@ interface Message {
 export default function Chat() {
   const { user, loading, isAuthenticated } = useAuth()
   const { models: dashboardModels, loading: modelsLoading, error: modelsError, hasModels } = useDashboardModels()
+  const { 
+    sessions, 
+    loading: sessionsLoading, 
+    error: sessionsError, 
+    createSession, 
+    getSessionWithMessages 
+  } = useChatSessions()
+  
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedModels, setSelectedModels] = useState<string[]>([])
   const [showModelSelector, setShowModelSelector] = useState(false)
+  const [currentSession, setCurrentSession] = useState<ChatSession | null>(null)
+  const [showSidebar, setShowSidebar] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Set default selected models when dashboard models load
@@ -74,8 +85,53 @@ export default function Chat() {
     scrollToBottom()
   }, [messages])
 
+  // Function to convert ChatMessage to Message interface
+  const convertChatMessage = (chatMsg: ChatMessage): Message => ({
+    id: chatMsg.id,
+    role: chatMsg.role,
+    content: chatMsg.content,
+    model: chatMsg.model_id,
+    timestamp: new Date(chatMsg.created_at),
+    provider: chatMsg.provider_info?.provider,
+    usage: chatMsg.usage_info,
+    costInfo: chatMsg.cost_info,
+    fallbackMethod: chatMsg.metadata?.fallback_method,
+    creditsUsed: chatMsg.metadata?.credits_used
+  })
+
+  // Load session messages
+  const loadSession = async (session: ChatSession) => {
+    const sessionWithMessages = await getSessionWithMessages(session.id)
+    if (sessionWithMessages) {
+      setCurrentSession(session)
+      const convertedMessages = sessionWithMessages.chat_messages.map(convertChatMessage)
+      setMessages(convertedMessages)
+      setShowSidebar(false)
+    }
+  }
+
+  // Start new session
+  const startNewSession = async () => {
+    const newSession = await createSession()
+    if (newSession) {
+      setCurrentSession(newSession)
+      setMessages([])
+      setShowSidebar(false)
+    }
+  }
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
+
+    // Create new session if none exists
+    let sessionId = currentSession?.id
+    if (!sessionId) {
+      const newSession = await createSession()
+      if (newSession) {
+        setCurrentSession(newSession)
+        sessionId = newSession.id
+      }
+    }
 
     const userMessage: Message = {
       id: `${Date.now()}-${user?.id}`,
@@ -99,7 +155,8 @@ export default function Chat() {
         body: JSON.stringify({
           messages: [...messages, userMessage],
           models: selectedModels,
-          temperature: 0.7
+          temperature: 0.7,
+          session_id: sessionId
         }),
       })
 
@@ -111,6 +168,20 @@ export default function Chat() {
       
       if (data.error) {
         throw new Error(data.error)
+      }
+
+      // Update session ID if returned from API
+      if (data.polydev_metadata?.session_id && !currentSession) {
+        const sessionId = data.polydev_metadata.session_id
+        // Find the session in our sessions list or create a placeholder
+        const session = sessions.find(s => s.id === sessionId) || {
+          id: sessionId,
+          title: 'New Chat',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          archived: false
+        }
+        setCurrentSession(session)
       }
 
       const assistantMessages = data.responses.map((resp: any) => {
@@ -201,7 +272,7 @@ export default function Chat() {
   }
 
   const clearChat = () => {
-    setMessages([])
+    startNewSession()
   }
 
   if (loading || modelsLoading) {
@@ -234,42 +305,96 @@ export default function Chat() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Polydev Chat
-              </h1>
-              <div className="flex items-center space-x-2">
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex">
+      {/* Session Sidebar */}
+      <div className={`${showSidebar ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700`}>
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat History</h2>
+            <button
+              onClick={() => setShowSidebar(false)}
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <button
+            onClick={startNewSession}
+            className="w-full mb-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            New Chat
+          </button>
+          
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {sessions.map((session) => (
+              <button
+                key={session.id}
+                onClick={() => loadSession(session)}
+                className={`w-full text-left p-3 rounded-lg transition-colors ${
+                  currentSession?.id === session.id
+                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
+                    : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
+                }`}
+              >
+                <div className="text-sm font-medium truncate">{session.title}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {new Date(session.updated_at).toLocaleDateString()}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
                 <button
-                  onClick={() => setShowModelSelector(!showModelSelector)}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  onClick={() => setShowSidebar(true)}
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  title="Show chat history"
                 >
-                  <span className="mr-2">{selectedModels.length} models</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  {currentSession?.title || 'Polydev Chat'}
+                </h1>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setShowModelSelector(!showModelSelector)}
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="mr-2">{selectedModels.length} models</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={clearChat}
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  title="New chat"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </button>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {user?.email}
+                </div>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={clearChat}
-                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                title="Clear chat"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                {user?.email}
-              </div>
-            </div>
-          </div>
 
           {/* Model Selector Dropdown */}
           {showModelSelector && (
@@ -346,12 +471,12 @@ export default function Chat() {
               </div>
             </div>
           )}
+          </div>
         </div>
-      </div>
 
-      {/* Chat Area */}
-      <div className="flex-1">
-        <div className="max-w-4xl mx-auto">
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 overflow-y-auto">
           {/* Messages */}
           <div className="px-4 py-6 space-y-6">
             {messages.length === 0 ? (
@@ -494,12 +619,11 @@ export default function Chat() {
             
             <div ref={messagesEndRef} />
           </div>
-        </div>
-      </div>
+          </div>
 
-      {/* Input Area */}
-      <div className="sticky bottom-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-t border-gray-200 dark:border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+          {/* Input Area */}
+          <div className="sticky bottom-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-t border-gray-200 dark:border-gray-800">
+            <div className="px-4 py-4">
           <div className="relative">
             <div className="flex space-x-3">
               <div className="flex-1 relative">
@@ -529,6 +653,7 @@ export default function Chat() {
                 Please select at least one model to start chatting.
               </p>
             )}
+            </div>
           </div>
         </div>
       </div>
