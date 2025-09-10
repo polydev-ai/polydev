@@ -146,6 +146,26 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     }
   },
 
+  // GOOGLE GEMINI ALIAS (for 'google' provider ID)
+  google: {
+    id: 'google',
+    name: 'Google Gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': (options) => options.apiKey || ''
+    },
+    requestTransform: (options) => {
+      const transformer = getTransformer('google')
+      return transformer.transformRequest(options)
+    },
+    rateLimits: {
+      requestsPerMinute: 300,
+      tokensPerMinute: 32000
+    }
+  },
+
   // VERTEX AI CONFIGURATION
   vertex: {
     id: 'vertex',

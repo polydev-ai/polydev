@@ -246,8 +246,8 @@ export class EnhancedOpenAIHandler extends BaseEnhancedHandler {
 
 // GOOGLE ENHANCED HANDLER
 export class EnhancedGoogleHandler extends BaseEnhancedHandler {
-  constructor() {
-    super('gemini')
+  constructor(providerId: string = 'gemini') {
+    super(providerId)
   }
   
   protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
@@ -535,7 +535,9 @@ export class EnhancedHandlerFactory {
       case 'openai-native':
         return new EnhancedOpenAIHandler()
       case 'gemini':
-        return new EnhancedGoogleHandler()
+        return new EnhancedGoogleHandler('gemini')
+      case 'google':
+        return new EnhancedGoogleHandler('google')
       case 'xai':
         return new EnhancedXAIHandler()
       case 'deepseek':
@@ -553,7 +555,7 @@ export class EnhancedHandlerFactory {
   
   static getSupportedProviders(): string[] {
     return [
-      'anthropic', 'openai', 'openai-native', 'gemini', 'xai', 
+      'anthropic', 'openai', 'openai-native', 'gemini', 'google', 'xai', 
       'deepseek', 'groq', 'ollama', 'claude-code'
     ]
   }
