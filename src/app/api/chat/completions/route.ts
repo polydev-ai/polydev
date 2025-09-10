@@ -579,9 +579,12 @@ export async function POST(request: NextRequest) {
           // FALLBACK LOGIC: If CLI fails, try API keys, then credits
           if (fallbackMethod === 'cli') {
             console.log(`CLI failed for ${modelId}, trying API fallback...`)
+            console.log(`Checking if ${requiredProvider} has API key configured...`)
+            console.log(`Provider configs for ${requiredProvider}:`, providerConfigs[requiredProvider] || 'NOT FOUND')
             
             // Try API key for the same provider first
             if (providerConfigs[requiredProvider]?.type === 'api') {
+              console.log(`✅ ${requiredProvider} API key found, attempting API fallback...`)
               try {
                 const apiOptions: any = {
                   messages: messages.map((msg: any) => ({
@@ -615,10 +618,14 @@ export async function POST(request: NextRequest) {
               } catch (apiError) {
                 console.error(`API fallback also failed for ${modelId}:`, apiError)
               }
+            } else {
+              console.log(`❌ No ${requiredProvider} API key configured, skipping API fallback for this provider`)
             }
             
             // Try OpenRouter API key fallback
+            console.log(`Checking if OpenRouter API key is available for fallback...`)
             if (providerConfigs['openrouter']?.type === 'api') {
+              console.log(`✅ OpenRouter API key found, attempting OpenRouter API fallback...`)
               try {
                 const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
                 const apiOptions: any = {
@@ -649,10 +656,14 @@ export async function POST(request: NextRequest) {
               } catch (openrouterError) {
                 console.error(`OpenRouter API fallback also failed for ${modelId}:`, openrouterError)
               }
+            } else {
+              console.log(`❌ No OpenRouter API key configured, will try OpenRouter credits fallback`)
             }
-            
-            // Final fallback: OpenRouter credits
-            if (totalCredits > 0 && process.env.OPENROUTER_API_KEY) {
+          }
+          
+          console.log(`🔄 All API fallbacks exhausted, attempting OpenRouter credits fallback for ${modelId}...`)
+          // Final fallback: OpenRouter credits
+          if (totalCredits > 0 && process.env.OPENROUTER_API_KEY) {
               try {
                 const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
                 if (openrouterModelId !== modelId) {

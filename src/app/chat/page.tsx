@@ -10,6 +10,20 @@ interface Message {
   content: string
   model?: string
   timestamp: Date
+  // Enhanced metadata for assistant messages
+  provider?: string
+  usage?: {
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+  }
+  costInfo?: {
+    input_cost: number
+    output_cost: number
+    total_cost: number
+  }
+  fallbackMethod?: string
+  creditsUsed?: number
 }
 
 export default function Chat() {
@@ -106,7 +120,13 @@ export default function Chat() {
           role: 'assistant' as const,
           content: resp.content,
           model: model?.name || resp.model,
-          timestamp: new Date()
+          timestamp: new Date(),
+          // Enhanced metadata
+          provider: resp.provider,
+          usage: resp.usage,
+          costInfo: resp.costInfo,
+          fallbackMethod: resp.fallback_method,
+          creditsUsed: resp.credits_used
         }
       })
 
@@ -157,6 +177,27 @@ export default function Chat() {
       case 'credits':
         return 'Credits'
     }
+  }
+
+  const getSourceFromProvider = (provider?: string) => {
+    if (!provider) return null
+    
+    if (provider.includes('CLI')) {
+      return { type: 'cli', label: 'CLI', cost: '$0.00' }
+    } else if (provider.includes('API')) {
+      return { type: 'api', label: 'API' }
+    } else if (provider.includes('Credits')) {
+      return { type: 'credits', label: 'Credits' }
+    }
+    
+    return null
+  }
+
+  const formatCost = (cost?: number) => {
+    if (cost === undefined || cost === null) return '$0.00'
+    if (cost === 0) return '$0.00'
+    if (cost < 0.0001) return '<$0.0001'
+    return `$${cost.toFixed(4)}`
   }
 
   const clearChat = () => {
@@ -366,9 +407,46 @@ export default function Chat() {
                   <div className={`max-w-3xl ${message.role === 'user' ? 'ml-auto' : 'mr-auto'}`}>
                     {message.role === 'assistant' && message.model && (
                       <div className="mb-2 px-4">
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                          {message.model}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                            {message.model}
+                          </span>
+                          <div className="flex items-center space-x-2">
+                            {/* Source badge */}
+                            {(() => {
+                              const source = getSourceFromProvider(message.provider)
+                              if (source) {
+                                return (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(source.type as any)}`}>
+                                    {source.label}
+                                  </span>
+                                )
+                              }
+                              return null
+                            })()}
+                            
+                            {/* Token usage */}
+                            {message.usage && (
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
+                                {message.usage.total_tokens} tokens
+                              </span>
+                            )}
+                            
+                            {/* Cost info */}
+                            {message.costInfo && (
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
+                                {formatCost(message.costInfo.total_cost)}
+                              </span>
+                            )}
+                            
+                            {/* Credits used */}
+                            {message.creditsUsed && (
+                              <span className="text-xs text-orange-500 dark:text-orange-400">
+                                {message.creditsUsed} credits
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     )}
                     <div className={`px-6 py-4 rounded-2xl ${
