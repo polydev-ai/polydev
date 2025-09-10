@@ -16,7 +16,6 @@ interface ApiKey {
   active: boolean
   api_base?: string
   default_model?: string
-  additional_models?: string[]
   is_preferred?: boolean
   budget_limit?: number
   display_order?: number
@@ -111,7 +110,6 @@ export default function EnhancedApiKeysPage() {
     api_base: '',
     default_model: '',
     is_preferred: false,
-    additional_models: [] as string[],
     budget_limit: null as number | null,
     reasoning_level: 5
   })
@@ -404,7 +402,6 @@ export default function EnhancedApiKeysPage() {
           api_base: formData.api_base,
           default_model: formData.default_model,
           is_preferred: formData.is_preferred,
-          additional_models: formData.additional_models,
           budget_limit: formData.budget_limit
         }
         
@@ -444,7 +441,6 @@ export default function EnhancedApiKeysPage() {
         api_base: '',
         default_model: '',
         is_preferred: false,
-        additional_models: [],
         budget_limit: null,
         reasoning_level: 1
       })
@@ -756,18 +752,6 @@ export default function EnhancedApiKeysPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                       <div>API URL: <span className="font-mono text-xs">{key.api_base || providerConfig?.baseUrl}</span></div>
                                       <div>Default Model: <span className="font-mono text-xs">{key.default_model}</span></div>
-                                      {key.additional_models && key.additional_models.length > 0 && (
-                                        <div className="md:col-span-2">
-                                          <span>Additional Models: </span>
-                                          <div className="flex flex-wrap gap-1 mt-1">
-                                            {key.additional_models.map(model => (
-                                              <span key={model} className="bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs">
-                                                {model}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
                                     </div>
                                     <div className="flex space-x-2 pt-2">
                                       <button 
@@ -781,7 +765,6 @@ export default function EnhancedApiKeysPage() {
                                             api_base: key.api_base || '',
                                             default_model: key.default_model || '',
                                             is_preferred: key.is_preferred || false,
-                                            additional_models: key.additional_models || [],
                                             budget_limit: key.budget_limit ?? null,
                                             reasoning_level: (key as any).reasoning_level || 1
                                           })
@@ -836,7 +819,7 @@ export default function EnhancedApiKeysPage() {
                     value={formData.provider}
                     onChange={async (e) => {
                       const providerId = e.target.value
-                      setFormData(prev => ({...prev, provider: providerId, default_model: '', additional_models: []}))
+                      setFormData(prev => ({...prev, provider: providerId, default_model: ''}))
                       if (providerId) {
                         await fetchProviderModels(providerId)
                       }
@@ -1073,30 +1056,6 @@ export default function EnhancedApiKeysPage() {
                 </label>
               </div>
 
-              {/* Additional Models */}
-              {formData.is_preferred && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Additional Models (Optional)
-                  </label>
-                  <select
-                    multiple
-                    value={formData.additional_models}
-                    onChange={(e) => setFormData(prev => ({...prev, additional_models: Array.from(e.target.selectedOptions, option => option.value)}))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-                  >
-                    {loadingModels[formData.provider] && (
-                      <option disabled>Loading models...</option>
-                    )}
-                    {(providerModels[formData.provider] || []).map(model => (
-                      <option key={model.id} value={model.id} disabled={model.id === formData.default_model}>
-                        {model.display_name || model.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">Hold Cmd/Ctrl to select multiple</p>
-                </div>
-              )}
 
               {/* Budget Limit */}
               <div>
@@ -1147,8 +1106,7 @@ export default function EnhancedApiKeysPage() {
                     api_base: '',
                     default_model: '',
                     is_preferred: false,
-                    additional_models: [],
-                    budget_limit: null,
+                                budget_limit: null,
                     reasoning_level: 5
                   })
                 }}
