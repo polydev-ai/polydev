@@ -259,13 +259,17 @@ export async function POST(request: NextRequest) {
       'gemini_cli': 'google'
     }
     
-    const providerConfigs: Record<string, any> = {}
+    // Build comprehensive provider configuration with separate CLI and API capabilities
+    const providerConfigs: Record<string, { cli?: any, api?: any }> = {}
     
-    // PRIORITY 1: CLI providers (highest priority)
+    // Process CLI configurations
     ;(cliConfigs || []).forEach(cli => {
       const mappedProvider = cliProviderMappings[cli.provider]
       if (mappedProvider) {
-        providerConfigs[mappedProvider] = {
+        if (!providerConfigs[mappedProvider]) {
+          providerConfigs[mappedProvider] = {}
+        }
+        providerConfigs[mappedProvider].cli = {
           type: 'cli',
           priority: 1,
           cliProvider: cli.provider,
@@ -274,26 +278,16 @@ export async function POST(request: NextRequest) {
       }
     })
     
-    // PRIORITY 2: API keys (including OpenRouter as a provider, not credits)
+    // Process API key configurations
     ;(apiKeys || []).forEach(key => {
-      // Always add API key config, even if CLI exists for the provider
-      const apiConfigKey = `${key.provider}_api`
-      providerConfigs[apiConfigKey] = {
+      if (!providerConfigs[key.provider]) {
+        providerConfigs[key.provider] = {}
+      }
+      providerConfigs[key.provider].api = {
         type: 'api',
         priority: 2,
-        provider: key.provider,
         apiKey: atob(key.encrypted_key),
         baseUrl: key.api_base
-      }
-      
-      // Also add under the original provider name if no CLI config exists
-      if (!providerConfigs[key.provider]) {
-        providerConfigs[key.provider] = {
-          type: 'api',
-          priority: 2,
-          apiKey: atob(key.encrypted_key),
-          baseUrl: key.api_base
-        }
       }
     })
     
@@ -339,28 +333,28 @@ export async function POST(request: NextRequest) {
         
         // STEP 1: PRIORITY 1 - CLI Tools (highest priority, ignore preferences)
         const requiredProvider = await getProviderFromModel(modelId, supabase, user.id)
-        if (providerConfigs[requiredProvider]?.type === 'cli' && providerConfigs[requiredProvider]?.priority === 1) {
+        if (providerConfigs[requiredProvider]?.cli) {
           selectedProvider = requiredProvider
-          selectedConfig = providerConfigs[requiredProvider]
+          selectedConfig = providerConfigs[requiredProvider].cli
           fallbackMethod = 'cli'
           // Resolve CLI-specific model ID
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
         }
         
         // STEP 2: PRIORITY 2 - Direct API Keys (if CLI not available)
-        if (!selectedProvider && providerConfigs[requiredProvider]?.type === 'api' && providerConfigs[requiredProvider]?.priority === 2) {
+        if (!selectedProvider && providerConfigs[requiredProvider]?.api) {
           selectedProvider = requiredProvider
-          selectedConfig = providerConfigs[requiredProvider]
+          selectedConfig = providerConfigs[requiredProvider].api
           fallbackMethod = 'api'
           // Resolve API-specific model ID
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
         }
         
         // STEP 3: Check if user has OpenRouter as API provider for this model
-        if (!selectedProvider && providerConfigs['openrouter']?.type === 'api') {
+        if (!selectedProvider && providerConfigs['openrouter']?.api) {
           // User has OpenRouter API key - treat as regular API provider
           selectedProvider = 'openrouter'
-          selectedConfig = providerConfigs['openrouter']
+          selectedConfig = providerConfigs['openrouter'].api
           fallbackMethod = 'api'
           // Resolve OpenRouter-specific model ID
           actualModelId = await resolveProviderModelId(modelId, 'openrouter')
@@ -595,11 +589,11 @@ export async function POST(request: NextRequest) {
             console.log(`Checking if ${requiredProvider} has API key configured...`)
             console.log(`Provider configs for ${requiredProvider}:`, providerConfigs[requiredProvider] || 'NOT FOUND')
             
-            // Try API key for the same provider first (check both original and _api versions)
-            const apiConfig = providerConfigs[requiredProvider]?.type === 'api' ? providerConfigs[requiredProvider] : providerConfigs[`${requiredProvider}_api`]
-            if (apiConfig) {
+            // Try API key for the same provider first
+            if (providerConfigs[requiredProvider]?.api) {
               console.log(`✅ ${requiredProvider} API key found, attempting API fallback...`)
               try {
+                const apiConfig = providerConfigs[requiredProvider].api
                 const apiOptions: any = {
                   messages: messages.map((msg: any) => ({
                     role: msg.role,
@@ -638,7 +632,7 @@ export async function POST(request: NextRequest) {
             
             // Try OpenRouter API key fallback
             console.log(`Checking if OpenRouter API key is available for fallback...`)
-            if (providerConfigs['openrouter']?.type === 'api') {
+            if (providerConfigs['openrouter']?.api) {
               console.log(`✅ OpenRouter API key found, attempting OpenRouter API fallback...`)
               try {
                 const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
@@ -651,7 +645,7 @@ export async function POST(request: NextRequest) {
                   temperature: adjustedTemperature,
                   maxTokens: adjustedMaxTokens,
                   stream: false,
-                  apiKey: providerConfigs['openrouter'].apiKey
+                  apiKey: providerConfigs['openrouter'].api.apiKey
                 }
                 
                 const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
