@@ -52,14 +52,25 @@ export function useDashboardModels() {
         // Extract models from user preferences
         for (const [providerId, providerPref] of Object.entries(preferences.model_preferences)) {
           // Skip if providerPref is null or undefined
-          if (!providerPref || typeof providerPref !== 'object') {
+          if (!providerPref) {
             continue
           }
           
           const providerConfig = CLINE_PROVIDERS[providerId as keyof typeof CLINE_PROVIDERS]
           
-          // Ensure providerPref.models is an array and iterate safely
-          const models = Array.isArray(providerPref.models) ? providerPref.models : []
+          // Handle both old format (string) and new format (object with models array)
+          let models: string[] = []
+          
+          if (typeof providerPref === 'string') {
+            // Old format: provider_id: "model_name"
+            models = [providerPref]
+          } else if (typeof providerPref === 'object' && Array.isArray(providerPref.models)) {
+            // New format: provider_id: { models: ["model1", "model2"], order: 1 }
+            models = providerPref.models
+          } else {
+            // Skip invalid formats
+            continue
+          }
           
           for (const modelId of models) {
             // Skip if modelId is not a valid string
@@ -147,8 +158,9 @@ export function useDashboardModels() {
           const aProviderPref = preferences.model_preferences[a.provider]
           const bProviderPref = preferences.model_preferences[b.provider]
           
-          const aOrder = (aProviderPref && typeof aProviderPref.order === 'number') ? aProviderPref.order : 999
-          const bOrder = (bProviderPref && typeof bProviderPref.order === 'number') ? bProviderPref.order : 999
+          // Handle both old format (string) and new format (object with order)
+          const aOrder = (aProviderPref && typeof aProviderPref === 'object' && typeof aProviderPref.order === 'number') ? aProviderPref.order : 999
+          const bOrder = (bProviderPref && typeof bProviderPref === 'object' && typeof bProviderPref.order === 'number') ? bProviderPref.order : 999
           
           if (aOrder !== bOrder) {
             return aOrder - bOrder
