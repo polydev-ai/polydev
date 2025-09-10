@@ -51,7 +51,7 @@ export class SubscriptionManager {
   }
 
   // Get user subscription status
-  async getUserSubscription(userId: string, useServiceRole: boolean = false): Promise<UserSubscription | null> {
+  async getUserSubscription(userId: string, useServiceRole: boolean = false, createIfMissing: boolean = true): Promise<UserSubscription | null> {
     try {
       const supabase = await this.getSupabase(useServiceRole)
       const { data, error } = await supabase
@@ -61,27 +61,40 @@ export class SubscriptionManager {
         .single()
 
       if (error && error.code === 'PGRST116') {
-        // User not found - create default FREE subscription
-        console.log(`[SubscriptionManager] Creating default FREE subscription for user: ${userId}`)
+        // User not found - try service role first before creating
+        if (!useServiceRole) {
+          console.log(`[SubscriptionManager] User subscription not found with regular client, trying service role for user: ${userId}`)
+          // Retry with service role to check if subscription exists but was hidden by RLS
+          const serviceRoleResult = await this.getUserSubscription(userId, true, createIfMissing)
+          return serviceRoleResult
+        }
         
-        const { data: newSubscription, error: createError } = await supabase
-          .from('user_subscriptions')
-          .insert({
-            user_id: userId,
-            tier: 'free',
-            status: 'active',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single()
+        // Only create if using service role and createIfMissing is true
+        if (useServiceRole && createIfMissing) {
+          console.log(`[SubscriptionManager] Creating default FREE subscription for user: ${userId}`)
+          
+          const { data: newSubscription, error: createError } = await supabase
+            .from('user_subscriptions')
+            .insert({
+              user_id: userId,
+              tier: 'free',
+              status: 'active',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single()
 
-        if (createError) {
-          console.error('Error creating user subscription:', createError)
+          if (createError) {
+            console.error('Error creating user subscription:', createError)
+            return null
+          }
+
+          return newSubscription
+        } else {
+          console.log(`[SubscriptionManager] User subscription not found and createIfMissing=${createIfMissing}, returning null for user: ${userId}`)
           return null
         }
-
-        return newSubscription
       } else if (error) {
         console.error('Error getting user subscription:', error)
         return null

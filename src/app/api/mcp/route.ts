@@ -1957,8 +1957,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   // Get updated credit balance and subscription status for display
   let statusDisplay = ''
   try {
-    // Get subscription and message usage info
-    const subscription = await subscriptionManager.getUserSubscription(user.id)
+    // Get subscription using service role and avoid auto-creation for status display
+    const subscription = await subscriptionManager.getUserSubscription(user.id, true, false)
     const messageUsage = await subscriptionManager.getUserMessageUsage(user.id)
     
     // Determine which usage method was primarily used for this request
@@ -2024,27 +2024,33 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     }
     
     // Add subscription status
-    const planType = subscription?.tier || 'free'
+    const planTier = subscription?.tier
     const planStatus = subscription?.status || 'N/A'
-    statusDisplay += `\n📋 **Plan**: ${planType === 'pro' ? 'Polydev Pro ($20/month)' : 'Free'} (${planStatus})`
+    statusDisplay += `\n📋 **Plan**: ${planTier === 'pro' ? 'Polydev Pro ($20/month)' : 'Free'} (${planStatus})`
     
     // Add message usage status
     if (messageUsage) {
       const messagesLeft = messageUsage.messages_limit - messageUsage.messages_sent
       statusDisplay += `\n📨 **Messages**: ${messageUsage.messages_sent}/${messageUsage.messages_limit} used this month`
       
-      if (planType === 'free' && messagesLeft <= 10) {
+      if (planTier === 'free' && messagesLeft <= 10) {
         statusDisplay += ` | ⚠️ ${messagesLeft} messages left - upgrade to Pro for unlimited messages!`
-      } else if (planType === 'pro') {
+      } else if (planTier === 'pro') {
         statusDisplay += ` | ✅ Unlimited messages available`
       }
     }
     
-    // Add CLI status
-    if (planType === 'pro') {
+    // Add CLI status using canUseCLI for accurate check
+    const cliCheck = await subscriptionManager.canUseCLI(user.id, true)
+    if (cliCheck.canUse) {
       statusDisplay += `\n🖥️ **CLI Access**: ✅ Available`
     } else {
       statusDisplay += `\n🖥️ **CLI Access**: ❌ Requires Pro subscription`
+    }
+    
+    // Log potential mismatch for debugging
+    if (planTier !== 'pro' && cliCheck.canUse) {
+      console.warn('[MCP Status] CLI allowed but subscription not pro – investigate RLS / duplicate row', { userId: user.id, planTier, cliAccess: cliCheck.canUse })
     }
     
     statusDisplay += '\n'
