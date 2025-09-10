@@ -731,7 +731,7 @@ export async function POST(request: NextRequest) {
       
       // Calculate cost information
       const usage = response?.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-      let costInfo = { input_cost: 0, output_cost: 0, total_cost: 0 }
+      let costInfo: any = { input_cost: 0, output_cost: 0, total_cost: 0 }
       
       if (response?.fallback_method === 'cli') {
         costInfo = { input_cost: 0, output_cost: 0, total_cost: 0 } // CLI is free
@@ -793,13 +793,15 @@ export async function POST(request: NextRequest) {
     const providerBreakdown: Record<string, any> = {}
     
     responses.forEach(response => {
-      if (response?.fallback_method === 'cli') {
+      if (!response || !response.provider) return
+      
+      if (response.fallback_method === 'cli') {
         // CLI is free
         if (!providerBreakdown[response.provider]) {
           providerBreakdown[response.provider] = { cost: 0, tokens: 0, type: 'cli' }
         }
         providerBreakdown[response.provider].tokens += (response.usage?.total_tokens || 0)
-      } else if (response?.credits_used) {
+      } else if (response.credits_used) {
         totalCreditsUsed += response.credits_used
         if (!providerBreakdown[response.provider]) {
           providerBreakdown[response.provider] = { cost: 0, credits: 0, tokens: 0, type: 'credits' }
@@ -808,8 +810,8 @@ export async function POST(request: NextRequest) {
         providerBreakdown[response.provider].tokens += (response.usage?.total_tokens || 0)
       } else {
         // API key usage - calculate cost from model data
-        const modelData = modelDataMap.get(response?.model)
-        if (modelData?.pricing && response?.usage) {
+        const modelData = modelDataMap.get(response.model)
+        if (modelData?.pricing && response.usage) {
           const inputCost = (response.usage.prompt_tokens / 1000000) * (modelData.pricing.input || 0)
           const outputCost = (response.usage.completion_tokens / 1000000) * (modelData.pricing.output || 0)
           const responseCost = inputCost + outputCost
@@ -833,8 +835,8 @@ export async function POST(request: NextRequest) {
         total_credits_used: totalCreditsUsed,
         provider_breakdown: providerBreakdown,
         models_processed: responses.length,
-        successful_models: responses.filter(r => !r.error).length,
-        failed_models: responses.filter(r => r.error).length
+        successful_models: responses.filter(r => r && !r.error).length,
+        failed_models: responses.filter(r => r && r.error).length
       }
     })
     
