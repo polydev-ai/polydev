@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
       const userPreferences = await getUserModels(user_id)
       
       if (userPreferences) {
-        modelToUse = getModelForProvider(provider, userPreferences)
+        modelToUse = getModelForProvider(provider, userPreferences) || undefined
       }
       
       if (!modelToUse) {

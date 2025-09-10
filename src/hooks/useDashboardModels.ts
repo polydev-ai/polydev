@@ -278,6 +278,8 @@ export function useDashboardModels() {
                 }
               }
           }
+        } catch (apiKeyFetchError) {
+          console.warn('Failed to process API keys for missing providers:', apiKeyFetchError)
         }
 
         // Fourth, add CLI status indicators to model descriptions
