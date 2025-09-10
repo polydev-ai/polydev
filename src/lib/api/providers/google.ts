@@ -1,8 +1,7 @@
-import { ApiHandler } from '../index'
 import { ApiHandlerOptions } from '../../../types/providers'
 import { GoogleTransformer } from '../transform'
 
-export class GoogleHandler implements ApiHandler {
+export class GoogleHandler {
   private transformer = new GoogleTransformer()
   private baseUrl = 'https://generativelanguage.googleapis.com/v1beta'
   
@@ -13,6 +12,7 @@ export class GoogleHandler implements ApiHandler {
       throw new Error('API key is required for Google AI')
     }
     
+    // Use the model ID as provided (model name resolution is handled at the API route level)
     const requestBody = this.transformer.transformRequest(options)
     
     const response = await fetch(`${this.baseUrl}/models/${model}:generateContent?key=${apiKey}`, {

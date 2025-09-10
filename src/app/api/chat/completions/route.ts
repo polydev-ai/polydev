@@ -4,6 +4,7 @@ import { apiManager } from '@/lib/api'
 import { CLINE_PROVIDERS } from '@/types/providers'
 import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
+import { modelsDevService } from '@/lib/models-dev-integration'
 
 async function authenticateRequest(request: NextRequest): Promise<{ user: any; preferences: any } | null> {
   const supabase = await createClient()
@@ -68,6 +69,24 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
   return {
     user,
     preferences
+  }
+}
+
+async function resolveProviderModelId(friendlyModelId: string, providerId: string): Promise<string> {
+  try {
+    // First try to get provider-specific model ID from models.dev database
+    const providerSpecificId = await modelsDevService.getProviderSpecificModelId(friendlyModelId, providerId)
+    if (providerSpecificId) {
+      console.log(`Resolved ${friendlyModelId} for ${providerId} to: ${providerSpecificId}`)
+      return providerSpecificId
+    }
+    
+    // Fall back to the friendly model ID if no mapping found
+    console.log(`No mapping found for ${friendlyModelId} with provider ${providerId}, using original ID`)
+    return friendlyModelId
+  } catch (error) {
+    console.warn(`Error resolving model ID for ${friendlyModelId} with provider ${providerId}:`, error)
+    return friendlyModelId
   }
 }
 
@@ -311,6 +330,8 @@ export async function POST(request: NextRequest) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider]
           fallbackMethod = 'cli'
+          // Resolve CLI-specific model ID
+          actualModelId = await resolveProviderModelId(modelId, requiredProvider)
         }
         
         // STEP 2: PRIORITY 2 - Direct API Keys (if CLI not available)
@@ -318,6 +339,8 @@ export async function POST(request: NextRequest) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider]
           fallbackMethod = 'api'
+          // Resolve API-specific model ID
+          actualModelId = await resolveProviderModelId(modelId, requiredProvider)
         }
         
         // STEP 3: Check if user has OpenRouter as API provider for this model
@@ -326,21 +349,25 @@ export async function POST(request: NextRequest) {
           selectedProvider = 'openrouter'
           selectedConfig = providerConfigs['openrouter']
           fallbackMethod = 'api'
-          // Keep original model ID for OpenRouter API usage
+          // Resolve OpenRouter-specific model ID
+          actualModelId = await resolveProviderModelId(modelId, 'openrouter')
         }
         
         // STEP 4: PRIORITY 3 - OpenRouter Credits (lowest priority, last resort)
-        if (!selectedProvider && totalCredits > 0 && modelMapping?.openrouter) {
-          // Use system OpenRouter key for credits
+        if (!selectedProvider && totalCredits > 0) {
+          // Use system OpenRouter key for credits and resolve model ID from database
           if (process.env.OPENROUTER_API_KEY) {
-            selectedProvider = 'openrouter'
-            selectedConfig = {
-              type: 'credits',
-              priority: 3,
-              apiKey: process.env.OPENROUTER_API_KEY
+            const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
+            if (openrouterModelId !== modelId) { // Only use credits if we have a mapping
+              selectedProvider = 'openrouter'
+              selectedConfig = {
+                type: 'credits',
+                priority: 3,
+                apiKey: process.env.OPENROUTER_API_KEY
+              }
+              actualModelId = openrouterModelId
+              fallbackMethod = 'credits'
             }
-            actualModelId = modelMapping.openrouter.api_model_id // Use OpenRouter-specific model ID
-            fallbackMethod = 'credits'
           }
         }
         
@@ -510,10 +537,14 @@ export async function POST(request: NextRequest) {
               throw new Error(result.error?.message || 'OpenRouter API call failed')
             }
             
+            // Get cost from models.dev database for credits calculation
+            const pricingData = await modelsDevService.getModelPricing(modelId, 'openrouter')
+            const inputCostPerMillion = pricingData?.input || 1
+            
             // If using credits, deduct from balance
             if (selectedConfig.type === 'credits') {
               const usageTokens = result.usage?.total_tokens || 0
-              const costEstimate = (usageTokens / 1000000) * (modelMapping?.openrouter?.cost?.input || 1)
+              const costEstimate = (usageTokens / 1000000) * inputCostPerMillion
               
               if (costEstimate > 0 && userCredits) {
                 await supabase
@@ -539,7 +570,7 @@ export async function POST(request: NextRequest) {
               usage: result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
               provider: selectedConfig.type === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)',
               fallback_method: fallbackMethod,
-              credits_used: selectedConfig.type === 'credits' ? (result.usage?.total_tokens || 0) / 1000000 * (modelMapping?.openrouter?.cost?.input || 1) : undefined
+              credits_used: selectedConfig.type === 'credits' ? (result.usage?.total_tokens || 0) / 1000000 * inputCostPerMillion : undefined
             }
           }
         } catch (error: any) {

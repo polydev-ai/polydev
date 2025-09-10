@@ -1,8 +1,7 @@
-import { ApiHandler } from '../index'
 import { ApiHandlerOptions } from '../../../types/providers'
 import { OpenAITransformer } from '../transform'
 
-export class GroqHandler implements ApiHandler {
+export class GroqHandler {
   private transformer = new OpenAITransformer()
   private baseUrl = 'https://api.groq.com/openai/v1'
   
@@ -13,6 +12,7 @@ export class GroqHandler implements ApiHandler {
       throw new Error('API key is required for Groq')
     }
     
+    // Use the model ID as provided (model name resolution is handled at the API route level)
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false
     
@@ -34,7 +34,8 @@ export class GroqHandler implements ApiHandler {
   }
   
   async streamMessage(options: ApiHandlerOptions): Promise<ReadableStream> {
-    const response = await this.createMessage({ ...options })
+    // Use the createMessage method which already handles mapping
+    const response = await this.createMessage(options)
     return response.body || new ReadableStream()
   }
   

@@ -1,8 +1,7 @@
-import { ApiHandler } from '../index'
 import { ApiHandlerOptions } from '../../../types/providers'
 import { OpenAITransformer } from '../transform'
 
-export class OpenRouterHandler implements ApiHandler {
+export class OpenRouterHandler {
   private transformer = new OpenAITransformer()
   private baseUrl = 'https://openrouter.ai/api/v1'
   
@@ -13,6 +12,7 @@ export class OpenRouterHandler implements ApiHandler {
       throw new Error('API key is required for OpenRouter')
     }
     
+    // Use the model ID as provided (model name resolution is handled at the API route level)
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false
     

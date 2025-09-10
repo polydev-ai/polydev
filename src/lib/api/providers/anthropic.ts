@@ -1,8 +1,8 @@
-import { ApiHandler, StreamChunk } from '../index'
+import { StreamChunk } from '../index'
 import { ApiHandlerOptions } from '../../../types/providers'
 import { AnthropicTransformer } from '../transform'
 
-export class AnthropicHandler implements ApiHandler {
+export class AnthropicHandler {
   private transformer = new AnthropicTransformer()
   private baseUrl = 'https://api.anthropic.com'
   
@@ -13,6 +13,7 @@ export class AnthropicHandler implements ApiHandler {
       throw new Error('API key is required for Anthropic')
     }
     
+    // Use the model ID as provided (model name resolution is handled at the API route level)
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false // Non-streaming request
     
@@ -41,6 +42,7 @@ export class AnthropicHandler implements ApiHandler {
       throw new Error('API key is required for Anthropic')
     }
     
+    // Use the model ID as provided (model name resolution is handled at the API route level)
     const requestBody = this.transformer.transformRequest(options)
     
     const response = await fetch(`${this.baseUrl}/v1/messages`, {

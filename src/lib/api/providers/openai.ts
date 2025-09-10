@@ -1,8 +1,7 @@
-import { ApiHandler } from '../index'
 import { ApiHandlerOptions } from '../../../types/providers'
 import { OpenAITransformer } from '../transform'
 
-export class OpenAIHandler implements ApiHandler {
+export class OpenAIHandler {
   private transformer = new OpenAITransformer()
   private baseUrl = 'https://api.openai.com/v1'
   
@@ -13,6 +12,7 @@ export class OpenAIHandler implements ApiHandler {
       throw new Error('API key is required for OpenAI')
     }
     
+    // Use the model ID as provided (model name resolution is handled at the API route level)
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false
     

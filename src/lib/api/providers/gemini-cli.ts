@@ -5,7 +5,8 @@ export class GeminiCLIHandler implements ApiHandler {
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
     try {
       // Use the MCP server bridge to communicate with Gemini CLI
-      const response = await fetch('/api/mcp', {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.polydev.ai'
+      const response = await fetch(`${baseUrl}/api/mcp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,7 +80,8 @@ export class GeminiCLIHandler implements ApiHandler {
   async validateApiKey(apiKey: string): Promise<boolean> {
     // CLI authentication is handled by the CLI itself
     try {
-      const response = await fetch('/api/cli-status', {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.polydev.ai'
+      const response = await fetch(`${baseUrl}/api/cli-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
