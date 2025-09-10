@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     
     // Parse request body - support both OpenAI format and Polydev format
     const body = await request.json()
-    let { messages, model, models, temperature = 0.7, max_tokens, stream = false, reasoning_effort } = body
+    let { messages, model, models, temperature = 0.7, max_tokens = 4096, stream = false, reasoning_effort } = body
     
     // Validate and sanitize messages to prevent transformation errors
     if (!messages || !Array.isArray(messages)) {
@@ -390,6 +390,11 @@ export async function POST(request: NextRequest) {
         // Ensure we have valid parameters
         if (adjustedTemperature < 0 || adjustedTemperature > 2) {
           adjustedTemperature = 0.7
+        }
+        
+        // Ensure maxTokens is valid (not undefined, null, Infinity, or negative)
+        if (!adjustedMaxTokens || adjustedMaxTokens === Infinity || adjustedMaxTokens < 1 || adjustedMaxTokens > 128000) {
+          adjustedMaxTokens = 4096
         }
         
         if (!selectedProvider || !selectedConfig) {
