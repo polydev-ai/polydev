@@ -234,9 +234,9 @@ export class SubscriptionManager {
   }
 
   // Check if user can use CLI
-  async canUseCLI(userId: string): Promise<{ canUse: boolean; reason?: string }> {
+  async canUseCLI(userId: string, useServiceRole: boolean = true): Promise<{ canUse: boolean; reason?: string }> {
     try {
-      const subscription = await this.getUserSubscription(userId)
+      const subscription = await this.getUserSubscription(userId, useServiceRole)
       
       if (!subscription || subscription.tier !== 'pro' || subscription.status !== 'active') {
         return {

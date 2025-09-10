@@ -7,7 +7,7 @@ export class OpenAIHandler implements ApiHandler {
   private baseUrl = 'https://api.openai.com/v1'
   
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
-    const { apiKey, openAiBaseUrl } = options
+    const { apiKey, openAiBaseUrl, model } = options
     
     if (!apiKey) {
       throw new Error('API key is required for OpenAI')
@@ -17,7 +17,12 @@ export class OpenAIHandler implements ApiHandler {
     requestBody.stream = false
     
     const endpoint = openAiBaseUrl || this.baseUrl
-    const response = await fetch(`${endpoint}/chat/completions`, {
+    
+    // GPT-5 models use the Responses API endpoint
+    const isGPT5Model = model && (model === 'gpt-5' || model.includes('gpt-5'))
+    const apiEndpoint = isGPT5Model ? '/responses' : '/chat/completions'
+    
+    const response = await fetch(`${endpoint}${apiEndpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -35,7 +40,7 @@ export class OpenAIHandler implements ApiHandler {
   }
   
   async streamMessage(options: ApiHandlerOptions): Promise<ReadableStream> {
-    const { apiKey, openAiBaseUrl } = options
+    const { apiKey, openAiBaseUrl, model } = options
     
     if (!apiKey) {
       throw new Error('API key is required for OpenAI')
@@ -44,7 +49,12 @@ export class OpenAIHandler implements ApiHandler {
     const requestBody = this.transformer.transformRequest(options)
     
     const endpoint = openAiBaseUrl || this.baseUrl
-    const response = await fetch(`${endpoint}/chat/completions`, {
+    
+    // GPT-5 models use the Responses API endpoint
+    const isGPT5Model = model && (model === 'gpt-5' || model.includes('gpt-5'))
+    const apiEndpoint = isGPT5Model ? '/responses' : '/chat/completions'
+    
+    const response = await fetch(`${endpoint}${apiEndpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

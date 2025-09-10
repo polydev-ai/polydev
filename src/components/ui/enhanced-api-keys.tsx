@@ -46,6 +46,13 @@ interface CLIConfig {
   created_at?: string
   updated_at?: string
   statusMessage?: string
+  message?: string
+  cli_version?: string
+  authenticated?: boolean
+  issue_type?: 'not_installed' | 'not_authenticated' | 'compatibility_issue' | 'environment_issue' | 'unknown'
+  solutions?: string[]
+  install_command?: string
+  auth_command?: string
 }
 
 interface CLIProviderInfo {
@@ -396,12 +403,31 @@ export default function EnhancedApiKeysPage() {
     try {
       setCliStatusLoading(true)
       
-      // Fetch CLI statuses that were reported by MCP server
+      // Fetch enhanced CLI statuses with detailed diagnostics
       const response = await fetch('/api/cli-status')
       if (!response.ok) throw new Error('Failed to fetch CLI status')
       
       const data = await response.json()
-      setCliStatuses(data.statuses || [])
+      
+      // Transform the response into our expected format
+      const transformedStatuses: CLIConfig[] = Object.entries(data).map(([provider, config]: [string, any]) => ({
+        user_id: user.id,
+        provider,
+        custom_path: config?.custom_path || null,
+        enabled: config?.enabled || true,
+        status: config?.status || 'unchecked',
+        last_checked_at: config?.last_checked_at,
+        statusMessage: config?.message,
+        message: config?.message,
+        cli_version: config?.cli_version,
+        authenticated: config?.authenticated,
+        issue_type: config?.issue_type,
+        solutions: config?.solutions,
+        install_command: config?.install_command,
+        auth_command: config?.auth_command
+      }))
+      
+      setCliStatuses(transformedStatuses)
       
     } catch (err: any) {
       console.error('Failed to fetch CLI status:', err.message)
@@ -622,8 +648,8 @@ export default function EnhancedApiKeysPage() {
             CLI status is automatically updated when MCP clients connect. Click "Refresh Status" to get latest data from server.
           </p>
           
-          {/* CLI Status Display */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Enhanced CLI Status Display */}
+          <div className="grid grid-cols-1 gap-4">
             {CLI_PROVIDERS.map((cliProvider) => {
               const status = cliStatuses.find(s => s.provider === cliProvider.provider)
               const statusType = status?.status || 'unchecked'
@@ -633,49 +659,144 @@ export default function EnhancedApiKeysPage() {
                 <div key={cliProvider.provider} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 dark:text-white">
-                        {cliProvider.name}
-                      </h3>
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-medium text-gray-900 dark:text-white">
+                          {cliProvider.name}
+                        </h3>
+                        {status?.cli_version && (
+                          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">
+                            {status.cli_version}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                         {cliProvider.description}
                       </p>
-                      {status?.statusMessage && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                          {status.statusMessage}
+                      
+                      {/* Status Message */}
+                      {status?.message && (
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                          {status.message}
                         </p>
                       )}
+                      
+                      {/* Issue Type and Solutions */}
+                      {status?.issue_type && status?.solutions && status.solutions.length > 0 && (
+                        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                          <div className="flex items-start space-x-2">
+                            <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                                Solutions to fix this issue:
+                              </p>
+                              <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                                {status.solutions.map((solution, index) => (
+                                  <li key={index} className="flex items-start space-x-1">
+                                    <span className="text-yellow-600 dark:text-yellow-400 mt-1">•</span>
+                                    <span>{solution}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Quick Action Commands */}
+                      {(status?.install_command || status?.auth_command) && (
+                        <div className="mt-3 space-y-2">
+                          {status.install_command && (
+                            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                              <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-1">Install Command:</p>
+                              <div className="flex items-center justify-between">
+                                <code className="text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded flex-1 mr-2">
+                                  {status.install_command}
+                                </code>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(status.install_command || '')}
+                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
+                                  title="Copy to clipboard"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {status.auth_command && (
+                            <div className="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+                              <p className="text-xs font-medium text-green-800 dark:text-green-200 mb-1">Authentication Command:</p>
+                              <div className="flex items-center justify-between">
+                                <code className="text-xs text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-800 px-2 py-1 rounded flex-1 mr-2">
+                                  {status.auth_command}
+                                </code>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(status.auth_command || '')}
+                                  className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
+                                  title="Copy to clipboard"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
                       {lastChecked && (
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                           Last checked: {lastChecked}
                         </p>
                       )}
                     </div>
+                    
                     <div className="flex items-center space-x-1 ml-3">
                       {statusType === 'available' && (
                         <div className="flex items-center space-x-1 text-green-600">
-                          <CheckCircle className="w-4 h-4" />
-                          <span className="text-xs font-medium">Available</span>
+                          <CheckCircle className="w-5 h-5" />
+                          <div className="text-right">
+                            <div className="text-xs font-medium">Available</div>
+                            {status?.authenticated !== undefined && (
+                              <div className="text-xs text-green-500">
+                                {status.authenticated ? 'Authenticated' : 'Not Authenticated'}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                       
                       {statusType === 'unavailable' && (
                         <div className="flex items-center space-x-1 text-yellow-600">
-                          <XCircle className="w-4 h-4" />
-                          <span className="text-xs font-medium">Not Authenticated</span>
+                          <XCircle className="w-5 h-5" />
+                          <div className="text-right">
+                            <div className="text-xs font-medium">Unavailable</div>
+                            <div className="text-xs text-yellow-500">
+                              {status?.issue_type === 'not_authenticated' ? 'Not Authenticated' :
+                               status?.issue_type === 'compatibility_issue' ? 'Compatibility Issue' :
+                               status?.issue_type === 'environment_issue' ? 'Environment Issue' :
+                               'Issue Detected'}
+                            </div>
+                          </div>
                         </div>
                       )}
                       
                       {statusType === 'not_installed' && (
                         <div className="flex items-center space-x-1 text-red-600">
-                          <XCircle className="w-4 h-4" />
-                          <span className="text-xs font-medium">Not Installed</span>
+                          <XCircle className="w-5 h-5" />
+                          <div className="text-right">
+                            <div className="text-xs font-medium">Not Installed</div>
+                            <div className="text-xs text-red-500">Install Required</div>
+                          </div>
                         </div>
                       )}
                       
                       {statusType === 'unchecked' && (
                         <div className="flex items-center space-x-1 text-gray-500">
-                          <Clock className="w-4 h-4" />
-                          <span className="text-xs">No Data</span>
+                          <Clock className="w-5 h-5" />
+                          <div className="text-right">
+                            <div className="text-xs">No Data</div>
+                            <div className="text-xs text-gray-400">Click Refresh</div>
+                          </div>
                         </div>
                       )}
                     </div>

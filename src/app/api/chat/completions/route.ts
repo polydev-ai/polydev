@@ -71,20 +71,41 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
   }
 }
 
-function getProviderFromModel(model: string): string {
-  // Use CLINE_PROVIDERS system to find the correct provider
-  for (const [providerId, config] of Object.entries(CLINE_PROVIDERS)) {
-    if (config.supportedModels) {
-      // Check in supportedModels object
-      if (config.supportedModels[model] || Object.keys(config.supportedModels).some(modelName => 
-        modelName === model || model.includes(modelName.split('-')[0])
-      )) {
-        return providerId
+async function getProviderFromModel(model: string, supabase: any): Promise<string> {
+  try {
+    // First try to find the model in our models_registry
+    const { data: modelData } = await supabase
+      .from('models_registry')
+      .select('provider_id')
+      .eq('friendly_id', model)
+      .eq('is_active', true)
+      .limit(1)
+      .single()
+    
+    if (modelData?.provider_id) {
+      // Map provider IDs to our internal provider names
+      const providerMapping: Record<string, string> = {
+        'anthropic': 'anthropic',
+        'openai': 'openai',
+        'google': 'gemini',
+        'groq': 'groq',
+        'deepseek': 'deepseek',
+        'xai': 'xai',
+        'moonshotai': 'openai', // Moonshot uses OpenAI-compatible API
+        'moonshotai-cn': 'openai', // Moonshot CN uses OpenAI-compatible API
+        'vercel': 'openai', // Vercel uses OpenAI-compatible API
+        'github-models': 'openai', // GitHub Models uses OpenAI-compatible API
+        'nvidia': 'openai', // NVIDIA uses OpenAI-compatible API
+        'fireworks-ai': 'openai' // Fireworks uses OpenAI-compatible API
       }
+      
+      return providerMapping[modelData.provider_id] || modelData.provider_id
     }
+  } catch (error) {
+    console.warn(`Failed to lookup provider for model ${model}:`, error)
   }
   
-  // Legacy fallback mapping for models not yet in comprehensive system
+  // Fallback to legacy string matching if database lookup fails
   if (model.includes('gpt') || model.includes('openai')) return 'openai'
   if (model.includes('claude')) return 'anthropic'
   if (model.includes('gemini')) return 'gemini'
@@ -92,6 +113,7 @@ function getProviderFromModel(model: string): string {
   if (model.includes('mixtral')) return 'groq'
   if (model.includes('deepseek')) return 'deepseek'
   if (model.includes('grok')) return 'xai'
+  if (model.includes('kimi')) return 'moonshot'
   
   // Default fallback
   return 'openai'
@@ -110,6 +132,19 @@ export async function POST(request: NextRequest) {
     // Parse request body - support both OpenAI format and Polydev format
     const body = await request.json()
     let { messages, model, models, temperature = 0.7, max_tokens, stream = false, reasoning_effort } = body
+    
+    // Validate and sanitize messages to prevent transformation errors
+    if (!messages || !Array.isArray(messages)) {
+      return NextResponse.json({ 
+        error: { 
+          message: 'Messages must be an array', 
+          type: 'invalid_request_error' 
+        } 
+      }, { status: 400 })
+    }
+    
+    // Ensure each message has proper structure
+    messages = messages.filter(msg => msg && typeof msg === 'object' && msg.role && msg.content)
     
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ 
@@ -136,7 +171,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get user's provider configurations (CLI + API keys) for required providers
-    const requiredProviders = [...new Set(targetModels.map(getProviderFromModel))]
+    const requiredProviders = [...new Set(await Promise.all(targetModels.map(model => getProviderFromModel(model, supabase))))]
     
     // Priority 1: Check for enabled CLI providers
     const { data: cliConfigs } = await supabase
@@ -264,7 +299,7 @@ export async function POST(request: NextRequest) {
         
         // Priority 1: CLI Tools (if available and user preference allows)
         if (preferences.usage_preference !== 'api_keys' && preferences.usage_preference !== 'credits') {
-          const provider = getProviderFromModel(modelId)
+          const provider = await getProviderFromModel(modelId, supabase)
           if (providerConfigs[provider]?.type === 'cli') {
             selectedProvider = provider
             selectedConfig = providerConfigs[provider]
@@ -274,12 +309,26 @@ export async function POST(request: NextRequest) {
         
         // Priority 2: Direct API Keys (if CLI not available or preference set)
         if (!selectedProvider && preferences.usage_preference !== 'cli' && preferences.usage_preference !== 'credits') {
-          const provider = getProviderFromModel(modelId)
+          const provider = await getProviderFromModel(modelId, supabase)
           if (providerConfigs[provider]?.type === 'api') {
             selectedProvider = provider
             selectedConfig = providerConfigs[provider]
             fallbackMethod = 'api'
           }
+        }
+        
+        // Model-specific parameter adjustments
+        let adjustedTemperature = temperature
+        let adjustedMaxTokens = max_tokens
+        
+        // GPT-5 only supports temperature=1
+        if (modelId === 'gpt-5' || modelId.includes('gpt-5')) {
+          adjustedTemperature = 1
+        }
+        
+        // Ensure we have valid parameters
+        if (adjustedTemperature < 0 || adjustedTemperature > 2) {
+          adjustedTemperature = 0.7
         }
         
         // Priority 3: Credits via OpenRouter (fallback)
@@ -360,8 +409,8 @@ export async function POST(request: NextRequest) {
                 content: msg.content
               })),
               model: actualModelId,
-              temperature,
-              maxTokens: max_tokens,
+              temperature: adjustedTemperature,
+              maxTokens: adjustedMaxTokens,
               stream: false,
               apiKey: selectedConfig.apiKey
             }
@@ -432,8 +481,8 @@ export async function POST(request: NextRequest) {
                 content: msg.content
               })),
               model: actualModelId,
-              temperature,
-              maxTokens: max_tokens,
+              temperature: adjustedTemperature,
+              maxTokens: adjustedMaxTokens,
               stream: false,
               apiKey: selectedConfig.apiKey,
               openAiBaseUrl: 'https://openrouter.ai/api/v1'

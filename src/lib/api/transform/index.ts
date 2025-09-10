@@ -42,11 +42,15 @@ export class OpenAITransformer implements MessageTransformer {
       content: this.transformMessageContent(msg.content)
     }))
     
+    // GPT-5 models require specific temperature handling
+    const isGPT5Model = model && (model === 'gpt-5' || model.includes('gpt-5'))
+    const finalTemperature = isGPT5Model ? 1 : temperature
+    
     const request: any = {
       model,
       messages: openAIMessages,
       max_tokens: maxTokens,
-      temperature,
+      temperature: finalTemperature,
       stream: true
     }
     
