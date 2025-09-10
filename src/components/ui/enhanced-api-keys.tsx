@@ -120,8 +120,8 @@ export default function EnhancedApiKeysPage() {
   // Copy API key to clipboard
   const copyApiKey = async (apiKey: ApiKey) => {
     try {
-      if (!apiKey.encrypted_key) {
-        setError('No API key available to copy')
+      if (!apiKey.encrypted_key || apiKey.encrypted_key.trim() === '') {
+        setError('No API key available to copy (Credits Only provider)')
         return
       }
       

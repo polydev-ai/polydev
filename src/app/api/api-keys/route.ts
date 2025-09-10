@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Handle optional API key - encrypt if provided, otherwise store placeholder
-    let encryptedKey = null
+    let encryptedKey = ''  // Use empty string instead of null
     let keyPreview = 'Credits Only'
     
     if (api_key && api_key.trim()) {

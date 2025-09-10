@@ -37,6 +37,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update preference order' }, { status: 500 })
     }
     
+    // Sync API key default_model with the first model in each provider's preferences
+    for (const [provider, pref] of Object.entries(reorderedPreferences)) {
+      const preference = pref as { models: string[], order: number }
+      if (preference.models && preference.models.length > 0) {
+        const firstModel = preference.models[0]
+        
+        // Update the API key's default_model for this provider
+        const { error: updateError } = await supabase
+          .from('user_api_keys')
+          .update({ default_model: firstModel })
+          .eq('user_id', user.id)
+          .eq('provider', provider)
+          .eq('active', true)
+        
+        if (updateError) {
+          console.warn(`Failed to sync default_model for provider ${provider}:`, updateError)
+          // Don't fail the entire request for sync issues
+        }
+      }
+    }
+    
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error in POST /api/preferences/reorder:', error)
