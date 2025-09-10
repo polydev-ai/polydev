@@ -39,7 +39,7 @@ export function useDashboardModels() {
         return
       }
 
-      if (!preferences?.model_preferences) {
+      if (!preferences?.model_preferences || Object.keys(preferences.model_preferences).length === 0) {
         setModels([])
         setLoading(false)
         return
@@ -51,15 +51,31 @@ export function useDashboardModels() {
 
         // Extract models from user preferences
         for (const [providerId, providerPref] of Object.entries(preferences.model_preferences)) {
+          // Skip if providerPref is null or undefined
+          if (!providerPref || typeof providerPref !== 'object') {
+            continue
+          }
+          
           const providerConfig = CLINE_PROVIDERS[providerId as keyof typeof CLINE_PROVIDERS]
           
-          for (const modelId of providerPref.models) {
+          // Ensure providerPref.models is an array and iterate safely
+          const models = Array.isArray(providerPref.models) ? providerPref.models : []
+          
+          for (const modelId of models) {
+            // Skip if modelId is not a valid string
+            if (!modelId || typeof modelId !== 'string') {
+              continue
+            }
+            
             // Try to get model details from models.dev API if available
             try {
               const response = await fetch(`/api/models-dev/providers?provider=${providerId}&include_models=true`)
               if (response.ok) {
                 const data = await response.json()
-                const modelData = data.models?.find((m: any) => m.id === modelId)
+                
+                // Safely check if models array exists and find the model
+                const modelsArray = Array.isArray(data.models) ? data.models : []
+                const modelData = modelsArray.find((m: any) => m.id === modelId || m.friendly_id === modelId)
                 
                 if (modelData) {
                   dashboardModels.push({
@@ -68,10 +84,10 @@ export function useDashboardModels() {
                     provider: providerId,
                     providerName: providerConfig?.name || providerId,
                     tier: getTierFromProvider(providerId),
-                    price: {
+                    price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
                       input: modelData.input_cost_per_million / 1000,
                       output: modelData.output_cost_per_million / 1000
-                    },
+                    } : undefined,
                     features: {
                       supportsImages: modelData.supports_vision,
                       supportsTools: modelData.supports_tools,
@@ -128,8 +144,11 @@ export function useDashboardModels() {
 
         // Sort models by provider preference order and then by name
         dashboardModels.sort((a, b) => {
-          const aOrder = preferences.model_preferences[a.provider]?.order || 999
-          const bOrder = preferences.model_preferences[b.provider]?.order || 999
+          const aProviderPref = preferences.model_preferences[a.provider]
+          const bProviderPref = preferences.model_preferences[b.provider]
+          
+          const aOrder = (aProviderPref && typeof aProviderPref.order === 'number') ? aProviderPref.order : 999
+          const bOrder = (bProviderPref && typeof bProviderPref.order === 'number') ? bProviderPref.order : 999
           
           if (aOrder !== bOrder) {
             return aOrder - bOrder
