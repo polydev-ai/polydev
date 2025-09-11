@@ -445,41 +445,49 @@ export async function POST(request: NextRequest) {
             // Use CLI provider through existing handler
             const cliProviderMap: Record<string, string> = {
               'claude_code': 'claude-code',
-              'codex_cli': 'codex-cli',
-              'gemini_cli': 'gemini-cli'
+              'codex_cli': 'codex-cli'
+              // Note: gemini-cli is not supported by Enhanced Handler Factory
+              // When google models are requested with CLI, we'll fall back to API if available
             }
             
             const handlerName = cliProviderMap[selectedConfig.cliProvider]
             if (!handlerName) {
+              console.log(`CLI provider ${selectedConfig.cliProvider} not supported, trying API fallback...`)
               throw new Error(`Unsupported CLI provider: ${selectedConfig.cliProvider}`)
             }
             
-            const handler = apiManager.getHandler(handlerName)
-            const messageParams: any = {
-              messages: messages.map((msg: any) => ({
-                role: msg.role,
-                content: msg.content
-              })),
-              model: actualModelId,
-              temperature,
-              maxTokens: max_tokens,
-              apiKey: '' // CLI handlers don't use API keys
-            }
-            
-            // Add reasoning effort for reasoning models
-            if (modelData?.supports_reasoning && reasoning_effort) {
-              messageParams.reasoning_effort = reasoning_effort
-            }
-            
-            response = await handler.createMessage(messageParams)
-            
-            const responseData = await response.json()
-            return {
-              model: modelId,
-              content: responseData.content?.[0]?.text || responseData.choices?.[0]?.message?.content || '',
-              usage: responseData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-              provider: `${selectedProvider} (CLI)`,
-              fallback_method: fallbackMethod
+            // Check if the handler actually exists before using it
+            try {
+              const handler = apiManager.getHandler(handlerName)
+              const messageParams: any = {
+                messages: messages.map((msg: any) => ({
+                  role: msg.role,
+                  content: msg.content
+                })),
+                model: actualModelId,
+                temperature: adjustedTemperature,
+                maxTokens: adjustedMaxTokens,
+                apiKey: '' // CLI handlers don't use API keys
+              }
+              
+              // Add reasoning effort for reasoning models
+              if (modelData?.supports_reasoning && reasoning_effort) {
+                messageParams.reasoning_effort = reasoning_effort
+              }
+              
+              response = await handler.createMessage(messageParams)
+              
+              const responseData = await response.json()
+              return {
+                model: modelId,
+                content: responseData.content?.[0]?.text || responseData.choices?.[0]?.message?.content || '',
+                usage: responseData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                provider: `${selectedProvider} (CLI)`,
+                fallback_method: fallbackMethod
+              }
+            } catch (cliError) {
+              console.log(`CLI failed for ${modelId}, trying API fallback...`)
+              throw cliError
             }
           } else if (selectedConfig.type === 'api') {
             // Use API key provider
