@@ -22,6 +22,10 @@ export interface DashboardModel {
   description?: string
 }
 
+// Simple in-memory cache with TTL
+const providerCache: Record<string, { data: any; timestamp: number }> = {}
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
 export function useDashboardModels() {
   const { preferences, loading: preferencesLoading, error: preferencesError } = usePreferences()
   const [models, setModels] = useState<DashboardModel[]>([])
@@ -44,87 +48,126 @@ export function useDashboardModels() {
         const dashboardModels: DashboardModel[] = []
         let cliResults: any[] = []
 
-        // First, check CLI availability to inform tier decisions
-        try {
-          const cliResponse = await fetch('/api/cli-detect', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              user_id: 'dashboard-check',
-              mcp_token: 'temp-token'
+        // Check CLI availability (cached for 1 minute to avoid repeated calls)
+        const cliCacheKey = 'cli-availability'
+        const cliCached = providerCache[cliCacheKey]
+        const cliCacheTTL = 60 * 1000 // 1 minute for CLI status
+        
+        if (cliCached && (Date.now() - cliCached.timestamp) < cliCacheTTL) {
+          cliResults = cliCached.data
+          console.log('[useDashboardModels] Using cached CLI availability:', cliResults.length, 'CLIs')
+        } else {
+          try {
+            const cliResponse = await fetch('/api/cli-detect', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                user_id: 'dashboard-check',
+                mcp_token: 'temp-token'
+              })
             })
-          })
-          
-          if (cliResponse.ok) {
-            cliResults = await cliResponse.json()
-            console.log('CLI availability check:', cliResults)
+            
+            if (cliResponse.ok) {
+              cliResults = await cliResponse.json()
+              // Cache CLI results
+              providerCache[cliCacheKey] = { data: cliResults, timestamp: Date.now() }
+              console.log('[useDashboardModels] Fetched CLI availability:', cliResults.length, 'CLIs')
+            }
+          } catch (cliError) {
+            console.warn('Failed to check CLI availability:', cliError)
           }
-        } catch (cliError) {
-          console.warn('Failed to check CLI availability:', cliError)
         }
 
-        // Get API keys to determine what's available
+        // Get API keys (cached for 2 minutes)
         let apiKeys: any[] = []
-        try {
-          const apiKeysResponse = await fetch('/api/api-keys', { credentials: 'include' })
-          if (apiKeysResponse.ok) {
-            const apiKeysData = await apiKeysResponse.json()
-            apiKeys = apiKeysData.apiKeys || []
+        const apiKeysCacheKey = 'api-keys'
+        const apiKeysCached = providerCache[apiKeysCacheKey]
+        const apiKeysCacheTTL = 2 * 60 * 1000 // 2 minutes
+        
+        if (apiKeysCached && (Date.now() - apiKeysCached.timestamp) < apiKeysCacheTTL) {
+          apiKeys = apiKeysCached.data
+          console.log('[useDashboardModels] Using cached API keys:', apiKeys.length, 'keys')
+        } else {
+          try {
+            const apiKeysResponse = await fetch('/api/api-keys', { credentials: 'include' })
+            if (apiKeysResponse.ok) {
+              const apiKeysData = await apiKeysResponse.json()
+              apiKeys = apiKeysData.apiKeys || []
+              // Cache API keys
+              providerCache[apiKeysCacheKey] = { data: apiKeys, timestamp: Date.now() }
+              console.log('[useDashboardModels] Fetched API keys:', apiKeys.length, 'keys')
+            }
+          } catch (apiKeyError) {
+            console.warn('Failed to fetch API keys:', apiKeyError)
           }
-        } catch (apiKeyError) {
-          console.warn('Failed to fetch API keys:', apiKeyError)
         }
 
-        // Fetch legacy providers data from models.dev API
-        let legacyProvidersData = {}
-        try {
-          const response = await fetch('/api/models-dev/providers')
-          if (response.ok) {
-            const data = await response.json()
-            legacyProvidersData = data
-            setLegacyProviders(legacyProvidersData)
-          }
-        } catch (providersError) {
-          console.warn('Failed to fetch legacy providers:', providersError)
-        }
-
-        // Second, collect all unique providers and fetch their data in parallel
-        const allProviders = new Set<string>()
+        // Only collect providers that user actually has configured models for
+        const activeProviders = new Set<string>()
         
         // Collect providers from preferences
         if (preferences?.model_preferences && Object.keys(preferences.model_preferences).length > 0) {
           for (const [providerId, providerPref] of Object.entries(preferences.model_preferences)) {
             if (providerPref) {
-              allProviders.add(providerId)
+              activeProviders.add(providerId)
             }
           }
         }
         
-        // Collect providers from API keys
+        // Collect providers from API keys (only if they have active keys)
         for (const apiKey of apiKeys) {
           if (apiKey.active) {
-            allProviders.add(apiKey.provider)
+            activeProviders.add(apiKey.provider)
           }
         }
-        
-        // Fetch all provider model data in parallel
+
+        // Only fetch legacy providers data for providers we actually need
+        let legacyProvidersData = {}
         const providerDataCache: Record<string, any> = {}
-        if (allProviders.size > 0) {
-          const providerFetchPromises = Array.from(allProviders).map(async (providerId) => {
-            try {
-              const response = await fetch(`/api/models-dev/providers?provider=${providerId}&include_models=true`)
-              if (response.ok) {
-                const data = await response.json()
-                providerDataCache[providerId] = data
-              }
-            } catch (fetchError) {
-              console.warn(`Failed to fetch provider data for ${providerId}:`, fetchError)
-            }
-          })
+
+        if (activeProviders.size > 0) {
+          // Check cache first, then fetch only missing providers
+          const now = Date.now()
+          const needsFetch: string[] = []
           
-          await Promise.all(providerFetchPromises)
+          // Check which providers need fetching
+          for (const providerId of activeProviders) {
+            const cached = providerCache[providerId]
+            if (!cached || (now - cached.timestamp) > CACHE_TTL) {
+              needsFetch.push(providerId)
+            } else {
+              // Use cached data
+              providerDataCache[providerId] = cached.data
+              legacyProvidersData = { ...legacyProvidersData, [providerId]: cached.data }
+            }
+          }
+          
+          // Only fetch providers that aren't cached or are stale
+          if (needsFetch.length > 0) {
+            console.log(`[useDashboardModels] Fetching ${needsFetch.length} providers:`, needsFetch.join(', '))
+            const fetchPromises = needsFetch.map(async (providerId) => {
+              try {
+                const response = await fetch(`/api/models-dev/providers?provider=${providerId}&include_models=true`)
+                if (response.ok) {
+                  const data = await response.json()
+                  // Cache the result
+                  providerCache[providerId] = { data, timestamp: now }
+                  providerDataCache[providerId] = data
+                  legacyProvidersData = { ...legacyProvidersData, [providerId]: data }
+                }
+              } catch (fetchError) {
+                console.warn(`Failed to fetch provider data for ${providerId}:`, fetchError)
+              }
+            })
+            
+            await Promise.all(fetchPromises)
+          } else {
+            console.log(`[useDashboardModels] Using cached data for all ${activeProviders.size} providers`)
+          }
+          
+          setLegacyProviders(legacyProvidersData)
         }
         
         // Now process models from user preferences using cached data
