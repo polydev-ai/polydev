@@ -494,12 +494,16 @@ export default function Chat() {
                   </div>
                 )}
 
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="space-y-4 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {dashboardModels.map((model) => (
                       <label
                         key={model.id}
-                        className="flex items-start space-x-3 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 cursor-pointer transition-colors"
+                        className={`flex items-start space-x-3 p-4 bg-white dark:bg-gray-700 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                          selectedModels.includes(model.id)
+                            ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
+                            : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                        }`}
                       >
                         <input
                           type="checkbox"
@@ -527,8 +531,13 @@ export default function Chat() {
                             {model.providerName} • {model.contextWindow ? `${(model.contextWindow / 1000).toFixed(0)}K context` : 'Standard'}
                           </div>
                           {model.price && (
-                            <div className="text-xs text-gray-400 dark:text-gray-500">
-                              ${model.price.input}/1M in • ${model.price.output}/1M out
+                            <div className="flex items-center space-x-2 mt-1">
+                              <div className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
+                                ${model.price.input}/1M in
+                              </div>
+                              <div className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                                ${model.price.output}/1M out
+                              </div>
                             </div>
                           )}
                         </div>
@@ -599,11 +608,31 @@ export default function Chat() {
                   <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-3xl ${message.role === 'user' ? 'ml-auto' : 'mr-auto'}`}>
                       {message.role === 'assistant' && message.model && (
-                        <div className="mb-2 px-4">
+                        <div className="mb-3 px-4">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                              {message.model}
-                            </span>
+                            <div className="flex items-center space-x-3">
+                              {(() => {
+                                const model = dashboardModels.find(m => m.name === message.model)
+                                const providerName = model?.providerName || (message.provider?.replace(/\s+\(.+\)/, '') || 'AI')
+                                return (
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                      <span className="text-white text-xs font-bold">
+                                        {providerName.charAt(0).toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                        {message.model}
+                                      </div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {providerName}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              })()}
+                            </div>
                             <div className="flex items-center space-x-2">
                               {(() => {
                                 const source = getSourceFromProvider(message.provider)
@@ -678,11 +707,31 @@ export default function Chat() {
                         {turn.assistantMessages.map((message) => (
                           <div key={message.id} className="bg-gray-100 dark:bg-gray-800 rounded-2xl">
                             {/* Model header */}
-                            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {message.model}
-                                </span>
+                                <div className="flex items-center space-x-2">
+                                  {(() => {
+                                    const model = dashboardModels.find(m => m.name === message.model)
+                                    const providerName = model?.providerName || (message.provider?.replace(/\s+\(.+\)/, '') || 'AI')
+                                    return (
+                                      <>
+                                        <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                          <span className="text-white text-xs font-bold">
+                                            {providerName.charAt(0).toUpperCase()}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                            {message.model}
+                                          </div>
+                                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                                            {providerName}
+                                          </div>
+                                        </div>
+                                      </>
+                                    )
+                                  })()}
+                                </div>
                                 <div className="flex items-center space-x-2">
                                   {(() => {
                                     const source = getSourceFromProvider(message.provider)
@@ -725,22 +774,51 @@ export default function Chat() {
               
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="max-w-3xl mr-auto">
+                  <div className="max-w-5xl mr-auto w-full">
                     <div className="mb-2 px-4">
                       <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        AI Assistant
+                        AI Models
                       </span>
                     </div>
-                    <div className="px-6 py-4 bg-gray-100 dark:bg-gray-800 rounded-2xl">
-                      <div className="flex items-center space-x-3">
+                    <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 border border-blue-200 dark:border-gray-600 rounded-2xl">
+                      <div className="flex items-center space-x-3 mb-4">
                         <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                          <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                          <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
                         </div>
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           Getting responses from {selectedModels.length} model{selectedModels.length !== 1 ? 's' : ''}...
                         </span>
+                      </div>
+                      
+                      {/* Show selected models with their providers */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {selectedModels.map((modelId) => {
+                          const model = dashboardModels.find(m => m.id === modelId)
+                          if (!model) return null
+                          
+                          return (
+                            <div key={modelId} className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span className="text-white text-xs font-bold">
+                                  {model.providerName.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                  {model.name}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                  {model.providerName}
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   </div>

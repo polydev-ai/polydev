@@ -74,6 +74,10 @@ const parseMessageContent = (content: string): ParsedContent[] => {
 const formatTextContent = (text: string): string => {
   let formatted = text
   
+  // Remove or clean up unwanted headers (like "#### Suggested Service Model:")
+  formatted = formatted.replace(/^#{4,}\s*Suggested Service Model:\s*$/gim, '')
+  formatted = formatted.replace(/^#{4,}\s*[A-Z][^:]*:\s*$/gim, '') // Remove generic pattern headers
+  
   // Convert inline code (single backticks) to HTML
   formatted = formatted.replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono text-red-600 dark:text-red-400">$1</code>')
   
@@ -86,13 +90,18 @@ const formatTextContent = (text: string): string => {
   // Convert [link](url) to HTML
   formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
   
-  // Convert ### Headers to HTML
+  // Convert headers to HTML (in order from largest to smallest to avoid conflicts)
+  formatted = formatted.replace(/^#### (.*$)/gim, '<h4 class="text-base font-semibold mt-3 mb-2">$1</h4>')
   formatted = formatted.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
   formatted = formatted.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>')
   formatted = formatted.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
   
-  // Convert lists (- item) to HTML
-  formatted = formatted.replace(/^- (.*$)/gim, '<li class="ml-4">• $1</li>')
+  // Convert lists (- item) to HTML without adding extra bullets
+  formatted = formatted.replace(/^- (.*$)/gim, '<li class="ml-4 list-disc list-inside">$1</li>')
+  
+  // Clean up extra whitespace and empty lines
+  formatted = formatted.replace(/\n\s*\n\s*\n/g, '\n\n') // Reduce multiple empty lines to double
+  formatted = formatted.trim()
   
   return formatted
 }

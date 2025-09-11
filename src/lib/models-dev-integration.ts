@@ -413,11 +413,11 @@ class ModelsDevService {
       contextLength: data.context_length || 32768
     }
 
-    // Add pricing if available (keep as per-million for API consistency)
+    // Add pricing if available (convert from micro-dollars to dollars per million)
     if (data.input_cost_per_million && data.output_cost_per_million) {
       result.pricing = {
-        input: data.input_cost_per_million, // Keep as per-million tokens
-        output: data.output_cost_per_million // Keep as per-million tokens
+        input: data.input_cost_per_million / 1000, // Convert to dollars per million tokens
+        output: data.output_cost_per_million / 1000 // Convert to dollars per million tokens
       }
     }
 
@@ -652,10 +652,10 @@ class ModelsDevService {
         supportsVision: model.supports_vision,
         supportsTools: model.supports_tools,
         pricing: {
-          input: model.input_cost_per_million / 1000000, // Convert to per-token
-          output: model.output_cost_per_million / 1000000,
-          cacheRead: model.cache_read_cost_per_million ? model.cache_read_cost_per_million / 1000000 : undefined,
-          cacheWrite: model.cache_write_cost_per_million ? model.cache_write_cost_per_million / 1000000 : undefined
+          input: model.input_cost_per_million / 1000000000, // Convert from micro-dollars to per-token
+          output: model.output_cost_per_million / 1000000000,
+          cacheRead: model.cache_read_cost_per_million ? model.cache_read_cost_per_million / 1000000000 : undefined,
+          cacheWrite: model.cache_write_cost_per_million ? model.cache_write_cost_per_million / 1000000000 : undefined
         }
       }
     })

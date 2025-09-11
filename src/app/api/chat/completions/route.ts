@@ -38,6 +38,35 @@ function generateConversationTitle(userMessage: string): string {
   return truncated + '...'
 }
 
+// Parse usage data from different API response formats
+function parseUsageData(response: any): any {
+  // Standard OpenAI format
+  if (response.usage) {
+    return response.usage
+  }
+  
+  // Gemini format with usage_metadata
+  if (response.usage_metadata) {
+    return {
+      prompt_tokens: response.usage_metadata.prompt_token_count || 0,
+      completion_tokens: response.usage_metadata.candidates_token_count || 0,
+      total_tokens: response.usage_metadata.total_token_count || 0
+    }
+  }
+  
+  // Anthropic Claude format
+  if (response.metadata?.usage) {
+    return {
+      prompt_tokens: response.metadata.usage.input_tokens || 0,
+      completion_tokens: response.metadata.usage.output_tokens || 0,
+      total_tokens: (response.metadata.usage.input_tokens || 0) + (response.metadata.usage.output_tokens || 0)
+    }
+  }
+  
+  // Return null if no usage data found - let caller handle
+  return null
+}
+
 async function authenticateRequest(request: NextRequest): Promise<{ user: any; preferences: any } | null> {
   const supabase = await createClient()
   
@@ -505,11 +534,11 @@ export async function POST(request: NextRequest) {
               const responseData = await response.json()
               
               // Calculate pricing for CLI responses if available
-              const usage = responseData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+              const usage = parseUsageData(responseData) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
               let cost = null
               if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
-                const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
-                const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
+                const inputCost = (usage.prompt_tokens / 1000000) * (modelPricing.input / 1000)
+                const outputCost = (usage.completion_tokens / 1000000) * (modelPricing.output / 1000)
                 cost = {
                   input: Number(inputCost.toFixed(6)),
                   output: Number(outputCost.toFixed(6)),
@@ -628,11 +657,11 @@ export async function POST(request: NextRequest) {
             }
             
             // Calculate pricing if available
-            const usage = result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+            const usage = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
             let cost = null
             if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
-              const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
-              const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
+              const inputCost = (usage.prompt_tokens / 1000000) * (modelPricing.input / 1000)
+              const outputCost = (usage.completion_tokens / 1000000) * (modelPricing.output / 1000)
               cost = {
                 input: Number(inputCost.toFixed(6)),
                 output: Number(outputCost.toFixed(6)),
@@ -678,7 +707,7 @@ export async function POST(request: NextRequest) {
             
             // Get cost from models.dev database for credits calculation
             const pricingData = await modelsDevService.getModelPricing(modelId, 'openrouter')
-            const inputCostPerMillion = pricingData?.input || 1
+            const inputCostPerMillion = (pricingData?.input || 1000) / 1000
             
             // If using credits, deduct from balance
             if (selectedConfig.type === 'credits') {
@@ -703,13 +732,14 @@ export async function POST(request: NextRequest) {
               content = result.choices[0].message.content
             }
             
+            const parsedUsage = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
             return {
               model: modelId,
               content: content,
-              usage: result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+              usage: parsedUsage,
               provider: selectedConfig.type === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)',
               fallback_method: fallbackMethod,
-              credits_used: selectedConfig.type === 'credits' ? (result.usage?.total_tokens || 0) / 1000000 * inputCostPerMillion : undefined
+              credits_used: selectedConfig.type === 'credits' ? (parsedUsage.total_tokens || 0) / 1000000 * inputCostPerMillion : undefined
             }
           }
         } catch (error: any) {
@@ -983,8 +1013,8 @@ export async function POST(request: NextRequest) {
         // Try to get pricing from model data
         const modelData = modelDataMap.get(response?.model || model)
         if (modelData?.pricing) {
-          const inputCost = (usage.prompt_tokens / 1000000) * (modelData.pricing.input || 0)
-          const outputCost = (usage.completion_tokens / 1000000) * (modelData.pricing.output || 0)
+          const inputCost = (usage.prompt_tokens / 1000000) * ((modelData.pricing.input || 0) / 1000)
+          const outputCost = (usage.completion_tokens / 1000000) * ((modelData.pricing.output || 0) / 1000)
           costInfo = {
             input_cost: inputCost,
             output_cost: outputCost,
@@ -1050,8 +1080,8 @@ export async function POST(request: NextRequest) {
         // API key usage - calculate cost from model data
         const modelData = modelDataMap.get(response.model)
         if (modelData?.pricing && response.usage) {
-          const inputCost = (response.usage.prompt_tokens / 1000000) * (modelData.pricing.input || 0)
-          const outputCost = (response.usage.completion_tokens / 1000000) * (modelData.pricing.output || 0)
+          const inputCost = (response.usage.prompt_tokens / 1000000) * ((modelData.pricing.input || 0) / 1000)
+          const outputCost = (response.usage.completion_tokens / 1000000) * ((modelData.pricing.output || 0) / 1000)
           const responseCost = inputCost + outputCost
           totalCost += responseCost
           

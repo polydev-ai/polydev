@@ -1159,7 +1159,11 @@ export default function EnhancedApiKeysPage() {
                         await fetchProviderModels(providerId)
                       }
                     }}
-                    className="w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white max-h-48 overflow-y-auto"
+                    style={{
+                      fontSize: '14px',
+                      lineHeight: '1.2'
+                    }}
                   >
                     <option value="">Select a provider</option>
                     {modelsDevProviders.length > 0 ? (
@@ -1322,19 +1326,71 @@ export default function EnhancedApiKeysPage() {
                 <select
                   value={formData.default_model}
                   onChange={(e) => setFormData(prev => ({...prev, default_model: e.target.value}))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white max-h-48 overflow-y-auto"
+                  style={{
+                    fontSize: '14px',
+                    lineHeight: '1.2'
+                  }}
                 >
                   <option value="">Select model</option>
                   {loadingModels[formData.provider] && (
                     <option disabled>Loading models...</option>
                   )}
-                  {(providerModels[formData.provider] || []).map(model => (
-                    <option key={model.id} value={model.id}>
-                      {model.display_name || model.name}
-                    </option>
-                  ))}
+                  {(providerModels[formData.provider] || []).map(model => {
+                    const inputCost = (model.input_cost_per_million || 0) / 1000 // Convert from micro-dollars
+                    const outputCost = (model.output_cost_per_million || 0) / 1000 // Convert from micro-dollars
+                    const priceText = inputCost > 0 || outputCost > 0 
+                      ? ` - $${inputCost.toFixed(3)}/$${outputCost.toFixed(3)} per 1M tokens`
+                      : ''
+                    return (
+                      <option key={model.id} value={model.id}>
+                        {model.display_name || model.name}{priceText}
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
+
+              {/* Model Pricing Display */}
+              {formData.default_model && (() => {
+                const selectedModel = (providerModels[formData.provider] || []).find(m => m.id === formData.default_model)
+                if (!selectedModel) return null
+                
+                const inputCost = (selectedModel.input_cost_per_million || 0) / 1000 // Convert from micro-dollars
+                const outputCost = (selectedModel.output_cost_per_million || 0) / 1000 // Convert from micro-dollars
+                
+                if (inputCost === 0 && outputCost === 0) return null
+                
+                return (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                        Model Pricing
+                      </h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-white dark:bg-blue-800/30 rounded-md p-2 border border-blue-200 dark:border-blue-700">
+                        <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Input</div>
+                        <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                          ${inputCost.toFixed(3)}
+                        </div>
+                        <div className="text-xs text-blue-600 dark:text-blue-400">per 1M tokens</div>
+                      </div>
+                      <div className="bg-white dark:bg-blue-800/30 rounded-md p-2 border border-blue-200 dark:border-blue-700">
+                        <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Output</div>
+                        <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                          ${outputCost.toFixed(3)}
+                        </div>
+                        <div className="text-xs text-blue-600 dark:text-blue-400">per 1M tokens</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                      💡 Typical prompt (~500 tokens): ~$<span className="font-medium">{((inputCost * 500) / 1000).toFixed(4)}</span> input + response varies by length
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Reasoning Level Slider for Reasoning Models */}
               {formData.default_model && (() => {
