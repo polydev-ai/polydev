@@ -54,6 +54,8 @@ export default function Chat() {
   const [showSidebar, setShowSidebar] = useState(false)
   const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified')
   const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set())
+  const [streamingResponses, setStreamingResponses] = useState<Record<string, string>>({})
+  const [isStreaming, setIsStreaming] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Set default selected models when dashboard models load and preferences are available
@@ -129,7 +131,7 @@ export default function Chat() {
   }
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading || isStreaming) return
 
     let sessionId = currentSession?.id
     if (!sessionId) {
@@ -152,8 +154,25 @@ export default function Chat() {
     setMessages(newMessages)
     setInput('')
     setIsLoading(true)
+    setIsStreaming(true)
+    setStreamingResponses({})
     
     const startTime = Date.now()
+    
+    // Create placeholder messages for each model to show loading state
+    const placeholderMessages: Message[] = selectedModels.map((modelId, index) => {
+      const model = dashboardModels.find(m => m.id === modelId)
+      return {
+        id: `streaming-${modelId}-${Date.now()}`,
+        role: 'assistant',
+        content: '',
+        model: modelId,
+        timestamp: new Date(),
+        provider: model?.provider || 'unknown'
+      }
+    })
+    
+    setMessages(prev => [...prev, ...placeholderMessages])
 
     try {
       const response = await fetch('/api/chat/completions', {
@@ -164,55 +183,100 @@ export default function Chat() {
           messages: newMessages,
           models: selectedModels,
           temperature: 0.7,
-          session_id: sessionId
+          session_id: sessionId,
+          stream: true
         }),
       })
 
       if (!response.ok) throw new Error(`HTTP error ${response.status}`)
 
-      const data = await response.json()
-      if (data?.error) throw new Error(data.error)
+      if (response.body) {
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
 
-      if (data?.polydev_metadata?.session_id && !currentSession) {
-        const sid = data.polydev_metadata.session_id
-        const session = sessions.find(s => s.id === sid) || {
-          id: sid,
-          title: 'New Chat',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          archived: false
-        }
-        setCurrentSession(session)
-      }
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
 
-      const responseTime = Date.now() - startTime
-      const responses: any[] = Array.isArray(data?.responses) ? data.responses : []
-      if (responses.length > 0) {
-        const assistantMessages: Message[] = responses.map((resp: any, index: number) => {
-          const model = dashboardModels.find(m => m.id === resp.model)
-          return {
-            id: `${Date.now()}-${resp.model}-${user?.id ?? 'anon'}`,
-            role: 'assistant',
-            content: typeof resp.content === 'string' ? resp.content : String(resp.content),
-            model: model?.name || resp.model,
-            timestamp: new Date(),
-            provider: resp.provider,
-            usage: resp.usage,
-            costInfo: resp.cost ? {
-              input_cost: resp.cost.input,
-              output_cost: resp.cost.output,
-              total_cost: resp.cost.total
-            } : undefined,
-            fallbackMethod: resp.fallback_method,
-            creditsUsed: resp.credits_used,
-            responseTime: index === 0 ? responseTime : undefined, // Only show time for first response
-            reasoning: resp.reasoning ? {
-              content: resp.reasoning.content || '',
-              tokens: resp.reasoning.tokens || 0
-            } : undefined
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (line.trim() === '') continue
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6)
+              if (data === '[DONE]') continue
+
+              try {
+                const parsed = JSON.parse(data)
+                
+                if (parsed.type === 'content' && parsed.model && parsed.content) {
+                  // Update streaming response
+                  setStreamingResponses(prev => ({
+                    ...prev,
+                    [parsed.model]: (prev[parsed.model] || '') + parsed.content
+                  }))
+                  
+                  // Update the placeholder message with streaming content
+                  setMessages(prev => prev.map(msg => {
+                    if (msg.id.startsWith(`streaming-${parsed.model}-`) && msg.content === '') {
+                      return {
+                        ...msg,
+                        content: streamingResponses[parsed.model] ? 
+                          streamingResponses[parsed.model] + parsed.content : 
+                          parsed.content
+                      }
+                    }
+                    return msg
+                  }))
+                } else if (parsed.type === 'final' && parsed.responses) {
+                  // Replace placeholder messages with final responses
+                  const responseTime = Date.now() - startTime
+                  const responses = parsed.responses
+                  
+                  setMessages(prev => {
+                    // Remove placeholder messages
+                    const withoutPlaceholders = prev.filter(msg => 
+                      !msg.id.startsWith('streaming-')
+                    )
+                    
+                    // Add final responses
+                    const assistantMessages: Message[] = responses.map((resp: any, index: number) => {
+                      const model = dashboardModels.find(m => m.id === resp.model)
+                      return {
+                        id: `${Date.now()}-${resp.model}-${user?.id ?? 'anon'}`,
+                        role: 'assistant',
+                        content: typeof resp.content === 'string' ? resp.content : String(resp.content),
+                        model: resp.model,
+                        timestamp: new Date(),
+                        provider: resp.provider,
+                        usage: resp.usage,
+                        costInfo: resp.cost ? {
+                          input_cost: resp.cost.input,
+                          output_cost: resp.cost.output,
+                          total_cost: resp.cost.total
+                        } : undefined,
+                        fallbackMethod: resp.fallback_method,
+                        creditsUsed: resp.credits_used,
+                        responseTime: index === 0 ? responseTime : undefined,
+                        reasoning: resp.reasoning ? {
+                          content: resp.reasoning.content || '',
+                          tokens: resp.reasoning.tokens || 0
+                        } : undefined
+                      }
+                    })
+                    
+                    return [...withoutPlaceholders, ...assistantMessages]
+                  })
+                }
+              } catch (parseError) {
+                console.warn('Error parsing streaming data:', parseError)
+              }
+            }
           }
-        })
-        setMessages(prev => [...prev, ...assistantMessages])
+        }
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error'
@@ -223,9 +287,16 @@ export default function Chat() {
         model: 'System',
         timestamp: new Date()
       }
-      setMessages(prev => [...prev, errorMessage])
+      
+      // Remove placeholder messages and add error message
+      setMessages(prev => [
+        ...prev.filter(msg => !msg.id.startsWith('streaming-')),
+        errorMessage
+      ])
     } finally {
       setIsLoading(false)
+      setIsStreaming(false)
+      setStreamingResponses({})
     }
   }
 
@@ -638,7 +709,7 @@ export default function Chat() {
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
                               {(() => {
-                                const model = dashboardModels.find(m => m.name === message.model)
+                                const model = dashboardModels.find(m => m.id === message.model || m.name === message.model)
                                 const providerName = model?.providerName || (message.provider?.replace(/\s+\(.+\)/, '') || 'AI')
                                 return (
                                   <div className="flex items-center space-x-2">
@@ -704,15 +775,30 @@ export default function Chat() {
                           </div>
                         </div>
                       )}
-                      <div className={`px-6 py-4 rounded-2xl ${
+                      <div className={`px-6 py-5 rounded-2xl shadow-sm transition-all duration-200 ${
                         message.role === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-blue-100 dark:shadow-blue-900/20'
+                          : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-700 shadow-gray-100 dark:shadow-gray-900/20 hover:shadow-md dark:hover:shadow-gray-900/30'
                       }`}>
-                        <MessageContent 
-                          content={message.content}
-                          className={message.role === 'user' ? 'text-white' : ''}
-                        />
+                        <div className="relative">
+                          <MessageContent 
+                            content={message.content}
+                            className={message.role === 'user' ? 'text-white' : ''}
+                          />
+                          {isStreaming && message.id.startsWith('streaming-') && message.content === '' && (
+                            <div className="flex items-center space-x-1 text-gray-500 dark:text-gray-400">
+                              <div className="flex space-x-1">
+                                <div className="w-2 h-2 bg-current rounded-full animate-pulse"></div>
+                                <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                                <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                              </div>
+                              <span className="text-sm">Thinking...</span>
+                            </div>
+                          )}
+                          {isStreaming && message.id.startsWith('streaming-') && message.content !== '' && (
+                            <span className="inline-block w-2 h-5 bg-blue-500 animate-pulse ml-1" />
+                          )}
+                        </div>
                         {message.reasoning && message.role === 'assistant' && (
                           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                             <button 
@@ -754,7 +840,7 @@ export default function Chat() {
                     {/* User message */}
                     <div className="flex justify-end">
                       <div className="max-w-3xl ml-auto">
-                        <div className="px-6 py-4 rounded-2xl bg-blue-600 text-white">
+                        <div className="px-6 py-5 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm shadow-blue-100 dark:shadow-blue-900/20">
                           <MessageContent 
                             content={turn.userMessage.content}
                             className="text-white"
@@ -780,7 +866,7 @@ export default function Chat() {
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   {(() => {
-                                    const model = dashboardModels.find(m => m.name === message.model)
+                                    const model = dashboardModels.find(m => m.id === message.model || m.name === message.model)
                                     const providerName = model?.providerName || (message.provider?.replace(/\s+\(.+\)/, '') || 'AI')
                                     return (
                                       <>
@@ -884,7 +970,7 @@ export default function Chat() {
                 ))
               )}
               
-              {isLoading && (
+              {(isLoading || isStreaming) && (
                 <div className="flex justify-start">
                   <div className="max-w-5xl mr-auto w-full">
                     <div className="mb-2 px-4">
@@ -971,12 +1057,12 @@ export default function Chat() {
                         }
                       }}
                       placeholder={selectedModels.length === 0 ? "Select models above to start chatting..." : "Type your message..."}
-                      disabled={selectedModels.length === 0 || isLoading}
+                      disabled={selectedModels.length === 0 || isLoading || isStreaming}
                       className="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-800 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <button
                       onClick={sendMessage}
-                      disabled={!input.trim() || selectedModels.length === 0 || isLoading}
+                      disabled={!input.trim() || selectedModels.length === 0 || isLoading || isStreaming}
                       className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
