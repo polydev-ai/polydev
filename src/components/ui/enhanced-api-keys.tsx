@@ -66,27 +66,45 @@ interface CLIProviderInfo {
 interface ModelsDevProvider {
   id: string
   name: string
-  display_name: string
+  display_name?: string
   description: string
+  logo?: string
   logo_url?: string
   website?: string
+  baseUrl?: string
   base_url?: string
+  modelsCount?: number
+  supportsStreaming?: boolean
+  supportsTools?: boolean
+  supportsVision?: boolean
+  models?: ModelsDevModel[]
 }
 
 interface ModelsDevModel {
   id: string
-  provider_id: string
+  provider_id?: string
   name: string
-  display_name: string
-  friendly_id: string
-  max_tokens: number
-  context_length: number
-  input_cost_per_million: number
-  output_cost_per_million: number
-  supports_vision: boolean
-  supports_tools: boolean
-  supports_reasoning: boolean
+  display_name?: string
+  friendly_id?: string
+  max_tokens?: number
+  maxTokens?: number
+  context_length?: number
+  contextWindow?: number
+  input_cost_per_million?: number
+  output_cost_per_million?: number
+  supports_vision?: boolean
+  supportsVision?: boolean
+  supports_tools?: boolean
+  supportsTools?: boolean
+  supports_reasoning?: boolean
   reasoning_levels?: number
+  description?: string
+  pricing?: {
+    input?: number
+    output?: number
+    cacheRead?: number
+    cacheWrite?: number
+  }
 }
 
 export default function EnhancedApiKeysPage() {
@@ -233,14 +251,14 @@ export default function EnhancedApiKeysPage() {
     const models = await fetchProviderModels(providerId)
     return models.map((model: ModelsDevModel) => ({
       id: model.id,
-      friendlyId: model.friendly_id,
+      friendlyId: model.friendly_id || model.id,
       name: model.display_name || model.name,
-      inputPrice: model.input_cost_per_million / 1000, // Convert to per 1K tokens
-      outputPrice: model.output_cost_per_million / 1000,
-      contextLength: model.context_length,
-      supportsVision: model.supports_vision,
-      supportsTools: model.supports_tools,
-      supportsReasoning: model.supports_reasoning,
+      inputPrice: model.input_cost_per_million ? model.input_cost_per_million / 1000 : 0, // Convert to per 1K tokens
+      outputPrice: model.output_cost_per_million ? model.output_cost_per_million / 1000 : 0,
+      contextLength: model.context_length || model.contextWindow || 0,
+      supportsVision: model.supports_vision || model.supportsVision || false,
+      supportsTools: model.supports_tools || model.supportsTools || false,
+      supportsReasoning: model.supports_reasoning || false,
       reasoningLevels: model.supports_reasoning ? 5 : null,
       cacheReadPrice: null, // Will be available from model metadata
       cacheWritePrice: null
@@ -313,7 +331,7 @@ export default function EnhancedApiKeysPage() {
       const prefsData = prefsResult.status === 'fulfilled' && !prefsResult.value.error ? prefsResult.value.data : null
 
       // Process providers data
-      let legacyProvidersData = {}
+      let legacyProvidersData: Record<string, any> = {}
       if (providersResult.status === 'fulfilled' && providersResult.value.ok) {
         try {
           const data = await providersResult.value.json()
