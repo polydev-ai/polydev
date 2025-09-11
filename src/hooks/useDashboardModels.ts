@@ -90,7 +90,44 @@ export function useDashboardModels() {
           console.warn('Failed to fetch legacy providers:', providersError)
         }
 
-        // Second, extract models from user preferences
+        // Second, collect all unique providers and fetch their data in parallel
+        const allProviders = new Set<string>()
+        
+        // Collect providers from preferences
+        if (preferences?.model_preferences && Object.keys(preferences.model_preferences).length > 0) {
+          for (const [providerId, providerPref] of Object.entries(preferences.model_preferences)) {
+            if (providerPref) {
+              allProviders.add(providerId)
+            }
+          }
+        }
+        
+        // Collect providers from API keys
+        for (const apiKey of apiKeys) {
+          if (apiKey.active) {
+            allProviders.add(apiKey.provider)
+          }
+        }
+        
+        // Fetch all provider model data in parallel
+        const providerDataCache: Record<string, any> = {}
+        if (allProviders.size > 0) {
+          const providerFetchPromises = Array.from(allProviders).map(async (providerId) => {
+            try {
+              const response = await fetch(`/api/models-dev/providers?provider=${providerId}&include_models=true`)
+              if (response.ok) {
+                const data = await response.json()
+                providerDataCache[providerId] = data
+              }
+            } catch (fetchError) {
+              console.warn(`Failed to fetch provider data for ${providerId}:`, fetchError)
+            }
+          })
+          
+          await Promise.all(providerFetchPromises)
+        }
+        
+        // Now process models from user preferences using cached data
         if (preferences?.model_preferences && Object.keys(preferences.model_preferences).length > 0) {
           for (const [providerId, providerPref] of Object.entries(preferences.model_preferences)) {
           // Skip if providerPref is null or undefined
@@ -99,6 +136,7 @@ export function useDashboardModels() {
           }
           
           const providerConfig = (legacyProvidersData as any)[providerId]
+          const cachedProviderData = providerDataCache[providerId]
           
           // Check if this provider has an API key
           const hasApiKey = apiKeys.some(key => key.provider === providerId && key.active)
@@ -123,42 +161,34 @@ export function useDashboardModels() {
               continue
             }
             
-            // Try to get model details from models.dev API if available
-            try {
-              const response = await fetch(`/api/models-dev/providers?provider=${providerId}&include_models=true`)
-              if (response.ok) {
-                const data = await response.json()
-                
-                // Safely check if models array exists and find the model
-                const modelsArray = Array.isArray(data.models) ? data.models : []
-                const modelData = modelsArray.find((m: any) => m.id === modelId || m.friendly_id === modelId)
-                
-                if (modelData) {
-                  dashboardModels.push({
-                    id: modelData.friendly_id || modelData.id,
-                    name: modelData.display_name || modelData.name,
-                    provider: providerId,
-                    providerName: providerConfig?.name || providerId,
-                    tier: getTierFromProvider(providerId, cliResults, hasApiKey),
-                    price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
-                      input: modelData.input_cost_per_million / 1000,
-                      output: modelData.output_cost_per_million / 1000
-                    } : undefined,
-                    features: {
-                      supportsImages: modelData.supports_vision,
-                      supportsTools: modelData.supports_tools,
-                      supportsStreaming: true, // Most models support streaming
-                      supportsReasoning: modelData.supports_reasoning
-                    },
-                    contextWindow: modelData.context_length,
-                    maxTokens: modelData.max_tokens,
-                    description: `${modelData.display_name || modelData.name} - ${providerConfig?.name || providerId}`
-                  })
-                  continue
-                }
+            // Try to get model details from cached data first
+            if (cachedProviderData && cachedProviderData.models) {
+              const modelsArray = Array.isArray(cachedProviderData.models) ? cachedProviderData.models : []
+              const modelData = modelsArray.find((m: any) => m.id === modelId || m.friendly_id === modelId)
+              
+              if (modelData) {
+                dashboardModels.push({
+                  id: modelData.friendly_id || modelData.id,
+                  name: modelData.display_name || modelData.name,
+                  provider: providerId,
+                  providerName: providerConfig?.name || providerId,
+                  tier: getTierFromProvider(providerId, cliResults, hasApiKey),
+                  price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
+                    input: modelData.input_cost_per_million / 1000,
+                    output: modelData.output_cost_per_million / 1000
+                  } : undefined,
+                  features: {
+                    supportsImages: modelData.supports_vision,
+                    supportsTools: modelData.supports_tools,
+                    supportsStreaming: true, // Most models support streaming
+                    supportsReasoning: modelData.supports_reasoning
+                  },
+                  contextWindow: modelData.context_length,
+                  maxTokens: modelData.max_tokens,
+                  description: `${modelData.display_name || modelData.name} - ${providerConfig?.name || providerId}`
+                })
+                continue
               }
-            } catch (fetchError) {
-              console.warn(`Failed to fetch model details for ${modelId} from ${providerId}:`, fetchError)
             }
             
             // Fallback: create basic model info from models.dev if available
@@ -199,7 +229,7 @@ export function useDashboardModels() {
         }
         }
 
-        // Third, fetch API keys to include models that aren't in preferences yet
+        // Third, process API keys to include models that aren't in preferences yet
         try {
           const providersInPreferences = new Set(Object.keys(preferences?.model_preferences || {}))
           
@@ -215,44 +245,38 @@ export function useDashboardModels() {
             }
               
               const providerConfig = (legacyProvidersData as any)[apiKey.provider]
+              const cachedProviderData = providerDataCache[apiKey.provider]
               const modelId = apiKey.default_model
               
               if (modelId) {
-                // Try to get model details from models.dev API if available
-                try {
-                  const response = await fetch(`/api/models-dev/providers?provider=${apiKey.provider}&include_models=true`)
-                  if (response.ok) {
-                    const data = await response.json()
-                    
-                    const modelsArray = Array.isArray(data.models) ? data.models : []
-                    const modelData = modelsArray.find((m: any) => m.id === modelId || m.friendly_id === modelId)
-                    
-                    if (modelData) {
-                      dashboardModels.push({
-                        id: modelData.friendly_id || modelData.id,
-                        name: modelData.display_name || modelData.name,
-                        provider: apiKey.provider,
-                        providerName: providerConfig?.name || apiKey.provider,
-                        tier: getTierFromProvider(apiKey.provider, cliResults, true),
-                        price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
-                          input: modelData.input_cost_per_million / 1000,
-                          output: modelData.output_cost_per_million / 1000
-                        } : undefined,
-                        features: {
-                          supportsImages: modelData.supports_vision,
-                          supportsTools: modelData.supports_tools,
-                          supportsStreaming: true,
-                          supportsReasoning: modelData.supports_reasoning
-                        },
-                        contextWindow: modelData.context_length,
-                        maxTokens: modelData.max_tokens,
-                        description: `${modelData.display_name || modelData.name} - ${providerConfig?.name || apiKey.provider}`
-                      })
-                      continue
-                    }
+                // Try to get model details from cached data first
+                if (cachedProviderData && cachedProviderData.models) {
+                  const modelsArray = Array.isArray(cachedProviderData.models) ? cachedProviderData.models : []
+                  const modelData = modelsArray.find((m: any) => m.id === modelId || m.friendly_id === modelId)
+                  
+                  if (modelData) {
+                    dashboardModels.push({
+                      id: modelData.friendly_id || modelData.id,
+                      name: modelData.display_name || modelData.name,
+                      provider: apiKey.provider,
+                      providerName: providerConfig?.name || apiKey.provider,
+                      tier: getTierFromProvider(apiKey.provider, cliResults, true),
+                      price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
+                        input: modelData.input_cost_per_million / 1000,
+                        output: modelData.output_cost_per_million / 1000
+                      } : undefined,
+                      features: {
+                        supportsImages: modelData.supports_vision,
+                        supportsTools: modelData.supports_tools,
+                        supportsStreaming: true,
+                        supportsReasoning: modelData.supports_reasoning
+                      },
+                      contextWindow: modelData.context_length,
+                      maxTokens: modelData.max_tokens,
+                      description: `${modelData.display_name || modelData.name} - ${providerConfig?.name || apiKey.provider}`
+                    })
+                    continue
                   }
-                } catch (fetchError) {
-                  console.warn(`Failed to fetch model details for ${modelId} from ${apiKey.provider}:`, fetchError)
                 }
                 
                 // Fallback: create basic model info
