@@ -69,6 +69,7 @@ export async function getAvailableModels(): Promise<ModelsByTier> {
       
       if (providerConfig.supportedModels) {
         Object.entries(providerConfig.supportedModels).forEach(([modelId, modelInfo]) => {
+          const typedModelInfo = modelInfo as ModelInfo
           const availableModel: AvailableModel = {
             id: modelId,
             name: formatModelName(modelId),
@@ -77,18 +78,18 @@ export async function getAvailableModels(): Promise<ModelsByTier> {
             category: providerConfig.category,
             tier,
             price: {
-              input: modelInfo.inputPrice,
-              output: modelInfo.outputPrice
+              input: typedModelInfo.inputPrice,
+              output: typedModelInfo.outputPrice
             },
             features: {
-              supportsImages: modelInfo.supportsImages,
+              supportsImages: typedModelInfo.supportsImages,
               supportsTools: providerConfig.supportsTools,
               supportsStreaming: providerConfig.supportsStreaming,
               supportsReasoning: providerConfig.supportsReasoning
             },
-            contextWindow: modelInfo.contextWindow,
-            maxTokens: modelInfo.maxTokens,
-            description: modelInfo.description,
+            contextWindow: typedModelInfo.contextWindow,
+            maxTokens: typedModelInfo.maxTokens,
+            description: typedModelInfo.description,
             enabled: true
           }
           
