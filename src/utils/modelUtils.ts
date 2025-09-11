@@ -1,4 +1,5 @@
-import { CLINE_PROVIDERS, type ApiProvider, type ProviderConfig, type ModelInfo } from '../types/providers'
+import { modelsDevService } from '../lib/models-dev-integration'
+import type { ApiProvider, type ProviderConfig, type ModelInfo } from '../types/providers'
 
 export interface AvailableModel {
   id: string
@@ -49,55 +50,66 @@ function getModelTier(providerId: ApiProvider): 'cli' | 'api' | 'credits' {
   return 'credits'
 }
 
-// Get all available models from providers configuration
-export function getAvailableModels(): ModelsByTier {
+// Get all available models from models.dev database
+export async function getAvailableModels(): Promise<ModelsByTier> {
   const modelsByTier: ModelsByTier = {
     cli: [],
     api: [],
     credits: []
   }
 
-  Object.entries(CLINE_PROVIDERS).forEach(([providerId, provider]) => {
-    const tier = getModelTier(providerId as ApiProvider)
+  try {
+    const providers = await modelsDevService.getProviders()
     
-    Object.entries(provider.supportedModels).forEach(([modelId, modelInfo]) => {
-      const availableModel: AvailableModel = {
-        id: modelId,
-        name: formatModelName(modelId),
-        provider: providerId,
-        providerName: provider.name,
-        category: provider.category,
-        tier,
-        price: {
-          input: modelInfo.inputPrice,
-          output: modelInfo.outputPrice
-        },
-        features: {
-          supportsImages: modelInfo.supportsImages,
-          supportsTools: provider.supportsTools,
-          supportsStreaming: provider.supportsStreaming,
-          supportsReasoning: provider.supportsReasoning
-        },
-        contextWindow: modelInfo.contextWindow,
-        maxTokens: modelInfo.maxTokens,
-        description: modelInfo.description,
-        enabled: true
-      }
+    for (const provider of providers) {
+      const providerConfig = await modelsDevService.getLegacyProviderConfig(provider.id)
+      if (!providerConfig) continue
       
-      modelsByTier[tier].push(availableModel)
-    })
-  })
-
-  // Sort models within each tier by popularity/capability
-  Object.keys(modelsByTier).forEach(tier => {
-    modelsByTier[tier as keyof ModelsByTier].sort((a, b) => {
-      // Sort by context window (higher is better) and then by name
-      if (a.contextWindow !== b.contextWindow) {
-        return b.contextWindow - a.contextWindow
+      const tier = getModelTier(provider.id as ApiProvider)
+      
+      if (providerConfig.supportedModels) {
+        Object.entries(providerConfig.supportedModels).forEach(([modelId, modelInfo]) => {
+          const availableModel: AvailableModel = {
+            id: modelId,
+            name: formatModelName(modelId),
+            provider: provider.id,
+            providerName: providerConfig.name,
+            category: providerConfig.category,
+            tier,
+            price: {
+              input: modelInfo.inputPrice,
+              output: modelInfo.outputPrice
+            },
+            features: {
+              supportsImages: modelInfo.supportsImages,
+              supportsTools: providerConfig.supportsTools,
+              supportsStreaming: providerConfig.supportsStreaming,
+              supportsReasoning: providerConfig.supportsReasoning
+            },
+            contextWindow: modelInfo.contextWindow,
+            maxTokens: modelInfo.maxTokens,
+            description: modelInfo.description,
+            enabled: true
+          }
+          
+          modelsByTier[tier].push(availableModel)
+        })
       }
-      return a.name.localeCompare(b.name)
+    }
+
+    // Sort models within each tier by popularity/capability
+    Object.keys(modelsByTier).forEach(tier => {
+      modelsByTier[tier as keyof ModelsByTier].sort((a, b) => {
+        // Sort by context window (higher is better) and then by name
+        if (a.contextWindow !== b.contextWindow) {
+          return b.contextWindow - a.contextWindow
+        }
+        return a.name.localeCompare(b.name)
+      })
     })
-  })
+  } catch (error) {
+    console.error('Failed to fetch models from models.dev:', error)
+  }
 
   return modelsByTier
 }
@@ -112,8 +124,8 @@ function formatModelName(modelId: string): string {
 }
 
 // Get default selected models (top models from each tier)
-export function getDefaultSelectedModels(): string[] {
-  const modelsByTier = getAvailableModels()
+export async function getDefaultSelectedModels(): Promise<string[]> {
+  const modelsByTier = await getAvailableModels()
   const defaults: string[] = []
   
   // Add top CLI model if available
@@ -135,8 +147,8 @@ export function getDefaultSelectedModels(): string[] {
 }
 
 // Get all models as a flat list (maintaining tier priority order)
-export function getAllAvailableModels(): AvailableModel[] {
-  const modelsByTier = getAvailableModels()
+export async function getAllAvailableModels(): Promise<AvailableModel[]> {
+  const modelsByTier = await getAvailableModels()
   return [
     ...modelsByTier.cli,
     ...modelsByTier.api, 
@@ -145,7 +157,7 @@ export function getAllAvailableModels(): AvailableModel[] {
 }
 
 // Find model by ID
-export function getModelById(modelId: string): AvailableModel | undefined {
-  const allModels = getAllAvailableModels()
+export async function getModelById(modelId: string): Promise<AvailableModel | undefined> {
+  const allModels = await getAllAvailableModels()
   return allModels.find(model => model.id === modelId)
 }

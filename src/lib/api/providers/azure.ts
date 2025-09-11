@@ -23,7 +23,7 @@ export class AzureHandler implements ApiHandler {
         'api-key': apiKey
       },
       body: JSON.stringify(requestBody)
-    
+    })
     
     if (!response.ok) {
       const error = await response.text()
@@ -50,7 +50,7 @@ export class AzureHandler implements ApiHandler {
         'api-key': apiKey
       },
       body: JSON.stringify(requestBody)
-    
+    })
     
     if (!response.ok) {
       const error = await response.text()

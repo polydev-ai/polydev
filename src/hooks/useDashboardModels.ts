@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { usePreferences } from './usePreferences'
-import { CLINE_PROVIDERS } from '../types/providers'
 
 export interface DashboardModel {
   id: string
@@ -28,6 +27,7 @@ export function useDashboardModels() {
   const [models, setModels] = useState<DashboardModel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [legacyProviders, setLegacyProviders] = useState<Record<string, any>>({})
 
   useEffect(() => {
     const fetchDashboardModels = async () => {
@@ -77,6 +77,19 @@ export function useDashboardModels() {
           console.warn('Failed to fetch API keys:', apiKeyError)
         }
 
+        // Fetch legacy providers data from models.dev API
+        let legacyProvidersData = {}
+        try {
+          const response = await fetch('/api/models-dev/providers')
+          if (response.ok) {
+            const data = await response.json()
+            legacyProvidersData = data
+            setLegacyProviders(legacyProvidersData)
+          }
+        } catch (providersError) {
+          console.warn('Failed to fetch legacy providers:', providersError)
+        }
+
         // Second, extract models from user preferences
         if (preferences?.model_preferences && Object.keys(preferences.model_preferences).length > 0) {
           for (const [providerId, providerPref] of Object.entries(preferences.model_preferences)) {
@@ -85,7 +98,7 @@ export function useDashboardModels() {
             continue
           }
           
-          const providerConfig = CLINE_PROVIDERS[providerId as keyof typeof CLINE_PROVIDERS]
+          const providerConfig = legacyProvidersData[providerId]
           
           // Check if this provider has an API key
           const hasApiKey = apiKeys.some(key => key.provider === providerId && key.active)
@@ -148,7 +161,7 @@ export function useDashboardModels() {
               console.warn(`Failed to fetch model details for ${modelId} from ${providerId}:`, fetchError)
             }
             
-            // Fallback: create basic model info from CLINE_PROVIDERS if available
+            // Fallback: create basic model info from models.dev if available
             if (providerConfig?.supportedModels?.[modelId]) {
               const modelInfo = providerConfig.supportedModels[modelId]
               dashboardModels.push({
@@ -201,7 +214,7 @@ export function useDashboardModels() {
               continue
             }
               
-              const providerConfig = CLINE_PROVIDERS[apiKey.provider as keyof typeof CLINE_PROVIDERS]
+              const providerConfig = legacyProvidersData[apiKey.provider]
               const modelId = apiKey.default_model
               
               if (modelId) {

@@ -16,6 +16,7 @@ export interface UserPreferences {
     default_temperature: number
     default_max_tokens: number
     auto_select_model: boolean
+    saved_chat_models?: string[]
     memory_settings: {
       enable_conversation_memory: boolean
       enable_project_memory: boolean

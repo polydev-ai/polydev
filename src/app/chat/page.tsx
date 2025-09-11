@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboardModels, type DashboardModel } from '../../hooks/useDashboardModels'
 import { useChatSessions, type ChatSession, type ChatMessage } from '../../hooks/useChatSessions'
+import { usePreferences } from '../../hooks/usePreferences'
+import MessageContent from '../../components/MessageContent'
 
 interface Message {
   id: string
@@ -36,6 +38,7 @@ export default function Chat() {
     createSession, 
     getSessionWithMessages 
   } = useChatSessions()
+  const { preferences, updatePreferences } = usePreferences()
   
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -44,11 +47,27 @@ export default function Chat() {
   const [showModelSelector, setShowModelSelector] = useState(false)
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null)
   const [showSidebar, setShowSidebar] = useState(false)
+  const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Set default selected models when dashboard models load
+  // Set default selected models when dashboard models load and preferences are available
   useEffect(() => {
     if (dashboardModels.length > 0 && selectedModels.length === 0) {
+      // Check if user has saved chat model preferences
+      const savedChatModels = preferences?.mcp_settings?.saved_chat_models
+      
+      if (savedChatModels && Array.isArray(savedChatModels) && savedChatModels.length > 0) {
+        // Restore saved model preferences, filtering out models that are no longer available
+        const availableModelIds = dashboardModels.map(m => m.id)
+        const validSavedModels = savedChatModels.filter(modelId => availableModelIds.includes(modelId))
+        
+        if (validSavedModels.length > 0) {
+          setSelectedModels(validSavedModels)
+          return
+        }
+      }
+      
+      // Fall back to default selection if no saved preferences or invalid models
       const modelsByTier = dashboardModels.reduce((acc, model) => {
         if (!acc[model.tier]) acc[model.tier] = []
         acc[model.tier].push(model)
@@ -61,7 +80,7 @@ export default function Chat() {
       if (modelsByTier.credits?.length > 0 && defaults.length === 0) defaults.push(modelsByTier.credits[0].id)
       setSelectedModels(defaults)
     }
-  }, [dashboardModels, selectedModels.length])
+  }, [dashboardModels, selectedModels.length, preferences])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -192,10 +211,27 @@ export default function Chat() {
     }
   }
 
-  const toggleModel = (modelId: string) => {
-    setSelectedModels(prev =>
-      prev.includes(modelId) ? prev.filter(id => id !== modelId) : [...prev, modelId]
-    )
+  const toggleModel = async (modelId: string) => {
+    const newSelectedModels = selectedModels.includes(modelId) 
+      ? selectedModels.filter(id => id !== modelId) 
+      : [...selectedModels, modelId]
+    
+    setSelectedModels(newSelectedModels)
+    
+    // Save to user preferences
+    if (updatePreferences && preferences) {
+      try {
+        await updatePreferences({
+          mcp_settings: {
+            ...preferences.mcp_settings,
+            saved_chat_models: newSelectedModels
+          }
+        })
+      } catch (error) {
+        console.error('Failed to save model preferences:', error)
+        // Continue silently - user can still use the interface
+      }
+    }
   }
 
   const getTierBadgeColor = (tier: 'cli' | 'api' | 'credits') => {
@@ -227,6 +263,37 @@ export default function Chat() {
 
   const clearChat = () => {
     startNewSession()
+  }
+
+  // Group messages by conversation turns for split view
+  const groupMessagesByTurns = () => {
+    const turns: Array<{
+      userMessage: Message
+      assistantMessages: Message[]
+    }> = []
+    
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i]
+      if (message.role === 'user') {
+        const assistantMessages: Message[] = []
+        let j = i + 1
+        
+        // Collect all assistant messages that follow this user message
+        while (j < messages.length && messages[j].role === 'assistant') {
+          assistantMessages.push(messages[j])
+          j++
+        }
+        
+        turns.push({
+          userMessage: message,
+          assistantMessages
+        })
+        
+        i = j - 1 // Skip the assistant messages we just processed
+      }
+    }
+    
+    return turns
   }
 
   if (loading || modelsLoading || sessionsLoading) {
@@ -334,6 +401,30 @@ export default function Chat() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
+                  
+                  {selectedModels.length > 1 && (
+                    <button
+                      onClick={() => setViewMode(viewMode === 'unified' ? 'split' : 'unified')}
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      title={viewMode === 'unified' ? 'Switch to split view' : 'Switch to unified view'}
+                    >
+                      {viewMode === 'unified' ? (
+                        <>
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H15a2 2 0 00-2 2" />
+                          </svg>
+                          Split
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                          </svg>
+                          Unified
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="flex items-center space-x-2">
@@ -484,7 +575,8 @@ export default function Chat() {
                     </div>
                   </div>
                 </div>
-              ) : (
+              ) : viewMode === 'unified' ? (
+                // Unified view - traditional chat layout
                 messages.map((message) => (
                   <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-3xl ${message.role === 'user' ? 'ml-auto' : 'mr-auto'}`}>
@@ -530,9 +622,10 @@ export default function Chat() {
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
                       }`}>
-                        <div className="whitespace-pre-wrap">
-                          {message.content}
-                        </div>
+                        <MessageContent 
+                          content={message.content}
+                          className={message.role === 'user' ? 'text-white' : ''}
+                        />
                         <div className={`text-xs mt-2 opacity-70 ${
                           message.role === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
                         }`}>
@@ -540,6 +633,82 @@ export default function Chat() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                ))
+              ) : (
+                // Split view - organize by conversation turns and show models side by side
+                groupMessagesByTurns().map((turn, turnIndex) => (
+                  <div key={turnIndex} className="space-y-4">
+                    {/* User message */}
+                    <div className="flex justify-end">
+                      <div className="max-w-3xl ml-auto">
+                        <div className="px-6 py-4 rounded-2xl bg-blue-600 text-white">
+                          <MessageContent 
+                            content={turn.userMessage.content}
+                            className="text-white"
+                          />
+                          <div className="text-xs mt-2 opacity-70 text-blue-100">
+                            {turn.userMessage.timestamp.toLocaleTimeString()}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Assistant responses in grid */}
+                    {turn.assistantMessages.length > 0 && (
+                      <div className={`grid gap-4 ${
+                        turn.assistantMessages.length === 1 ? 'grid-cols-1' :
+                        turn.assistantMessages.length === 2 ? 'grid-cols-1 lg:grid-cols-2' :
+                        'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
+                      }`}>
+                        {turn.assistantMessages.map((message) => (
+                          <div key={message.id} className="bg-gray-100 dark:bg-gray-800 rounded-2xl">
+                            {/* Model header */}
+                            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {message.model}
+                                </span>
+                                <div className="flex items-center space-x-2">
+                                  {(() => {
+                                    const source = getSourceFromProvider(message.provider)
+                                    if (source) {
+                                      return (
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(source.type)}`}>
+                                          {source.label}
+                                        </span>
+                                      )
+                                    }
+                                    return null
+                                  })()}
+                                  {message.usage && (
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                      {message.usage.total_tokens}t
+                                    </span>
+                                  )}
+                                  {message.costInfo && (
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                      {formatCost(message.costInfo.total_cost)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Message content */}
+                            <div className="px-6 py-4">
+                              <MessageContent 
+                                content={message.content}
+                                className="text-gray-900 dark:text-white"
+                              />
+                              <div className="text-xs mt-2 text-gray-500 dark:text-gray-400">
+                                {message.timestamp.toLocaleTimeString()}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))
               )}

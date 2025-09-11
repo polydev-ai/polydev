@@ -2,7 +2,7 @@ import { ApiHandlerOptions, ModelInfo, ProviderConfiguration, ApiProvider } from
 // Enhanced handlers with integrated utilities (rate limiting, token counting, retry logic, validation)
 import { EnhancedHandlerFactory, BaseEnhancedHandler } from './providers/enhanced-handlers'
 import { universalProvider, PROVIDER_CONFIGS } from './providers/complete-provider-system'
-import { CLINE_PROVIDERS } from '../../types/providers'
+import { modelsDevService } from '../models-dev-integration'
 import { TokenCounter, TokenCount } from './utils/token-counter'
 import { RateLimiter, RateLimitConfig } from './utils/rate-limiter'
 import { RetryHandler } from './utils/retry-handler'
@@ -144,13 +144,23 @@ export class ApiManager {
     return getAllSupportedProviders()
   }
   
-  // Enhanced utility methods leveraging comprehensive system
-  getProviderConfiguration(providerId: string): any {
-    return CLINE_PROVIDERS[providerId as ApiProvider] || null
+  // Enhanced utility methods leveraging models.dev integration
+  async getProviderConfiguration(providerId: string): Promise<any> {
+    return await modelsDevService.getLegacyProviderConfig(providerId)
   }
   
-  getAllProviderConfigurations(): Record<string, any> {
-    return CLINE_PROVIDERS
+  async getAllProviderConfigurations(): Promise<Record<string, any>> {
+    const providers = await modelsDevService.getProviders()
+    const configs: Record<string, any> = {}
+    
+    for (const provider of providers) {
+      const config = await modelsDevService.getLegacyProviderConfig(provider.id)
+      if (config) {
+        configs[provider.id] = config
+      }
+    }
+    
+    return configs
   }
   
   getTokenCount(providerId: string, options: ApiHandlerOptions): TokenCount {
@@ -196,38 +206,56 @@ export class ApiManager {
     return universalProvider.streamMessage(providerId, options)
   }
   
-  // Provider capability checks
-  supportsStreaming(providerId: string): boolean {
-    const config = CLINE_PROVIDERS[providerId as ApiProvider]
-    return config ? config.supportsStreaming || false : false
+  // Provider capability checks using models.dev data
+  async supportsStreaming(providerId: string): Promise<boolean> {
+    try {
+      const providers = await modelsDevService.getProviders()
+      const provider = providers.find(p => p.id === providerId)
+      return provider ? provider.supports_streaming : false
+    } catch (error) {
+      console.warn(`Failed to check streaming support for ${providerId}:`, error)
+      return false
+    }
   }
   
-  supportsFunctionCalling(providerId: string): boolean {
-    const config = CLINE_PROVIDERS[providerId as ApiProvider]
-    return config ? config.supportsTools || false : false
+  async supportsFunctionCalling(providerId: string): Promise<boolean> {
+    try {
+      const providers = await modelsDevService.getProviders()
+      const provider = providers.find(p => p.id === providerId)
+      return provider ? provider.supports_tools : false
+    } catch (error) {
+      console.warn(`Failed to check function calling support for ${providerId}:`, error)
+      return false
+    }
   }
   
-  supportsVision(providerId: string): boolean {
-    const config = CLINE_PROVIDERS[providerId as ApiProvider]
-    return config ? config.supportsVision || false : false
+  async supportsVision(providerId: string): Promise<boolean> {
+    try {
+      const providers = await modelsDevService.getProviders()
+      const provider = providers.find(p => p.id === providerId)
+      return provider ? provider.supports_images : false
+    } catch (error) {
+      console.warn(`Failed to check vision support for ${providerId}:`, error)
+      return false
+    }
   }
   
-  // Statistics and monitoring
-  getProviderStats(): Record<string, any> {
+  // Statistics and monitoring using models.dev data
+  async getProviderStats(): Promise<Record<string, any>> {
     const stats: Record<string, any> = {}
     const providers = this.getSupportedProviders()
     
-    providers.forEach(providerId => {
+    for (const providerId of providers) {
       stats[providerId] = {
         rateLimitStatus: this.getRateLimitStatus(providerId),
         retryStats: this.getRetryStats(providerId),
         capabilities: {
-          streaming: this.supportsStreaming(providerId),
-          functionCalling: this.supportsFunctionCalling(providerId),
-          vision: this.supportsVision(providerId)
+          streaming: await this.supportsStreaming(providerId),
+          functionCalling: await this.supportsFunctionCalling(providerId),
+          vision: await this.supportsVision(providerId)
         }
       }
-    })
+    }
     
     return stats
   }

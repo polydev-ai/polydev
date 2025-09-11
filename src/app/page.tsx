@@ -2,41 +2,73 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { CLINE_PROVIDERS } from '../types/providers'
 import Link from 'next/link'
 
-// Calculate total models across all providers
-const getTotalModels = () => {
-  return Object.values(CLINE_PROVIDERS).reduce((total, provider) => {
-    return total + Object.keys(provider.supportedModels).length
-  }, 0)
+// Calculate total models and providers from models.dev API
+const getStatsFromModelsDevAPI = async () => {
+  try {
+    const response = await fetch('/api/models-dev/providers')
+    if (response.ok) {
+      const data = await response.json()
+      
+      let totalModels = 0
+      let totalProviders = 0
+      
+      for (const [providerId, provider] of Object.entries(data)) {
+        if (provider && typeof provider === 'object' && provider.supportedModels) {
+          const modelCount = Object.keys(provider.supportedModels).length
+          if (modelCount > 0) {
+            totalModels += modelCount
+            totalProviders += 1
+          }
+        }
+      }
+      
+      return { totalModels, totalProviders }
+    }
+  } catch (error) {
+    console.error('Failed to fetch models.dev stats:', error)
+  }
+  
+  // Fallback values
+  return { totalModels: 346, totalProviders: 37 }
 }
 
-// Calculate total providers with models
-const getTotalProviders = () => {
-  return Object.values(CLINE_PROVIDERS).filter(provider => 
-    Object.keys(provider.supportedModels).length > 0
-  ).length
-}
-
-const TOTAL_MODELS = getTotalModels()
-const TOTAL_PROVIDERS = getTotalProviders()
-
-const features = [
-  {
-    icon: '🚫',
-    title: 'Break Through Roadblocks',
-    description: 'When your agent gets stuck on complex problems, instantly fan out to multiple AI models for diverse solution approaches',
-    highlight: 'Instant breakthrough',
-    gradient: 'from-red-500 to-orange-500'
-  },
-  {
-    icon: '⚡',
-    title: 'Lightning Fast Responses',
-    description: `Parallel queries to GPT-4, Claude 3.5, Gemini Pro, and ${TOTAL_MODELS}+ models return breakthrough insights in under 2 seconds`,
-    highlight: 'Sub-2s parallel query',
-    gradient: 'from-yellow-500 to-orange-500'
-  },
+export default function Home() {
+  const { user, loading, isAuthenticated } = useAuth()
+  const [typedText, setTypedText] = useState('')
+  const [currentWordIndex, setCurrentWordIndex] = useState(0)
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [isVisible, setIsVisible] = useState(false)
+  const [modelStats, setModelStats] = useState({ totalModels: 346, totalProviders: 37 })
+  
+  // Load stats from models.dev
+  useEffect(() => {
+    getStatsFromModelsDevAPI().then(setModelStats)
+  }, [])
+  
+  const stats = [
+    { value: '100K+', label: 'Breakthroughs Generated' },
+    { value: '500+', label: 'MCP Clients Connected' },
+    { value: `${modelStats.totalProviders}+`, label: 'AI Providers Supported' },
+    { value: `${modelStats.totalModels}`, label: 'Total Models Available' }
+  ]
+  
+  const features = [
+    {
+      icon: '🚫',
+      title: 'Break Through Roadblocks',
+      description: 'When your agent gets stuck on complex problems, instantly fan out to multiple AI models for diverse solution approaches',
+      highlight: 'Instant breakthrough',
+      gradient: 'from-red-500 to-orange-500'
+    },
+    {
+      icon: '⚡',
+      title: 'Lightning Fast Responses',
+      description: `Parallel queries to GPT-4, Claude 3.5, Gemini Pro, and ${modelStats.totalModels}+ models return breakthrough insights in under 2 seconds`,
+      highlight: 'Sub-2s parallel query',
+      gradient: 'from-yellow-500 to-orange-500'
+    },
   {
     icon: '🔌',
     title: 'Universal MCP Integration',
@@ -54,7 +86,7 @@ const features = [
   {
     icon: '🔑',
     title: 'Your Keys, Your Rules',
-    description: `Use your own API keys for unlimited access to ${Math.ceil(TOTAL_MODELS/10)}+ providers, or start instantly with managed keys`,
+    description: `Use your own API keys for unlimited access to ${Math.ceil(modelStats.totalModels/10)}+ providers, or start instantly with managed keys`,
     highlight: 'Complete control',
     gradient: 'from-green-500 to-teal-500'
   },
@@ -87,20 +119,6 @@ const testimonials = [
     quote: 'Game changer for our team. Agents stay in control but get N raw breakthrough insights to choose from. No hidden judging or merging.'
   }
 ]
-
-const stats = [
-  { value: '100K+', label: 'Breakthroughs Generated' },
-  { value: '500+', label: 'MCP Clients Connected' },
-  { value: `${TOTAL_PROVIDERS}+`, label: 'AI Providers Supported' },
-  { value: `${TOTAL_MODELS}`, label: 'Total Models Available' }
-]
-
-export default function Home() {
-  const { user, loading, isAuthenticated } = useAuth()
-  const [typedText, setTypedText] = useState('')
-  const [currentWordIndex, setCurrentWordIndex] = useState(0)
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const [isVisible, setIsVisible] = useState(false)
   
   const words = ['Claude Desktop', 'Cursor', 'Continue', 'Cline', 'Gemini CLI', 'your MCP client']
   
@@ -201,7 +219,7 @@ export default function Home() {
             </h1>
             
             <p className="text-xl md:text-2xl text-slate-600 dark:text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed">
-              One MCP tool that queries {TOTAL_MODELS}+ AI models in parallel when your agents hit walls. From Claude to GPT-4 to Gemini — get breakthrough insights in under 2 seconds through{' '}
+              One MCP tool that queries {modelStats.totalModels}+ AI models in parallel when your agents hit walls. From Claude to GPT-4 to Gemini — get breakthrough insights in under 2 seconds through{' '}
               <span className="text-blue-600 font-medium">
                 {typedText}
                 <span className="animate-pulse">|</span>

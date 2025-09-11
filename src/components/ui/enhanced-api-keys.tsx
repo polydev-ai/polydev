@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { createClient } from '../../app/utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw, Copy } from 'lucide-react'
-import { CLINE_PROVIDERS, ProviderConfig } from '../../types/providers'
+import { ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
-// Remove direct import of modelsDevService to avoid server-side imports in client component
+// Use API endpoint instead of direct modelsDevService import to avoid server-side imports in client component
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 
 interface ApiKey {
@@ -94,6 +94,7 @@ export default function EnhancedApiKeysPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
   const [providers, setProviders] = useState<ProviderConfig[]>([])
+  const [legacyProviders, setLegacyProviders] = useState<Record<string, any>>({})
   const [modelsDevProviders, setModelsDevProviders] = useState<ModelsDevProvider[]>([])
   const [providerModels, setProviderModels] = useState<Record<string, ModelsDevModel[]>>({})
   const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({})
@@ -143,16 +144,16 @@ export default function EnhancedApiKeysPage() {
     }
   }
 
-  // Get enhanced provider display data by combining CLINE_PROVIDERS with models.dev data
+  // Get enhanced provider display data by combining legacy providers with models.dev data
   const getProviderDisplayData = useCallback((providerId: string) => {
-    const clineProvider = CLINE_PROVIDERS[providerId as keyof typeof CLINE_PROVIDERS]
+    const legacyProvider = legacyProviders[providerId]
     const modelsDevProvider = modelsDevProviders.find(p => p.id === providerId)
     
     // If neither exists, return null
-    if (!clineProvider && !modelsDevProvider) return null
+    if (!legacyProvider && !modelsDevProvider) return null
     
     // If only models.dev provider exists, create a basic provider config
-    if (!clineProvider && modelsDevProvider) {
+    if (!legacyProvider && modelsDevProvider) {
       return {
         name: modelsDevProvider.display_name || modelsDevProvider.name,
         displayName: modelsDevProvider.display_name || modelsDevProvider.name,
@@ -166,19 +167,19 @@ export default function EnhancedApiKeysPage() {
     
     // If both exist, merge them with models.dev taking precedence for display data
     return {
-      ...clineProvider,
+      ...legacyProvider,
       // Use models.dev logo if available, fallback to PROVIDER_ICONS
       logoUrl: modelsDevProvider?.logo_url || PROVIDER_ICONS[providerId as keyof typeof PROVIDER_ICONS],
       // Use models.dev display name if available
-      displayName: modelsDevProvider?.display_name || clineProvider.name,
+      displayName: modelsDevProvider?.display_name || legacyProvider.name,
       // Enhanced description from models.dev
-      enhancedDescription: modelsDevProvider?.description || clineProvider.description,
+      enhancedDescription: modelsDevProvider?.description || legacyProvider.description,
       // Website URL from models.dev
       websiteUrl: modelsDevProvider?.website,
       // Additional metadata
       modelsDevData: modelsDevProvider
     }
-  }, [modelsDevProviders])
+  }, [legacyProviders, modelsDevProviders])
 
   // Fetch and cache models for a specific provider
   const fetchProviderModels = useCallback(async (providerId: string) => {
@@ -286,24 +287,32 @@ export default function EnhancedApiKeysPage() {
         .eq('user_id', user.id)
         .single()
       
-      // Only show providers that have API keys
-      const providersWithKeys = Object.values(CLINE_PROVIDERS).filter(provider => 
-        (keysData || []).some(key => key.provider === provider.id)
-      )
-
-      // Fetch models.dev providers for enhanced UI data
+      // Fetch providers data from models.dev API
+      let legacyProvidersData = {}
       try {
         const response = await fetch('/api/models-dev/providers')
         if (response.ok) {
           const data = await response.json()
-          setModelsDevProviders(data.providers || [])
+          legacyProvidersData = data
+          setLegacyProviders(legacyProvidersData)
+          
+          // Also set models.dev providers if available in the response
+          if (data.providers) {
+            setModelsDevProviders(data.providers)
+          }
         } else {
           throw new Error('Failed to fetch providers')
         }
       } catch (err) {
-        console.warn('Failed to fetch models.dev providers:', err)
+        console.warn('Failed to fetch providers:', err)
+        setLegacyProviders({})
         setModelsDevProviders([])
       }
+      
+      // Only show providers that have API keys
+      const providersWithKeys = Object.values(legacyProvidersData).filter((provider: any) => 
+        (keysData || []).some(key => key.provider === provider.id)
+      )
 
       setApiKeys(keysData || [])
       setPreferences(prefsError ? null : prefsData)
@@ -839,7 +848,7 @@ export default function EnhancedApiKeysPage() {
                   ref={provided.innerRef}
                 >
                   {apiKeys.map((key, index) => {
-                    const providerConfig = CLINE_PROVIDERS[key.provider as keyof typeof CLINE_PROVIDERS]
+                    const providerConfig = legacyProviders[key.provider]
                     return (
                       <Draggable key={key.id} draggableId={key.id} index={index}>
                         {(provided, snapshot) => (
@@ -998,7 +1007,7 @@ export default function EnhancedApiKeysPage() {
                         </option>
                       ))
                     ) : (
-                      Object.entries(CLINE_PROVIDERS).map(([id, provider]) => (
+                      Object.entries(legacyProviders).map(([id, provider]) => (
                         <option key={id} value={id}>
                           {provider.name}
                         </option>
@@ -1084,7 +1093,7 @@ export default function EnhancedApiKeysPage() {
                 <div className="space-y-2">
                   {(() => {
                     const providerData = getProviderDisplayData(formData.provider)
-                    const defaultBaseUrl = providerData?.baseUrl || CLINE_PROVIDERS[formData.provider as keyof typeof CLINE_PROVIDERS]?.baseUrl
+                    const defaultBaseUrl = providerData?.baseUrl || legacyProviders[formData.provider]?.baseUrl
                     return (
                       <>
                         <input

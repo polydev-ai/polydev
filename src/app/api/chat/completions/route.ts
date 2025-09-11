@@ -1,10 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { apiManager } from '@/lib/api'
-import { CLINE_PROVIDERS } from '@/types/providers'
 import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 import { modelsDevService } from '@/lib/models-dev-integration'
+
+// Generate a title from the first user message
+function generateConversationTitle(userMessage: string): string {
+  // Clean and truncate the message
+  const cleaned = userMessage.trim().replace(/\s+/g, ' ')
+  
+  // If message is short enough, use it directly
+  if (cleaned.length <= 50) {
+    return cleaned
+  }
+  
+  // Try to find a natural break point (sentence end, comma, etc.)
+  const truncated = cleaned.substring(0, 47)
+  const lastPunctuation = Math.max(
+    truncated.lastIndexOf('.'),
+    truncated.lastIndexOf('!'),
+    truncated.lastIndexOf('?'),
+    truncated.lastIndexOf(',')
+  )
+  
+  if (lastPunctuation > 20) {
+    return truncated.substring(0, lastPunctuation + 1)
+  }
+  
+  // Find last complete word
+  const lastSpace = truncated.lastIndexOf(' ')
+  if (lastSpace > 20) {
+    return truncated.substring(0, lastSpace) + '...'
+  }
+  
+  // Fallback: just truncate
+  return truncated + '...'
+}
 
 async function authenticateRequest(request: NextRequest): Promise<{ user: any; preferences: any } | null> {
   const supabase = await createClient()
@@ -748,12 +780,15 @@ export async function POST(request: NextRequest) {
       currentSessionId = sessionId
       
       if (!currentSessionId) {
-        // Create new session for new conversations
+        // Create new session for new conversations with auto-generated title
+        const userMessage = messages[messages.length - 1] // Last message is the current user input
+        const autoTitle = generateConversationTitle(userMessage.content)
+        
         const { data: newSession, error: sessionError } = await supabase
           .from('chat_sessions')
           .insert({
             user_id: user.id,
-            title: 'New Chat'
+            title: autoTitle
           })
           .select('id')
           .single()
@@ -762,6 +797,22 @@ export async function POST(request: NextRequest) {
           console.warn('Failed to create chat session:', sessionError)
         } else {
           currentSessionId = newSession.id
+        }
+      } else {
+        // Update existing session title if it's still "New Chat" (first real message)
+        const userMessage = messages[messages.length - 1]
+        const { data: existingSession } = await supabase
+          .from('chat_sessions')
+          .select('title')
+          .eq('id', currentSessionId)
+          .single()
+          
+        if (existingSession?.title === 'New Chat') {
+          const autoTitle = generateConversationTitle(userMessage.content)
+          await supabase
+            .from('chat_sessions')
+            .update({ title: autoTitle })
+            .eq('id', currentSessionId)
         }
       }
       
