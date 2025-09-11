@@ -143,7 +143,7 @@ export abstract class BaseEnhancedHandler implements ApiHandler {
         apiKey,
         model: this.getTestModel(),
         messages: [{ role: 'user', content: 'test' }],
-        maxTokens: 1
+        maxTokens: 65536
       }
       
       const response = await this.createMessage(testOptions)
