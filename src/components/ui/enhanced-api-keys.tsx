@@ -267,32 +267,48 @@ export default function EnhancedApiKeysPage() {
   const fetchData = async () => {
     if (!user?.id) return
     
+    setLoading(true)
+    setError(null)
+
     try {
-      setLoading(true)
-      
-      // Fetch API keys
-      const { data: keysData, error: keysError } = await supabase
-        .from('user_api_keys')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('display_order', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: false })
+      // Execute all API calls in parallel for much faster loading
+      const [keysResult, prefsResult, providersResult, cliStatusResult] = await Promise.allSettled([
+        // API keys from Supabase
+        supabase
+          .from('user_api_keys')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('display_order', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: false }),
+        
+        // User preferences from Supabase
+        supabase
+          .from('user_preferences')
+          .select('*')
+          .eq('user_id', user.id)
+          .single(),
+        
+        // Providers data from models.dev API
+        fetch('/api/models-dev/providers'),
+        
+        // CLI status
+        fetch('/api/cli-status')
+      ])
 
-      if (keysError) throw keysError
+      // Process API keys
+      const keysData = keysResult.status === 'fulfilled' && !keysResult.value.error ? keysResult.value.data : []
+      if (keysResult.status === 'fulfilled' && keysResult.value.error) {
+        throw keysResult.value.error
+      }
 
-      // Fetch user preferences
-      const { data: prefsData, error: prefsError } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
-      
-      // Fetch providers data from models.dev API
+      // Process preferences
+      const prefsData = prefsResult.status === 'fulfilled' && !prefsResult.value.error ? prefsResult.value.data : null
+
+      // Process providers data
       let legacyProvidersData = {}
-      try {
-        const response = await fetch('/api/models-dev/providers')
-        if (response.ok) {
-          const data = await response.json()
+      if (providersResult.status === 'fulfilled' && providersResult.value.ok) {
+        try {
+          const data = await providersResult.value.json()
           legacyProvidersData = data
           setLegacyProviders(legacyProvidersData)
           
@@ -300,26 +316,70 @@ export default function EnhancedApiKeysPage() {
           if (data.providers) {
             setModelsDevProviders(data.providers)
           }
-        } else {
-          throw new Error('Failed to fetch providers')
+        } catch (err) {
+          console.warn('Failed to parse providers data:', err)
         }
-      } catch (err) {
-        console.warn('Failed to fetch providers:', err)
+      } else {
+        console.warn('Failed to fetch providers:', providersResult.status === 'fulfilled' ? providersResult.value.status : providersResult.reason)
         setLegacyProviders({})
         setModelsDevProviders([])
       }
+
+      // Process CLI status
+      if (cliStatusResult.status === 'fulfilled' && cliStatusResult.value.ok) {
+        try {
+          const cliData = await cliStatusResult.value.json()
+          
+          // Transform the response into our expected format
+          const transformedStatuses: CLIConfig[] = Object.entries(cliData).map(([provider, config]: [string, any]) => ({
+            user_id: user.id,
+            provider,
+            custom_path: config?.custom_path || null,
+            enabled: config?.enabled || true,
+            status: config?.status || 'unchecked',
+            last_checked_at: config?.last_checked_at,
+            statusMessage: config?.message,
+            message: config?.message,
+            cli_version: config?.cli_version,
+            authenticated: config?.authenticated,
+            issue_type: config?.issue_type,
+            solutions: config?.solutions,
+            install_command: config?.install_command,
+            auth_command: config?.auth_command
+          }))
+          
+          setCliStatuses(transformedStatuses)
+        } catch (err) {
+          console.warn('Failed to parse CLI status:', err)
+        }
+      } else {
+        console.warn('Failed to fetch CLI status:', cliStatusResult.status === 'fulfilled' ? cliStatusResult.value.status : cliStatusResult.reason)
+      }
       
-      // Only show providers that have API keys
+      // Only show providers that have API keys OR are configured in user preferences
+      const userConfiguredProviders = new Set<string>()
+      
+      // Add providers from API keys
+      if (keysData) {
+        keysData.forEach((key: any) => userConfiguredProviders.add(key.provider))
+      }
+      
+      // Add providers from user preferences (configured models)
+      if (prefsData?.model_preferences) {
+        Object.keys(prefsData.model_preferences).forEach(provider => {
+          userConfiguredProviders.add(provider)
+        })
+      }
+      
+      // Filter providers to only show user-configured ones
       const providersWithKeys = Object.values(legacyProvidersData).filter((provider: any) => 
-        (keysData || []).some(key => key.provider === provider.id)
+        userConfiguredProviders.has(provider.id)
       )
 
       setApiKeys(keysData || [])
-      setPreferences(prefsError ? null : prefsData)
+      setPreferences(prefsData)
       setProviders(providersWithKeys as ProviderConfig[])
-
-      // Fetch CLI status from database
-      await fetchCliStatuses()
+      
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -333,17 +393,60 @@ export default function EnhancedApiKeysPage() {
     }
   }, [user])
 
-  // Preload models for existing providers
+  // Preload models for existing providers in parallel
   useEffect(() => {
     if (apiKeys.length > 0) {
       const uniqueProviders = [...new Set(apiKeys.map(key => key.provider))]
-      uniqueProviders.forEach(provider => {
-        if (!providerModels[provider] && !loadingModels[provider]) {
-          fetchProviderModels(provider)
-        }
-      })
+      const providersToFetch = uniqueProviders.filter(provider => 
+        !providerModels[provider] && !loadingModels[provider]
+      )
+      
+      if (providersToFetch.length > 0) {
+        // Set loading state for all providers
+        setLoadingModels(prev => {
+          const newState = { ...prev }
+          providersToFetch.forEach(provider => {
+            newState[provider] = true
+          })
+          return newState
+        })
+
+        // Fetch all provider models in parallel
+        Promise.allSettled(
+          providersToFetch.map(async (provider) => {
+            try {
+              const response = await fetch(`/api/models-dev/providers?provider=${provider}&include_models=true`)
+              if (!response.ok) {
+                throw new Error('Failed to fetch models')
+              }
+              const data = await response.json()
+              const models = (data.models || []).map((model: any) => ({
+                id: model.id,
+                provider_id: model.provider_id,
+                name: model.name,
+                display_name: model.display_name,
+                friendly_id: model.friendly_id,
+                max_tokens: model.max_tokens,
+                context_length: model.context_length,
+                input_cost_per_million: model.input_cost_per_million,
+                output_cost_per_million: model.output_cost_per_million,
+                supports_vision: model.supports_vision,
+                supports_tools: model.supports_tools,
+                supports_reasoning: model.supports_reasoning
+              }))
+              
+              setProviderModels(prev => ({ ...prev, [provider]: models }))
+            } catch (error) {
+              console.warn(`Failed to fetch models for ${provider}:`, error)
+              setProviderModels(prev => ({ ...prev, [provider]: [] }))
+            } finally {
+              setLoadingModels(prev => ({ ...prev, [provider]: false }))
+            }
+          })
+        )
+      }
     }
-  }, [apiKeys, providerModels, loadingModels, fetchProviderModels])
+  }, [apiKeys, providerModels, loadingModels])
 
   const updatePreferenceOrder = async (newPreferences: Record<string, ModelPreference>) => {
     try {
@@ -405,20 +508,18 @@ export default function EnhancedApiKeysPage() {
     await updatePreferenceOrder(newPreferences)
   }
 
-  // Fetch CLI status from database (populated by MCP server)
-  const fetchCliStatuses = async () => {
+  // Refresh CLI statuses manually (fetchCliStatuses is now integrated into fetchData)
+  const refreshCliStatuses = async () => {
     if (!user?.id) return
     
     try {
       setCliStatusLoading(true)
       
-      // Fetch enhanced CLI statuses with detailed diagnostics
       const response = await fetch('/api/cli-status')
       if (!response.ok) throw new Error('Failed to fetch CLI status')
       
       const data = await response.json()
       
-      // Transform the response into our expected format
       const transformedStatuses: CLIConfig[] = Object.entries(data).map(([provider, config]: [string, any]) => ({
         user_id: user.id,
         provider,
@@ -635,7 +736,7 @@ export default function EnhancedApiKeysPage() {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={fetchCliStatuses}
+                onClick={refreshCliStatuses}
                 disabled={cliStatusLoading}
                 className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2 text-sm"
               >
