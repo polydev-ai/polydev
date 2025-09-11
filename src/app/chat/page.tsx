@@ -189,7 +189,11 @@ export default function Chat() {
             timestamp: new Date(),
             provider: resp.provider,
             usage: resp.usage,
-            costInfo: resp.costInfo,
+            costInfo: resp.cost ? {
+              input_cost: resp.cost.input,
+              output_cost: resp.cost.output,
+              total_cost: resp.cost.total
+            } : undefined,
             fallbackMethod: resp.fallback_method,
             creditsUsed: resp.credits_used
           }
@@ -601,9 +605,10 @@ export default function Chat() {
                               {message.usage && (
                                 <span className="text-xs text-gray-400 dark:text-gray-500">
                                   {message.usage.total_tokens} tokens
+                                  {message.costInfo && ` • ${formatCost(message.costInfo.total_cost)}`}
                                 </span>
                               )}
-                              {message.costInfo && (
+                              {!message.usage && message.costInfo && (
                                 <span className="text-xs text-gray-400 dark:text-gray-500">
                                   {formatCost(message.costInfo.total_cost)}
                                 </span>
@@ -684,9 +689,10 @@ export default function Chat() {
                                   {message.usage && (
                                     <span className="text-xs text-gray-400 dark:text-gray-500">
                                       {message.usage.total_tokens}t
+                                      {message.costInfo && ` • ${formatCost(message.costInfo.total_cost)}`}
                                     </span>
                                   )}
-                                  {message.costInfo && (
+                                  {!message.usage && message.costInfo && (
                                     <span className="text-xs text-gray-400 dark:text-gray-500">
                                       {formatCost(message.costInfo.total_cost)}
                                     </span>
