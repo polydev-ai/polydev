@@ -424,15 +424,20 @@ export async function POST(request: NextRequest) {
           adjustedTemperature = 0.7
         }
         
-        // Get model-specific limits from models.dev
+        // Get model-specific limits and pricing from models.dev
         let modelSpecificMaxTokens = 65536 // Default fallback
+        let modelPricing: { input: number; output: number } | null = null
         if (selectedProvider) {
           try {
             const { modelsDevService } = await import('@/lib/models-dev-integration')
             const modelLimits = await modelsDevService.getModelLimits(modelId, selectedProvider)
             if (modelLimits) {
               modelSpecificMaxTokens = modelLimits.maxTokens
+              modelPricing = modelLimits.pricing || null
               console.log(`[info] Using model-specific maxTokens for ${modelId} (${selectedProvider}): ${modelSpecificMaxTokens}`)
+              if (modelPricing) {
+                console.log(`[info] Model pricing for ${modelId}: $${modelPricing.input}/1k input, $${modelPricing.output}/1k output`)
+              }
             } else {
               console.log(`[info] No model limits found for ${modelId} (${selectedProvider}), using default: ${modelSpecificMaxTokens}`)
             }
@@ -498,10 +503,25 @@ export async function POST(request: NextRequest) {
               response = await handler.createMessage(messageParams)
               
               const responseData = await response.json()
+              
+              // Calculate pricing for CLI responses if available
+              const usage = responseData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+              let cost = null
+              if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
+                const inputCost = (usage.prompt_tokens / 1000) * modelPricing.input
+                const outputCost = (usage.completion_tokens / 1000) * modelPricing.output
+                cost = {
+                  input: Number(inputCost.toFixed(6)),
+                  output: Number(outputCost.toFixed(6)),
+                  total: Number((inputCost + outputCost).toFixed(6))
+                }
+              }
+              
               return {
                 model: modelId,
                 content: responseData.content?.[0]?.text || responseData.choices?.[0]?.message?.content || '',
-                usage: responseData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                usage: usage,
+                cost: cost,
                 provider: `${selectedProvider} (CLI)`,
                 fallback_method: fallbackMethod
               }
@@ -564,11 +584,28 @@ export async function POST(request: NextRequest) {
             }
             
             // Make API call through enhanced provider system
+            console.log(`[debug] Making API call to ${selectedProvider} with options:`, {
+              model: apiOptions.model,
+              temperature: apiOptions.temperature,
+              maxTokens: apiOptions.maxTokens,
+              hasApiKey: !!apiOptions.apiKey,
+              baseUrl: apiOptions.googleBaseUrl || 'default'
+            })
+            
             response = await apiManager.createMessage(selectedProvider, apiOptions)
             const result = await response.json()
             
+            console.log(`[debug] ${selectedProvider} API response:`, {
+              ok: response.ok,
+              status: response.status,
+              statusText: response.statusText,
+              resultKeys: Object.keys(result || {}),
+              error: result.error || null
+            })
+            
             if (!response.ok) {
-              throw new Error(result.error?.message || 'API call failed')
+              console.error(`[error] ${selectedProvider} API call failed:`, result)
+              throw new Error(result.error?.message || `${selectedProvider} API call failed with status ${response.status}`)
             }
             
             // Extract content based on provider format
@@ -579,12 +616,35 @@ export async function POST(request: NextRequest) {
             } else if (result.choices?.[0]?.message?.content) {
               // OpenAI format
               content = result.choices[0].message.content
+            } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+              // Google Gemini format
+              content = result.candidates[0].content.parts[0].text
+            } else if (typeof result === 'string') {
+              // Plain text response
+              content = result
+            } else {
+              console.warn(`[warn] Unknown response format from ${selectedProvider}:`, result)
+              content = JSON.stringify(result)
             }
             
+            // Calculate pricing if available
+            const usage = result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+            let cost = null
+            if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
+              const inputCost = (usage.prompt_tokens / 1000) * modelPricing.input
+              const outputCost = (usage.completion_tokens / 1000) * modelPricing.output
+              cost = {
+                input: Number(inputCost.toFixed(6)),
+                output: Number(outputCost.toFixed(6)),
+                total: Number((inputCost + outputCost).toFixed(6))
+              }
+            }
+
             return {
               model: modelId,
               content: content,
-              usage: result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+              usage: usage,
+              cost: cost,
               provider: `${selectedProvider} (API)`,
               fallback_method: fallbackMethod
             }
