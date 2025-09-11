@@ -10,11 +10,12 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const providerId = searchParams.get('provider')
     const includeModels = searchParams.get('include_models') === 'true'
+    const richData = searchParams.get('rich') === 'true'
 
     // Check cache first
     const cacheKey = providerId 
-      ? `provider:${providerId}:models:${includeModels}` 
-      : 'providers:all'
+      ? `provider:${providerId}:models:${includeModels}:rich:${richData}` 
+      : `providers:all:rich:${richData}`
     
     const cached = apiCache[cacheKey]
     const now = Date.now()
@@ -26,7 +27,11 @@ export async function GET(request: Request) {
 
     let result: any
 
-    if (providerId) {
+    if (richData) {
+      // Return rich provider data for models page
+      console.log(`[models-dev API] Fetching rich provider data${providerId ? ` for ${providerId}` : ' for all providers'}`)
+      result = await modelsDevService.getRichProviderData(providerId || undefined)
+    } else if (providerId) {
       // Get specific provider with models if requested
       if (includeModels) {
         console.log(`[models-dev API] Fetching provider ${providerId} with models`)

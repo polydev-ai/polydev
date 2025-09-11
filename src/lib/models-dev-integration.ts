@@ -624,6 +624,63 @@ class ModelsDevService {
     return versionMatch ? versionMatch[1] : '1.0'
   }
 
+  // Get rich provider data for dashboard UI
+  async getRichProviderData(providerId: string): Promise<any> {
+    const supabase = await this.getSupabaseClient()
+    const { data: provider } = await supabase
+      .from('providers_registry')
+      .select('*')
+      .eq('id', providerId)
+      .single()
+
+    if (!provider) return null
+
+    const { data: models } = await supabase
+      .from('models_registry')
+      .select('*')
+      .eq('provider_id', providerId)
+      .eq('is_active', true)
+
+    // Return rich provider data with models
+    return {
+      id: provider.id,
+      name: provider.display_name,
+      description: provider.description,
+      logo_url: provider.logo_url,
+      website: provider.website,
+      base_url: provider.base_url,
+      company: provider.company,
+      supports_streaming: provider.supports_streaming,
+      supports_tools: provider.supports_tools,
+      supports_images: provider.supports_images,
+      supports_prompt_cache: provider.supports_prompt_cache,
+      models: models?.map((model: any) => ({
+        id: model.friendly_id,
+        name: model.display_name,
+        provider_model_id: model.provider_model_id,
+        max_tokens: model.max_tokens,
+        context_length: model.context_length,
+        input_cost_per_million: model.input_cost_per_million,
+        output_cost_per_million: model.output_cost_per_million,
+        supports_vision: model.supports_vision,
+        supports_tools: model.supports_tools,
+        supports_streaming: model.supports_streaming,
+        supports_reasoning: model.supports_reasoning,
+        reasoning_levels: model.reasoning_levels,
+        model_family: model.model_family,
+        model_version: model.model_version,
+        cost: {
+          input: model.input_cost_per_million,
+          output: model.output_cost_per_million,
+          cache_read: model.cache_read_cost_per_million,
+          cache_write: model.cache_write_cost_per_million
+        },
+        reasoning: model.supports_reasoning,
+        attachment: model.supports_vision
+      })) || []
+    }
+  }
+
   // Backward compatibility methods for existing CLINE_PROVIDERS
   async getLegacyProviderConfig(providerId: string): Promise<any> {
     const supabase = await this.getSupabaseClient()
@@ -668,6 +725,106 @@ class ModelsDevService {
       supportsTools: provider.supports_tools,
       supportsVision: provider.supports_images,
       supportedModels
+    }
+  }
+
+  // Rich provider data method for models page
+  async getRichProviderData(providerId?: string): Promise<any> {
+    const supabase = await this.getSupabaseClient()
+    
+    if (providerId) {
+      // Get specific provider with full data
+      const { data: provider } = await supabase
+        .from('providers_registry')
+        .select('*')
+        .eq('id', providerId)
+        .single()
+
+      if (!provider) return null
+
+      const { data: models } = await supabase
+        .from('models_registry')
+        .select('*')
+        .eq('provider_id', providerId)
+        .eq('is_active', true)
+        .order('display_name')
+
+      return {
+        id: provider.id,
+        name: provider.display_name,
+        description: provider.description,
+        website: provider.website,
+        logo: provider.logo_url,
+        baseUrl: provider.base_url,
+        supportsStreaming: provider.supports_streaming,
+        supportsTools: provider.supports_tools,
+        supportsVision: provider.supports_images,
+        modelsCount: models?.length || 0,
+        models: models?.map((model: any) => ({
+          id: model.friendly_id,
+          name: model.display_name,
+          description: model.description,
+          maxTokens: model.max_tokens,
+          contextWindow: model.context_length,
+          supportsVision: model.supports_vision,
+          supportsTools: model.supports_tools,
+          pricing: {
+            input: model.input_cost_per_million,
+            output: model.output_cost_per_million,
+            cacheRead: model.cache_read_cost_per_million,
+            cacheWrite: model.cache_write_cost_per_million
+          }
+        })) || []
+      }
+    } else {
+      // Get all providers with rich data
+      const { data: providers } = await supabase
+        .from('providers_registry')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_name')
+
+      if (!providers) return []
+
+      const richProviders = await Promise.all(
+        providers.map(async (provider: any) => {
+          const { data: models } = await supabase
+            .from('models_registry')
+            .select('*')
+            .eq('provider_id', provider.id)
+            .eq('is_active', true)
+
+          return {
+            id: provider.id,
+            name: provider.display_name,
+            description: provider.description,
+            website: provider.website,
+            logo: provider.logo_url,
+            baseUrl: provider.base_url,
+            supportsStreaming: provider.supports_streaming,
+            supportsTools: provider.supports_tools,
+            supportsVision: provider.supports_images,
+            modelsCount: models?.length || 0,
+            models: models?.map((model: any) => ({
+              id: model.friendly_id,
+              name: model.display_name,
+              description: model.description,
+              maxTokens: model.max_tokens,
+              contextWindow: model.context_length,
+              supportsVision: model.supports_vision,
+              supportsTools: model.supports_tools,
+              pricing: {
+                input: model.input_cost_per_million,
+                output: model.output_cost_per_million,
+                cacheRead: model.cache_read_cost_per_million,
+                cacheWrite: model.cache_write_cost_per_million
+              }
+            })) || []
+          }
+        })
+      )
+
+      return richProviders
     }
   }
 }

@@ -155,12 +155,13 @@ export default function EnhancedApiKeysPage() {
     // If only models.dev provider exists, create a basic provider config
     if (!legacyProvider && modelsDevProvider) {
       return {
-        name: modelsDevProvider.display_name || modelsDevProvider.name,
-        displayName: modelsDevProvider.display_name || modelsDevProvider.name,
+        name: modelsDevProvider.name,
+        displayName: modelsDevProvider.name,
         description: modelsDevProvider.description,
-        logoUrl: modelsDevProvider.logo_url,
+        logoUrl: modelsDevProvider.logo,
         websiteUrl: modelsDevProvider.website,
-        baseUrl: modelsDevProvider.base_url || 'https://api.openai.com/v1',
+        baseUrl: modelsDevProvider.baseUrl || 'https://api.openai.com/v1',
+        modelsCount: modelsDevProvider.modelsCount,
         modelsDevData: modelsDevProvider
       }
     }
@@ -169,13 +170,17 @@ export default function EnhancedApiKeysPage() {
     return {
       ...legacyProvider,
       // Use models.dev logo if available, fallback to PROVIDER_ICONS
-      logoUrl: modelsDevProvider?.logo_url || PROVIDER_ICONS[providerId as keyof typeof PROVIDER_ICONS],
+      logoUrl: modelsDevProvider?.logo || PROVIDER_ICONS[providerId as keyof typeof PROVIDER_ICONS],
       // Use models.dev display name if available
-      displayName: modelsDevProvider?.display_name || legacyProvider.name,
+      displayName: modelsDevProvider?.name || legacyProvider.name,
       // Enhanced description from models.dev
       enhancedDescription: modelsDevProvider?.description || legacyProvider.description,
       // Website URL from models.dev
       websiteUrl: modelsDevProvider?.website,
+      // Base URL from models.dev
+      baseUrl: modelsDevProvider?.baseUrl || legacyProvider.baseUrl,
+      // Model count
+      modelsCount: modelsDevProvider?.modelsCount,
       // Additional metadata
       modelsDevData: modelsDevProvider
     }
@@ -190,24 +195,27 @@ export default function EnhancedApiKeysPage() {
     setLoadingModels(prev => ({ ...prev, [providerId]: true }))
     
     try {
-      const response = await fetch(`/api/models-dev/providers?provider=${providerId}&include_models=true`)
+      const response = await fetch(`/api/models-dev/providers?provider=${providerId}&rich=true`)
       if (!response.ok) {
         throw new Error('Failed to fetch models')
       }
       const data = await response.json()
+      
+      // Handle rich data format (single provider object with models array)
       const models = (data.models || []).map((model: any) => ({
         id: model.id,
-        provider_id: model.provider_id,
+        provider_id: providerId,
         name: model.name,
-        display_name: model.display_name,
-        friendly_id: model.friendly_id,
-        max_tokens: model.max_tokens,
-        context_length: model.context_length,
-        input_cost_per_million: model.input_cost_per_million,
-        output_cost_per_million: model.output_cost_per_million,
-        supports_vision: model.supports_vision,
-        supports_tools: model.supports_tools,
-        supports_reasoning: model.supports_reasoning
+        display_name: model.name,
+        friendly_id: model.id,
+        max_tokens: model.maxTokens,
+        context_length: model.contextWindow,
+        input_cost_per_million: model.pricing?.input,
+        output_cost_per_million: model.pricing?.output,
+        supports_vision: model.supportsVision,
+        supports_tools: model.supportsTools,
+        supports_reasoning: false, // Not available in rich data yet
+        description: model.description
       }))
       
       setProviderModels(prev => ({ ...prev, [providerId]: models }))
@@ -288,8 +296,8 @@ export default function EnhancedApiKeysPage() {
           .eq('user_id', user.id)
           .single(),
         
-        // Providers data from models.dev API
-        fetch('/api/models-dev/providers'),
+        // Providers data from models.dev API (rich data for models page)
+        fetch('/api/models-dev/providers?rich=true'),
         
         // CLI status
         fetch('/api/cli-status')
@@ -309,13 +317,46 @@ export default function EnhancedApiKeysPage() {
       if (providersResult.status === 'fulfilled' && providersResult.value.ok) {
         try {
           const data = await providersResult.value.json()
-          legacyProvidersData = data
-          setLegacyProviders(legacyProvidersData)
           
-          // Also set models.dev providers if available in the response
-          if (data.providers) {
-            setModelsDevProviders(data.providers)
+          // Rich data is an array of providers, need to set modelsDevProviders
+          if (Array.isArray(data)) {
+            setModelsDevProviders(data)
+            
+            // Convert rich data to legacy format for backward compatibility
+            data.forEach((provider: any) => {
+              if (provider.models) {
+                const supportedModels: Record<string, any> = {}
+                provider.models.forEach((model: any) => {
+                  supportedModels[model.id] = {
+                    name: model.name,
+                    maxTokens: model.maxTokens,
+                    contextWindow: model.contextWindow,
+                    supportsVision: model.supportsVision,
+                    supportsTools: model.supportsTools,
+                    pricing: model.pricing
+                  }
+                })
+                
+                legacyProvidersData[provider.id] = {
+                  name: provider.name,
+                  description: provider.description,
+                  website: provider.website,
+                  logo: provider.logo,
+                  baseUrl: provider.baseUrl,
+                  supportsStreaming: provider.supportsStreaming,
+                  supportsTools: provider.supportsTools,
+                  supportsVision: provider.supportsVision,
+                  supportedModels
+                }
+              }
+            })
+          } else {
+            // Fallback to legacy format
+            legacyProvidersData = data
+            setModelsDevProviders([])
           }
+          
+          setLegacyProviders(legacyProvidersData)
         } catch (err) {
           console.warn('Failed to parse providers data:', err)
         }
@@ -415,24 +456,26 @@ export default function EnhancedApiKeysPage() {
         Promise.allSettled(
           providersToFetch.map(async (provider) => {
             try {
-              const response = await fetch(`/api/models-dev/providers?provider=${provider}&include_models=true`)
+              const response = await fetch(`/api/models-dev/providers?provider=${provider}&rich=true`)
               if (!response.ok) {
                 throw new Error('Failed to fetch models')
               }
               const data = await response.json()
+              // Handle rich data format
               const models = (data.models || []).map((model: any) => ({
                 id: model.id,
-                provider_id: model.provider_id,
+                provider_id: provider,
                 name: model.name,
-                display_name: model.display_name,
-                friendly_id: model.friendly_id,
-                max_tokens: model.max_tokens,
-                context_length: model.context_length,
-                input_cost_per_million: model.input_cost_per_million,
-                output_cost_per_million: model.output_cost_per_million,
-                supports_vision: model.supports_vision,
-                supports_tools: model.supports_tools,
-                supports_reasoning: model.supports_reasoning
+                display_name: model.name,
+                friendly_id: model.id,
+                max_tokens: model.maxTokens,
+                context_length: model.contextWindow,
+                input_cost_per_million: model.pricing?.input,
+                output_cost_per_million: model.pricing?.output,
+                supports_vision: model.supportsVision,
+                supports_tools: model.supportsTools,
+                supports_reasoning: false,
+                description: model.description
               }))
               
               setProviderModels(prev => ({ ...prev, [provider]: models }))
@@ -1104,7 +1147,7 @@ export default function EnhancedApiKeysPage() {
                     {modelsDevProviders.length > 0 ? (
                       modelsDevProviders.map((provider) => (
                         <option key={provider.id} value={provider.id}>
-                          {provider.display_name || provider.name}
+                          {provider.name}
                         </option>
                       ))
                     ) : (
