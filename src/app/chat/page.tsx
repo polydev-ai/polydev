@@ -616,7 +616,20 @@ export default function Chat() {
                                 const providerName = model?.providerName || (message.provider?.replace(/\s+\(.+\)/, '') || 'AI')
                                 return (
                                   <div className="flex items-center space-x-2">
-                                    <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    {model?.providerLogo ? (
+                                      <img 
+                                        src={model.providerLogo} 
+                                        alt={providerName}
+                                        className="w-6 h-6 rounded-lg flex-shrink-0 object-contain"
+                                        onError={(e) => {
+                                          // Fallback to gradient placeholder on error
+                                          e.currentTarget.style.display = 'none'
+                                          const fallback = e.currentTarget.nextElementSibling
+                                          if (fallback) fallback.style.display = 'flex'
+                                        }}
+                                      />
+                                    ) : null}
+                                    <div className={`w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
                                       <span className="text-white text-xs font-bold">
                                         {providerName.charAt(0).toUpperCase()}
                                       </span>
@@ -715,7 +728,20 @@ export default function Chat() {
                                     const providerName = model?.providerName || (message.provider?.replace(/\s+\(.+\)/, '') || 'AI')
                                     return (
                                       <>
-                                        <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                        {model?.providerLogo ? (
+                                          <img 
+                                            src={model.providerLogo} 
+                                            alt={providerName}
+                                            className="w-6 h-6 rounded-lg flex-shrink-0 object-contain"
+                                            onError={(e) => {
+                                              // Fallback to gradient placeholder on error
+                                              e.currentTarget.style.display = 'none'
+                                              const fallback = e.currentTarget.nextElementSibling
+                                              if (fallback) fallback.style.display = 'flex'
+                                            }}
+                                          />
+                                        ) : null}
+                                        <div className={`w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
                                           <span className="text-white text-xs font-bold">
                                             {providerName.charAt(0).toUpperCase()}
                                           </span>
@@ -800,7 +826,20 @@ export default function Chat() {
                           
                           return (
                             <div key={modelId} className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
-                              <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                              {model.providerLogo ? (
+                                <img 
+                                  src={model.providerLogo} 
+                                  alt={model.providerName}
+                                  className="w-8 h-8 rounded-lg flex-shrink-0 object-contain"
+                                  onError={(e) => {
+                                    // Fallback to gradient placeholder on error
+                                    e.currentTarget.style.display = 'none'
+                                    const fallback = e.currentTarget.nextElementSibling
+                                    if (fallback) fallback.style.display = 'flex'
+                                  }}
+                                />
+                              ) : null}
+                              <div className={`w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model.providerLogo ? 'hidden' : ''}`}>
                                 <span className="text-white text-xs font-bold">
                                   {model.providerName.charAt(0).toUpperCase()}
                                 </span>

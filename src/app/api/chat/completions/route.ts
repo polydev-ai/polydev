@@ -5,64 +5,155 @@ import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 import { modelsDevService } from '@/lib/models-dev-integration'
 
-// Generate a title from the first user message
-function generateConversationTitle(userMessage: string): string {
-  // Clean and truncate the message
-  const cleaned = userMessage.trim().replace(/\s+/g, ' ')
-  
-  // If message is short enough, use it directly
-  if (cleaned.length <= 50) {
-    return cleaned
+// Generate a title from conversation context using AI
+async function generateConversationTitle(userMessage: string, assistantResponse?: string): Promise<string> {
+  try {
+    // Create a context-aware prompt for title generation
+    let prompt = `Generate a concise, descriptive title (4-6 words max) for a conversation that starts with this user message: "${userMessage}"`
+    
+    if (assistantResponse) {
+      prompt = `Generate a concise, descriptive title (4-6 words max) for a conversation that starts with:
+User: "${userMessage}"
+Assistant: "${assistantResponse.substring(0, 200)}${assistantResponse.length > 200 ? '...' : ''}"
+
+The title should capture the main topic or request. Examples:
+- "Python data analysis help"
+- "React component debugging"
+- "Travel planning for Japan"
+- "JavaScript array methods"
+
+Just return the title, nothing else:`
+    }
+
+    // Use OpenAI GPT-3.5-turbo for fast, cost-effective title generation
+    try {
+      const titleResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 20,
+          temperature: 0.7
+        })
+      })
+
+      if (titleResponse.ok) {
+        const titleData = await titleResponse.json()
+        const generatedTitle = titleData.choices?.[0]?.message?.content?.trim()
+        
+        if (generatedTitle && generatedTitle.length > 0 && generatedTitle.length <= 60) {
+          console.log(`Generated AI title: "${generatedTitle}"`)
+          return generatedTitle
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to generate AI title:', error)
+    }
+
+    // Fallback to improved truncation logic
+    const cleaned = userMessage.trim().replace(/\s+/g, ' ')
+    
+    // If message is short enough, use it directly
+    if (cleaned.length <= 50) {
+      return cleaned
+    }
+    
+    // Try to find a natural break point (sentence end, comma, etc.)
+    const truncated = cleaned.substring(0, 47)
+    const lastPunctuation = Math.max(
+      truncated.lastIndexOf('.'),
+      truncated.lastIndexOf('!'),
+      truncated.lastIndexOf('?'),
+      truncated.lastIndexOf(',')
+    )
+    
+    if (lastPunctuation > 20) {
+      return truncated.substring(0, lastPunctuation + 1)
+    }
+    
+    // Find last complete word
+    const lastSpace = truncated.lastIndexOf(' ')
+    if (lastSpace > 20) {
+      return truncated.substring(0, lastSpace) + '...'
+    }
+    
+    // Fallback: just truncate
+    return truncated + '...'
+    
+  } catch (error) {
+    console.error('Error generating conversation title:', error)
+    // Final fallback
+    return userMessage.length > 50 ? userMessage.substring(0, 47) + '...' : userMessage
   }
-  
-  // Try to find a natural break point (sentence end, comma, etc.)
-  const truncated = cleaned.substring(0, 47)
-  const lastPunctuation = Math.max(
-    truncated.lastIndexOf('.'),
-    truncated.lastIndexOf('!'),
-    truncated.lastIndexOf('?'),
-    truncated.lastIndexOf(',')
-  )
-  
-  if (lastPunctuation > 20) {
-    return truncated.substring(0, lastPunctuation + 1)
-  }
-  
-  // Find last complete word
-  const lastSpace = truncated.lastIndexOf(' ')
-  if (lastSpace > 20) {
-    return truncated.substring(0, lastSpace) + '...'
-  }
-  
-  // Fallback: just truncate
-  return truncated + '...'
 }
 
 // Parse usage data from different API response formats
 function parseUsageData(response: any): any {
+  console.log(`[parseUsageData] Raw response:`, JSON.stringify(response, null, 2))
+  
   // Standard OpenAI format
   if (response.usage) {
+    console.log(`[parseUsageData] Found OpenAI usage format:`, response.usage)
     return response.usage
   }
   
-  // Gemini format with usage_metadata
+  // Gemini format with usage_metadata (snake_case)
   if (response.usage_metadata) {
-    return {
+    const usage = {
       prompt_tokens: response.usage_metadata.prompt_token_count || 0,
       completion_tokens: response.usage_metadata.candidates_token_count || 0,
       total_tokens: response.usage_metadata.total_token_count || 0
     }
+    console.log(`[parseUsageData] Found Gemini usage_metadata format:`, usage)
+    return usage
+  }
+  
+  // Gemini format with usageMetadata (camelCase)
+  if (response.usageMetadata) {
+    const usage = {
+      prompt_tokens: response.usageMetadata.promptTokenCount || 0,
+      completion_tokens: response.usageMetadata.candidatesTokenCount || 0,
+      total_tokens: response.usageMetadata.totalTokenCount || 0
+    }
+    console.log(`[parseUsageData] Found Gemini usageMetadata format:`, usage)
+    return usage
   }
   
   // Anthropic Claude format
   if (response.metadata?.usage) {
-    return {
+    const usage = {
       prompt_tokens: response.metadata.usage.input_tokens || 0,
       completion_tokens: response.metadata.usage.output_tokens || 0,
       total_tokens: (response.metadata.usage.input_tokens || 0) + (response.metadata.usage.output_tokens || 0)
     }
+    console.log(`[parseUsageData] Found Anthropic format:`, usage)
+    return usage
   }
   
+  // Try to extract from candidates array (Gemini specific)
+  if (response.candidates && Array.isArray(response.candidates) && response.candidates[0]) {
+    const candidate = response.candidates[0]
+    if (candidate.tokenCount) {
+      const usage = {
+        prompt_tokens: 0, // Not available in this format
+        completion_tokens: candidate.tokenCount || 0,
+        total_tokens: candidate.tokenCount || 0
+      }
+      console.log(`[parseUsageData] Found Gemini candidates tokenCount format:`, usage)
+      return usage
+    }
+  }
+  
+  console.log(`[parseUsageData] No usage data found in response`)
   // Return null if no usage data found - let caller handle
   return null
 }
@@ -707,7 +798,7 @@ export async function POST(request: NextRequest) {
             
             // Get cost from models.dev database for credits calculation
             const pricingData = await modelsDevService.getModelPricing(modelId, 'openrouter')
-            const inputCostPerMillion = (pricingData?.input || 1000) / 1000
+            const inputCostPerMillion = pricingData?.input || 1000
             
             // If using credits, deduct from balance
             if (selectedConfig.type === 'credits') {
@@ -900,7 +991,8 @@ export async function POST(request: NextRequest) {
       if (!currentSessionId) {
         // Create new session for new conversations with auto-generated title
         const userMessage = messages[messages.length - 1] // Last message is the current user input
-        const autoTitle = generateConversationTitle(userMessage.content)
+        const firstAssistantResponse = responses[0]?.content || ''
+        const autoTitle = await generateConversationTitle(userMessage.content, firstAssistantResponse)
         
         const { data: newSession, error: sessionError } = await supabase
           .from('chat_sessions')
@@ -926,7 +1018,8 @@ export async function POST(request: NextRequest) {
           .single()
           
         if (existingSession?.title === 'New Chat') {
-          const autoTitle = generateConversationTitle(userMessage.content)
+          const firstAssistantResponse = responses[0]?.content || ''
+          const autoTitle = await generateConversationTitle(userMessage.content, firstAssistantResponse)
           await supabase
             .from('chat_sessions')
             .update({ title: autoTitle })
@@ -1013,8 +1106,8 @@ export async function POST(request: NextRequest) {
         // Try to get pricing from model data
         const modelData = modelDataMap.get(response?.model || model)
         if (modelData?.pricing) {
-          const inputCost = (usage.prompt_tokens / 1000000) * ((modelData.pricing.input || 0) / 1000)
-          const outputCost = (usage.completion_tokens / 1000000) * ((modelData.pricing.output || 0) / 1000)
+          const inputCost = (usage.prompt_tokens / 1000000) * (modelData.pricing.input || 0)
+          const outputCost = (usage.completion_tokens / 1000000) * (modelData.pricing.output || 0)
           costInfo = {
             input_cost: inputCost,
             output_cost: outputCost,
@@ -1080,8 +1173,8 @@ export async function POST(request: NextRequest) {
         // API key usage - calculate cost from model data
         const modelData = modelDataMap.get(response.model)
         if (modelData?.pricing && response.usage) {
-          const inputCost = (response.usage.prompt_tokens / 1000000) * ((modelData.pricing.input || 0) / 1000)
-          const outputCost = (response.usage.completion_tokens / 1000000) * ((modelData.pricing.output || 0) / 1000)
+          const inputCost = (response.usage.prompt_tokens / 1000000) * (modelData.pricing.input || 0)
+          const outputCost = (response.usage.completion_tokens / 1000000) * (modelData.pricing.output || 0)
           const responseCost = inputCost + outputCost
           totalCost += responseCost
           

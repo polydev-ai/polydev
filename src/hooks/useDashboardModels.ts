@@ -6,6 +6,7 @@ export interface DashboardModel {
   name: string
   provider: string
   providerName: string
+  providerLogo?: string
   tier: 'cli' | 'api' | 'credits'
   price?: {
     input: number
@@ -215,6 +216,7 @@ export function useDashboardModels() {
                   name: modelData.display_name || modelData.name,
                   provider: providerId,
                   providerName: providerConfig?.name || providerId,
+                  providerLogo: cachedProviderData?.logo || providerConfig?.logo_url,
                   tier: getTierFromProvider(providerId, cliResults, hasApiKey),
                   price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
                     input: modelData.input_cost_per_million / 1000,
@@ -242,6 +244,7 @@ export function useDashboardModels() {
                 name: formatModelName(modelId),
                 provider: providerId,
                 providerName: providerConfig.name,
+                providerLogo: providerConfig?.logo_url,
                 tier: getTierFromProvider(providerId, cliResults, hasApiKey),
                 price: {
                   input: modelInfo.inputPrice || 0,
