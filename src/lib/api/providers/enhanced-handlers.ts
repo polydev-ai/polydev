@@ -525,6 +525,60 @@ export class EnhancedClaudeCodeHandler extends BaseEnhancedHandler {
   }
 }
 
+// OPENROUTER ENHANCED HANDLER
+export class EnhancedOpenRouterHandler extends BaseEnhancedHandler {
+  constructor() {
+    super('openrouter')
+  }
+  
+  protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
+    const transformer = getTransformer('openai') // OpenRouter uses OpenAI format
+    const requestBody = transformer.transformRequest(options)
+    
+    // OpenRouter-specific headers and features
+    requestBody.stream = options.stream || false
+    
+    const headers = this.prepareHeaders(options)
+    
+    // Add OpenRouter-specific headers
+    if (options.metadata?.applicationName) {
+      headers['HTTP-Referer'] = options.metadata.applicationName
+    }
+    if (options.metadata?.siteUrl) {
+      headers['X-Title'] = options.metadata.siteUrl
+    }
+    
+    return fetch(`${this.baseUrl}/api/v1/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    })
+  }
+  
+  protected getTestModel(): string {
+    return 'openai/gpt-3.5-turbo'
+  }
+  
+  async validateApiKey?(apiKey: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/v1/models`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      return response.ok
+    } catch (error) {
+      return false
+    }
+  }
+  
+  async getModels?(): Promise<ModelInfo[]> {
+    // Use universal provider for comprehensive model list
+    return universalProvider.getAvailableModels('openrouter')
+  }
+}
+
 // Handler factory
 export class EnhancedHandlerFactory {
   private static handlers: Map<string, BaseEnhancedHandler> = new Map()
@@ -559,6 +613,8 @@ export class EnhancedHandlerFactory {
         return new EnhancedOllamaHandler()
       case 'claude-code':
         return new EnhancedClaudeCodeHandler()
+      case 'openrouter':
+        return new EnhancedOpenRouterHandler()
       default:
         throw new Error(`No enhanced handler available for provider: ${providerId}`)
     }
@@ -567,7 +623,7 @@ export class EnhancedHandlerFactory {
   static getSupportedProviders(): string[] {
     return [
       'anthropic', 'openai', 'openai-native', 'gemini', 'google', 'xai', 
-      'deepseek', 'groq', 'ollama', 'claude-code'
+      'deepseek', 'groq', 'ollama', 'claude-code', 'openrouter'
     ]
   }
 }
