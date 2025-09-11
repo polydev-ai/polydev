@@ -247,7 +247,7 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
     // Get all providers that support this model from models_registry
     const { data: modelProviders } = await supabase
       .from('models_registry')
-      .select('provider_id, provider_name')
+      .select('provider_id')
       .eq('friendly_id', model)
       .eq('is_active', true)
     
@@ -296,7 +296,7 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
         for (const [providerKey, providerConfig] of sortedProviders) {
           // Check if this provider supports the requested model and user has it in their preferences
           const isProviderInRegistry = modelProviders.some((mp: any) => 
-            mp.provider_id === providerKey || mp.provider_name?.toLowerCase() === providerKey.toLowerCase()
+            mp.provider_id === providerKey
           )
           
           if (isProviderInRegistry && (providerConfig as any)?.models?.includes(model)) {

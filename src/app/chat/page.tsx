@@ -624,7 +624,7 @@ export default function Chat() {
                                         onError={(e) => {
                                           // Fallback to gradient placeholder on error
                                           e.currentTarget.style.display = 'none'
-                                          const fallback = e.currentTarget.nextElementSibling
+                                          const fallback = e.currentTarget.nextElementSibling as HTMLElement
                                           if (fallback) fallback.style.display = 'flex'
                                         }}
                                       />
@@ -736,7 +736,7 @@ export default function Chat() {
                                             onError={(e) => {
                                               // Fallback to gradient placeholder on error
                                               e.currentTarget.style.display = 'none'
-                                              const fallback = e.currentTarget.nextElementSibling
+                                              const fallback = e.currentTarget.nextElementSibling as HTMLElement
                                               if (fallback) fallback.style.display = 'flex'
                                             }}
                                           />
@@ -834,7 +834,7 @@ export default function Chat() {
                                   onError={(e) => {
                                     // Fallback to gradient placeholder on error
                                     e.currentTarget.style.display = 'none'
-                                    const fallback = e.currentTarget.nextElementSibling
+                                    const fallback = e.currentTarget.nextElementSibling as HTMLElement
                                     if (fallback) fallback.style.display = 'flex'
                                   }}
                                 />
