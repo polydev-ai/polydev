@@ -49,6 +49,17 @@ export abstract class BaseEnhancedHandler implements ApiHandler {
     }
   }
   
+  protected createAbortController(timeoutMs: number = 30000): AbortController {
+    // Ensure timeout is valid (not undefined, null, Infinity, or negative)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000 // Default to 30 seconds
+    }
+    
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), timeoutMs)
+    return controller
+  }
+  
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
     // Pre-request validation
     this.validateOptions(options)

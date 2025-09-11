@@ -6,6 +6,7 @@ export class GeminiCLIHandler implements ApiHandler {
     try {
       // Use the MCP server bridge to communicate with Gemini CLI
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.polydev.ai'
+            const controller = this.createAbortController()
       const response = await fetch(`${baseUrl}/api/mcp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -17,7 +18,7 @@ export class GeminiCLIHandler implements ApiHandler {
             system_prompt: options.systemPrompt,
             model: options.model || 'gemini-2.0-flash'
           }
-        })
+        
       })
 
       if (!response.ok) {
@@ -81,6 +82,7 @@ export class GeminiCLIHandler implements ApiHandler {
     // CLI authentication is handled by the CLI itself
     try {
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.polydev.ai'
+            const controller = this.createAbortController()
       const response = await fetch(`${baseUrl}/api/cli-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,7 +90,7 @@ export class GeminiCLIHandler implements ApiHandler {
           server: 'gemini-cli-bridge',
           tool: 'check_gemini_status',
           args: {}
-        })
+        
       })
 
       if (!response.ok) {

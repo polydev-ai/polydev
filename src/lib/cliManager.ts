@@ -254,6 +254,11 @@ export class CLIManager {
     mode: 'stdin' | 'args' = 'args',
     timeoutMs: number = 30000
   ): Promise<CLIResponse> {
+    // Ensure timeoutMs is valid (not undefined, null, Infinity, or negative)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000 // Default to 30 seconds
+    }
+    
     const startTime = Date.now();
 
     try {
@@ -349,6 +354,11 @@ export class CLIManager {
     timeoutMs: number = 30000,
     stdinInput?: string
   ): Promise<{ stdout: string; stderr: string; error?: string }> {
+    // Ensure timeoutMs is valid (not undefined, null, Infinity, or negative)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000 // Default to 30 seconds
+    }
+    
     return new Promise((resolve, reject) => {
       if (process.env.POLYDEV_CLI_DEBUG) {
         console.log(`[CLI Debug] Executing: ${command} ${args.join(' ')} (mode: ${mode})`);

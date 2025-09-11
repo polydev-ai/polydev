@@ -5,6 +5,16 @@ export class GroqHandler {
   private transformer = new OpenAITransformer()
   private baseUrl = 'https://api.groq.com/openai/v1'
   
+  private createAbortController(timeoutMs: number = 30000): AbortController {
+    // Ensure timeout is valid (not undefined, null, Infinity, or negative)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000 // Default to 30 seconds
+    }
+    
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), timeoutMs)
+    return controller
+  }
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
     const { apiKey } = options
     
@@ -16,6 +26,7 @@ export class GroqHandler {
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false
     
+        const controller = this.createAbortController()
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -23,7 +34,7 @@ export class GroqHandler {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(requestBody)
-    })
+    
     
     if (!response.ok) {
       const error = await response.text()
@@ -41,9 +52,10 @@ export class GroqHandler {
   
   async validateApiKey(apiKey: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/models`, {
+          const controller = this.createAbortController()
+    const response = await fetch(`${this.baseUrl}/models`, {
         headers: { 'Authorization': `Bearer ${apiKey}` }
-      })
+      
       return response.ok
     } catch { return false }
   }

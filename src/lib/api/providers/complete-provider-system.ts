@@ -476,6 +476,17 @@ export class UniversalProviderHandler {
       this.tokenCounters.set(id, new TokenCounter())
     })
   }
+  
+  private createAbortController(timeoutMs: number = 30000): AbortController {
+    // Ensure timeout is valid (not undefined, null, Infinity, or negative)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000 // Default to 30 seconds
+    }
+    
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), timeoutMs)
+    return controller
+  }
 
   async createMessage(providerId: string, options: ApiHandlerOptions): Promise<Response> {
     const config = PROVIDER_CONFIGS[providerId]
@@ -595,10 +606,12 @@ export class UniversalProviderHandler {
   }
 
   private async makeHttpRequest(endpoint: string, headers: Record<string, string>, data: any): Promise<Response> {
+    const controller = this.createAbortController()
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
+      signal: controller.signal
     })
 
     if (!response.ok) {
@@ -742,7 +755,10 @@ export class UniversalProviderHandler {
   private async fetchOllamaModels(): Promise<ModelInfo[]> {
     // Implementation for fetching Ollama models
     try {
-      const response = await fetch('http://localhost:11434/api/tags')
+      const controller = this.createAbortController(5000) // 5 second timeout for validation
+      const response = await fetch('http://localhost:11434/api/tags', {
+        signal: controller.signal
+      })
       const data = await response.json()
       return data.models?.map((model: any) => ({
         maxTokens: 2048,

@@ -10,11 +10,12 @@ export class LMStudioHandler implements ApiHandler {
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false
     
+        const controller = this.createAbortController()
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestBody)
-    })
+    
     
     if (!response.ok) {
       const error = await response.text()

@@ -15,6 +15,7 @@ export class AzureHandler implements ApiHandler {
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false
     
+        const controller = this.createAbortController()
     const response = await fetch(`${azureEndpoint}/openai/deployments/${options.model}/chat/completions?api-version=${azureApiVersion}`, {
       method: 'POST',
       headers: {
@@ -22,7 +23,7 @@ export class AzureHandler implements ApiHandler {
         'api-key': apiKey
       },
       body: JSON.stringify(requestBody)
-    })
+    
     
     if (!response.ok) {
       const error = await response.text()
@@ -41,6 +42,7 @@ export class AzureHandler implements ApiHandler {
     
     const requestBody = this.transformer.transformRequest(options)
     
+        const controller = this.createAbortController()
     const response = await fetch(`${azureEndpoint}/openai/deployments/${options.model}/chat/completions?api-version=${azureApiVersion}`, {
       method: 'POST',
       headers: {
@@ -48,7 +50,7 @@ export class AzureHandler implements ApiHandler {
         'api-key': apiKey
       },
       body: JSON.stringify(requestBody)
-    })
+    
     
     if (!response.ok) {
       const error = await response.text()

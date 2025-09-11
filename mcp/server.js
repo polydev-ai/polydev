@@ -557,6 +557,12 @@ class MCPServer {
     try {
       const { provider_id, prompt, mode = 'args', timeout_ms = 30000, user_id } = args;
       
+      // Ensure timeout_ms is valid (not undefined, null, Infinity, or negative)
+      let validTimeout = timeout_ms;
+      if (!validTimeout || validTimeout === Infinity || validTimeout < 1 || validTimeout > 300000) {
+        validTimeout = 30000 // Default to 30 seconds
+      }
+      
       if (!provider_id || !prompt) {
         throw new Error('provider_id and prompt are required');
       }
@@ -566,7 +572,7 @@ class MCPServer {
         provider_id, 
         prompt, 
         mode, 
-        timeout_ms
+        validTimeout
       );
 
       // CLI usage is tracked locally - no database integration needed

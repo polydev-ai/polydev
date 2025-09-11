@@ -279,6 +279,11 @@ class StdioMCPWrapper {
     try {
       let { provider_id, prompt, mode = 'args', timeout_ms = 30000 } = args;
       
+      // Ensure timeout_ms is valid (not undefined, null, Infinity, or negative)
+      if (!timeout_ms || timeout_ms === Infinity || timeout_ms < 1 || timeout_ms > 300000) {
+        timeout_ms = 30000 // Default to 30 seconds
+      }
+      
       if (!prompt) {
         throw new Error('prompt is required');
       }

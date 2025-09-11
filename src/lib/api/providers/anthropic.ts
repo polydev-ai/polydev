@@ -6,6 +6,17 @@ export class AnthropicHandler {
   private transformer = new AnthropicTransformer()
   private baseUrl = 'https://api.anthropic.com'
   
+  private createAbortController(timeoutMs: number = 30000): AbortController {
+    // Ensure timeout is valid (not undefined, null, Infinity, or negative)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000 // Default to 30 seconds
+    }
+    
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), timeoutMs)
+    return controller
+  }
+  
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
     const { apiKey } = options
     
@@ -17,6 +28,7 @@ export class AnthropicHandler {
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false // Non-streaming request
     
+    const controller = this.createAbortController()
     const response = await fetch(`${this.baseUrl}/v1/messages`, {
       method: 'POST',
       headers: {
@@ -24,7 +36,8 @@ export class AnthropicHandler {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     })
     
     if (!response.ok) {
@@ -45,6 +58,7 @@ export class AnthropicHandler {
     // Use the model ID as provided (model name resolution is handled at the API route level)
     const requestBody = this.transformer.transformRequest(options)
     
+    const controller = this.createAbortController()
     const response = await fetch(`${this.baseUrl}/v1/messages`, {
       method: 'POST',
       headers: {
@@ -52,7 +66,8 @@ export class AnthropicHandler {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     })
     
     if (!response.ok) {
@@ -105,6 +120,7 @@ export class AnthropicHandler {
   
   async validateApiKey(apiKey: string): Promise<boolean> {
     try {
+      const controller = this.createAbortController(10000) // 10 second timeout for validation
       const response = await fetch(`${this.baseUrl}/v1/messages`, {
         method: 'POST',
         headers: {
@@ -116,7 +132,8 @@ export class AnthropicHandler {
           model: 'claude-3-5-haiku-20241022',
           messages: [{ role: 'user', content: 'Hi' }],
           max_tokens: 1
-        })
+        }),
+        signal: controller.signal
       })
       
       // If we get a 401, the API key is invalid

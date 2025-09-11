@@ -5,6 +5,17 @@ export class GoogleHandler {
   private transformer = new GoogleTransformer()
   private baseUrl = 'https://generativelanguage.googleapis.com/v1beta'
   
+  private createAbortController(timeoutMs: number = 30000): AbortController {
+    // Ensure timeout is valid (not undefined, null, Infinity, or negative)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000 // Default to 30 seconds
+    }
+    
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), timeoutMs)
+    return controller
+  }
+  
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
     const { apiKey, model } = options
     
@@ -15,12 +26,14 @@ export class GoogleHandler {
     // Use the model ID as provided (model name resolution is handled at the API route level)
     const requestBody = this.transformer.transformRequest(options)
     
+    const controller = this.createAbortController()
     const response = await fetch(`${this.baseUrl}/models/${model}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     })
     
     if (!response.ok) {
@@ -40,12 +53,14 @@ export class GoogleHandler {
     
     const requestBody = this.transformer.transformRequest(options)
     
+    const controller = this.createAbortController()
     const response = await fetch(`${this.baseUrl}/models/${model}:streamGenerateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     })
     
     if (!response.ok) {
@@ -93,7 +108,10 @@ export class GoogleHandler {
   
   async validateApiKey(apiKey: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/models?key=${apiKey}`)
+      const controller = this.createAbortController(10000) // 10 second timeout for validation
+      const response = await fetch(`${this.baseUrl}/models?key=${apiKey}`, {
+        signal: controller.signal
+      })
       return response.ok
     } catch (error) {
       console.error('Error validating Google AI API key:', error)

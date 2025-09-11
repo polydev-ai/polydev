@@ -5,6 +5,17 @@ export class OpenAIHandler {
   private transformer = new OpenAITransformer()
   private baseUrl = 'https://api.openai.com/v1'
   
+  private createAbortController(timeoutMs: number = 30000): AbortController {
+    // Ensure timeout is valid (not undefined, null, Infinity, or negative)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000 // Default to 30 seconds
+    }
+    
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), timeoutMs)
+    return controller
+  }
+  
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
     const { apiKey, openAiBaseUrl, model } = options
     
@@ -22,13 +33,15 @@ export class OpenAIHandler {
     const isGPT5Model = model && (model === 'gpt-5' || model.includes('gpt-5'))
     const apiEndpoint = isGPT5Model ? '/responses' : '/chat/completions'
     
+    const controller = this.createAbortController()
     const response = await fetch(`${endpoint}${apiEndpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     })
     
     if (!response.ok) {
@@ -54,13 +67,15 @@ export class OpenAIHandler {
     const isGPT5Model = model && (model === 'gpt-5' || model.includes('gpt-5'))
     const apiEndpoint = isGPT5Model ? '/responses' : '/chat/completions'
     
+    const controller = this.createAbortController()
     const response = await fetch(`${endpoint}${apiEndpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     })
     
     if (!response.ok) {
@@ -113,10 +128,12 @@ export class OpenAIHandler {
   
   async validateApiKey(apiKey: string): Promise<boolean> {
     try {
+      const controller = this.createAbortController(10000) // 10 second timeout for validation
       const response = await fetch(`${this.baseUrl}/models`, {
         headers: {
           'Authorization': `Bearer ${apiKey}`
-        }
+        },
+        signal: controller.signal
       })
       
       return response.ok

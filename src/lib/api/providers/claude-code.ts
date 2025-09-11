@@ -2,10 +2,22 @@ import { ApiHandler } from '../index'
 import { ApiHandlerOptions, ModelInfo } from '../../../types/providers'
 
 export class ClaudeCodeHandler implements ApiHandler {
+  private createAbortController(timeoutMs: number = 30000): AbortController {
+    // Ensure timeout is valid (not undefined, null, Infinity, or negative)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000 // Default to 30 seconds
+    }
+    
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), timeoutMs)
+    return controller
+  }
+  
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
     try {
       // Use the MCP server bridge to communicate with Claude Code CLI
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.polydev.ai'
+      const controller = this.createAbortController()
       const response = await fetch(`${baseUrl}/api/mcp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -17,7 +29,8 @@ export class ClaudeCodeHandler implements ApiHandler {
             system_prompt: options.systemPrompt,
             model: options.model || 'claude-3.5-sonnet'
           }
-        })
+        }),
+        signal: controller.signal
       })
 
       if (!response.ok) {

@@ -6,6 +6,7 @@ export class CodexCLIHandler implements ApiHandler {
     try {
       // Use the MCP server bridge to communicate with Codex CLI
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.polydev.ai'
+            const controller = this.createAbortController()
       const response = await fetch(`${baseUrl}/api/mcp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -16,7 +17,7 @@ export class CodexCLIHandler implements ApiHandler {
             message: this.formatMessagesForCLI(options.messages || []),
             system_prompt: options.systemPrompt
           }
-        })
+        
       })
 
       if (!response.ok) {
@@ -80,6 +81,7 @@ export class CodexCLIHandler implements ApiHandler {
     // CLI authentication is handled by the CLI itself
     try {
       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.polydev.ai'
+            const controller = this.createAbortController()
       const response = await fetch(`${baseUrl}/api/mcp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,7 +89,7 @@ export class CodexCLIHandler implements ApiHandler {
           server: 'cross-llm-bridge-test',
           tool: 'check_codex_status',
           args: {}
-        })
+        
       })
 
       if (!response.ok) {

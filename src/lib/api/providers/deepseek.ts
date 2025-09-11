@@ -16,6 +16,7 @@ export class DeepSeekHandler implements ApiHandler {
     const requestBody = this.transformer.transformRequest(options)
     requestBody.stream = false
     
+        const controller = this.createAbortController()
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -23,7 +24,7 @@ export class DeepSeekHandler implements ApiHandler {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(requestBody)
-    })
+    
     
     if (!response.ok) {
       const error = await response.text()
@@ -40,9 +41,10 @@ export class DeepSeekHandler implements ApiHandler {
   
   async validateApiKey(apiKey: string): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/models`, {
+          const controller = this.createAbortController()
+    const response = await fetch(`${this.baseUrl}/models`, {
         headers: { 'Authorization': `Bearer ${apiKey}` }
-      })
+      
       return response.ok
     } catch { return false }
   }
