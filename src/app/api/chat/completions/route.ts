@@ -436,7 +436,7 @@ export async function POST(request: NextRequest) {
               modelPricing = modelLimits.pricing || null
               console.log(`[info] Using model-specific maxTokens for ${modelId} (${selectedProvider}): ${modelSpecificMaxTokens}`)
               if (modelPricing) {
-                console.log(`[info] Model pricing for ${modelId}: $${modelPricing.input}/1k input, $${modelPricing.output}/1k output`)
+                console.log(`[info] Model pricing for ${modelId}: $${modelPricing.input}/million input, $${modelPricing.output}/million output`)
               }
             } else {
               console.log(`[info] No model limits found for ${modelId} (${selectedProvider}), using default: ${modelSpecificMaxTokens}`)
@@ -508,8 +508,8 @@ export async function POST(request: NextRequest) {
               const usage = responseData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
               let cost = null
               if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
-                const inputCost = (usage.prompt_tokens / 1000) * modelPricing.input
-                const outputCost = (usage.completion_tokens / 1000) * modelPricing.output
+                const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
+                const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
                 cost = {
                   input: Number(inputCost.toFixed(6)),
                   output: Number(outputCost.toFixed(6)),
@@ -631,8 +631,8 @@ export async function POST(request: NextRequest) {
             const usage = result.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
             let cost = null
             if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
-              const inputCost = (usage.prompt_tokens / 1000) * modelPricing.input
-              const outputCost = (usage.completion_tokens / 1000) * modelPricing.output
+              const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
+              const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
               cost = {
                 input: Number(inputCost.toFixed(6)),
                 output: Number(outputCost.toFixed(6)),

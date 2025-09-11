@@ -413,11 +413,11 @@ class ModelsDevService {
       contextLength: data.context_length || 32768
     }
 
-    // Add pricing if available
+    // Add pricing if available (keep as per-million for API consistency)
     if (data.input_cost_per_million && data.output_cost_per_million) {
       result.pricing = {
-        input: data.input_cost_per_million / 1000, // Convert to per-K tokens
-        output: data.output_cost_per_million / 1000
+        input: data.input_cost_per_million, // Keep as per-million tokens
+        output: data.output_cost_per_million // Keep as per-million tokens
       }
     }
 

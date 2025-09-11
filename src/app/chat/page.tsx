@@ -265,6 +265,20 @@ export default function Chat() {
     return `$${cost.toFixed(4)}`
   }
 
+  const formatDetailedCost = (costInfo?: { input_cost: number; output_cost: number; total_cost: number }) => {
+    if (!costInfo) return null
+    
+    const input = formatCost(costInfo.input_cost)
+    const output = formatCost(costInfo.output_cost)
+    const total = formatCost(costInfo.total_cost)
+    
+    return (
+      <span className="text-xs text-gray-400 dark:text-gray-500" title={`Input: ${input} • Output: ${output} • Total: ${total}`}>
+        {input} in • {output} out • {total} total
+      </span>
+    )
+  }
+
   const clearChat = () => {
     startNewSession()
   }
@@ -605,14 +619,9 @@ export default function Chat() {
                               {message.usage && (
                                 <span className="text-xs text-gray-400 dark:text-gray-500">
                                   {message.usage.total_tokens} tokens
-                                  {message.costInfo && ` • ${formatCost(message.costInfo.total_cost)}`}
                                 </span>
                               )}
-                              {!message.usage && message.costInfo && (
-                                <span className="text-xs text-gray-400 dark:text-gray-500">
-                                  {formatCost(message.costInfo.total_cost)}
-                                </span>
-                              )}
+                              {message.costInfo && formatDetailedCost(message.costInfo)}
                               {typeof message.creditsUsed === 'number' && message.creditsUsed > 0 && (
                                 <span className="text-xs text-orange-500 dark:text-orange-400">
                                   {message.creditsUsed} credits
@@ -689,14 +698,9 @@ export default function Chat() {
                                   {message.usage && (
                                     <span className="text-xs text-gray-400 dark:text-gray-500">
                                       {message.usage.total_tokens}t
-                                      {message.costInfo && ` • ${formatCost(message.costInfo.total_cost)}`}
                                     </span>
                                   )}
-                                  {!message.usage && message.costInfo && (
-                                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                                      {formatCost(message.costInfo.total_cost)}
-                                    </span>
-                                  )}
+                                  {message.costInfo && formatDetailedCost(message.costInfo)}
                                 </div>
                               </div>
                             </div>

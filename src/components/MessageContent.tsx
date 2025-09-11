@@ -72,8 +72,29 @@ const parseMessageContent = (content: string): ParsedContent[] => {
 }
 
 const formatTextContent = (text: string): string => {
+  let formatted = text
+  
   // Convert inline code (single backticks) to HTML
-  return text.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+  formatted = formatted.replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono text-red-600 dark:text-red-400">$1</code>')
+  
+  // Convert **bold** to HTML
+  formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+  
+  // Convert *italic* to HTML
+  formatted = formatted.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+  
+  // Convert [link](url) to HTML
+  formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">$1</a>')
+  
+  // Convert ### Headers to HTML
+  formatted = formatted.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
+  formatted = formatted.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>')
+  formatted = formatted.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>')
+  
+  // Convert lists (- item) to HTML
+  formatted = formatted.replace(/^- (.*$)/gim, '<li class="ml-4">• $1</li>')
+  
+  return formatted
 }
 
 export default function MessageContent({ content, className = '' }: MessageContentProps) {
@@ -94,7 +115,7 @@ export default function MessageContent({ content, className = '' }: MessageConte
           return (
             <div
               key={index}
-              className="prose prose-sm max-w-none"
+              className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-code:text-red-600 dark:prose-code:text-red-400 prose-code:bg-gray-100 dark:prose-code:bg-gray-700"
               dangerouslySetInnerHTML={{
                 __html: formatTextContent(part.content).replace(/\n/g, '<br />')
               }}
