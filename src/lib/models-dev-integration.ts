@@ -396,6 +396,48 @@ class ModelsDevService {
     return mapping?.providers[providerId]?.cost || null
   }
 
+  async getModelLimits(friendlyId: string, providerId: string): Promise<{ maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } | null> {
+    const supabase = await this.getSupabaseClient()
+    const { data, error } = await supabase
+      .from('models_registry')
+      .select('max_tokens, context_length, input_cost_per_million, output_cost_per_million')
+      .eq('friendly_id', friendlyId)
+      .eq('provider_id', providerId)
+      .eq('is_active', true)
+      .single()
+
+    if (error || !data) return null
+
+    const result: { maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } = {
+      maxTokens: data.max_tokens || 4096,
+      contextLength: data.context_length || 32768
+    }
+
+    // Add pricing if available
+    if (data.input_cost_per_million && data.output_cost_per_million) {
+      result.pricing = {
+        input: data.input_cost_per_million / 1000, // Convert to per-K tokens
+        output: data.output_cost_per_million / 1000
+      }
+    }
+
+    return result
+  }
+
+  async getModelByProviderSpecificId(providerModelId: string, providerId: string): Promise<ModelRegistry | null> {
+    const supabase = await this.getSupabaseClient()
+    const { data, error } = await supabase
+      .from('models_registry')
+      .select('*')
+      .eq('provider_model_id', providerModelId)
+      .eq('provider_id', providerId)
+      .eq('is_active', true)
+      .single()
+
+    if (error || !data) return null
+    return data
+  }
+
   async getReasoningModels(): Promise<ModelRegistry[]> {
     const supabase = await this.getSupabaseClient()
     const { data, error } = await supabase

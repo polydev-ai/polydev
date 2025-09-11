@@ -424,9 +424,29 @@ export async function POST(request: NextRequest) {
           adjustedTemperature = 0.7
         }
         
-        // Ensure maxTokens is valid (not undefined, null, Infinity, or negative)
-        if (!adjustedMaxTokens || adjustedMaxTokens === Infinity || adjustedMaxTokens < 1 || adjustedMaxTokens > 200000) {
-          adjustedMaxTokens = 65536
+        // Get model-specific limits from models.dev
+        let modelSpecificMaxTokens = 65536 // Default fallback
+        if (selectedProvider) {
+          try {
+            const { modelsDevService } = await import('@/lib/models-dev-integration')
+            const modelLimits = await modelsDevService.getModelLimits(modelId, selectedProvider)
+            if (modelLimits) {
+              modelSpecificMaxTokens = modelLimits.maxTokens
+              console.log(`[info] Using model-specific maxTokens for ${modelId} (${selectedProvider}): ${modelSpecificMaxTokens}`)
+            } else {
+              console.log(`[info] No model limits found for ${modelId} (${selectedProvider}), using default: ${modelSpecificMaxTokens}`)
+            }
+          } catch (error) {
+            console.warn(`[warn] Failed to fetch model limits for ${modelId} (${selectedProvider}):`, error)
+          }
+        }
+        
+        // Ensure maxTokens is valid and within model limits
+        if (!adjustedMaxTokens || adjustedMaxTokens === Infinity || adjustedMaxTokens < 1) {
+          adjustedMaxTokens = Math.min(modelSpecificMaxTokens, 65536)
+        } else {
+          // Cap at model-specific limit
+          adjustedMaxTokens = Math.min(adjustedMaxTokens, modelSpecificMaxTokens)
         }
         
         if (!selectedProvider || !selectedConfig) {
