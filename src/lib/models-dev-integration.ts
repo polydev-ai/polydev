@@ -391,6 +391,40 @@ class ModelsDevService {
     return mapping?.providers[providerId]?.api_model_id || null
   }
 
+  async getFriendlyIdFromProviderModelId(providerModelId: string, providerId?: string): Promise<string | null> {
+    const supabase = await this.getSupabaseClient()
+    
+    // Get all model mappings and search through them
+    const { data, error } = await supabase
+      .from('model_mappings')
+      .select('friendly_id, providers_mapping')
+
+    if (error || !data) return null
+
+    // Search through all mappings to find one that contains this provider model ID
+    for (const mapping of data) {
+      const providers = mapping.providers_mapping || {}
+      
+      if (providerId) {
+        // If provider is specified, check only that provider
+        const providerConfig = providers[providerId]
+        if (providerConfig?.api_model_id === providerModelId) {
+          return mapping.friendly_id
+        }
+      } else {
+        // If no provider specified, check all providers
+        for (const [, providerConfig] of Object.entries(providers)) {
+          const config = providerConfig as any
+          if (config?.api_model_id === providerModelId) {
+            return mapping.friendly_id
+          }
+        }
+      }
+    }
+
+    return null
+  }
+
   async getModelPricing(friendlyId: string, providerId: string): Promise<ModelsDevModel['cost'] | null> {
     const mapping = await this.getModelByFriendlyId(friendlyId)
     return mapping?.providers[providerId]?.cost || null
