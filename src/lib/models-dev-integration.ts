@@ -413,11 +413,11 @@ class ModelsDevService {
       contextLength: data.context_length || 32768
     }
 
-    // Add pricing if available (convert from micro-dollars to dollars per million)
+    // Add pricing if available (values are in thousandths of dollars per million tokens)
     if (data.input_cost_per_million && data.output_cost_per_million) {
       result.pricing = {
-        input: data.input_cost_per_million / 1000, // Convert to dollars per million tokens
-        output: data.output_cost_per_million / 1000 // Convert to dollars per million tokens
+        input: Number(data.input_cost_per_million) / 1000, // Convert from thousandths to dollars per million tokens
+        output: Number(data.output_cost_per_million) / 1000 // Convert from thousandths to dollars per million tokens
       }
     }
 

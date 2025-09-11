@@ -27,6 +27,12 @@ Just return the title, nothing else:`
 
     // Use OpenAI GPT-3.5-turbo for fast, cost-effective title generation
     try {
+      if (!process.env.OPENAI_API_KEY) {
+        console.warn('OPENAI_API_KEY not set, using fallback title generation')
+        throw new Error('OPENAI_API_KEY not configured')
+      }
+      
+      console.log(`[Title Generation] Requesting title for message: "${userMessage.substring(0, 100)}..."`)
       const titleResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -51,12 +57,17 @@ Just return the title, nothing else:`
         const generatedTitle = titleData.choices?.[0]?.message?.content?.trim()
         
         if (generatedTitle && generatedTitle.length > 0 && generatedTitle.length <= 60) {
-          console.log(`Generated AI title: "${generatedTitle}"`)
+          console.log(`[Title Generation] Generated AI title: "${generatedTitle}"`)
           return generatedTitle
+        } else {
+          console.warn(`[Title Generation] Invalid title generated: "${generatedTitle}"`)
         }
+      } else {
+        const errorData = await titleResponse.text()
+        console.warn(`[Title Generation] OpenAI API error: ${titleResponse.status} - ${errorData}`)
       }
     } catch (error) {
-      console.warn('Failed to generate AI title:', error)
+      console.warn('[Title Generation] Failed to generate AI title:', error)
     }
 
     // Fallback to improved truncation logic
@@ -628,8 +639,8 @@ export async function POST(request: NextRequest) {
               const usage = parseUsageData(responseData) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
               let cost = null
               if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
-                const inputCost = (usage.prompt_tokens / 1000000) * (modelPricing.input / 1000)
-                const outputCost = (usage.completion_tokens / 1000000) * (modelPricing.output / 1000)
+                const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
+                const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
                 cost = {
                   input: Number(inputCost.toFixed(6)),
                   output: Number(outputCost.toFixed(6)),
@@ -751,8 +762,8 @@ export async function POST(request: NextRequest) {
             const usage = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
             let cost = null
             if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
-              const inputCost = (usage.prompt_tokens / 1000000) * (modelPricing.input / 1000)
-              const outputCost = (usage.completion_tokens / 1000000) * (modelPricing.output / 1000)
+              const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
+              const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
               cost = {
                 input: Number(inputCost.toFixed(6)),
                 output: Number(outputCost.toFixed(6)),
@@ -993,6 +1004,7 @@ export async function POST(request: NextRequest) {
         const userMessage = messages[messages.length - 1] // Last message is the current user input
         const firstAssistantResponse = responses[0]?.content || ''
         const autoTitle = await generateConversationTitle(userMessage.content, firstAssistantResponse)
+        console.log(`[Session Creation] Auto-generated title: "${autoTitle}"`)
         
         const { data: newSession, error: sessionError } = await supabase
           .from('chat_sessions')
@@ -1020,6 +1032,7 @@ export async function POST(request: NextRequest) {
         if (existingSession?.title === 'New Chat') {
           const firstAssistantResponse = responses[0]?.content || ''
           const autoTitle = await generateConversationTitle(userMessage.content, firstAssistantResponse)
+          console.log(`[Session Update] Auto-generated title: "${autoTitle}" for session: ${currentSessionId}`)
           await supabase
             .from('chat_sessions')
             .update({ title: autoTitle })
@@ -1106,8 +1119,8 @@ export async function POST(request: NextRequest) {
         // Try to get pricing from model data
         const modelData = modelDataMap.get(response?.model || model)
         if (modelData?.pricing) {
-          const inputCost = (usage.prompt_tokens / 1000000) * (modelData.pricing.input || 0)
-          const outputCost = (usage.completion_tokens / 1000000) * (modelData.pricing.output || 0)
+          const inputCost = (usage.prompt_tokens / 1000000) * ((modelData.pricing.input || 0) / 1000)
+          const outputCost = (usage.completion_tokens / 1000000) * ((modelData.pricing.output || 0) / 1000)
           costInfo = {
             input_cost: inputCost,
             output_cost: outputCost,
@@ -1173,8 +1186,8 @@ export async function POST(request: NextRequest) {
         // API key usage - calculate cost from model data
         const modelData = modelDataMap.get(response.model)
         if (modelData?.pricing && response.usage) {
-          const inputCost = (response.usage.prompt_tokens / 1000000) * (modelData.pricing.input || 0)
-          const outputCost = (response.usage.completion_tokens / 1000000) * (modelData.pricing.output || 0)
+          const inputCost = (response.usage.prompt_tokens / 1000000) * ((modelData.pricing.input || 0) / 1000)
+          const outputCost = (response.usage.completion_tokens / 1000000) * ((modelData.pricing.output || 0) / 1000)
           const responseCost = inputCost + outputCost
           totalCost += responseCost
           

@@ -26,6 +26,11 @@ interface Message {
   }
   fallbackMethod?: string
   creditsUsed?: number
+  responseTime?: number // in milliseconds
+  reasoning?: {
+    content: string
+    tokens: number
+  }
 }
 
 export default function Chat() {
@@ -48,6 +53,7 @@ export default function Chat() {
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null)
   const [showSidebar, setShowSidebar] = useState(false)
   const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified')
+  const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Set default selected models when dashboard models load and preferences are available
@@ -146,6 +152,8 @@ export default function Chat() {
     setMessages(newMessages)
     setInput('')
     setIsLoading(true)
+    
+    const startTime = Date.now()
 
     try {
       const response = await fetch('/api/chat/completions', {
@@ -177,9 +185,10 @@ export default function Chat() {
         setCurrentSession(session)
       }
 
+      const responseTime = Date.now() - startTime
       const responses: any[] = Array.isArray(data?.responses) ? data.responses : []
       if (responses.length > 0) {
-        const assistantMessages: Message[] = responses.map((resp: any) => {
+        const assistantMessages: Message[] = responses.map((resp: any, index: number) => {
           const model = dashboardModels.find(m => m.id === resp.model)
           return {
             id: `${Date.now()}-${resp.model}-${user?.id ?? 'anon'}`,
@@ -195,7 +204,12 @@ export default function Chat() {
               total_cost: resp.cost.total
             } : undefined,
             fallbackMethod: resp.fallback_method,
-            creditsUsed: resp.credits_used
+            creditsUsed: resp.credits_used,
+            responseTime: index === 0 ? responseTime : undefined, // Only show time for first response
+            reasoning: resp.reasoning ? {
+              content: resp.reasoning.content || '',
+              tokens: resp.reasoning.tokens || 0
+            } : undefined
           }
         })
         setMessages(prev => [...prev, ...assistantMessages])
@@ -261,8 +275,10 @@ export default function Chat() {
 
   const formatCost = (cost?: number) => {
     if (cost === undefined || cost === null || cost === 0) return '$0.00'
-    if (cost < 0.0001) return '<$0.0001'
-    return `$${cost.toFixed(4)}`
+    if (cost < 0.000001) return '<$0.000001'
+    if (cost < 0.0001) return `$${cost.toFixed(6)}`
+    if (cost < 0.01) return `$${cost.toFixed(4)}`
+    return `$${cost.toFixed(2)}`
   }
 
   const formatDetailedCost = (costInfo?: { input_cost: number; output_cost: number; total_cost: number }) => {
@@ -281,6 +297,16 @@ export default function Chat() {
 
   const clearChat = () => {
     startNewSession()
+  }
+
+  const toggleReasoning = (messageId: string) => {
+    const newExpanded = new Set(expandedReasoning)
+    if (newExpanded.has(messageId)) {
+      newExpanded.delete(messageId)
+    } else {
+      newExpanded.add(messageId)
+    }
+    setExpandedReasoning(newExpanded)
   }
 
   // Group messages by conversation turns for split view
@@ -663,6 +689,11 @@ export default function Chat() {
                                   {message.usage.total_tokens} tokens
                                 </span>
                               )}
+                              {message.responseTime && (
+                                <span className="text-xs text-gray-400 dark:text-gray-500">
+                                  {(message.responseTime / 1000).toFixed(1)}s
+                                </span>
+                              )}
                               {message.costInfo && formatDetailedCost(message.costInfo)}
                               {typeof message.creditsUsed === 'number' && message.creditsUsed > 0 && (
                                 <span className="text-xs text-orange-500 dark:text-orange-400">
@@ -682,6 +713,31 @@ export default function Chat() {
                           content={message.content}
                           className={message.role === 'user' ? 'text-white' : ''}
                         />
+                        {message.reasoning && message.role === 'assistant' && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                            <button 
+                              onClick={() => toggleReasoning(message.id)}
+                              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                            >
+                              <svg 
+                                className={`w-4 h-4 transform transition-transform ${expandedReasoning.has(message.id) ? 'rotate-90' : ''}`}
+                                fill="currentColor" 
+                                viewBox="0 0 20 20"
+                              >
+                                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                              </svg>
+                              {expandedReasoning.has(message.id) ? 'Hide' : 'Show'} thinking process
+                              <span className="text-xs opacity-70">({message.reasoning.tokens} tokens)</span>
+                            </button>
+                            {expandedReasoning.has(message.id) && (
+                              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                                  {message.reasoning.content}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <div className={`text-xs mt-2 opacity-70 ${
                           message.role === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
                         }`}>
@@ -775,6 +831,11 @@ export default function Chat() {
                                       {message.usage.total_tokens}t
                                     </span>
                                   )}
+                                  {message.responseTime && (
+                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                      {(message.responseTime / 1000).toFixed(1)}s
+                                    </span>
+                                  )}
                                   {message.costInfo && formatDetailedCost(message.costInfo)}
                                 </div>
                               </div>
@@ -786,6 +847,31 @@ export default function Chat() {
                                 content={message.content}
                                 className="text-gray-900 dark:text-white"
                               />
+                              {message.reasoning && (
+                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                  <button 
+                                    onClick={() => toggleReasoning(message.id)}
+                                    className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                                  >
+                                    <svg 
+                                      className={`w-4 h-4 transform transition-transform ${expandedReasoning.has(message.id) ? 'rotate-90' : ''}`}
+                                      fill="currentColor" 
+                                      viewBox="0 0 20 20"
+                                    >
+                                      <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    {expandedReasoning.has(message.id) ? 'Hide' : 'Show'} thinking process
+                                    <span className="text-xs opacity-70">({message.reasoning.tokens} tokens)</span>
+                                  </button>
+                                  {expandedReasoning.has(message.id) && (
+                                    <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                                      <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                                        {message.reasoning.content}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                               <div className="text-xs mt-2 text-gray-500 dark:text-gray-400">
                                 {message.timestamp.toLocaleTimeString()}
                               </div>
