@@ -592,7 +592,7 @@ export class EnhancedHandlerFactory {
     return this.handlers.get(providerId)!
   }
   
-  private static createHandler(providerId: string): BaseEnhancedHandler {
+  public static createHandler(providerId: string): BaseEnhancedHandler {
     switch (providerId) {
       case 'anthropic':
         return new EnhancedAnthropicHandler()

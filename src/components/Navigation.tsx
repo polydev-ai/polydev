@@ -146,110 +146,111 @@ export default function Navigation() {
                     <AlertTriangle className="w-4 h-4 text-red-500" />
                   )}
                 </Link>
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                    {(profile?.display_name || user?.email)?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                  <span className="max-w-32 truncate">{profile?.display_name || user?.email}</span>
-                  <svg
-                    className={`w-4 h-4 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                      {(profile?.display_name || user?.email)?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <span className="max-w-32 truncate">{profile?.display_name || user?.email}</span>
+                    <svg
+                      className={`w-4 h-4 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
 
-                {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
-                    <div className="px-4 py-3">
-                      <p className="text-sm text-gray-900 dark:text-white">Signed in as</p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.email}</p>
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
+                      <div className="px-4 py-3">
+                        <p className="text-sm text-gray-900 dark:text-white">Signed in as</p>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.email}</p>
+                      </div>
+                      <div className="py-1">
+                        <Link
+                          href="/profile"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          Profile
+                        </Link>
+                        <Link
+                          href="/dashboard/models"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          Models
+                        </Link>
+                        <Link
+                          href="/dashboard/mcp-tokens"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          MCP Tokens
+                        </Link>
+                        <Link
+                          href="/dashboard/credits"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          Credits & Billing
+                        </Link>
+                        <Link
+                          href="/dashboard/usage"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          Usage & Analytics
+                        </Link>
+                        <Link
+                          href="/dashboard/subscription"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          👑 Subscription
+                        </Link>
+                        <Link
+                          href="/dashboard/referrals"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          🎁 Referrals
+                        </Link>
+                        <Link
+                          href="/dashboard/preferences"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          Preferences
+                        </Link>
+                        <Link
+                          href="/settings"
+                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          Settings
+                        </Link>
+                      </div>
+                      <div className="py-1">
+                        <button
+                          onClick={() => {
+                            signOut()
+                            setUserDropdownOpen(false)
+                          }}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Sign Out
+                        </button>
+                      </div>
                     </div>
-                    <div className="py-1">
-                      <Link
-                        href="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        Profile
-                      </Link>
-                      <Link
-                        href="/dashboard/models"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        Models
-                      </Link>
-                      <Link
-                        href="/dashboard/mcp-tokens"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        MCP Tokens
-                      </Link>
-                      <Link
-                        href="/dashboard/credits"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        Credits & Billing
-                      </Link>
-                      <Link
-                        href="/dashboard/usage"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        Usage & Analytics
-                      </Link>
-                      <Link
-                        href="/dashboard/subscription"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        👑 Subscription
-                      </Link>
-                      <Link
-                        href="/dashboard/referrals"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        🎁 Referrals
-                      </Link>
-                      <Link
-                        href="/dashboard/preferences"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        Preferences
-                      </Link>
-                      <Link
-                        href="/settings"
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        onClick={() => setUserDropdownOpen(false)}
-                      >
-                        Settings
-                      </Link>
-                    </div>
-                    <div className="py-1">
-                      <button
-                        onClick={() => {
-                          signOut()
-                          setUserDropdownOpen(false)
-                        }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </>
             ) : (
               <>
                 <Link
