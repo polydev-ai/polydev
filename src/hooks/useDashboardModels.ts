@@ -98,7 +98,7 @@ export function useDashboardModels() {
             continue
           }
           
-          const providerConfig = legacyProvidersData[providerId]
+          const providerConfig = (legacyProvidersData as any)[providerId]
           
           // Check if this provider has an API key
           const hasApiKey = apiKeys.some(key => key.provider === providerId && key.active)
@@ -214,7 +214,7 @@ export function useDashboardModels() {
               continue
             }
               
-              const providerConfig = legacyProvidersData[apiKey.provider]
+              const providerConfig = (legacyProvidersData as any)[apiKey.provider]
               const modelId = apiKey.default_model
               
               if (modelId) {

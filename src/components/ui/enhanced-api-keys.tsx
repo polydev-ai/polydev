@@ -316,7 +316,7 @@ export default function EnhancedApiKeysPage() {
 
       setApiKeys(keysData || [])
       setPreferences(prefsError ? null : prefsData)
-      setProviders(providersWithKeys)
+      setProviders(providersWithKeys as ProviderConfig[])
 
       // Fetch CLI status from database
       await fetchCliStatuses()

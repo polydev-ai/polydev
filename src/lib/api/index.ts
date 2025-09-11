@@ -7,23 +7,7 @@ import { TokenCounter, TokenCount } from './utils/token-counter'
 import { RateLimiter, RateLimitConfig } from './utils/rate-limiter'
 import { RetryHandler } from './utils/retry-handler'
 import { ResponseValidator, ValidationResult } from './utils/response-validator'
-// Legacy handlers for backward compatibility (fallback only)
-import { AnthropicHandler } from './providers/anthropic'
-import { OpenAIHandler } from './providers/openai'
-import { GoogleHandler } from './providers/google'
-import { VertexHandler } from './providers/vertex'
-import { BedrockHandler } from './providers/bedrock'
-import { AzureHandler } from './providers/azure'
-import { OpenRouterHandler } from './providers/openrouter'
-import { DeepSeekHandler } from './providers/deepseek'
-import { OllamaHandler } from './providers/ollama'
-import { LMStudioHandler } from './providers/lmstudio'
-import { XAIHandler } from './providers/xai'
-import { GroqHandler } from './providers/groq'
-import { CodexCLIHandler } from './providers/codex-cli'
-import { ClaudeCodeHandler } from './providers/claude-code'
-import { GitHubCopilotHandler } from './providers/github-copilot'
-import { GeminiCLIHandler } from './providers/gemini-cli'
+// All providers now handled through models.dev integration
 
 export interface ApiHandler {
   createMessage(options: ApiHandlerOptions): Promise<Response>
@@ -51,35 +35,24 @@ export interface StreamChunk {
   }
 }
 
-// Enhanced provider handler registry - prioritizes comprehensive implementations
-const getEnhancedHandler = (providerId: string): ApiHandler => {
+// Enhanced provider handler registry using models.dev comprehensive system
+const getEnhancedHandler = (providerId: string): ApiHandler | null => {
   const supportedEnhanced = EnhancedHandlerFactory.getSupportedProviders()
   
   if (supportedEnhanced.includes(providerId)) {
     return EnhancedHandlerFactory.getHandler(providerId)
   }
   
-  // Fallback to legacy handlers for providers not yet in enhanced system
-  const legacyHandlers: Record<string, ApiHandler> = {
-    vertex: new VertexHandler(),
-    bedrock: new BedrockHandler(),
-    azure: new AzureHandler(),
-    openrouter: new OpenRouterHandler(),
-    lmstudio: new LMStudioHandler(),
-    'codex-cli': new CodexCLIHandler(),
-    'claude-code': new ClaudeCodeHandler(),
-    'github-copilot': new GitHubCopilotHandler(),
-    'gemini-cli': new GeminiCLIHandler(),
-  }
-  
-  return legacyHandlers[providerId]
+  // For now, only return handlers for enhanced providers since legacy is removed
+  // TODO: Implement universal provider handlers for all other providers via models.dev
+  return null
 }
 
-// Complete provider registry combining enhanced and legacy handlers
+// Complete provider registry using models.dev comprehensive system
 const getAllSupportedProviders = (): string[] => {
-  const enhanced = EnhancedHandlerFactory.getSupportedProviders()
-  const legacy = ['vertex', 'bedrock', 'azure', 'openrouter', 'lmstudio', 'codex-cli', 'claude-code', 'github-copilot', 'gemini-cli']
-  return [...enhanced, ...legacy]
+  // Only return enhanced providers for now since legacy is removed
+  // TODO: Add universal provider support once implemented
+  return EnhancedHandlerFactory.getSupportedProviders()
 }
 
 export class ApiManager {
@@ -102,7 +75,7 @@ export class ApiManager {
   getHandler(providerId: string): ApiHandler {
     const handler = getEnhancedHandler(providerId)
     if (!handler) {
-      throw new Error(`No handler found for provider: ${providerId}`)
+      throw new Error(`Provider '${providerId}' not supported. Supported providers: ${EnhancedHandlerFactory.getSupportedProviders().join(', ')}`)
     }
     return handler
   }

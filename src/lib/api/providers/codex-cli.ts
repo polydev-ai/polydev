@@ -17,7 +17,7 @@ export class CodexCLIHandler implements ApiHandler {
             message: this.formatMessagesForCLI(options.messages || []),
             system_prompt: options.systemPrompt
           }
-        
+        })
       })
 
       if (!response.ok) {
@@ -89,7 +89,7 @@ export class CodexCLIHandler implements ApiHandler {
           server: 'cross-llm-bridge-test',
           tool: 'check_codex_status',
           args: {}
-        
+        })
       })
 
       if (!response.ok) {

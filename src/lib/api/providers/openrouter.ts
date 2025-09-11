@@ -26,7 +26,7 @@ export class OpenRouterHandler {
         'X-Title': 'Polydev AI'
       },
       body: JSON.stringify(requestBody)
-    
+    })
     
     if (!response.ok) {
       const error = await response.text()

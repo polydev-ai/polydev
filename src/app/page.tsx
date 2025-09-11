@@ -15,8 +15,8 @@ const getStatsFromModelsDevAPI = async () => {
       let totalProviders = 0
       
       for (const [providerId, provider] of Object.entries(data)) {
-        if (provider && typeof provider === 'object' && provider.supportedModels) {
-          const modelCount = Object.keys(provider.supportedModels).length
+        if (provider && typeof provider === 'object' && 'supportedModels' in provider) {
+          const modelCount = Object.keys((provider as any).supportedModels).length
           if (modelCount > 0) {
             totalModels += modelCount
             totalProviders += 1

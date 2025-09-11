@@ -5,6 +5,15 @@ import { OpenAITransformer } from '../transform'
 export class AzureHandler implements ApiHandler {
   private transformer = new OpenAITransformer()
   
+  private createAbortController(timeoutMs: number = 30000): AbortController {
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
+      timeoutMs = 30000
+    }
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), timeoutMs)
+    return controller
+  }
+  
   async createMessage(options: ApiHandlerOptions): Promise<Response> {
     const { openAiApiKey: apiKey, openAiBaseUrl: azureEndpoint, azureApiVersion = '2023-12-01-preview' } = options
     

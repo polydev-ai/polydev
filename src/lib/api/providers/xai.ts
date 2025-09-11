@@ -24,7 +24,7 @@ export class XAIHandler implements ApiHandler {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(requestBody)
-    
+    })
     
     if (!response.ok) {
       const error = await response.text()

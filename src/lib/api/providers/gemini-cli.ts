@@ -18,7 +18,7 @@ export class GeminiCLIHandler implements ApiHandler {
             system_prompt: options.systemPrompt,
             model: options.model || 'gemini-2.0-flash'
           }
-        
+        })
       })
 
       if (!response.ok) {

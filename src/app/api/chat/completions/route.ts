@@ -508,7 +508,7 @@ export async function POST(request: NextRequest) {
             }
             
             // Use provider configuration for correct baseUrl property name
-            const apiProviderConfig = apiManager.getProviderConfiguration(selectedProvider)
+            const apiProviderConfig = await apiManager.getProviderConfiguration(selectedProvider)
             if (selectedConfig.baseUrl && apiProviderConfig) {
               // Set the baseUrl using the provider's expected property name
               if (apiProviderConfig.baseUrlProperty) {
