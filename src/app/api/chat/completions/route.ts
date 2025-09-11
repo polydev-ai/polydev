@@ -287,8 +287,8 @@ export async function POST(request: NextRequest) {
     // Build provider configuration map with strict priority
     const cliProviderMappings: Record<string, string> = {
       'claude_code': 'anthropic',
-      'codex_cli': 'openai', 
-      'gemini_cli': 'google'
+      'codex_cli': 'openai'
+      // Note: gemini_cli removed as it's not supported by Enhanced Handler Factory
     }
     
     // Build comprehensive provider configuration with separate CLI and API capabilities
