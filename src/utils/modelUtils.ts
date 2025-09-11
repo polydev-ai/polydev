@@ -1,5 +1,5 @@
 import { modelsDevService } from '../lib/models-dev-integration'
-import type { ApiProvider, type ProviderConfig, type ModelInfo } from '../types/providers'
+import type { ApiProvider, ProviderConfig, ModelInfo } from '../types/providers'
 
 export interface AvailableModel {
   id: string
