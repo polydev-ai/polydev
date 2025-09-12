@@ -61,6 +61,7 @@ export default function Chat() {
   const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set())
   const [streamingResponses, setStreamingResponses] = useState<Record<string, string>>({})
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isCreatingSession, setIsCreatingSession] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Set default selected models when dashboard models load and preferences are available
@@ -124,21 +125,48 @@ export default function Chat() {
   useEffect(() => {
     const loadSpecificSession = async () => {
       if (sessionId === 'new') {
-        // Create a new session automatically
-        await startNewSession()
-      } else if (sessionId && !sessionsLoading && sessions.length > 0) {
-        const targetSession = sessions.find(session => session.id === sessionId)
-        if (targetSession) {
-          await loadSession(targetSession)
-        } else {
-          // Session not found, redirect to new session
-          router.push('/chat/new')
+        // Create a new session automatically, but only if we don't already have a current session and aren't already creating one
+        if (!currentSession && !isCreatingSession) {
+          await startNewSession()
+        }
+      } else if (sessionId && !sessionsLoading) {
+        // Only proceed if we have sessions loaded or if we're looking for a specific session
+        if (sessions.length > 0) {
+          const targetSession = sessions.find(session => session.id === sessionId)
+          if (targetSession) {
+            // Only load if it's different from current session
+            if (!currentSession || currentSession.id !== targetSession.id) {
+              await loadSession(targetSession)
+            }
+          } else {
+            // Session not found in loaded sessions - try to fetch it directly
+            const sessionWithMessages = await getSessionWithMessages(sessionId)
+            if (sessionWithMessages) {
+              setCurrentSession(sessionWithMessages)
+              const converted = sessionWithMessages.chat_messages.map(convertChatMessage)
+              setMessages(converted)
+            } else {
+              // Session truly doesn't exist, redirect to new session
+              router.push('/chat/new')
+            }
+          }
+        } else if (!sessionsLoading) {
+          // No sessions loaded and not loading - try to fetch the specific session
+          const sessionWithMessages = await getSessionWithMessages(sessionId)
+          if (sessionWithMessages) {
+            setCurrentSession(sessionWithMessages)
+            const converted = sessionWithMessages.chat_messages.map(convertChatMessage)
+            setMessages(converted)
+          } else {
+            // Session doesn't exist, redirect to new session
+            router.push('/chat/new')
+          }
         }
       }
     }
 
     loadSpecificSession()
-  }, [sessionId, sessions, sessionsLoading, router])
+  }, [sessionId, sessions, sessionsLoading, currentSession?.id, isCreatingSession])
 
   const convertChatMessage = (chatMsg: ChatMessage): Message => ({
     id: chatMsg.id,
@@ -163,12 +191,20 @@ export default function Chat() {
   }
 
   const startNewSession = async () => {
-    const newSession = await createSession()
-    if (newSession) {
-      setCurrentSession(newSession)
-      setMessages([])
-      // Navigate to the new session URL
-      router.push(`/chat/${newSession.id}`)
+    // Prevent multiple session creation attempts
+    if (isCreatingSession) return
+    
+    setIsCreatingSession(true)
+    try {
+      const newSession = await createSession()
+      if (newSession) {
+        setCurrentSession(newSession)
+        setMessages([])
+        // Navigate to the new session URL
+        router.push(`/chat/${newSession.id}`)
+      }
+    } finally {
+      setIsCreatingSession(false)
     }
   }
 
