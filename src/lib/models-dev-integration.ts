@@ -433,6 +433,9 @@ class ModelsDevService {
   async getModelLimits(friendlyId: string, providerId: string): Promise<{ maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } | null> {
     const supabase = await this.getSupabaseClient()
     
+    // Clean provider ID - extract actual ID from display names like "openai (API)"
+    const cleanProviderId = this.extractProviderIdFromDisplayName(providerId)
+    
     // First try to get from model_mappings table which has provider-specific pricing
     const { data: mappingData, error: mappingError } = await supabase
       .from('model_mappings')
@@ -440,8 +443,8 @@ class ModelsDevService {
       .eq('friendly_id', friendlyId)
       .single()
 
-    if (!mappingError && mappingData && mappingData.providers_mapping && mappingData.providers_mapping[providerId]) {
-      const providerMapping = mappingData.providers_mapping[providerId]
+    if (!mappingError && mappingData && mappingData.providers_mapping && mappingData.providers_mapping[cleanProviderId]) {
+      const providerMapping = mappingData.providers_mapping[cleanProviderId]
       const result: { maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } = {
         maxTokens: providerMapping.capabilities?.max_tokens || 4096,
         contextLength: providerMapping.capabilities?.context_length || 32768
@@ -463,7 +466,7 @@ class ModelsDevService {
       .from('models_registry')
       .select('max_tokens, context_length, input_cost_per_million, output_cost_per_million')
       .eq('friendly_id', friendlyId)
-      .eq('provider_id', providerId)
+      .eq('provider_id', cleanProviderId)
       .eq('is_active', true)
       .single()
 
@@ -841,6 +844,33 @@ class ModelsDevService {
 
       return richProviders
     }
+  }
+
+  /**
+   * Extract actual provider ID from display names like "openai (API)"
+   */
+  private extractProviderIdFromDisplayName(providerId: string): string {
+    // Remove common suffixes like " (API)", " (CLI)", " (Credits)"
+    const cleaned = providerId
+      .replace(/\s*\([^)]*\)$/, '') // Remove anything in parentheses at the end
+      .toLowerCase()
+      .trim()
+    
+    // Map common variations to correct provider IDs
+    const providerMapping: Record<string, string> = {
+      'openai': 'openai',
+      'anthropic': 'anthropic', 
+      'google': 'google',
+      'gemini': 'google',
+      'groq': 'groq',
+      'xai': 'xai',
+      'x.ai': 'xai',
+      'deepseek': 'deepseek',
+      'mistral': 'mistral',
+      'openrouter': 'openrouter'
+    }
+    
+    return providerMapping[cleaned] || cleaned
   }
 }
 

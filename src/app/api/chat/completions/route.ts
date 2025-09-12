@@ -793,10 +793,61 @@ export async function POST(request: NextRequest) {
             
             response = await apiManager.createMessage(selectedProvider, apiOptions)
             
-            // Safely parse response - check content type first
+            // Handle streaming vs non-streaming responses
             let result
             const contentType = response.headers.get('content-type') || ''
-            if (contentType.includes('application/json')) {
+            
+            // For streaming responses, collect chunks and parse them
+            if (stream && (contentType.includes('text/event-stream') || contentType.includes('text/plain'))) {
+              console.log(`[Streaming] Collecting streaming response from ${selectedProvider}`)
+              const textResult = await response.text()
+              
+              // Parse Server-Sent Events format
+              const chunks = textResult.split('\n\n').filter(chunk => chunk.startsWith('data: '))
+              let finalContent = ''
+              let finalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+              let finalModel = actualModelId
+              
+              for (const chunk of chunks) {
+                try {
+                  const data = chunk.replace('data: ', '').trim()
+                  if (data === '[DONE]') break
+                  
+                  const parsed = JSON.parse(data)
+                  
+                  // Extract content from streaming chunk
+                  if (parsed.choices?.[0]?.delta?.content) {
+                    finalContent += parsed.choices[0].delta.content
+                  }
+                  
+                  // Extract usage information (typically in last chunk)
+                  if (parsed.usage) {
+                    finalUsage = parsed.usage
+                  }
+                  
+                  // Extract model information
+                  if (parsed.model) {
+                    finalModel = parsed.model
+                  }
+                } catch (parseError) {
+                  console.warn(`[Streaming] Failed to parse streaming chunk: ${data}`)
+                }
+              }
+              
+              // Create a standard response format
+              result = {
+                choices: [{
+                  message: {
+                    content: finalContent,
+                    role: 'assistant'
+                  },
+                  finish_reason: 'stop'
+                }],
+                usage: finalUsage,
+                model: finalModel
+              }
+            } else if (contentType.includes('application/json')) {
+              // Standard JSON response
               try {
                 result = await response.json()
               } catch (parseError) {
@@ -899,10 +950,61 @@ export async function POST(request: NextRequest) {
             // Make API call through OpenRouter
             response = await apiManager.createMessage('openai', apiOptions)
             
-            // Safely parse OpenRouter response
+            // Handle OpenRouter streaming vs non-streaming responses
             let result
             const contentType = response.headers.get('content-type') || ''
-            if (contentType.includes('application/json')) {
+            
+            // For streaming responses, collect chunks and parse them
+            if (stream && (contentType.includes('text/event-stream') || contentType.includes('text/plain'))) {
+              console.log(`[Streaming] Collecting streaming response from OpenRouter`)
+              const textResult = await response.text()
+              
+              // Parse Server-Sent Events format
+              const chunks = textResult.split('\n\n').filter(chunk => chunk.startsWith('data: '))
+              let finalContent = ''
+              let finalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+              let finalModel = actualModelId
+              
+              for (const chunk of chunks) {
+                try {
+                  const data = chunk.replace('data: ', '').trim()
+                  if (data === '[DONE]') break
+                  
+                  const parsed = JSON.parse(data)
+                  
+                  // Extract content from streaming chunk
+                  if (parsed.choices?.[0]?.delta?.content) {
+                    finalContent += parsed.choices[0].delta.content
+                  }
+                  
+                  // Extract usage information (typically in last chunk)
+                  if (parsed.usage) {
+                    finalUsage = parsed.usage
+                  }
+                  
+                  // Extract model information
+                  if (parsed.model) {
+                    finalModel = parsed.model
+                  }
+                } catch (parseError) {
+                  console.warn(`[Streaming] Failed to parse OpenRouter streaming chunk: ${data}`)
+                }
+              }
+              
+              // Create a standard response format
+              result = {
+                choices: [{
+                  message: {
+                    content: finalContent,
+                    role: 'assistant'
+                  },
+                  finish_reason: 'stop'
+                }],
+                usage: finalUsage,
+                model: finalModel
+              }
+            } else if (contentType.includes('application/json')) {
+              // Standard JSON response
               try {
                 result = await response.json()
               } catch (parseError) {
