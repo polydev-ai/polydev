@@ -99,11 +99,9 @@ const formatTextContent = (text: string): string => {
   // Convert lists with enhanced styling and better spacing
   formatted = formatted.replace(/^- (.*$)/gim, '<li class="ml-6 mb-2 list-disc list-outside text-gray-800 dark:text-gray-200 leading-relaxed">$1</li>')
   
-  // Convert numbered lists
-  let listCounter = 0
-  formatted = formatted.replace(/^\d+\.\s+(.*$)/gim, () => {
-    listCounter++
-    return `<li class="ml-6 mb-2 list-decimal list-outside text-gray-800 dark:text-gray-200 leading-relaxed">$1</li>`
+  // Convert numbered lists (capture item text correctly, avoid literal $1)
+  formatted = formatted.replace(/^\d+\.\s+(.*$)/gim, (_match, itemText) => {
+    return `<li class="ml-6 mb-2 list-decimal list-outside text-gray-800 dark:text-gray-200 leading-relaxed">${itemText}</li>`
   })
   
   // Clean up extra whitespace and empty lines with better spacing

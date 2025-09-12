@@ -319,7 +319,7 @@ export default function Chat() {
                     )
                     
                     // Add final responses
-                    const assistantMessages: Message[] = responses.map((resp: any, index: number) => {
+                    const assistantMessages: Message[] = responses.map((resp: any) => {
                       const model = dashboardModels.find(m => m.id === resp.model)
                       return {
                         id: `${Date.now()}-${resp.model}-${user?.id ?? 'anon'}`,
@@ -336,7 +336,7 @@ export default function Chat() {
                         } : undefined,
                         fallbackMethod: resp.fallback_method,
                         creditsUsed: resp.credits_used,
-                        responseTime: index === 0 ? responseTime : undefined,
+                        responseTime: responseTime,
                         reasoning: resp.reasoning ? {
                           content: resp.reasoning.content || '',
                           tokens: resp.reasoning.tokens || 0
