@@ -856,9 +856,10 @@ export async function POST(request: NextRequest) {
                     finalContent += parsed.choices[0].delta.content
                   }
                   
-                  // Extract usage information (typically in last chunk)
+                  // Extract usage information from any chunk that has it
                   if (parsed.usage) {
                     finalUsage = parsed.usage
+                    console.log(`[Streaming] Found usage in chunk for ${selectedProvider}:`, parsed.usage)
                   }
                   
                   // Extract model information
@@ -868,6 +869,41 @@ export async function POST(request: NextRequest) {
                 } catch (parseError) {
                   console.warn(`[Streaming] Failed to parse streaming chunk: ${chunk}`)
                 }
+              }
+              
+              // IMPORTANT: For OpenAI and other providers, usage data comes AFTER streaming is complete
+              // Make a separate non-streaming call to get usage data if no usage found in streaming
+              if (finalUsage.total_tokens === 0 && (selectedProvider === 'openai' || selectedProvider === 'anthropic' || modelId === 'kimi-k2-instruct')) {
+                console.log(`[Streaming] No usage found in streaming chunks for ${selectedProvider}, making non-streaming call to get exact usage`)
+                
+                try {
+                  // Make the same API call but without streaming to get usage data
+                  const usageApiOptions = { ...apiOptions, stream: false }
+                  const usageResponse = await apiManager.createMessage(selectedProvider, usageApiOptions)
+                  
+                  if (usageResponse.ok) {
+                    const usageResult = await usageResponse.json()
+                    const actualUsage = parseUsageData(usageResult)
+                    if (actualUsage && actualUsage.total_tokens > 0) {
+                      finalUsage = actualUsage
+                      console.log(`[Streaming] Got exact usage from non-streaming call for ${selectedProvider}:`, finalUsage)
+                    }
+                  }
+                } catch (usageError) {
+                  console.warn(`[Streaming] Failed to get usage data from non-streaming call:`, usageError)
+                }
+              }
+              
+              // Only estimate as last resort if still no usage data
+              if (finalUsage.total_tokens === 0 && finalContent) {
+                console.log(`[Streaming] No usage found anywhere for ${selectedProvider}, estimating as last resort`)
+                const estimatedTokens = Math.ceil(finalContent.length / 4) // Rough estimate: 4 chars per token
+                finalUsage = {
+                  prompt_tokens: Math.ceil(finalContent.length * 0.1), // Rough estimate for prompt
+                  completion_tokens: estimatedTokens,
+                  total_tokens: estimatedTokens + Math.ceil(finalContent.length * 0.1)
+                }
+                console.log(`[Streaming] Estimated usage for ${selectedProvider}:`, finalUsage)
               }
               
               // Create a standard response format
@@ -938,12 +974,57 @@ export async function POST(request: NextRequest) {
                 const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
                 content = parts[0]?.text || ''
               }
+            } else if (Array.isArray(result) && result.length > 0) {
+              // Google/Gemini streaming array format
+              console.log(`[Content Extraction] Processing Google streaming array with ${result.length} chunks`)
+              let extractedContent = ''
+              
+              // Combine content from all chunks
+              for (const chunk of result) {
+                if (chunk?.candidates?.[0]?.content?.parts) {
+                  const parts = Array.isArray(chunk.candidates[0].content.parts) ? chunk.candidates[0].content.parts : [chunk.candidates[0].content.parts]
+                  for (const part of parts) {
+                    if (part?.text) {
+                      extractedContent += part.text
+                    }
+                  }
+                }
+              }
+              
+              content = extractedContent
+              console.log(`[Content Extraction] Extracted ${content.length} characters from Google streaming array`)
             } else if (typeof result === 'string') {
               // Plain text response
               content = result
             } else {
               console.warn(`[warn] Unknown response format from ${selectedProvider}:`, result)
-              content = JSON.stringify(result)
+              console.warn(`[warn] Result type: ${typeof result}, Array: ${Array.isArray(result)}, Keys: ${Object.keys(result || {}).join(', ')}`)
+              // Fallback - try to extract any text content instead of stringifying
+              if (result && typeof result === 'object') {
+                // Look for any text content in the response
+                const findText = (obj: any): string => {
+                  if (typeof obj === 'string') return obj
+                  if (Array.isArray(obj)) {
+                    for (const item of obj) {
+                      const text = findText(item)
+                      if (text) return text
+                    }
+                  }
+                  if (obj && typeof obj === 'object') {
+                    for (const [key, value] of Object.entries(obj)) {
+                      if (key === 'text' && typeof value === 'string') return value
+                      if (key === 'content' && typeof value === 'string') return value
+                      if (key === 'message' && typeof value === 'string') return value
+                      const text = findText(value)
+                      if (text) return text
+                    }
+                  }
+                  return ''
+                }
+                content = findText(result) || 'No readable content found in response'
+              } else {
+                content = 'Invalid response format received'
+              }
             }
             
             // Calculate pricing if available
@@ -1398,8 +1479,11 @@ export async function POST(request: NextRequest) {
         // Create new session for new conversations with auto-generated title
         const userMessage = messages[messages.length - 1] // Last message is the current user input
         const firstAssistantResponse = responses[0]?.content || ''
-        const autoTitle = await generateConversationTitle(userMessage.content, firstAssistantResponse)
-        console.log(`[Session Creation] Auto-generated title: "${autoTitle}"`)
+        // Generate simple title without using AI tokens
+        const autoTitle = userMessage.content.length > 50 ? 
+          userMessage.content.substring(0, 47) + "..." : 
+          userMessage.content
+        console.log(`[Session Creation] Simple title: "${autoTitle}"`)
         
         const { data: newSession, error: sessionError } = await supabase
           .from('chat_sessions')
@@ -1426,8 +1510,11 @@ export async function POST(request: NextRequest) {
           
         if (existingSession?.title === 'New Chat') {
           const firstAssistantResponse = responses[0]?.content || ''
-          const autoTitle = await generateConversationTitle(userMessage.content, firstAssistantResponse)
-          console.log(`[Session Update] Auto-generated title: "${autoTitle}" for session: ${currentSessionId}`)
+          // Generate simple title without using AI tokens
+          const autoTitle = userMessage.content.length > 50 ? 
+            userMessage.content.substring(0, 47) + "..." : 
+            userMessage.content
+          console.log(`[Session Update] Simple title: "${autoTitle}" for session: ${currentSessionId}`)
           await supabase
             .from('chat_sessions')
             .update({ title: autoTitle })

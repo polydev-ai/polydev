@@ -330,9 +330,9 @@ export default function Chat() {
                         provider: resp.provider,
                         usage: resp.usage,
                         costInfo: resp.cost ? {
-                          input_cost: resp.cost.input,
-                          output_cost: resp.cost.output,
-                          total_cost: resp.cost.total
+                          input_cost: resp.cost.input_cost,
+                          output_cost: resp.cost.output_cost,
+                          total_cost: resp.cost.total_cost
                         } : undefined,
                         fallbackMethod: resp.fallback_method,
                         creditsUsed: resp.credits_used,
