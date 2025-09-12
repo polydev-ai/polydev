@@ -317,12 +317,12 @@ export function useDashboardModels() {
                   
                   if (modelData) {
                     // Helper function to get the correct logo based on model creator
-                    const getModelCreatorLogo = (modelData: any, cachedProviderData: any, providerConfig: any) => {
+                    const getModelCreatorLogo = (modelData: any, cachedProviderData: any, providerConfig: any, currentProviderId: string) => {
                       // Check if model has original_id indicating different creator (e.g., "anthropic/claude-sonnet-4")
                       const originalId = modelData.models_dev_metadata?.original_id || modelData.original_id
                       if (originalId && originalId.includes('/')) {
                         const creatorId = originalId.split('/')[0] // Extract "anthropic" from "anthropic/claude-sonnet-4"
-                        if (creatorId && creatorId !== apiKey.provider) {
+                        if (creatorId && creatorId !== currentProviderId) {
                           // Return the creator's logo URL (models.dev standard format)
                           return `https://models.dev/logos/${creatorId}.svg`
                         }
