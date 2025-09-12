@@ -56,8 +56,8 @@ export default function Chat() {
   const [selectedModels, setSelectedModels] = useState<string[]>([])
   const [showModelSelector, setShowModelSelector] = useState(false)
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null)
-  const [showSidebar, setShowSidebar] = useState(false)
-  const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified')
+  const [showSidebar, setShowSidebar] = useState(true)
+  const [viewMode, setViewMode] = useState<'unified' | 'split'>('split')
   const [expandedReasoning, setExpandedReasoning] = useState<Set<string>>(new Set())
   const [streamingResponses, setStreamingResponses] = useState<Record<string, string>>({})
   const [isStreaming, setIsStreaming] = useState(false)
@@ -88,9 +88,26 @@ export default function Chat() {
       }, {} as Record<'cli' | 'api' | 'credits', DashboardModel[]>)
 
       const defaults: string[] = []
-      if (modelsByTier.cli?.length > 0) defaults.push(modelsByTier.cli[0].id)
-      if (modelsByTier.api?.length > 0 && defaults.length < 2) defaults.push(modelsByTier.api[0].id)
-      if (modelsByTier.credits?.length > 0 && defaults.length === 0) defaults.push(modelsByTier.credits[0].id)
+      
+      // Select up to 5 models by default for a better multi-model experience
+      // Priority: CLI models first, then API models, then credits models
+      if (modelsByTier.cli?.length > 0) {
+        defaults.push(...modelsByTier.cli.slice(0, Math.min(3, modelsByTier.cli.length)).map(m => m.id))
+      }
+      if (modelsByTier.api?.length > 0 && defaults.length < 5) {
+        const remaining = 5 - defaults.length
+        defaults.push(...modelsByTier.api.slice(0, Math.min(remaining, modelsByTier.api.length)).map(m => m.id))
+      }
+      if (modelsByTier.credits?.length > 0 && defaults.length < 5) {
+        const remaining = 5 - defaults.length
+        defaults.push(...modelsByTier.credits.slice(0, Math.min(remaining, modelsByTier.credits.length)).map(m => m.id))
+      }
+      
+      // Ensure we have at least one model selected
+      if (defaults.length === 0 && dashboardModels.length > 0) {
+        defaults.push(dashboardModels[0].id)
+      }
+      
       setSelectedModels(defaults)
     }
   }, [dashboardModels, selectedModels.length, preferences])
@@ -142,7 +159,6 @@ export default function Chat() {
       setCurrentSession(session)
       const converted = sessionWithMessages.chat_messages.map(convertChatMessage)
       setMessages(converted)
-      setShowSidebar(false)
     }
   }
 
@@ -151,7 +167,6 @@ export default function Chat() {
     if (newSession) {
       setCurrentSession(newSession)
       setMessages([])
-      setShowSidebar(false)
       // Navigate to the new session URL
       router.push(`/chat/${newSession.id}`)
     }
@@ -370,11 +385,10 @@ export default function Chat() {
   }
 
   const formatCost = (cost?: number) => {
-    if (cost === undefined || cost === null || cost === 0) return '$0.00'
-    if (cost < 0.000001) return '<$0.000001'
-    if (cost < 0.0001) return `$${cost.toFixed(6)}`
+    if (cost === undefined || cost === null || cost === 0) return '$0.0000'
+    if (cost < 0.000001) return '<$0.0001'
     if (cost < 0.01) return `$${cost.toFixed(4)}`
-    return `$${cost.toFixed(2)}`
+    return `$${cost.toFixed(4)}`
   }
 
   const formatDetailedCost = (costInfo?: { input_cost: number; output_cost: number; total_cost: number }) => {
