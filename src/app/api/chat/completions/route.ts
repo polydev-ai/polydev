@@ -906,6 +906,14 @@ export async function POST(request: NextRequest) {
             
             if (!response.ok) {
               console.error(`[error] ${selectedProvider} API call failed:`, result)
+              
+              // Check for OpenAI organization verification errors specifically
+              const orgCheck = ResponseValidator.checkOrganizationError(result, selectedProvider)
+              if (orgCheck.hasError) {
+                console.warn(`[OpenAI Organization Error] ${orgCheck.message}`)
+                throw new Error(orgCheck.message)
+              }
+              
               throw new Error(result.error?.message || `${selectedProvider} API call failed with status ${response.status}`)
             }
             
@@ -1205,6 +1213,12 @@ export async function POST(request: NextRequest) {
                 const apiExhaustionCheck = ResponseValidator.checkApiKeyExhaustion(apiError.message || '', requiredProvider)
                 if (apiExhaustionCheck.isExhausted) {
                   console.warn(`[API Key Exhaustion] ${requiredProvider} API: ${apiExhaustionCheck.message}`)
+                }
+                
+                // Check for OpenAI organization verification errors in API fallback
+                const orgCheck = ResponseValidator.checkOrganizationError(apiError, requiredProvider)
+                if (orgCheck.hasError) {
+                  console.warn(`[OpenAI Organization Error - API Fallback] ${orgCheck.message}`)
                 }
               }
             } else if (exhaustionCheck.isExhausted && exhaustionCheck.isPermanent) {

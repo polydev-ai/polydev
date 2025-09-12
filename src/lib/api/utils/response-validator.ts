@@ -454,6 +454,25 @@ export class ResponseValidator {
     return validator.checkForApiKeyExhaustion(errorMessage, providerId)
   }
   
+  static checkOrganizationError(response: any, providerId: string): {
+    hasError: boolean;
+    message: string;
+  } {
+    // Only check for OpenAI providers
+    if (providerId !== 'openai' && providerId !== 'openai-native') {
+      return { hasError: false, message: '' }
+    }
+    
+    if (response?.error?.code === 'invalid_organization' || response?.error?.type === 'invalid_organization') {
+      return {
+        hasError: true,
+        message: 'OpenAI Organization Verification Failed: Invalid organization or insufficient permissions'
+      }
+    }
+    
+    return { hasError: false, message: '' }
+  }
+  
   static isStreamingResponse(response: any): boolean {
     // Check for Google/Gemini candidates structure with array/object flexibility
     let hasGoogleContent = false
