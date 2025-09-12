@@ -99,6 +99,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       
       return request
     },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
+    },
     rateLimits: {
       requestsPerMinute: 3500,
       tokensPerMinute: 350000
@@ -212,6 +216,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       }
       
       return request
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
     }
   },
 
@@ -235,6 +243,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       }
       
       return request
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
     }
   },
 
@@ -251,6 +263,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     requestTransform: (options) => {
       const transformer = getTransformer('openai')
       return transformer.transformRequest(options)
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
     }
   },
 
@@ -263,6 +279,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
     },
     rateLimits: {
       requestsPerMinute: 30,
@@ -281,6 +301,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       'Authorization': (options) => `Bearer ${options.apiKey || ''}`,
       'HTTP-Referer': 'https://polydev.com',
       'X-Title': 'Polydev Multi-LLM Platform'
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai') // OpenRouter streams in OpenAI-compatible SSE
+      return transformer.transformStreamChunk(chunk)
     }
   },
 
@@ -322,6 +346,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
     }
   },
 
@@ -334,6 +362,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
     }
   },
 
@@ -358,6 +390,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
     }
   },
 
