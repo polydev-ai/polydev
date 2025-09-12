@@ -432,6 +432,33 @@ class ModelsDevService {
 
   async getModelLimits(friendlyId: string, providerId: string): Promise<{ maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } | null> {
     const supabase = await this.getSupabaseClient()
+    
+    // First try to get from model_mappings table which has provider-specific pricing
+    const { data: mappingData, error: mappingError } = await supabase
+      .from('model_mappings')
+      .select('providers_mapping')
+      .eq('friendly_id', friendlyId)
+      .single()
+
+    if (!mappingError && mappingData && mappingData.providers_mapping && mappingData.providers_mapping[providerId]) {
+      const providerMapping = mappingData.providers_mapping[providerId]
+      const result: { maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } = {
+        maxTokens: providerMapping.capabilities?.max_tokens || 4096,
+        contextLength: providerMapping.capabilities?.context_length || 32768
+      }
+
+      // Add pricing if available (values are in millicents per million tokens, convert to dollars)
+      if (providerMapping.cost && providerMapping.cost.input && providerMapping.cost.output) {
+        result.pricing = {
+          input: Number(providerMapping.cost.input) / 1000, // Convert from millicents to dollars per million tokens
+          output: Number(providerMapping.cost.output) / 1000 // Convert from millicents to dollars per million tokens
+        }
+      }
+
+      return result
+    }
+
+    // Fallback to models_registry table
     const { data, error } = await supabase
       .from('models_registry')
       .select('max_tokens, context_length, input_cost_per_million, output_cost_per_million')
@@ -447,11 +474,11 @@ class ModelsDevService {
       contextLength: data.context_length || 32768
     }
 
-    // Add pricing if available (values are in thousandths of dollars per million tokens)
+    // Add pricing if available (values are in millicents per million tokens from database, convert to dollars)
     if (data.input_cost_per_million && data.output_cost_per_million) {
       result.pricing = {
-        input: Number(data.input_cost_per_million) / 1000, // Convert from thousandths to dollars per million tokens
-        output: Number(data.output_cost_per_million) / 1000 // Convert from thousandths to dollars per million tokens
+        input: Number(data.input_cost_per_million) / 1000, // Convert from millicents to dollars per million tokens
+        output: Number(data.output_cost_per_million) / 1000 // Convert from millicents to dollars per million tokens  
       }
     }
 
