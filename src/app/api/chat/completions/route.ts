@@ -673,7 +673,20 @@ export async function POST(request: NextRequest) {
               let buf = ''
               while (true) {
                 const { done, value } = await reader.read()
-                if (done) break
+                if (done) {
+                  // Flush any remaining buffered line
+                  if (buf && buf.trim().length) {
+                    try {
+                      const item = JSON.parse(buf.trim())
+                      if (item?.type === 'content' && item.content) {
+                        collected[friendlyModelId].content += item.content
+                        const contentEvent = { type: 'content', model: friendlyModelId, content: item.content, provider: selectedProvider }
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(contentEvent)}\n\n`))
+                      }
+                    } catch {}
+                  }
+                  break
+                }
                 buf += textDecoder.decode(value, { stream: true })
                 let idx
                 while ((idx = buf.indexOf('\n')) >= 0) {
@@ -711,7 +724,7 @@ export async function POST(request: NextRequest) {
               try {
                 const pricingProvider = requiredProvider || selectedProvider
                 const resolvedModel = collected[friendlyModelId].modelResolved || actualModelId
-                const limits = await modelsDevService.getModelLimits(resolvedModel, 'openrouter')
+                const limits = await modelsDevService.getModelLimits(resolvedModel, pricingProvider)
                 if (limits?.pricing) {
                   const u = collected[friendlyModelId].usage || { prompt_tokens: 0, completion_tokens: 0 }
                   const inputCost = (u.prompt_tokens / 1_000_000) * limits.pricing.input
@@ -747,6 +760,7 @@ export async function POST(request: NextRequest) {
             try {
               const totalTokens = finalResponses.reduce((sum, r) => sum + (r.usage?.total_tokens || 0), 0)
               const totalCost = finalResponses.reduce((sum, r) => sum + ((r as any)?.cost?.total_cost || 0), 0)
+              const totalCreditsUsedNow = finalResponses.reduce((sum, r) => sum + (r.credits_used || 0), 0)
 
               const sessionId = body.session_id
               currentSessionId = sessionId
@@ -801,6 +815,19 @@ export async function POST(request: NextRequest) {
                   total_cost: totalCost,
                   created_at: new Date().toISOString()
                 })
+
+                // Deduct credits (OpenRouter credits) if used during this stream
+                if (totalCreditsUsedNow > 0 && userCredits) {
+                  const newBalance = Math.max(0, parseFloat(userCredits.balance || '0') - totalCreditsUsedNow)
+                  try {
+                    await supabase
+                      .from('user_credits')
+                      .update({ balance: newBalance.toFixed(6) })
+                      .eq('user_id', user.id)
+                  } catch (creditErr) {
+                    console.warn('Failed to deduct user credits after streaming:', creditErr)
+                  }
+                }
               }
             } catch (e) {
               console.warn('Failed to save chat history/log interaction (streaming):', e)
@@ -1865,9 +1892,17 @@ export async function POST(request: NextRequest) {
           credits_used: response.credits_used
         }
       } else {
-        // Try to get pricing from model limits (uses corrected pricing data)
+        // Try to get pricing from model limits using the correct provider
         try {
-          const modelLimits = await modelsDevService.getModelLimits(response?.model || model, 'openrouter')
+          const providerLabel = (response?.provider || '').toString().toLowerCase()
+          const providerId = providerLabel.startsWith('openrouter') ? 'openrouter'
+            : providerLabel.startsWith('openai') ? 'openai'
+            : providerLabel.startsWith('anthropic') ? 'anthropic'
+            : (providerLabel.startsWith('google') || providerLabel.startsWith('gemini')) ? 'google'
+            : providerLabel.startsWith('xai') ? 'xai'
+            : providerLabel.startsWith('groq') ? 'groq'
+            : 'openai'
+          const modelLimits = await modelsDevService.getModelLimits(response?.model || model, providerId)
           if (modelLimits?.pricing) {
             const inputCost = (usage.prompt_tokens / 1000000) * modelLimits.pricing.input
             const outputCost = (usage.completion_tokens / 1000000) * modelLimits.pricing.output
