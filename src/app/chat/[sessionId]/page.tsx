@@ -794,14 +794,15 @@ export default function Chat() {
                                         alt={providerName}
                                         className="w-6 h-6 rounded-lg flex-shrink-0 object-contain"
                                         onError={(e) => {
-                                          // Fallback to gradient placeholder on error
-                                          e.currentTarget.style.display = 'none'
-                                          const fallback = e.currentTarget.nextElementSibling as HTMLElement
-                                          if (fallback) fallback.style.display = 'flex'
+                                          // Hide image and show fallback on error
+                                          const img = e.currentTarget as HTMLImageElement
+                                          const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
+                                          img.style.display = 'none'
+                                          if (fallback) fallback.classList.remove('hidden')
                                         }}
                                       />
                                     ) : null}
-                                    <div className={`w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
+                                    <div className={`logo-fallback w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
                                       <span className="text-white text-xs font-bold">
                                         {providerName.charAt(0).toUpperCase()}
                                       </span>
@@ -954,14 +955,15 @@ export default function Chat() {
                                             alt={providerName}
                                             className="w-6 h-6 rounded-lg flex-shrink-0 object-contain"
                                             onError={(e) => {
-                                              // Fallback to gradient placeholder on error
-                                              e.currentTarget.style.display = 'none'
-                                              const fallback = e.currentTarget.nextElementSibling as HTMLElement
-                                              if (fallback) fallback.style.display = 'flex'
+                                              // Hide image and show fallback on error
+                                              const img = e.currentTarget as HTMLImageElement
+                                              const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
+                                              img.style.display = 'none'
+                                              if (fallback) fallback.classList.remove('hidden')
                                             }}
                                           />
                                         ) : null}
-                                        <div className={`w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
+                                        <div className={`logo-fallback w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
                                           <span className="text-white text-xs font-bold">
                                             {providerName.charAt(0).toUpperCase()}
                                           </span>
@@ -1082,14 +1084,15 @@ export default function Chat() {
                                   alt={model.providerName}
                                   className="w-8 h-8 rounded-lg flex-shrink-0 object-contain"
                                   onError={(e) => {
-                                    // Fallback to gradient placeholder on error
-                                    e.currentTarget.style.display = 'none'
-                                    const fallback = e.currentTarget.nextElementSibling as HTMLElement
-                                    if (fallback) fallback.style.display = 'flex'
+                                    // Hide image and show fallback on error
+                                    const img = e.currentTarget as HTMLImageElement
+                                    const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
+                                    img.style.display = 'none'
+                                    if (fallback) fallback.classList.remove('hidden')
                                   }}
                                 />
                               ) : null}
-                              <div className={`w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model.providerLogo ? 'hidden' : ''}`}>
+                              <div className={`logo-fallback w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model.providerLogo ? 'hidden' : ''}`}>
                                 <span className="text-white text-xs font-bold">
                                   {model.providerName.charAt(0).toUpperCase()}
                                 </span>

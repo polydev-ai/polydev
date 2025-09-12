@@ -213,23 +213,34 @@ export function useDashboardModels() {
               if (modelData) {
                 // Helper function to get the correct logo based on model creator
                 const getModelCreatorLogo = (modelData: any, cachedProviderData: any, providerConfig: any, currentProviderId: string, modelId?: string) => {
+                  console.log(`[Logo Debug] Processing model ${modelId} for provider ${currentProviderId}`, {
+                    originalId: modelData.models_dev_metadata?.original_id || modelData.original_id,
+                    cachedLogo: cachedProviderData?.logo,
+                    configLogo: providerConfig?.logo_url
+                  })
+                  
                   // Check if model has original_id indicating different creator (e.g., "anthropic/claude-sonnet-4")
                   const originalId = modelData.models_dev_metadata?.original_id || modelData.original_id
                   if (originalId && originalId.includes('/')) {
                     const creatorId = originalId.split('/')[0] // Extract "anthropic" from "anthropic/claude-sonnet-4"
                     if (creatorId && creatorId !== currentProviderId) {
-                      // Return the creator's logo URL (models.dev standard format)
-                      return `https://models.dev/logos/${creatorId}.svg`
+                      const logoUrl = `https://models.dev/logos/${creatorId}.svg`
+                      console.log(`[Logo Debug] Using creator logo for ${modelId}: ${logoUrl}`)
+                      return logoUrl
                     }
                   }
                   
                   // Special handling for Claude models - if modelId contains "claude" and current provider is openrouter/other
                   if (modelId && modelId.toLowerCase().includes('claude') && currentProviderId !== 'anthropic') {
-                    return `https://models.dev/logos/anthropic.svg`
+                    const logoUrl = `https://models.dev/logos/anthropic.svg`
+                    console.log(`[Logo Debug] Using Claude fallback logo for ${modelId}: ${logoUrl}`)
+                    return logoUrl
                   }
                   
                   // Fallback to provider logo
-                  return cachedProviderData?.logo || providerConfig?.logo_url
+                  const fallbackLogo = cachedProviderData?.logo || providerConfig?.logo_url
+                  console.log(`[Logo Debug] Using fallback logo for ${modelId}: ${fallbackLogo}`)
+                  return fallbackLogo
                 }
 
                 dashboardModels.push({
@@ -262,10 +273,15 @@ export function useDashboardModels() {
               const modelInfo = providerConfig.supportedModels[modelId]
               // Use smart logo resolution even in fallback
               const getLogoForFallback = (modelId: string, providerId: string, providerConfig: any) => {
+                console.log(`[Logo Debug Fallback] Processing model ${modelId} for provider ${providerId}`)
                 if (modelId.toLowerCase().includes('claude') && providerId !== 'anthropic') {
-                  return `https://models.dev/logos/anthropic.svg`
+                  const logoUrl = `https://models.dev/logos/anthropic.svg`
+                  console.log(`[Logo Debug Fallback] Using Claude fallback logo: ${logoUrl}`)
+                  return logoUrl
                 }
-                return providerConfig?.logo_url
+                const fallbackLogo = providerConfig?.logo_url
+                console.log(`[Logo Debug Fallback] Using provider fallback logo: ${fallbackLogo}`)
+                return fallbackLogo
               }
               
               dashboardModels.push({
@@ -292,10 +308,15 @@ export function useDashboardModels() {
             } else {
               // Last fallback: create minimal model info
               const getLogoForMinimalFallback = (modelId: string, providerId: string, providerConfig: any) => {
+                console.log(`[Logo Debug Minimal] Processing model ${modelId} for provider ${providerId}`)
                 if (modelId.toLowerCase().includes('claude') && providerId !== 'anthropic') {
-                  return `https://models.dev/logos/anthropic.svg`
+                  const logoUrl = `https://models.dev/logos/anthropic.svg`
+                  console.log(`[Logo Debug Minimal] Using Claude minimal logo: ${logoUrl}`)
+                  return logoUrl
                 }
-                return providerConfig?.logo_url
+                const fallbackLogo = providerConfig?.logo_url
+                console.log(`[Logo Debug Minimal] Using provider minimal logo: ${fallbackLogo}`)
+                return fallbackLogo
               }
               
               dashboardModels.push({

@@ -527,8 +527,8 @@ export async function POST(request: NextRequest) {
         }
         
         // STEP 3: Check if user has OpenRouter as API provider for this model
-        if (!selectedProvider && providerConfigs['openrouter']?.api) {
-          // User has OpenRouter API key - treat as regular API provider
+        // Only use OpenRouter if the user's preferred provider IS OpenRouter, not as a fallback
+        if (!selectedProvider && requiredProvider === 'openrouter' && providerConfigs['openrouter']?.api) {
           selectedProvider = 'openrouter'
           selectedConfig = providerConfigs['openrouter'].api
           fallbackMethod = 'api'
@@ -700,7 +700,7 @@ export async function POST(request: NextRequest) {
               model: actualModelId,
               temperature: adjustedTemperature,
               maxTokens: adjustedMaxTokens,
-              stream: false,
+              stream,
               apiKey: selectedConfig.apiKey
             }
             
@@ -823,7 +823,7 @@ export async function POST(request: NextRequest) {
               model: actualModelId, // This will be the OpenRouter model ID for credits, or original for API
               temperature: adjustedTemperature,
               maxTokens: adjustedMaxTokens,
-              stream: false,
+              stream,
               apiKey: selectedConfig.apiKey,
               openAiBaseUrl: selectedConfig.baseUrl || 'https://openrouter.ai/api/v1'
             }
@@ -913,7 +913,7 @@ export async function POST(request: NextRequest) {
                   model: await resolveProviderModelId(modelId, requiredProvider),
                   temperature: adjustedTemperature,
                   maxTokens: adjustedMaxTokens,
-                  stream: false,
+                  stream,
                   apiKey: apiConfig.apiKey
                 }
                 
@@ -976,7 +976,7 @@ export async function POST(request: NextRequest) {
                   model: openrouterModelId,
                   temperature: adjustedTemperature,
                   maxTokens: adjustedMaxTokens,
-                  stream: false,
+                  stream,
                   apiKey: providerConfigs['openrouter'].api.apiKey
                 }
                 
@@ -1015,7 +1015,7 @@ export async function POST(request: NextRequest) {
                     model: openrouterModelId,
                     temperature: adjustedTemperature,
                     maxTokens: adjustedMaxTokens,
-                    stream: false,
+                    stream,
                     apiKey: process.env.OPENROUTER_API_KEY
                   }
                   
