@@ -619,8 +619,8 @@ export async function POST(request: NextRequest) {
                 return
               }
 
-              // Build API options for streaming
-              const apiOptions: any = {
+              // Build API options for streaming (clamp to model limits when available)
+              let apiOptions: any = {
                 messages: messages.map((msg: any) => ({ role: msg.role, content: msg.content })),
                 model: actualModelId,
                 temperature,
@@ -629,9 +629,17 @@ export async function POST(request: NextRequest) {
                 apiKey: selectedConfig.apiKey
               }
 
+              // Clamp maxTokens to model limits from models.dev when available
+              try {
+                const limits = await modelsDevService.getModelLimits(friendlyModelId, requiredProvider)
+                if (limits?.maxTokens && Number.isFinite(limits.maxTokens)) {
+                  apiOptions.maxTokens = Math.min(apiOptions.maxTokens || limits.maxTokens, limits.maxTokens)
+                }
+              } catch {}
+
               // GPT-5 quirk
               if (friendlyModelId === 'gpt-5' || friendlyModelId.includes('gpt-5')) {
-                apiOptions.max_completion_tokens = max_tokens
+                apiOptions.max_completion_tokens = apiOptions.maxTokens || max_tokens
                 delete apiOptions.maxTokens
               }
 
