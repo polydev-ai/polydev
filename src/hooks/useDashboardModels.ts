@@ -212,12 +212,12 @@ export function useDashboardModels() {
               
               if (modelData) {
                 // Helper function to get the correct logo based on model creator
-                const getModelCreatorLogo = (modelData: any, cachedProviderData: any, providerConfig: any) => {
+                const getModelCreatorLogo = (modelData: any, cachedProviderData: any, providerConfig: any, currentProviderId: string) => {
                   // Check if model has original_id indicating different creator (e.g., "anthropic/claude-sonnet-4")
                   const originalId = modelData.models_dev_metadata?.original_id || modelData.original_id
                   if (originalId && originalId.includes('/')) {
                     const creatorId = originalId.split('/')[0] // Extract "anthropic" from "anthropic/claude-sonnet-4"
-                    if (creatorId && creatorId !== providerId) {
+                    if (creatorId && creatorId !== currentProviderId) {
                       // Return the creator's logo URL (models.dev standard format)
                       return `https://models.dev/logos/${creatorId}.svg`
                     }
@@ -231,7 +231,7 @@ export function useDashboardModels() {
                   name: modelData.display_name || modelData.name,
                   provider: providerId,
                   providerName: providerConfig?.name || providerId,
-                  providerLogo: getModelCreatorLogo(modelData, cachedProviderData, providerConfig),
+                  providerLogo: getModelCreatorLogo(modelData, cachedProviderData, providerConfig, providerId),
                   tier: getTierFromProvider(providerId, cliResults, hasApiKey),
                   price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
                     input: modelData.input_cost_per_million / 1000,
@@ -336,7 +336,7 @@ export function useDashboardModels() {
                       name: modelData.display_name || modelData.name,
                       provider: apiKey.provider,
                       providerName: providerConfig?.name || apiKey.provider,
-                      providerLogo: getModelCreatorLogo(modelData, cachedProviderData, providerConfig),
+                      providerLogo: getModelCreatorLogo(modelData, cachedProviderData, providerConfig, apiKey.provider),
                       tier: getTierFromProvider(apiKey.provider, cliResults, true),
                       price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
                         input: modelData.input_cost_per_million / 1000,
