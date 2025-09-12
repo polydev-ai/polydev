@@ -114,6 +114,14 @@ export class ResponseValidator {
       const errorMsg = typeof response.error === 'string' 
         ? response.error 
         : response.error.message || response.error.type || 'Unknown error'
+      
+      // Check for API key exhaustion patterns
+      const exhaustionResult = this.checkForApiKeyExhaustion(errorMsg, providerId)
+      if (exhaustionResult.isExhausted) {
+        errors.push(`API Key Exhausted: ${exhaustionResult.message}`)
+        return { hasError: true, errors }
+      }
+      
       errors.push(`API Error: ${errorMsg}`)
       return { hasError: true, errors }
     }
@@ -122,22 +130,56 @@ export class ResponseValidator {
     switch (providerId) {
       case 'anthropic':
         if (response.type === 'error') {
-          errors.push(`Anthropic Error: ${response.message || 'Unknown error'}`)
+          const errorMessage = response.message || 'Unknown error'
+          const exhaustionResult = this.checkForApiKeyExhaustion(errorMessage, providerId)
+          if (exhaustionResult.isExhausted) {
+            errors.push(`Anthropic API Key Exhausted: ${exhaustionResult.message}`)
+          } else {
+            errors.push(`Anthropic Error: ${errorMessage}`)
+          }
           return { hasError: true, errors }
         }
         break
         
       case 'openai':
+      case 'openai-native':
         if (response.choices && response.choices[0]?.finish_reason === 'content_filter') {
           errors.push('Content was filtered by OpenAI safety systems')
           return { hasError: true, errors }
         }
+        // Check for OpenAI organization verification errors
+        if (response.error?.code === 'invalid_organization' || response.error?.type === 'invalid_organization') {
+          errors.push('OpenAI Organization Verification Failed: Invalid organization or insufficient permissions')
+          return { hasError: true, errors }
+        }
+        break
+        
+      case 'xai':
+        // XAI-specific error patterns
+        if (response.error) {
+          const errorMsg = response.error.message || response.error.type || 'Unknown XAI error'
+          const exhaustionResult = this.checkForApiKeyExhaustion(errorMsg, providerId)
+          if (exhaustionResult.isExhausted) {
+            errors.push(`XAI API Key Exhausted: ${exhaustionResult.message}`)
+            return { hasError: true, errors }
+          }
+        }
         break
         
       case 'google':
-        if (response.candidates && response.candidates[0]?.finishReason === 'SAFETY') {
-          errors.push('Content was blocked by Google safety filters')
-          return { hasError: true, errors }
+        if (response.candidates) {
+          // Handle both array and non-array candidates
+          let candidate = null
+          if (Array.isArray(response.candidates)) {
+            candidate = response.candidates[0]
+          } else {
+            candidate = response.candidates
+          }
+          
+          if (candidate?.finishReason === 'SAFETY') {
+            errors.push('Content was blocked by Google safety filters')
+            return { hasError: true, errors }
+          }
         }
         if (response.promptFeedback?.blockReason) {
           errors.push(`Google blocked prompt: ${response.promptFeedback.blockReason}`)
@@ -147,6 +189,82 @@ export class ResponseValidator {
     }
     
     return { hasError: false, errors }
+  }
+  
+  private checkForApiKeyExhaustion(errorMessage: string, providerId: string): { 
+    isExhausted: boolean; 
+    message: string;
+    isPermanent: boolean;
+  } {
+    const msg = errorMessage.toLowerCase()
+    
+    // Common API key exhaustion patterns
+    const exhaustionPatterns = [
+      { pattern: /quota.*exceeded/i, message: 'API quota exceeded', permanent: false },
+      { pattern: /rate.*limit.*exceeded/i, message: 'Rate limit exceeded', permanent: false },
+      { pattern: /insufficient.*credits?/i, message: 'Insufficient credits', permanent: true },
+      { pattern: /credit.*limit.*exceeded/i, message: 'Credit limit exceeded', permanent: true },
+      { pattern: /api.*key.*invalid/i, message: 'Invalid API key', permanent: true },
+      { pattern: /api.*key.*expired/i, message: 'API key expired', permanent: true },
+      { pattern: /unauthorized/i, message: 'Unauthorized API key', permanent: true },
+      { pattern: /forbidden/i, message: 'Access forbidden', permanent: true },
+    ]
+    
+    // Provider-specific patterns
+    const providerPatterns: Record<string, Array<{ pattern: RegExp; message: string; permanent: boolean }>> = {
+      'openai': [
+        { pattern: /organization.*not.*found/i, message: 'OpenAI organization not found or invalid', permanent: true },
+        { pattern: /organization.*inactive/i, message: 'OpenAI organization inactive', permanent: true },
+        { pattern: /billing.*issue/i, message: 'OpenAI billing issue detected', permanent: true },
+        { pattern: /insufficient.*quota/i, message: 'OpenAI API quota insufficient', permanent: false },
+      ],
+      'openai-native': [
+        { pattern: /organization.*not.*found/i, message: 'OpenAI organization not found or invalid', permanent: true },
+        { pattern: /organization.*inactive/i, message: 'OpenAI organization inactive', permanent: true },
+        { pattern: /billing.*issue/i, message: 'OpenAI billing issue detected', permanent: true },
+        { pattern: /insufficient.*quota/i, message: 'OpenAI API quota insufficient', permanent: false },
+      ],
+      'xai': [
+        { pattern: /grok.*unavailable/i, message: 'XAI Grok service unavailable', permanent: false },
+        { pattern: /x\.ai.*quota.*exceeded/i, message: 'XAI quota exceeded', permanent: false },
+        { pattern: /xai.*limit.*reached/i, message: 'XAI usage limit reached', permanent: false },
+        { pattern: /invalid.*x-ai.*key/i, message: 'Invalid XAI API key', permanent: true },
+      ],
+      'anthropic': [
+        { pattern: /claude.*unavailable/i, message: 'Claude service unavailable', permanent: false },
+        { pattern: /anthropic.*quota/i, message: 'Anthropic quota exceeded', permanent: false },
+        { pattern: /credit.*balance.*insufficient/i, message: 'Anthropic credit balance insufficient', permanent: true },
+      ]
+    }
+    
+    // Check common patterns first
+    for (const { pattern, message, permanent } of exhaustionPatterns) {
+      if (pattern.test(errorMessage)) {
+        return {
+          isExhausted: true,
+          message,
+          isPermanent: permanent
+        }
+      }
+    }
+    
+    // Check provider-specific patterns
+    const specificPatterns = providerPatterns[providerId] || []
+    for (const { pattern, message, permanent } of specificPatterns) {
+      if (pattern.test(errorMessage)) {
+        return {
+          isExhausted: true,
+          message,
+          isPermanent: permanent
+        }
+      }
+    }
+    
+    return {
+      isExhausted: false,
+      message: errorMessage,
+      isPermanent: false
+    }
   }
   
   private validateFormat(response: any, format: ProviderResponseFormat): { errors: string[]; warnings: string[] } {
@@ -257,7 +375,21 @@ export class ResponseValidator {
         
       case 'google':
       case 'vertex':
-        return response.candidates?.[0]?.content?.parts?.[0]?.text || null
+        if (response.candidates) {
+          // Handle both array and non-array candidates
+          let candidate = null
+          if (Array.isArray(response.candidates)) {
+            candidate = response.candidates[0]
+          } else {
+            candidate = response.candidates
+          }
+          
+          if (candidate?.content?.parts) {
+            const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
+            return parts[0]?.text || null
+          }
+        }
+        return null
         
       default:
         // Try common patterns
@@ -313,11 +445,36 @@ export class ResponseValidator {
   }
   
   // Static helper methods
+  static checkApiKeyExhaustion(errorMessage: string, providerId: string): { 
+    isExhausted: boolean; 
+    message: string;
+    isPermanent: boolean;
+  } {
+    const validator = new ResponseValidator()
+    return validator.checkForApiKeyExhaustion(errorMessage, providerId)
+  }
+  
   static isStreamingResponse(response: any): boolean {
+    // Check for Google/Gemini candidates structure with array/object flexibility
+    let hasGoogleContent = false
+    if (response.candidates) {
+      let candidate = null
+      if (Array.isArray(response.candidates)) {
+        candidate = response.candidates[0]
+      } else {
+        candidate = response.candidates
+      }
+      
+      if (candidate?.content?.parts) {
+        const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
+        hasGoogleContent = parts[0]?.text !== undefined
+      }
+    }
+    
     return response && (
       response.object === 'chat.completion.chunk' ||
       response.type === 'content_block_delta' ||
-      response.candidates?.[0]?.content?.parts?.[0]?.text !== undefined
+      hasGoogleContent
     )
   }
   

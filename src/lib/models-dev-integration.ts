@@ -689,11 +689,16 @@ class ModelsDevService {
   // Backward compatibility methods for existing CLINE_PROVIDERS
   async getLegacyProviderConfig(providerId: string): Promise<any> {
     const supabase = await this.getSupabaseClient()
-    const { data: provider } = await supabase
+    const { data: provider, error } = await supabase
       .from('providers_registry')
       .select('*')
       .eq('id', providerId)
       .single()
+
+    if (error) {
+      console.warn(`[ModelsDevService] Provider '${providerId}' not found in registry:`, error)
+      return null
+    }
 
     if (!provider) return null
 
@@ -739,11 +744,16 @@ class ModelsDevService {
     
     if (providerId) {
       // Get specific provider with full data
-      const { data: provider } = await supabase
+      const { data: provider, error } = await supabase
         .from('providers_registry')
         .select('*')
         .eq('id', providerId)
         .single()
+
+      if (error) {
+        console.warn(`[ModelsDevService] Provider '${providerId}' not found in rich data query:`, error)
+        return null
+      }
 
       if (!provider) return null
 

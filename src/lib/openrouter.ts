@@ -88,8 +88,20 @@ class OpenRouterClient {
         throw new Error(`Failed to fetch models: ${response.statusText}`)
       }
 
-      const data = await response.json()
-      return data.data || []
+      // Safely parse JSON response
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        throw new Error(`Expected JSON response from OpenRouter, got: ${text.substring(0, 200)}`)
+      }
+
+      try {
+        const data = await response.json()
+        return data.data || []
+      } catch (parseError) {
+        console.error('[OpenRouter] Failed to parse JSON response:', parseError)
+        throw new Error('Invalid JSON response from OpenRouter models API')
+      }
     } catch (error) {
       console.error('[OpenRouter] Error fetching models:', error)
       throw error
@@ -111,12 +123,34 @@ class OpenRouterClient {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(`Failed to create key: ${errorData.error?.message || response.statusText}`)
+        // Safely parse error response
+        let errorMessage = response.statusText
+        const contentType = response.headers.get('content-type') || ''
+        if (contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.error?.message || response.statusText
+          } catch (parseError) {
+            console.warn('[OpenRouter] Failed to parse error response JSON')
+          }
+        }
+        throw new Error(`Failed to create key: ${errorMessage}`)
       }
 
-      const data = await response.json()
-      return data.data
+      // Safely parse success response
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        throw new Error(`Expected JSON response from OpenRouter, got: ${text.substring(0, 200)}`)
+      }
+
+      try {
+        const data = await response.json()
+        return data.data
+      } catch (parseError) {
+        console.error('[OpenRouter] Failed to parse JSON response:', parseError)
+        throw new Error('Invalid JSON response from OpenRouter create key API')
+      }
     } catch (error) {
       console.error('[OpenRouter] Error creating user key:', error)
       throw error
@@ -138,8 +172,20 @@ class OpenRouterClient {
         throw new Error(`Failed to list keys: ${response.statusText}`)
       }
 
-      const data = await response.json()
-      return data.data || []
+      // Safely parse JSON response
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        throw new Error(`Expected JSON response from OpenRouter, got: ${text.substring(0, 200)}`)
+      }
+
+      try {
+        const data = await response.json()
+        return data.data || []
+      } catch (parseError) {
+        console.error('[OpenRouter] Failed to parse JSON response:', parseError)
+        throw new Error('Invalid JSON response from OpenRouter list keys API')
+      }
     } catch (error) {
       console.error('[OpenRouter] Error listing keys:', error)
       throw error
@@ -161,12 +207,34 @@ class OpenRouterClient {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(`Failed to update key: ${errorData.error?.message || response.statusText}`)
+        // Safely parse error response
+        let errorMessage = response.statusText
+        const contentType = response.headers.get('content-type') || ''
+        if (contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.error?.message || response.statusText
+          } catch (parseError) {
+            console.warn('[OpenRouter] Failed to parse error response JSON')
+          }
+        }
+        throw new Error(`Failed to update key: ${errorMessage}`)
       }
 
-      const data = await response.json()
-      return data.data
+      // Safely parse success response
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        throw new Error(`Expected JSON response from OpenRouter, got: ${text.substring(0, 200)}`)
+      }
+
+      try {
+        const data = await response.json()
+        return data.data
+      } catch (parseError) {
+        console.error('[OpenRouter] Failed to parse JSON response:', parseError)
+        throw new Error('Invalid JSON response from OpenRouter update key API')
+      }
     } catch (error) {
       console.error('[OpenRouter] Error updating key:', error)
       throw error
@@ -209,8 +277,20 @@ class OpenRouterClient {
         throw new Error(`Failed to get activity: ${response.statusText}`)
       }
 
-      const data = await response.json()
-      return data.data || []
+      // Safely parse JSON response
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        throw new Error(`Expected JSON response from OpenRouter, got: ${text.substring(0, 200)}`)
+      }
+
+      try {
+        const data = await response.json()
+        return data.data || []
+      } catch (parseError) {
+        console.error('[OpenRouter] Failed to parse JSON response:', parseError)
+        throw new Error('Invalid JSON response from OpenRouter activity API')
+      }
     } catch (error) {
       console.error('[OpenRouter] Error fetching activity:', error)
       throw error
@@ -245,11 +325,33 @@ class OpenRouterClient {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(`Chat completion failed: ${errorData.error?.message || response.statusText}`)
+        // Safely parse error response
+        let errorMessage = response.statusText
+        const contentType = response.headers.get('content-type') || ''
+        if (contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.error?.message || response.statusText
+          } catch (parseError) {
+            console.warn('[OpenRouter] Failed to parse error response JSON')
+          }
+        }
+        throw new Error(`Chat completion failed: ${errorMessage}`)
       }
 
-      return await response.json()
+      // Safely parse success response
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        throw new Error(`Expected JSON response from OpenRouter, got: ${text.substring(0, 200)}`)
+      }
+
+      try {
+        return await response.json()
+      } catch (parseError) {
+        console.error('[OpenRouter] Failed to parse JSON response:', parseError)
+        throw new Error('Invalid JSON response from OpenRouter chat completion API')
+      }
     } catch (error) {
       console.error('[OpenRouter] Error in chat completion:', error)
       throw error
@@ -306,8 +408,20 @@ class OpenRouterClient {
         throw new Error(`Failed to get key info: ${response.statusText}`)
       }
 
-      const data = await response.json()
-      return data.data
+      // Safely parse JSON response
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        throw new Error(`Expected JSON response from OpenRouter, got: ${text.substring(0, 200)}`)
+      }
+
+      try {
+        const data = await response.json()
+        return data.data
+      } catch (parseError) {
+        console.error('[OpenRouter] Failed to parse JSON response:', parseError)
+        throw new Error('Invalid JSON response from OpenRouter key info API')
+      }
     } catch (error) {
       console.error('[OpenRouter] Error getting key info:', error)
       throw error

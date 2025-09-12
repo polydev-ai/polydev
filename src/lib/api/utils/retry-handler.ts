@@ -1,12 +1,15 @@
 // Retry Handler Implementation
 // Handles automatic retries for failed requests with exponential backoff
 
+import { ResponseValidator } from './response-validator'
+
 export interface RetryConfig {
   maxRetries: number
   backoffMs: number
   retryableErrors: string[]
   maxBackoffMs?: number
   jitter?: boolean
+  providerId?: string // For API key exhaustion checking
 }
 
 export class RetryHandler {

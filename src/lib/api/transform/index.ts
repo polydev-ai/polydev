@@ -261,6 +261,13 @@ export class GoogleTransformer implements MessageTransformer {
   }
   
   transformResponse(response: any): any {
+    // Ensure consistent Google response format
+    if (response.candidates) {
+      // Handle both array and non-array candidates
+      if (!Array.isArray(response.candidates)) {
+        response.candidates = [response.candidates]
+      }
+    }
     return response
   }
   
@@ -271,10 +278,20 @@ export class GoogleTransformer implements MessageTransformer {
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = JSON.parse(line.slice(6))
-          const candidate = data.candidates?.[0]
+          
+          // Handle candidates more robustly - could be array or single object
+          let candidate = null
+          if (data.candidates) {
+            if (Array.isArray(data.candidates)) {
+              candidate = data.candidates[0]
+            } else {
+              candidate = data.candidates
+            }
+          }
           
           if (candidate?.content?.parts) {
-            const text = candidate.content.parts[0]?.text
+            const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
+            const text = parts[0]?.text
             if (text) {
               return {
                 type: 'content',

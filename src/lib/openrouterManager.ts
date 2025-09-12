@@ -100,19 +100,27 @@ export class OpenRouterManager {
    */
   async checkUserCredits(userId: string, estimatedCost: number): Promise<CreditCheckResult> {
     try {
-      // This would use Supabase MCP in production for better error handling
-      // For now, we'll create a simple implementation
-      
       console.log(`[OpenRouter Manager] Checking credits for user ${userId}, estimated cost: $${estimatedCost}`)
       
-      // In production, this would be:
-      // const userCredits = await mcp.supabase.execute_sql({
-      //   query: "SELECT balance FROM user_credits WHERE user_id = $1",
-      //   params: [userId]
-      // })
-      
-      // For now, assume user has some credits for testing
-      const balance = 10.0 // Mock balance
+      // Get real user credits from database
+      const supabase = await createClient()
+      const { data: userCredits, error } = await supabase
+        .from('user_credits')
+        .select('balance')
+        .eq('user_id', userId)
+        .single()
+
+      if (error || !userCredits) {
+        console.warn(`[OpenRouter Manager] No credits found for user ${userId}:`, error)
+        return {
+          hasCredits: false,
+          balance: 0,
+          canAfford: false,
+          estimatedCost
+        }
+      }
+
+      const balance = parseFloat(userCredits.balance.toString())
       const hasCredits = balance > 0
       const canAfford = balance >= estimatedCost
 

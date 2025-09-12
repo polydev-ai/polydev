@@ -178,7 +178,23 @@ async function callGemini(prompt: string, apiKey: string, model: string = 'gemin
 
     return {
       model,
-      content: data.candidates[0]?.content?.parts[0]?.text || '',
+      content: (() => {
+        // Handle both array and non-array candidates
+        if (data.candidates) {
+          let candidate = null
+          if (Array.isArray(data.candidates)) {
+            candidate = data.candidates[0]
+          } else {
+            candidate = data.candidates
+          }
+          
+          if (candidate?.content?.parts) {
+            const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
+            return parts[0]?.text || ''
+          }
+        }
+        return ''
+      })(),
       tokens_used: data.usageMetadata?.totalTokenCount,
       latency_ms: endTime - startTime
     }

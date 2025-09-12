@@ -281,7 +281,23 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
     case 'gemini':
     case 'google':
       return {
-        content: data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response',
+        content: (() => {
+          // Handle both array and non-array candidates
+          if (data.candidates) {
+            let candidate = null
+            if (Array.isArray(data.candidates)) {
+              candidate = data.candidates[0]
+            } else {
+              candidate = data.candidates
+            }
+            
+            if (candidate?.content?.parts) {
+              const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
+              return parts[0]?.text || 'No response'
+            }
+          }
+          return 'No response'
+        })(),
         tokens_used: data.usageMetadata?.totalTokenCount || 0
       }
     

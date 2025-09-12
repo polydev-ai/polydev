@@ -74,18 +74,30 @@ export abstract class BaseEnhancedHandler implements ApiHandler {
     return this.retryHandler.executeWithRetry(async () => {
       const response = await this.makeRequest(options)
       
-      // Validate response
+      // Validate response only if it's JSON
       if (response.ok) {
-        const responseData = await response.clone().json()
-        const validation = this.responseValidator.validateResponse(responseData, this.providerId, options.model)
+        const contentType = response.headers.get('content-type') || ''
         
-        if (!validation.isValid) {
-          console.warn(`Response validation failed for ${this.providerId}:`, validation.errors)
-          // Continue with response but log issues
-        }
-        
-        if (validation.warnings.length > 0) {
-          console.warn(`Response validation warnings for ${this.providerId}:`, validation.warnings)
+        // Only parse as JSON if content-type indicates JSON
+        if (contentType.includes('application/json')) {
+          try {
+            const responseData = await response.clone().json()
+            const validation = this.responseValidator.validateResponse(responseData, this.providerId, options.model)
+            
+            if (!validation.isValid) {
+              console.warn(`Response validation failed for ${this.providerId}:`, validation.errors)
+              // Continue with response but log issues
+            }
+            
+            if (validation.warnings.length > 0) {
+              console.warn(`Response validation warnings for ${this.providerId}:`, validation.warnings)
+            }
+          } catch (parseError) {
+            console.warn(`Failed to parse JSON response from ${this.providerId}:`, parseError)
+            // Don't fail the entire request for parsing errors in validation
+          }
+        } else {
+          console.debug(`Skipping JSON validation for ${this.providerId} - content-type: ${contentType}`)
         }
       }
       

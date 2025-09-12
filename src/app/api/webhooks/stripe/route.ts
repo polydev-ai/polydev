@@ -9,12 +9,15 @@ import {
   sendPaymentSucceededEmail,
   sendCreditPurchaseEmail
 } from '@/lib/resendService'
+import OpenRouterClient from '@/lib/openrouter'
+import CreditManager from '@/lib/creditManager'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil'
 })
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+const creditManager = new CreditManager()
 
 export async function POST(request: NextRequest) {
   try {
@@ -204,6 +207,15 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       if (creditError) {
         console.error('[Stripe Webhook] Failed to add credits:', creditError)
         return
+      }
+
+      // Create OpenRouter API key for the user if they don't have one
+      try {
+        await creditManager.createUserOpenRouterKey(user.id)
+        console.log(`[Stripe Webhook] OpenRouter key provisioned for user ${user.id}`)
+      } catch (keyError) {
+        console.error('[Stripe Webhook] Failed to provision OpenRouter key:', keyError)
+        // Don't return - credits were added successfully, key can be retried later
       }
 
       // Send credit purchase email notification

@@ -4,6 +4,7 @@ import { apiManager } from '@/lib/api'
 import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 import { modelsDevService } from '@/lib/models-dev-integration'
+import { ResponseValidator } from '@/lib/api/utils/response-validator'
 
 // Generate a title from conversation context using AI
 async function generateConversationTitle(userMessage: string, assistantResponse?: string): Promise<string> {
@@ -53,7 +54,20 @@ Just return the title, nothing else:`
       })
 
       if (titleResponse.ok) {
-        const titleData = await titleResponse.json()
+        // Safely parse title generation response
+        let titleData
+        const contentType = titleResponse.headers.get('content-type') || ''
+        if (contentType.includes('application/json')) {
+          try {
+            titleData = await titleResponse.json()
+          } catch (parseError) {
+            console.warn(`[Title Generation] Failed to parse OpenAI title response:`, parseError)
+            throw new Error('Failed to generate title - invalid response format')
+          }
+        } else {
+          console.warn(`[Title Generation] OpenAI returned non-JSON response with content-type: ${contentType}`)
+          throw new Error('Failed to generate title - expected JSON response')
+        }
         const generatedTitle = titleData.choices?.[0]?.message?.content?.trim()
         
         if (generatedTitle && generatedTitle.length > 0 && generatedTitle.length <= 60) {
@@ -150,10 +164,16 @@ function parseUsageData(response: any): any {
     return usage
   }
   
-  // Try to extract from candidates array (Gemini specific)
-  if (response.candidates && Array.isArray(response.candidates) && response.candidates[0]) {
-    const candidate = response.candidates[0]
-    if (candidate.tokenCount) {
+  // Try to extract from candidates (Gemini specific) - handle both array and non-array
+  if (response.candidates) {
+    let candidate = null
+    if (Array.isArray(response.candidates)) {
+      candidate = response.candidates[0]
+    } else {
+      candidate = response.candidates
+    }
+    
+    if (candidate && candidate.tokenCount) {
       const usage = {
         prompt_tokens: 0, // Not available in this format
         completion_tokens: candidate.tokenCount || 0,
@@ -356,6 +376,9 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
 }
 
 export async function POST(request: NextRequest) {
+  // Declare stream outside try block for catch block access
+  let stream = false
+  
   try {
     const authResult = await authenticateRequest(request)
     if (!authResult) {
@@ -365,9 +388,10 @@ export async function POST(request: NextRequest) {
     const { user, preferences } = authResult
     const supabase = await createClient()
     
-    // Parse request body - support both OpenAI format and Polydev format
+    // Parse request body - support both OpenAI format and Polydev format  
     const body = await request.json()
-    let { messages, model, models, temperature = 0.7, max_tokens = 65536, stream = false, reasoning_effort } = body
+    let { messages, model, models, temperature = 0.7, max_tokens = 65536, reasoning_effort } = body
+    stream = body.stream || false
     
     // Validate and sanitize messages to prevent transformation errors
     if (!messages || !Array.isArray(messages)) {
@@ -659,7 +683,21 @@ export async function POST(request: NextRequest) {
               
               response = await handler.createMessage(messageParams)
               
-              const responseData = await response.json()
+              // Safely parse CLI response
+              let responseData
+              const contentType = response.headers.get('content-type') || ''
+              if (contentType.includes('application/json')) {
+                try {
+                  responseData = await response.json()
+                } catch (parseError) {
+                  console.error(`[JSON Parse Error] Failed to parse CLI response from ${handlerName}:`, parseError)
+                  throw new Error(`Invalid JSON response from CLI handler ${handlerName}`)
+                }
+              } else {
+                console.error(`[Response Error] CLI handler ${handlerName} returned non-JSON response with content-type: ${contentType}`)
+                const textResult = await response.text()
+                throw new Error(`Expected JSON response from CLI handler ${handlerName}, got: ${textResult.substring(0, 200)}`)
+              }
               
               // Calculate pricing for CLI responses if available
               const usage = parseUsageData(responseData) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
@@ -754,7 +792,22 @@ export async function POST(request: NextRequest) {
             })
             
             response = await apiManager.createMessage(selectedProvider, apiOptions)
-            const result = await response.json()
+            
+            // Safely parse response - check content type first
+            let result
+            const contentType = response.headers.get('content-type') || ''
+            if (contentType.includes('application/json')) {
+              try {
+                result = await response.json()
+              } catch (parseError) {
+                console.error(`[JSON Parse Error] Failed to parse ${selectedProvider} response:`, parseError)
+                throw new Error(`Invalid JSON response from ${selectedProvider}`)
+              }
+            } else {
+              console.error(`[Response Error] ${selectedProvider} returned non-JSON response with content-type: ${contentType}`)
+              const textResult = await response.text()
+              throw new Error(`Expected JSON response from ${selectedProvider}, got: ${textResult.substring(0, 200)}`)
+            }
             
             console.log(`[debug] ${selectedProvider} API response:`, {
               ok: response.ok,
@@ -777,9 +830,19 @@ export async function POST(request: NextRequest) {
             } else if (result.choices?.[0]?.message?.content) {
               // OpenAI format
               content = result.choices[0].message.content
-            } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-              // Google Gemini format
-              content = result.candidates[0].content.parts[0].text
+            } else if (result.candidates) {
+              // Google Gemini format - handle both array and non-array candidates
+              let candidate = null
+              if (Array.isArray(result.candidates)) {
+                candidate = result.candidates[0]
+              } else {
+                candidate = result.candidates
+              }
+              
+              if (candidate?.content?.parts) {
+                const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
+                content = parts[0]?.text || ''
+              }
             } else if (typeof result === 'string') {
               // Plain text response
               content = result
@@ -835,7 +898,22 @@ export async function POST(request: NextRequest) {
             
             // Make API call through OpenRouter
             response = await apiManager.createMessage('openai', apiOptions)
-            const result = await response.json()
+            
+            // Safely parse OpenRouter response
+            let result
+            const contentType = response.headers.get('content-type') || ''
+            if (contentType.includes('application/json')) {
+              try {
+                result = await response.json()
+              } catch (parseError) {
+                console.error(`[JSON Parse Error] Failed to parse OpenRouter response:`, parseError)
+                throw new Error(`Invalid JSON response from OpenRouter`)
+              }
+            } else {
+              console.error(`[Response Error] OpenRouter returned non-JSON response with content-type: ${contentType}`)
+              const textResult = await response.text()
+              throw new Error(`Expected JSON response from OpenRouter, got: ${textResult.substring(0, 200)}`)
+            }
             
             if (!response.ok) {
               throw new Error(result.error?.message || 'OpenRouter API call failed')
@@ -894,14 +972,26 @@ export async function POST(request: NextRequest) {
         } catch (error: any) {
           console.error(`Error with ${selectedProvider} for model ${modelId}:`, error)
           
+          // Check for API key exhaustion before attempting fallbacks
+          const exhaustionCheck = ResponseValidator.checkApiKeyExhaustion(error.message || '', requiredProvider)
+          if (exhaustionCheck.isExhausted) {
+            console.warn(`[API Key Exhaustion] ${requiredProvider}: ${exhaustionCheck.message}`)
+            
+            // Skip fallbacks to same provider if it's a permanent issue
+            if (exhaustionCheck.isPermanent && fallbackMethod === 'cli') {
+              console.log(`Permanent exhaustion detected for ${requiredProvider}, skipping same-provider API fallback`)
+              // Will proceed to OpenRouter fallback instead
+            }
+          }
+          
           // FALLBACK LOGIC: If CLI fails, try API keys, then credits
           if (fallbackMethod === 'cli') {
             console.log(`CLI failed for ${modelId}, trying API fallback...`)
             console.log(`Checking if ${requiredProvider} has API key configured...`)
             console.log(`Provider configs for ${requiredProvider}:`, providerConfigs[requiredProvider] || 'NOT FOUND')
             
-            // Try API key for the same provider first
-            if (providerConfigs[requiredProvider]?.api) {
+            // Try API key for the same provider first (unless permanently exhausted)
+            if (providerConfigs[requiredProvider]?.api && (!exhaustionCheck.isExhausted || !exhaustionCheck.isPermanent)) {
               console.log(`✅ ${requiredProvider} API key found, attempting API fallback...`)
               try {
                 const apiConfig = providerConfigs[requiredProvider].api
@@ -928,7 +1018,22 @@ export async function POST(request: NextRequest) {
                 }
                 
                 const apiResponse = await apiManager.createMessage(apiConfig.provider || requiredProvider, apiOptions)
-                const apiResult = await apiResponse.json()
+                
+                // Safely parse fallback API response
+                let apiResult
+                const contentType = apiResponse.headers.get('content-type') || ''
+                if (contentType.includes('application/json')) {
+                  try {
+                    apiResult = await apiResponse.json()
+                  } catch (parseError) {
+                    console.error(`[JSON Parse Error] Failed to parse ${requiredProvider} fallback response:`, parseError)
+                    throw new Error(`Invalid JSON response from ${requiredProvider} fallback`)
+                  }
+                } else {
+                  console.error(`[Response Error] ${requiredProvider} fallback returned non-JSON response with content-type: ${contentType}`)
+                  const textResult = await apiResponse.text()
+                  throw new Error(`Expected JSON response from ${requiredProvider} fallback, got: ${textResult.substring(0, 200)}`)
+                }
                 
                 if (apiResponse.ok) {
                   console.log(`API fallback successful for ${modelId} with ${requiredProvider}`)
@@ -955,9 +1060,17 @@ export async function POST(request: NextRequest) {
                     fallback_method: 'api'
                   }
                 }
-              } catch (apiError) {
+              } catch (apiError: any) {
                 console.error(`API fallback also failed for ${modelId}:`, apiError)
+                
+                // Check for API key exhaustion in API fallback
+                const apiExhaustionCheck = ResponseValidator.checkApiKeyExhaustion(apiError.message || '', requiredProvider)
+                if (apiExhaustionCheck.isExhausted) {
+                  console.warn(`[API Key Exhaustion] ${requiredProvider} API: ${apiExhaustionCheck.message}`)
+                }
               }
+            } else if (exhaustionCheck.isExhausted && exhaustionCheck.isPermanent) {
+              console.log(`❌ ${requiredProvider} permanently exhausted, skipping API fallback for this provider`)
             } else {
               console.log(`❌ No ${requiredProvider} API key configured, skipping API fallback for this provider`)
             }
@@ -981,7 +1094,22 @@ export async function POST(request: NextRequest) {
                 }
                 
                 const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
-                const apiResult = await apiResponse.json()
+                
+                // Safely parse OpenRouter API fallback response
+                let apiResult
+                const contentType = apiResponse.headers.get('content-type') || ''
+                if (contentType.includes('application/json')) {
+                  try {
+                    apiResult = await apiResponse.json()
+                  } catch (parseError) {
+                    console.error(`[JSON Parse Error] Failed to parse OpenRouter API fallback response:`, parseError)
+                    throw new Error(`Invalid JSON response from OpenRouter API fallback`)
+                  }
+                } else {
+                  console.error(`[Response Error] OpenRouter API fallback returned non-JSON response with content-type: ${contentType}`)
+                  const textResult = await apiResponse.text()
+                  throw new Error(`Expected JSON response from OpenRouter API fallback, got: ${textResult.substring(0, 200)}`)
+                }
                 
                 if (apiResponse.ok) {
                   console.log(`OpenRouter API fallback successful for ${modelId}`)
@@ -993,8 +1121,14 @@ export async function POST(request: NextRequest) {
                     fallback_method: 'api'
                   }
                 }
-              } catch (openrouterError) {
+              } catch (openrouterError: any) {
                 console.error(`OpenRouter API fallback also failed for ${modelId}:`, openrouterError)
+                
+                // Check for API key exhaustion in OpenRouter API fallback
+                const openrouterExhaustionCheck = ResponseValidator.checkApiKeyExhaustion(openrouterError.message || '', 'openrouter')
+                if (openrouterExhaustionCheck.isExhausted) {
+                  console.warn(`[API Key Exhaustion] OpenRouter API: ${openrouterExhaustionCheck.message}`)
+                }
               }
             } else {
               console.log(`❌ No OpenRouter API key configured, will try OpenRouter credits fallback`)
@@ -1020,7 +1154,22 @@ export async function POST(request: NextRequest) {
                   }
                   
                   const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
-                  const apiResult = await apiResponse.json()
+                  
+                  // Safely parse OpenRouter credits fallback response
+                  let apiResult
+                  const contentType = apiResponse.headers.get('content-type') || ''
+                  if (contentType.includes('application/json')) {
+                    try {
+                      apiResult = await apiResponse.json()
+                    } catch (parseError) {
+                      console.error(`[JSON Parse Error] Failed to parse OpenRouter credits fallback response:`, parseError)
+                      throw new Error(`Invalid JSON response from OpenRouter credits fallback`)
+                    }
+                  } else {
+                    console.error(`[Response Error] OpenRouter credits fallback returned non-JSON response with content-type: ${contentType}`)
+                    const textResult = await apiResponse.text()
+                    throw new Error(`Expected JSON response from OpenRouter credits fallback, got: ${textResult.substring(0, 200)}`)
+                  }
                   
                   if (apiResponse.ok) {
                     console.log(`OpenRouter credits fallback successful for ${modelId}`)
@@ -1049,19 +1198,36 @@ export async function POST(request: NextRequest) {
                     }
                   }
                 }
-              } catch (creditsError) {
+              } catch (creditsError: any) {
                 console.error(`OpenRouter credits fallback also failed for ${modelId}:`, creditsError)
+                
+                // Check for API key exhaustion in OpenRouter credits fallback
+                const creditsExhaustionCheck = ResponseValidator.checkApiKeyExhaustion(creditsError.message || '', 'openrouter')
+                if (creditsExhaustionCheck.isExhausted) {
+                  console.warn(`[API Key Exhaustion] OpenRouter Credits: ${creditsExhaustionCheck.message}`)
+                }
               }
             }
           
-          // All fallbacks failed, return error
+          // All fallbacks failed, return error with exhaustion details if applicable
+          let errorMessage = `${selectedProvider} failed: ${error.message}. All fallback methods also failed.`
+          if (exhaustionCheck.isExhausted) {
+            if (exhaustionCheck.isPermanent) {
+              errorMessage = `${selectedProvider} API key exhausted (permanent): ${exhaustionCheck.message}. Please check your API key configuration or billing status.`
+            } else {
+              errorMessage = `${selectedProvider} temporarily unavailable: ${exhaustionCheck.message}. Please try again later.`
+            }
+          }
+          
           return {
             model: modelId,
             content: '',
-            error: `${selectedProvider} failed: ${error.message}. All fallback methods also failed.`,
+            error: errorMessage,
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
             provider: `${selectedProvider} (${fallbackMethod.toUpperCase()})`,
-            fallback_method: fallbackMethod
+            fallback_method: fallbackMethod,
+            exhaustion_detected: exhaustionCheck.isExhausted,
+            exhaustion_permanent: exhaustionCheck.isPermanent
           }
         }
       })
@@ -1347,7 +1513,7 @@ export async function POST(request: NextRequest) {
                 content: response.content || '',
                 provider: response.provider,
                 metadata: {
-                  cost_info: response.cost_info,
+                  cost_info: response.costInfo || null,
                   source_type: response.fallback_method || 'api'
                 }
               }
