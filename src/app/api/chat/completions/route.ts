@@ -125,6 +125,42 @@ Just return the title, nothing else:`
 function parseUsageData(response: any): any {
   console.log(`[parseUsageData] Raw response:`, JSON.stringify(response, null, 2))
   
+  // Handle Google/Gemini streaming array format - get usage from last chunk
+  if (Array.isArray(response) && response.length > 0) {
+    console.log(`[parseUsageData] Processing Gemini streaming array with ${response.length} chunks`)
+    // Find the last chunk with usage data (most complete usage info)
+    for (let i = response.length - 1; i >= 0; i--) {
+      const chunk = response[i]
+      if (chunk?.usageMetadata) {
+        const usage = {
+          prompt_tokens: chunk.usageMetadata.promptTokenCount || 0,
+          completion_tokens: chunk.usageMetadata.candidatesTokenCount || 0,
+          total_tokens: chunk.usageMetadata.totalTokenCount || 0
+        }
+        console.log(`[parseUsageData] Found Gemini streaming usage in chunk ${i}:`, usage)
+        return usage
+      }
+    }
+    
+    // If no usage found in any chunk, try to extract from the last chunk's candidates
+    const lastChunk = response[response.length - 1]
+    if (lastChunk?.candidates?.[0]) {
+      const candidate = lastChunk.candidates[0]
+      if (candidate.content?.parts) {
+        // Estimate tokens based on content length (rough approximation)
+        const text = candidate.content.parts.map((p: any) => p.text || '').join('')
+        const estimatedTokens = Math.ceil(text.length / 4) // Rough estimate: 4 chars per token
+        const usage = {
+          prompt_tokens: 0, // Not available in streaming
+          completion_tokens: estimatedTokens,
+          total_tokens: estimatedTokens
+        }
+        console.log(`[parseUsageData] Estimated usage from Gemini streaming content:`, usage)
+        return usage
+      }
+    }
+  }
+  
   // Standard OpenAI format
   if (response.usage) {
     console.log(`[parseUsageData] Found OpenAI usage format:`, response.usage)
@@ -906,9 +942,9 @@ export async function POST(request: NextRequest) {
             const usage = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
             let cost = null
             console.log(`[DEBUG API Cost] Model: ${modelId}, Usage:`, usage, `ModelPricing:`, modelPricing)
-            if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
-              const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
-              const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
+            if (modelPricing && usage && (usage.prompt_tokens > 0 || usage.completion_tokens > 0)) {
+              const inputCost = ((usage.prompt_tokens || 0) / 1000000) * modelPricing.input
+              const outputCost = ((usage.completion_tokens || 0) / 1000000) * modelPricing.output
               cost = {
                 input_cost: Number(inputCost.toFixed(6)),
                 output_cost: Number(outputCost.toFixed(6)),
@@ -916,7 +952,7 @@ export async function POST(request: NextRequest) {
               }
               console.log(`[DEBUG API Cost] Calculated cost:`, cost)
             } else {
-              console.log(`[DEBUG API Cost] Cost calculation failed - modelPricing:`, !!modelPricing, `usage tokens:`, usage.prompt_tokens, usage.completion_tokens)
+              console.log(`[DEBUG API Cost] Cost calculation failed - modelPricing:`, !!modelPricing, `usage tokens:`, usage?.prompt_tokens || 0, usage?.completion_tokens || 0)
             }
 
             return {

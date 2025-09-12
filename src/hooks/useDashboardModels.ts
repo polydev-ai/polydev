@@ -482,8 +482,35 @@ export function useDashboardModels() {
           }
         }
 
+        // Remove duplicates based on id + provider combination
+        const uniqueModels = dashboardModels.reduce((acc: DashboardModel[], current) => {
+          const existingModel = acc.find(model => 
+            model.id === current.id && model.provider === current.provider
+          )
+          
+          if (!existingModel) {
+            acc.push(current)
+          } else {
+            // If duplicate found, prefer the one with more complete information (has pricing, features, etc.)
+            const currentScore = (current.price ? 1 : 0) + (current.features ? 1 : 0) + (current.contextWindow ? 1 : 0)
+            const existingScore = (existingModel.price ? 1 : 0) + (existingModel.features ? 1 : 0) + (existingModel.contextWindow ? 1 : 0)
+            
+            if (currentScore > existingScore) {
+              // Replace existing with current (more complete)
+              const index = acc.findIndex(model => model.id === current.id && model.provider === current.provider)
+              if (index !== -1) {
+                acc[index] = current
+              }
+            }
+          }
+          
+          return acc
+        }, [])
+        
+        console.log(`[useDashboardModels] Deduplicated models from ${dashboardModels.length} to ${uniqueModels.length}`)
+
         // Sort models by provider preference order and then by name
-        dashboardModels.sort((a, b) => {
+        uniqueModels.sort((a, b) => {
           const modelPreferences = preferences?.model_preferences || {}
           const aProviderPref = modelPreferences[a.provider]
           const bProviderPref = modelPreferences[b.provider]
@@ -499,7 +526,7 @@ export function useDashboardModels() {
           return a.name.localeCompare(b.name)
         })
 
-        setModels(dashboardModels)
+        setModels(uniqueModels)
         setError(null)
       } catch (err) {
         console.error('Error fetching dashboard models:', err)
