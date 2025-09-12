@@ -987,7 +987,7 @@ export async function POST(request: NextRequest) {
                     finalModel = parsed.model
                   }
                 } catch (parseError) {
-                  console.warn(`[Streaming] Failed to parse OpenRouter streaming chunk: ${data}`)
+                  console.warn(`[Streaming] Failed to parse OpenRouter streaming chunk: ${chunk}`)
                 }
               }
               
