@@ -715,7 +715,7 @@ export async function POST(request: NextRequest) {
                 }
               }
 
-              // If no usage in stream, make a non-streaming call to fetch usage
+              // If no usage in stream, make a non-streaming call to fetch usage (and content fallback)
               try {
                 const usageOptions = { ...apiOptions, stream: false }
                 const usageResp = await apiManager.createMessage(selectedProvider, usageOptions)
@@ -725,6 +725,32 @@ export async function POST(request: NextRequest) {
                   const usage = parseUsageData(payload) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                   collected[friendlyModelId].usage = usage
                   collected[friendlyModelId].modelResolved = (payload && (payload.model || payload?.choices?.[0]?.model)) || actualModelId
+
+                  // Fallback content extraction if streaming yielded no content
+                  if (!collected[friendlyModelId].content || collected[friendlyModelId].content.length === 0) {
+                    let fallbackContent = ''
+                    try {
+                      if (typeof payload === 'object') {
+                        // Google/Gemini format
+                        if (payload.candidates?.[0]?.content?.parts) {
+                          const parts = Array.isArray(payload.candidates[0].content.parts)
+                            ? payload.candidates[0].content.parts
+                            : [payload.candidates[0].content.parts]
+                          fallbackContent = parts.map((p: any) => p?.text || '').join('')
+                        }
+                        // OpenAI-like format
+                        else if (payload.choices?.[0]?.message?.content) {
+                          fallbackContent = payload.choices[0].message.content
+                        }
+                      } else if (typeof payload === 'string') {
+                        fallbackContent = payload
+                      }
+                    } catch {}
+
+                    if (fallbackContent) {
+                      collected[friendlyModelId].content = fallbackContent
+                    }
+                  }
                 }
               } catch {}
 

@@ -272,52 +272,69 @@ export class GoogleTransformer implements MessageTransformer {
   }
   
   transformStreamChunk(chunk: string): any {
+    const events: any[] = []
     try {
-      const tryParse = (raw: string) => {
-        const data = JSON.parse(raw)
-        let candidate: any = null
-        if (data.candidates) {
-          candidate = Array.isArray(data.candidates) ? data.candidates[0] : data.candidates
+      const emitFromData = (data: any) => {
+        const items: any[] = []
+        // Handle array of responses (some implementations batch multiple)
+        if (Array.isArray(data)) {
+          for (const obj of data) {
+            items.push(...emitFromData(obj))
+          }
+          return items
         }
+        // Single response object
+        const candidate = Array.isArray(data?.candidates) ? data.candidates[0] : data?.candidates
         if (candidate?.content?.parts) {
           const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
-          const text = parts[0]?.text
-          if (text) {
-            return { type: 'content', content: text }
+          for (const p of parts) {
+            if (typeof p?.text === 'string' && p.text.length) {
+              items.push({ type: 'content', content: p.text })
+            }
           }
         }
         if (candidate?.finishReason) {
-          return { type: 'done' }
+          items.push({ type: 'done' })
         }
-        return null
+        return items
       }
 
-      // Support either normalized 'data: <json>' or raw JSON
+      // Support normalized 'data: <json>' lines
       if (chunk.startsWith('data: ')) {
         const raw = chunk.slice(6).trim()
         if (raw === '[DONE]') return { type: 'done' }
-        return tryParse(raw)
+        const data = JSON.parse(raw)
+        const items = emitFromData(data)
+        if (items.length === 1) return items[0]
+        if (items.length > 1) return items
+        return null
       }
 
+      // Raw JSON fallback (some transports send JSON-lines)
       const trimmed = chunk.trim()
       if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        return tryParse(trimmed)
+        const data = JSON.parse(trimmed)
+        const items = emitFromData(data)
+        if (items.length === 1) return items[0]
+        if (items.length > 1) return items
+        return null
       }
 
-      // Fallback: attempt to find a JSON object within multi-line input
+      // Multi-line fallback: scan for embedded data lines
       const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean)
       for (const line of lines) {
+        if (!line) continue
+        if (line === 'data: [DONE]') return { type: 'done' }
         if (line.startsWith('data: ')) {
-          const raw = line.slice(6).trim()
-          if (raw === '[DONE]') return { type: 'done' }
-          const parsed = tryParse(raw)
-          if (parsed) return parsed
-        } else if (line.startsWith('{') || line.startsWith('[')) {
-          const parsed = tryParse(line)
-          if (parsed) return parsed
+          try {
+            const data = JSON.parse(line.slice(6).trim())
+            const items = emitFromData(data)
+            events.push(...items)
+          } catch {}
         }
       }
-
+      if (events.length === 1) return events[0]
+      if (events.length > 1) return events
       return null
     } catch (error) {
       console.error('Failed to parse Google SSE chunk:', error)

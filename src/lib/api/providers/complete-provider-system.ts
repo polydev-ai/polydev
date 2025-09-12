@@ -733,7 +733,9 @@ export class UniversalProviderHandler {
         if (config.streamParser) {
           // Pass a normalized 'data: <json>' string to parsers expecting that format
           const parsed = config.streamParser(`data: ${payload}`)
-          return parsed ? [parsed] : []
+          if (!parsed) return []
+          if (Array.isArray(parsed)) return parsed
+          return [parsed]
         }
 
         // Fallback: try JSON parse and emit a generic content chunk if possible
