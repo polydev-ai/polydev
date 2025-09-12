@@ -167,6 +167,21 @@ function parseUsageData(response: any): any {
     return response.usage
   }
   
+  // Handle Groq-specific responses where usage might be missing but content exists
+  if (response.choices && response.choices[0]?.message?.content && !response.usage) {
+    const content = response.choices[0].message.content
+    // Estimate tokens for Groq when usage is missing (common for kimi-k2-instruct)
+    const estimatedCompletionTokens = Math.ceil(content.length * 0.25) // ~4 chars per token
+    const estimatedPromptTokens = Math.ceil(200 * 0.25) // Rough estimate for typical prompt
+    const usage = {
+      prompt_tokens: estimatedPromptTokens,
+      completion_tokens: estimatedCompletionTokens,
+      total_tokens: estimatedPromptTokens + estimatedCompletionTokens
+    }
+    console.log(`[parseUsageData] Groq response missing usage data, estimated from content:`, usage)
+    return usage
+  }
+  
   // Gemini format with usage_metadata (snake_case)
   if (response.usage_metadata) {
     const usage = {
@@ -220,8 +235,37 @@ function parseUsageData(response: any): any {
     }
   }
   
-  console.log(`[parseUsageData] No usage data found in response`)
-  // Return null if no usage data found - let caller handle
+  // Final fallback: If we have any content but no usage, estimate tokens
+  let fallbackContent = null
+  
+  // Try to extract content for estimation
+  if (response.choices?.[0]?.message?.content) {
+    fallbackContent = response.choices[0].message.content
+  } else if (response.content?.[0]?.text) {
+    fallbackContent = response.content[0].text
+  } else if (typeof response === 'string') {
+    fallbackContent = response
+  } else if (response.candidates?.[0]?.content?.parts) {
+    const parts = Array.isArray(response.candidates[0].content.parts) 
+      ? response.candidates[0].content.parts 
+      : [response.candidates[0].content.parts]
+    fallbackContent = parts.map((p: any) => p?.text || '').join('')
+  }
+  
+  if (fallbackContent && fallbackContent.length > 0) {
+    const estimatedCompletionTokens = Math.ceil(fallbackContent.length * 0.25)
+    const estimatedPromptTokens = Math.ceil(200 * 0.25) // Conservative estimate
+    const usage = {
+      prompt_tokens: estimatedPromptTokens,
+      completion_tokens: estimatedCompletionTokens,
+      total_tokens: estimatedPromptTokens + estimatedCompletionTokens
+    }
+    console.log(`[parseUsageData] No usage data found, estimated from fallback content:`, usage)
+    return usage
+  }
+  
+  console.log(`[parseUsageData] No usage data found and no content to estimate from`)
+  // Return null if no usage data found and no content to estimate from
   return null
 }
 
@@ -914,14 +958,33 @@ export async function POST(request: NextRequest) {
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
         }
         
-        // STEP 3: Check if user has OpenRouter as API provider for this model
-        // Only use OpenRouter if the user's preferred provider IS OpenRouter, not as a fallback
-        if (!selectedProvider && requiredProvider === 'openrouter' && providerConfigs['openrouter']?.api) {
-          selectedProvider = 'openrouter'
-          selectedConfig = providerConfigs['openrouter'].api
-          fallbackMethod = 'api'
-          // Resolve OpenRouter-specific model ID
-          actualModelId = await resolveProviderModelId(modelId, 'openrouter')
+        // STEP 3: If user's preferred provider IS OpenRouter
+        if (!selectedProvider && requiredProvider === 'openrouter') {
+          // Prefer per-user credits key if present
+          let userCreditsKey: string | null = null
+          try {
+            const { data: userOpenRouterKey } = await supabase
+              .from('openrouter_user_keys')
+              .select('openrouter_key_hash, is_active')
+              .eq('user_id', user.id)
+              .eq('is_active', true)
+              .single()
+            if (userOpenRouterKey?.openrouter_key_hash) userCreditsKey = userOpenRouterKey.openrouter_key_hash
+          } catch {}
+
+          const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
+
+          if (userCreditsKey && openrouterModelId) {
+            selectedProvider = 'openrouter'
+            selectedConfig = { type: 'credits', priority: 3, apiKey: userCreditsKey }
+            fallbackMethod = 'credits'
+            actualModelId = openrouterModelId
+          } else if (providerConfigs['openrouter']?.api) {
+            selectedProvider = 'openrouter'
+            selectedConfig = providerConfigs['openrouter'].api
+            fallbackMethod = 'api'
+            actualModelId = openrouterModelId || modelId
+          }
         }
         
         // STEP 4: PRIORITY 3 - OpenRouter Credits (lowest priority, last resort)
