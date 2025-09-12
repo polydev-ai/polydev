@@ -108,11 +108,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 })
     }
 
-    // Transform the data to include message counts
+    // Transform the data to include message counts and filter out empty sessions
     const transformedSessions = sessions?.map(session => ({
       ...session,
       message_count: session.message_count?.[0]?.count || 0
-    })) || []
+    })).filter(session => session.message_count > 0) || []
 
     return NextResponse.json({ sessions: transformedSessions })
 
