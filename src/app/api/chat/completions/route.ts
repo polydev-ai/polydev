@@ -571,6 +571,7 @@ export async function POST(request: NextRequest) {
         // Get model-specific limits and pricing from models.dev
         let modelSpecificMaxTokens = 65536 // Default fallback
         let modelPricing: { input: number; output: number } | null = null
+        let modelData: any = null
         if (selectedProvider) {
           try {
             const { modelsDevService } = await import('@/lib/models-dev-integration')
@@ -578,6 +579,15 @@ export async function POST(request: NextRequest) {
             // This ensures we get correct pricing even when falling back to OpenRouter for API calls
             const pricingProvider = requiredProvider || selectedProvider
             const modelLimits = await modelsDevService.getModelLimits(modelId, pricingProvider)
+            
+            // Also get full model data for reasoning capabilities
+            const providers = await modelsDevService.getProviders()
+            const provider = providers.find(p => p.id === pricingProvider)
+            if (provider) {
+              const models = await modelsDevService.getModels(pricingProvider)
+              modelData = models?.find(m => m.id === modelId)
+            }
+            
             if (modelLimits) {
               modelSpecificMaxTokens = modelLimits.maxTokens
               modelPricing = modelLimits.pricing || null
@@ -1141,10 +1151,10 @@ export async function POST(request: NextRequest) {
       } else {
         // Try to get pricing from model limits (uses corrected pricing data)
         try {
-          const modelPricing = await modelsDevService.getModelLimits(response?.model || model, 'openrouter')
-          if (modelPricing) {
-            const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
-            const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
+          const modelLimits = await modelsDevService.getModelLimits(response?.model || model, 'openrouter')
+          if (modelLimits?.pricing) {
+            const inputCost = (usage.prompt_tokens / 1000000) * modelLimits.pricing.input
+            const outputCost = (usage.completion_tokens / 1000000) * modelLimits.pricing.output
             costInfo = {
               input_cost: inputCost,
               output_cost: outputCost,
@@ -1193,8 +1203,8 @@ export async function POST(request: NextRequest) {
     let totalCreditsUsed = 0
     const providerBreakdown: Record<string, any> = {}
     
-    responses.forEach(response => {
-      if (!response || !response.provider) return
+    for (const response of responses) {
+      if (!response || !response.provider) continue
       
       if (response.fallback_method === 'cli') {
         // CLI is free
@@ -1212,10 +1222,10 @@ export async function POST(request: NextRequest) {
       } else {
         // API key usage - calculate cost from model limits (uses corrected pricing data)
         try {
-          const modelPricing = await modelsDevService.getModelLimits(response.model, 'openrouter')
-          if (modelPricing && response.usage) {
-            const inputCost = (response.usage.prompt_tokens / 1000000) * modelPricing.input
-            const outputCost = (response.usage.completion_tokens / 1000000) * modelPricing.output
+          const modelLimits = await modelsDevService.getModelLimits(response.model, 'openrouter')
+          if (modelLimits?.pricing && response.usage) {
+            const inputCost = (response.usage.prompt_tokens / 1000000) * modelLimits.pricing.input
+            const outputCost = (response.usage.completion_tokens / 1000000) * modelLimits.pricing.output
             const responseCost = inputCost + outputCost
             totalCost += responseCost
             
@@ -1229,7 +1239,7 @@ export async function POST(request: NextRequest) {
           console.warn(`Failed to get pricing for ${response.model}:`, error)
         }
       }
-    })
+    }
 
     return NextResponse.json({
       responses,
