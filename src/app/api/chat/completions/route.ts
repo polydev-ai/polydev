@@ -1222,7 +1222,7 @@ export async function POST(request: NextRequest) {
       } else {
         // API key usage - calculate cost from model limits (uses corrected pricing data)
         try {
-          const modelLimits = await modelsDevService.getModelLimits(response.model, 'openrouter')
+          const modelLimits = await modelsDevService.getModelLimits(response.model, response.provider)
           if (modelLimits?.pricing && response.usage) {
             const inputCost = (response.usage.prompt_tokens / 1000000) * modelLimits.pricing.input
             const outputCost = (response.usage.completion_tokens / 1000000) * modelLimits.pricing.output

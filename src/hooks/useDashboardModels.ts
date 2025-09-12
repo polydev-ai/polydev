@@ -216,7 +216,7 @@ export function useDashboardModels() {
                   name: modelData.display_name || modelData.name,
                   provider: providerId,
                   providerName: providerConfig?.name || providerId,
-                  providerLogo: cachedProviderData?.logo || providerConfig?.logo_url,
+                  providerLogo: cachedProviderData?.logo_url || providerConfig?.logo_url,
                   tier: getTierFromProvider(providerId, cliResults, hasApiKey),
                   price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
                     input: modelData.input_cost_per_million / 1000,
