@@ -1104,7 +1104,11 @@ export default function Chat() {
                 ))
               )}
               
-              {(isLoading || isStreaming) && (
+              {(() => {
+                const hasStreamingPlaceholders = messages.some(m => m.id.startsWith('streaming-'))
+                const showModelsPanel = (isLoading || isStreaming) && !hasStreamingPlaceholders
+                return showModelsPanel
+              })() && (
                 <div className="flex justify-start">
                   <div className="max-w-5xl mr-auto w-full">
                     <div className="mb-2 px-4">

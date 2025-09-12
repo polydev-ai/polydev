@@ -556,7 +556,273 @@ export async function POST(request: NextRequest) {
     }
 
     let currentSessionId: string | null = null // For chat history tracking
-    
+
+    // If client requested streaming, stream incrementally per provider/model
+    if (stream) {
+      const encoder = new TextEncoder()
+
+      // Helper to choose provider + config for a model (CLI > API > OpenRouter credits)
+      const selectProviderForModel = async (modelId: string) => {
+        const requiredProvider = await getProviderFromModel(modelId, supabase, user.id)
+        let selectedProvider: string | null = null
+        let selectedConfig: any = null
+        let fallbackMethod: 'cli' | 'api' | 'credits' = 'api'
+        let actualModelId = modelId
+
+        if (providerConfigs[requiredProvider]?.cli) {
+          selectedProvider = requiredProvider
+          selectedConfig = providerConfigs[requiredProvider].cli
+          fallbackMethod = 'cli'
+          actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+        }
+
+        if (!selectedProvider && providerConfigs[requiredProvider]?.api) {
+          selectedProvider = requiredProvider
+          selectedConfig = providerConfigs[requiredProvider].api
+          fallbackMethod = 'api'
+          actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+        }
+
+        if (!selectedProvider && requiredProvider === 'openrouter' && providerConfigs['openrouter']?.api) {
+          selectedProvider = 'openrouter'
+          selectedConfig = providerConfigs['openrouter'].api
+          fallbackMethod = 'api'
+          actualModelId = await resolveProviderModelId(modelId, 'openrouter')
+        }
+
+        if (!selectedProvider && totalCredits > 0 && process.env.OPENROUTER_API_KEY) {
+          const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
+          if (openrouterModelId !== modelId) {
+            selectedProvider = 'openrouter'
+            selectedConfig = { type: 'credits', priority: 3, apiKey: process.env.OPENROUTER_API_KEY }
+            fallbackMethod = 'credits'
+            actualModelId = openrouterModelId
+          }
+        }
+
+        return { requiredProvider, selectedProvider, selectedConfig, fallbackMethod, actualModelId }
+      }
+
+      // Per-model collectors
+      const collected: Record<string, { content: string; usage: any; provider: string; fallback?: string; modelResolved?: string; creditsUsed?: number; cost?: { input_cost: number; output_cost: number; total_cost: number } }> = {}
+      targetModels.forEach((m) => { collected[m] = { content: '', usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, provider: 'unknown' } })
+
+      const streamingResponse = new ReadableStream({
+        start(controller) {
+          // Kick off all model streams concurrently
+          const tasks = targetModels.map(async (friendlyModelId) => {
+            try {
+              const { requiredProvider, selectedProvider, selectedConfig, fallbackMethod, actualModelId } = await selectProviderForModel(friendlyModelId)
+              if (!selectedProvider) {
+                // Provider selection failed
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: 'No available provider', provider: requiredProvider })}\n\n`))
+                return
+              }
+
+              // Build API options for streaming
+              const apiOptions: any = {
+                messages: messages.map((msg: any) => ({ role: msg.role, content: msg.content })),
+                model: actualModelId,
+                temperature,
+                maxTokens: max_tokens,
+                stream: true,
+                apiKey: selectedConfig.apiKey
+              }
+
+              // GPT-5 quirk
+              if (friendlyModelId === 'gpt-5' || friendlyModelId.includes('gpt-5')) {
+                apiOptions.max_completion_tokens = max_tokens
+                delete apiOptions.maxTokens
+              }
+
+              // Base URL mapping if present
+              try {
+                const apiProviderConfig = await apiManager.getProviderConfiguration(selectedProvider)
+                if (selectedConfig.baseUrl && apiProviderConfig) {
+                  if (apiProviderConfig.baseUrlProperty) {
+                    apiOptions[apiProviderConfig.baseUrlProperty] = selectedConfig.baseUrl
+                  } else {
+                    switch (selectedProvider) {
+                      case 'openai':
+                      case 'groq':
+                      case 'deepseek':
+                      case 'mistral':
+                        apiOptions.openAiBaseUrl = selectedConfig.baseUrl
+                        break
+                      default:
+                        break
+                    }
+                  }
+                }
+              } catch {}
+
+              // Start provider stream
+              let upstream: ReadableStream
+              try {
+                upstream = await apiManager.streamMessage(selectedProvider, apiOptions)
+              } catch (err: any) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: err?.message || 'Stream error', provider: selectedProvider })}\n\n`))
+                return
+              }
+
+              collected[friendlyModelId].provider = selectedProvider
+              collected[friendlyModelId].fallback = fallbackMethod
+
+              const reader = upstream.getReader()
+              const textDecoder = new TextDecoder()
+              let buf = ''
+              while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                buf += textDecoder.decode(value, { stream: true })
+                let idx
+                while ((idx = buf.indexOf('\n')) >= 0) {
+                  const line = buf.slice(0, idx)
+                  buf = buf.slice(idx + 1)
+                  if (!line) continue
+                  try {
+                    const item = JSON.parse(line)
+                    if (item?.type === 'content' && item.content) {
+                      collected[friendlyModelId].content += item.content
+                      const contentEvent = { type: 'content', model: friendlyModelId, content: item.content, provider: selectedProvider }
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify(contentEvent)}\n\n`))
+                    }
+                    if (item?.type === 'done') {
+                      // End of this model's stream
+                    }
+                  } catch {}
+                }
+              }
+
+              // If no usage in stream, make a non-streaming call to fetch usage
+              try {
+                const usageOptions = { ...apiOptions, stream: false }
+                const usageResp = await apiManager.createMessage(selectedProvider, usageOptions)
+                if (usageResp.ok) {
+                  const ct = usageResp.headers.get('content-type') || ''
+                  const payload = ct.includes('application/json') ? await usageResp.json() : await usageResp.text()
+                  const usage = parseUsageData(payload) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+                  collected[friendlyModelId].usage = usage
+                  collected[friendlyModelId].modelResolved = (payload && (payload.model || payload?.choices?.[0]?.model)) || actualModelId
+                }
+              } catch {}
+
+              // Compute cost if possible
+              try {
+                const pricingProvider = requiredProvider || selectedProvider
+                const resolvedModel = collected[friendlyModelId].modelResolved || actualModelId
+                const limits = await modelsDevService.getModelLimits(resolvedModel, 'openrouter')
+                if (limits?.pricing) {
+                  const u = collected[friendlyModelId].usage || { prompt_tokens: 0, completion_tokens: 0 }
+                  const inputCost = (u.prompt_tokens / 1_000_000) * limits.pricing.input
+                  const outputCost = (u.completion_tokens / 1_000_000) * limits.pricing.output
+                  collected[friendlyModelId].cost = { input_cost: inputCost, output_cost: outputCost, total_cost: inputCost + outputCost }
+                }
+                if (selectedConfig?.type === 'credits') {
+                  const u = collected[friendlyModelId].usage || { total_tokens: 0 }
+                  collected[friendlyModelId].creditsUsed = ((u.total_tokens || 0) / 1_000_000) * 50
+                }
+              } catch {}
+            } catch (err: any) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: err?.message || 'Provider error' })}\n\n`))
+            }
+          })
+
+          // When all tasks finish, emit final and close + persist
+          ;(async () => {
+            await Promise.all(tasks)
+
+            // Build final responses array
+            const finalResponses = targetModels.map((m) => ({
+              model: m,
+              content: collected[m].content || '',
+              provider: collected[m].provider,
+              usage: collected[m].usage,
+              cost: collected[m].cost,
+              fallback_method: collected[m].fallback,
+              credits_used: collected[m].creditsUsed || 0
+            }))
+
+            // Persist chat history and logs
+            try {
+              const totalTokens = finalResponses.reduce((sum, r) => sum + (r.usage?.total_tokens || 0), 0)
+              const totalCost = finalResponses.reduce((sum, r) => sum + ((r as any)?.cost?.total_cost || 0), 0)
+
+              const sessionId = body.session_id
+              currentSessionId = sessionId
+
+              if (!currentSessionId) {
+                const userMessage = messages[messages.length - 1]
+                const autoTitle = userMessage.content.length > 50 ? userMessage.content.substring(0, 47) + '...' : userMessage.content
+                const { data: newSession } = await supabase
+                  .from('chat_sessions')
+                  .insert({ user_id: user.id, title: autoTitle })
+                  .select('id')
+                  .single()
+                currentSessionId = newSession?.id || null
+              } else {
+                const userMessage = messages[messages.length - 1]
+                const { data: existingSession } = await supabase
+                  .from('chat_sessions')
+                  .select('title')
+                  .eq('id', currentSessionId)
+                  .single()
+                if (existingSession && existingSession.title === 'New Chat') {
+                  const autoTitle = userMessage.content.length > 50 ? userMessage.content.substring(0, 47) + '...' : userMessage.content
+                  await supabase.from('chat_sessions').update({ title: autoTitle }).eq('id', currentSessionId)
+                }
+              }
+
+              if (currentSessionId) {
+                const userMessage = messages[messages.length - 1]
+                await supabase.from('chat_messages').insert({ session_id: currentSessionId, role: 'user', content: userMessage.content })
+                const assistantMessages = finalResponses
+                  .filter(r => r && r.content)
+                  .map(r => ({
+                    session_id: currentSessionId,
+                    role: 'assistant',
+                    content: r.content,
+                    model_id: r.model,
+                    provider_info: r.provider ? { provider: r.provider, fallback_method: r.fallback_method } : null,
+                    usage_info: r.usage || null,
+                    cost_info: (r as any).cost || null,
+                    metadata: r.credits_used ? { credits_used: r.credits_used } : null
+                  }))
+                if (assistantMessages.length > 0) {
+                  await supabase.from('chat_messages').insert(assistantMessages)
+                }
+
+                await supabase.from('chat_logs').insert({
+                  user_id: user.id,
+                  session_id: currentSessionId,
+                  models_used: targetModels,
+                  message_count: messages.length,
+                  total_tokens: totalTokens,
+                  total_cost: totalCost,
+                  created_at: new Date().toISOString()
+                })
+              }
+            } catch (e) {
+              console.warn('Failed to save chat history/log interaction (streaming):', e)
+            }
+
+            // Emit final event expected by the UI
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'final', responses: finalResponses })}\n\n`))
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+            controller.close()
+          })()
+        }
+      })
+
+      return new Response(streamingResponse, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        }
+      })
+    }
+
     // Process requests for each model with STRICT PRIORITY: CLI > API > OPENROUTER(CREDITS)
     const responses = await Promise.all(
       targetModels.map(async (modelId: string) => {
@@ -1615,12 +1881,13 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Handle streaming response for single model (OpenAI format)
+      // Handle streaming response for single model (OpenAI-like SSE to client)
       if (stream) {
         const encoder = new TextEncoder()
-        
+
         const streamingResponse = new ReadableStream({
           start(controller) {
+            // Emit the content (may be full content if upstream didn't stream incrementally)
             const streamData = {
               type: 'content',
               model: response?.model || model,
@@ -1631,28 +1898,33 @@ export async function POST(request: NextRequest) {
                 source_type: response?.fallback_method || 'api'
               }
             }
-            
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(streamData)}\n\n`))
-            
-            // Send final metadata
-            const metadata = {
-              type: 'metadata',
-              usage: usage,
-              polydev_metadata: {
-                provider: response?.provider || 'unknown',
-                source_type: response?.fallback_method || 'api',
-                cost_info: costInfo,
-                model_resolved: response?.model || model,
-                session_id: currentSessionId
-              }
+
+            // Emit a final event compatible with the chat UI to update usage/cost without refresh
+            const finalPayload = {
+              type: 'final',
+              responses: [
+                {
+                  model: response?.model || model,
+                  content: response?.content || '',
+                  provider: response?.provider || 'unknown',
+                  usage: usage,
+                  cost: {
+                    input_cost: (costInfo as any)?.input_cost || 0,
+                    output_cost: (costInfo as any)?.output_cost || 0,
+                    total_cost: (costInfo as any)?.total_cost || 0
+                  },
+                  fallback_method: response?.fallback_method,
+                  credits_used: (costInfo as any)?.credits_used || 0
+                }
+              ]
             }
-            
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`))
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(finalPayload)}\n\n`))
             controller.enqueue(encoder.encode('data: [DONE]\n\n'))
             controller.close()
           }
         })
-        
+
         return new Response(streamingResponse, {
           headers: {
             'Content-Type': 'text/plain; charset=utf-8',
@@ -1740,10 +2012,10 @@ export async function POST(request: NextRequest) {
     // Handle streaming response
     if (stream) {
       const encoder = new TextEncoder()
-      
+
       const streamingResponse = new ReadableStream({
         start(controller) {
-          // Stream all model responses
+          // Emit each model's content (may be full content if upstream streaming was buffered)
           for (const response of responses) {
             if (response && !response.error) {
               const streamData = {
@@ -1752,11 +2024,10 @@ export async function POST(request: NextRequest) {
                 content: response.content || '',
                 provider: response.provider,
                 metadata: {
-                  cost_info: response.costInfo || null,
+                  cost_info: (response as any).costInfo || null,
                   source_type: response.fallback_method || 'api'
                 }
               }
-              
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(streamData)}\n\n`))
             } else if (response && response.error) {
               const errorData = {
@@ -1765,32 +2036,38 @@ export async function POST(request: NextRequest) {
                 message: response.error,
                 provider: response.provider
               }
-              
               controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorData)}\n\n`))
             }
           }
-          
-          // Send final metadata
-          const metadata = {
-            type: 'metadata',
-            usage: totalUsage,
-            polydev_metadata: {
-              total_cost: totalCost,
-              total_credits_used: totalCreditsUsed,
-              provider_breakdown: providerBreakdown,
-              models_processed: responses.length,
-              successful_models: responses.filter(r => r && !r.error).length,
-              failed_models: responses.filter(r => r && r.error).length,
-              session_id: currentSessionId
-            }
+
+          // Emit final event compatible with the chat UI
+          const finalPayload = {
+            type: 'final',
+            responses: responses
+              .filter(r => r && !r.error)
+              .map(r => ({
+                model: r!.model,
+                content: r!.content || '',
+                provider: r!.provider,
+                usage: r!.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                cost: (r as any).costInfo
+                  ? {
+                      input_cost: (r as any).costInfo.input_cost || 0,
+                      output_cost: (r as any).costInfo.output_cost || 0,
+                      total_cost: (r as any).costInfo.total_cost || 0
+                    }
+                  : undefined,
+                fallback_method: r!.fallback_method,
+                credits_used: (r as any).credits_used || 0
+              }))
           }
-          
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`))
+
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(finalPayload)}\n\n`))
           controller.enqueue(encoder.encode('data: [DONE]\n\n'))
           controller.close()
         }
       })
-      
+
       return new Response(streamingResponse, {
         headers: {
           'Content-Type': 'text/plain; charset=utf-8',
