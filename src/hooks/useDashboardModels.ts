@@ -219,7 +219,7 @@ export function useDashboardModels() {
                     configLogo: providerConfig?.logo_url
                   })
                   
-                  // Check if model has original_id indicating different creator (e.g., "anthropic/claude-sonnet-4")
+                  // First priority: Check if model has original_id indicating different creator
                   const originalId = modelData.models_dev_metadata?.original_id || modelData.original_id
                   if (originalId && originalId.includes('/')) {
                     const creatorId = originalId.split('/')[0] // Extract "anthropic" from "anthropic/claude-sonnet-4"
@@ -230,16 +230,56 @@ export function useDashboardModels() {
                     }
                   }
                   
-                  // Special handling for Claude models - if modelId contains "claude" and current provider is openrouter/other
-                  if (modelId && modelId.toLowerCase().includes('claude') && currentProviderId !== 'anthropic') {
-                    const logoUrl = `https://models.dev/logos/anthropic.svg`
-                    console.log(`[Logo Debug] Using Claude fallback logo for ${modelId}: ${logoUrl}`)
-                    return logoUrl
+                  // Second priority: Model name-based detection for original creators
+                  if (modelId) {
+                    const modelLower = modelId.toLowerCase()
+                    
+                    // Claude models -> Anthropic logo
+                    if (modelLower.includes('claude')) {
+                      const logoUrl = `https://models.dev/logos/anthropic.svg`
+                      console.log(`[Logo Debug] Using Anthropic logo for Claude model ${modelId}: ${logoUrl}`)
+                      return logoUrl
+                    }
+                    
+                    // Grok models -> xAI logo
+                    if (modelLower.includes('grok')) {
+                      const logoUrl = `https://models.dev/logos/xai.svg`
+                      console.log(`[Logo Debug] Using xAI logo for Grok model ${modelId}: ${logoUrl}`)
+                      return logoUrl
+                    }
+                    
+                    // GPT models -> OpenAI logo
+                    if (modelLower.includes('gpt') || modelLower.includes('o1') || modelLower.includes('davinci') || modelLower.includes('curie') || modelLower.includes('babbage') || modelLower.includes('ada')) {
+                      const logoUrl = `https://models.dev/logos/openai.svg`
+                      console.log(`[Logo Debug] Using OpenAI logo for GPT model ${modelId}: ${logoUrl}`)
+                      return logoUrl
+                    }
+                    
+                    // Gemini models -> Google logo
+                    if (modelLower.includes('gemini')) {
+                      const logoUrl = `https://models.dev/logos/google.svg`
+                      console.log(`[Logo Debug] Using Google logo for Gemini model ${modelId}: ${logoUrl}`)
+                      return logoUrl
+                    }
+                    
+                    // Llama models -> Meta logo
+                    if (modelLower.includes('llama')) {
+                      const logoUrl = `https://models.dev/logos/meta.svg`
+                      console.log(`[Logo Debug] Using Meta logo for Llama model ${modelId}: ${logoUrl}`)
+                      return logoUrl
+                    }
+                    
+                    // Mistral models -> Mistral logo
+                    if (modelLower.includes('mistral') || modelLower.includes('mixtral')) {
+                      const logoUrl = `https://models.dev/logos/mistralai.svg`
+                      console.log(`[Logo Debug] Using Mistral logo for Mistral model ${modelId}: ${logoUrl}`)
+                      return logoUrl
+                    }
                   }
                   
-                  // Fallback to provider logo
+                  // Fallback to provider logo only if no model creator identified
                   const fallbackLogo = cachedProviderData?.logo || providerConfig?.logo_url
-                  console.log(`[Logo Debug] Using fallback logo for ${modelId}: ${fallbackLogo}`)
+                  console.log(`[Logo Debug] Using fallback provider logo for ${modelId}: ${fallbackLogo}`)
                   return fallbackLogo
                 }
 
@@ -274,11 +314,36 @@ export function useDashboardModels() {
               // Use smart logo resolution even in fallback
               const getLogoForFallback = (modelId: string, providerId: string, providerConfig: any) => {
                 console.log(`[Logo Debug Fallback] Processing model ${modelId} for provider ${providerId}`)
-                if (modelId.toLowerCase().includes('claude') && providerId !== 'anthropic') {
+                const modelLower = modelId.toLowerCase()
+                
+                // Claude models -> Anthropic logo
+                if (modelLower.includes('claude')) {
                   const logoUrl = `https://models.dev/logos/anthropic.svg`
-                  console.log(`[Logo Debug Fallback] Using Claude fallback logo: ${logoUrl}`)
+                  console.log(`[Logo Debug Fallback] Using Anthropic logo for Claude: ${logoUrl}`)
                   return logoUrl
                 }
+                
+                // Grok models -> xAI logo
+                if (modelLower.includes('grok')) {
+                  const logoUrl = `https://models.dev/logos/xai.svg`
+                  console.log(`[Logo Debug Fallback] Using xAI logo for Grok: ${logoUrl}`)
+                  return logoUrl
+                }
+                
+                // GPT models -> OpenAI logo
+                if (modelLower.includes('gpt') || modelLower.includes('o1')) {
+                  const logoUrl = `https://models.dev/logos/openai.svg`
+                  console.log(`[Logo Debug Fallback] Using OpenAI logo for GPT: ${logoUrl}`)
+                  return logoUrl
+                }
+                
+                // Gemini models -> Google logo
+                if (modelLower.includes('gemini')) {
+                  const logoUrl = `https://models.dev/logos/google.svg`
+                  console.log(`[Logo Debug Fallback] Using Google logo for Gemini: ${logoUrl}`)
+                  return logoUrl
+                }
+                
                 const fallbackLogo = providerConfig?.logo_url
                 console.log(`[Logo Debug Fallback] Using provider fallback logo: ${fallbackLogo}`)
                 return fallbackLogo
@@ -309,11 +374,36 @@ export function useDashboardModels() {
               // Last fallback: create minimal model info
               const getLogoForMinimalFallback = (modelId: string, providerId: string, providerConfig: any) => {
                 console.log(`[Logo Debug Minimal] Processing model ${modelId} for provider ${providerId}`)
-                if (modelId.toLowerCase().includes('claude') && providerId !== 'anthropic') {
+                const modelLower = modelId.toLowerCase()
+                
+                // Claude models -> Anthropic logo
+                if (modelLower.includes('claude')) {
                   const logoUrl = `https://models.dev/logos/anthropic.svg`
-                  console.log(`[Logo Debug Minimal] Using Claude minimal logo: ${logoUrl}`)
+                  console.log(`[Logo Debug Minimal] Using Anthropic logo for Claude: ${logoUrl}`)
                   return logoUrl
                 }
+                
+                // Grok models -> xAI logo
+                if (modelLower.includes('grok')) {
+                  const logoUrl = `https://models.dev/logos/xai.svg`
+                  console.log(`[Logo Debug Minimal] Using xAI logo for Grok: ${logoUrl}`)
+                  return logoUrl
+                }
+                
+                // GPT models -> OpenAI logo
+                if (modelLower.includes('gpt') || modelLower.includes('o1')) {
+                  const logoUrl = `https://models.dev/logos/openai.svg`
+                  console.log(`[Logo Debug Minimal] Using OpenAI logo for GPT: ${logoUrl}`)
+                  return logoUrl
+                }
+                
+                // Gemini models -> Google logo
+                if (modelLower.includes('gemini')) {
+                  const logoUrl = `https://models.dev/logos/google.svg`
+                  console.log(`[Logo Debug Minimal] Using Google logo for Gemini: ${logoUrl}`)
+                  return logoUrl
+                }
+                
                 const fallbackLogo = providerConfig?.logo_url
                 console.log(`[Logo Debug Minimal] Using provider minimal logo: ${fallbackLogo}`)
                 return fallbackLogo
@@ -360,16 +450,41 @@ export function useDashboardModels() {
                   
                   if (modelData) {
                     // Helper function to get the correct logo based on model creator
-                    const getModelCreatorLogo = (modelData: any, cachedProviderData: any, providerConfig: any, currentProviderId: string) => {
-                      // Check if model has original_id indicating different creator (e.g., "anthropic/claude-sonnet-4")
+                    const getModelCreatorLogo = (modelData: any, cachedProviderData: any, providerConfig: any, currentProviderId: string, modelId?: string) => {
+                      // First priority: Check if model has original_id indicating different creator
                       const originalId = modelData.models_dev_metadata?.original_id || modelData.original_id
                       if (originalId && originalId.includes('/')) {
                         const creatorId = originalId.split('/')[0] // Extract "anthropic" from "anthropic/claude-sonnet-4"
                         if (creatorId && creatorId !== currentProviderId) {
-                          // Return the creator's logo URL (models.dev standard format)
                           return `https://models.dev/logos/${creatorId}.svg`
                         }
                       }
+                      
+                      // Second priority: Model name-based detection for original creators
+                      if (modelId) {
+                        const modelLower = modelId.toLowerCase()
+                        
+                        // Claude models -> Anthropic logo
+                        if (modelLower.includes('claude')) {
+                          return `https://models.dev/logos/anthropic.svg`
+                        }
+                        
+                        // Grok models -> xAI logo
+                        if (modelLower.includes('grok')) {
+                          return `https://models.dev/logos/xai.svg`
+                        }
+                        
+                        // GPT models -> OpenAI logo
+                        if (modelLower.includes('gpt') || modelLower.includes('o1')) {
+                          return `https://models.dev/logos/openai.svg`
+                        }
+                        
+                        // Gemini models -> Google logo
+                        if (modelLower.includes('gemini')) {
+                          return `https://models.dev/logos/google.svg`
+                        }
+                      }
+                      
                       // Fallback to provider logo
                       return cachedProviderData?.logo || providerConfig?.logo_url
                     }
@@ -379,7 +494,7 @@ export function useDashboardModels() {
                       name: modelData.display_name || modelData.name,
                       provider: apiKey.provider,
                       providerName: providerConfig?.name || apiKey.provider,
-                      providerLogo: getModelCreatorLogo(modelData, cachedProviderData, providerConfig, apiKey.provider),
+                      providerLogo: getModelCreatorLogo(modelData, cachedProviderData, providerConfig, apiKey.provider, modelId),
                       tier: getTierFromProvider(apiKey.provider, cliResults, true),
                       price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
                         input: modelData.input_cost_per_million / 1000,
@@ -482,30 +597,38 @@ export function useDashboardModels() {
           }
         }
 
-        // Remove duplicates based on id + provider combination
-        const uniqueModels = dashboardModels.reduce((acc: DashboardModel[], current) => {
-          const existingModel = acc.find(model => 
-            model.id === current.id && model.provider === current.provider
-          )
+        // Remove duplicates based on id + provider combination with better logic
+        const modelMap = new Map<string, DashboardModel>()
+        
+        for (const model of dashboardModels) {
+          const key = `${model.id}::${model.provider}`
+          const existing = modelMap.get(key)
           
-          if (!existingModel) {
-            acc.push(current)
+          if (!existing) {
+            modelMap.set(key, model)
+            console.log(`[Deduplication] Added new model: ${key}`)
           } else {
-            // If duplicate found, prefer the one with more complete information (has pricing, features, etc.)
-            const currentScore = (current.price ? 1 : 0) + (current.features ? 1 : 0) + (current.contextWindow ? 1 : 0)
-            const existingScore = (existingModel.price ? 1 : 0) + (existingModel.features ? 1 : 0) + (existingModel.contextWindow ? 1 : 0)
+            // If duplicate found, prefer the one with more complete information
+            const currentScore = (model.price ? 2 : 0) + (model.features ? 2 : 0) + (model.contextWindow ? 1 : 0) + (model.maxTokens ? 1 : 0) + (model.description ? 1 : 0)
+            const existingScore = (existing.price ? 2 : 0) + (existing.features ? 2 : 0) + (existing.contextWindow ? 1 : 0) + (existing.maxTokens ? 1 : 0) + (existing.description ? 1 : 0)
+            
+            console.log(`[Deduplication] Duplicate found for ${key}:`, {
+              currentScore,
+              existingScore,
+              currentHasPrice: !!model.price,
+              existingHasPrice: !!existing.price
+            })
             
             if (currentScore > existingScore) {
-              // Replace existing with current (more complete)
-              const index = acc.findIndex(model => model.id === current.id && model.provider === current.provider)
-              if (index !== -1) {
-                acc[index] = current
-              }
+              modelMap.set(key, model)
+              console.log(`[Deduplication] Replaced with better model: ${key}`)
+            } else {
+              console.log(`[Deduplication] Kept existing model: ${key}`)
             }
           }
-          
-          return acc
-        }, [])
+        }
+        
+        const uniqueModels = Array.from(modelMap.values())
         
         console.log(`[useDashboardModels] Deduplicated models from ${dashboardModels.length} to ${uniqueModels.length}`)
 
