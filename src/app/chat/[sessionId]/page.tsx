@@ -786,6 +786,15 @@ export default function Chat() {
                               {(() => {
                                 const model = dashboardModels.find(m => m.id === message.model || m.name === message.model)
                                 const providerName = model?.providerName || (message.provider?.replace(/\s+\(.+\)/, '') || 'AI')
+                                
+                                // Debug logging for Claude models
+                                if (message.model && message.model.toLowerCase().includes('claude')) {
+                                  console.log(`[Logo Debug Message] Claude model found: ${message.model}`)
+                                  console.log(`[Logo Debug Message] Model object:`, model)
+                                  console.log(`[Logo Debug Message] Provider logo URL:`, model?.providerLogo)
+                                  console.log(`[Logo Debug Message] Provider name:`, providerName)
+                                }
+                                
                                 return (
                                   <div className="flex items-center space-x-2">
                                     {model?.providerLogo ? (
@@ -793,9 +802,34 @@ export default function Chat() {
                                         src={model.providerLogo} 
                                         alt={providerName}
                                         className="w-6 h-6 rounded-lg flex-shrink-0 object-contain"
-                                        onError={(e) => {
-                                          // Hide image and show fallback on error
+                                        onLoad={(e) => {
                                           const img = e.currentTarget as HTMLImageElement
+                                          console.log(`[Logo Success] Successfully loaded logo: ${img.src}`)
+                                          console.log(`[Logo Success] Model: ${message.model}, Dimensions: ${img.naturalWidth}x${img.naturalHeight}`)
+                                        }}
+                                        onError={(e) => {
+                                          // Debug logging for logo loading failures
+                                          const img = e.currentTarget as HTMLImageElement
+                                          console.error(`[Logo Error] Failed to load logo: ${img.src}`)
+                                          console.error(`[Logo Error] Model: ${message.model}, Provider: ${providerName}`)
+                                          console.error(`[Logo Error] Error event:`, e)
+                                          
+                                          // Check if this is a Claude model logo failing
+                                          if (img.src.includes('anthropic.svg')) {
+                                            console.error(`[Logo Error] Anthropic logo failed to load, testing direct access...`)
+                                            
+                                            // Test if the URL is accessible
+                                            fetch(img.src, { method: 'HEAD' })
+                                              .then(response => {
+                                                console.log(`[Logo Error] Direct fetch test - Status: ${response.status}`)
+                                                console.log(`[Logo Error] Response headers:`, Object.fromEntries(response.headers.entries()))
+                                              })
+                                              .catch(err => {
+                                                console.error(`[Logo Error] Direct fetch failed:`, err)
+                                              })
+                                          }
+                                          
+                                          // Hide image and show fallback on error
                                           const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
                                           img.style.display = 'none'
                                           if (fallback) fallback.classList.remove('hidden')
@@ -955,8 +989,28 @@ export default function Chat() {
                                             alt={providerName}
                                             className="w-6 h-6 rounded-lg flex-shrink-0 object-contain"
                                             onError={(e) => {
-                                              // Hide image and show fallback on error
+                                              // Debug logging for logo loading failures
                                               const img = e.currentTarget as HTMLImageElement
+                                              console.error(`[Logo Error Grid] Failed to load logo: ${img.src}`)
+                                              console.error(`[Logo Error Grid] Model: ${message.model}, Provider: ${providerName}`)
+                                              console.error(`[Logo Error Grid] Error event:`, e)
+                                              
+                                              // Check if this is a Claude model logo failing
+                                              if (img.src.includes('anthropic.svg')) {
+                                                console.error(`[Logo Error Grid] Anthropic logo failed to load, testing direct access...`)
+                                                
+                                                // Test if the URL is accessible
+                                                fetch(img.src, { method: 'HEAD' })
+                                                  .then(response => {
+                                                    console.log(`[Logo Error Grid] Direct fetch test - Status: ${response.status}`)
+                                                    console.log(`[Logo Error Grid] Response headers:`, Object.fromEntries(response.headers.entries()))
+                                                  })
+                                                  .catch(err => {
+                                                    console.error(`[Logo Error Grid] Direct fetch failed:`, err)
+                                                  })
+                                              }
+                                              
+                                              // Hide image and show fallback on error
                                               const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
                                               img.style.display = 'none'
                                               if (fallback) fallback.classList.remove('hidden')
@@ -1084,8 +1138,28 @@ export default function Chat() {
                                   alt={model.providerName}
                                   className="w-8 h-8 rounded-lg flex-shrink-0 object-contain"
                                   onError={(e) => {
-                                    // Hide image and show fallback on error
+                                    // Debug logging for logo loading failures
                                     const img = e.currentTarget as HTMLImageElement
+                                    console.error(`[Logo Error Selection] Failed to load logo: ${img.src}`)
+                                    console.error(`[Logo Error Selection] Model: ${model.name}, Provider: ${model.providerName}`)
+                                    console.error(`[Logo Error Selection] Error event:`, e)
+                                    
+                                    // Check if this is a Claude model logo failing
+                                    if (img.src.includes('anthropic.svg')) {
+                                      console.error(`[Logo Error Selection] Anthropic logo failed to load, testing direct access...`)
+                                      
+                                      // Test if the URL is accessible
+                                      fetch(img.src, { method: 'HEAD' })
+                                        .then(response => {
+                                          console.log(`[Logo Error Selection] Direct fetch test - Status: ${response.status}`)
+                                          console.log(`[Logo Error Selection] Response headers:`, Object.fromEntries(response.headers.entries()))
+                                        })
+                                        .catch(err => {
+                                          console.error(`[Logo Error Selection] Direct fetch failed:`, err)
+                                        })
+                                    }
+                                    
+                                    // Hide image and show fallback on error
                                     const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
                                     img.style.display = 'none'
                                     if (fallback) fallback.classList.remove('hidden')

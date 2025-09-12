@@ -301,7 +301,7 @@ export class OpenRouterManager {
             preferredProvider, 
             prompt, 
             'args', // Default to args mode for better compatibility
-            30000 // 30 second timeout
+            preferredProvider === 'claude_code' ? 120000 : 30000 // 2 minutes for Claude Code, 30 seconds for others
           )
           
           if (response.success) {
@@ -351,7 +351,7 @@ export class OpenRouterManager {
                 providerId,
                 prompt,
                 'args',
-                30000
+                providerId === 'claude_code' ? 120000 : 30000 // 2 minutes for Claude Code, 30 seconds for others
               )
               
               if (response.success) {
