@@ -1210,6 +1210,53 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Handle streaming response for single model (OpenAI format)
+      if (stream) {
+        const encoder = new TextEncoder()
+        
+        const streamingResponse = new ReadableStream({
+          start(controller) {
+            const streamData = {
+              type: 'content',
+              model: response?.model || model,
+              content: response?.content || '',
+              provider: response?.provider || 'unknown',
+              metadata: {
+                cost_info: costInfo,
+                source_type: response?.fallback_method || 'api'
+              }
+            }
+            
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(streamData)}\n\n`))
+            
+            // Send final metadata
+            const metadata = {
+              type: 'metadata',
+              usage: usage,
+              polydev_metadata: {
+                provider: response?.provider || 'unknown',
+                source_type: response?.fallback_method || 'api',
+                cost_info: costInfo,
+                model_resolved: response?.model || model,
+                session_id: currentSessionId
+              }
+            }
+            
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`))
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+            controller.close()
+          }
+        })
+        
+        return new Response(streamingResponse, {
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          }
+        })
+      }
+
       return NextResponse.json({
         id: `chatcmpl-${randomBytes(16).toString('hex')}`,
         object: 'chat.completion',
@@ -1285,6 +1332,69 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Handle streaming response
+    if (stream) {
+      const encoder = new TextEncoder()
+      
+      const streamingResponse = new ReadableStream({
+        start(controller) {
+          // Stream all model responses
+          for (const response of responses) {
+            if (response && !response.error) {
+              const streamData = {
+                type: 'content',
+                model: response.model,
+                content: response.content || '',
+                provider: response.provider,
+                metadata: {
+                  cost_info: response.cost_info,
+                  source_type: response.fallback_method || 'api'
+                }
+              }
+              
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(streamData)}\n\n`))
+            } else if (response && response.error) {
+              const errorData = {
+                type: 'error',
+                model: response.model,
+                message: response.error,
+                provider: response.provider
+              }
+              
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorData)}\n\n`))
+            }
+          }
+          
+          // Send final metadata
+          const metadata = {
+            type: 'metadata',
+            usage: totalUsage,
+            polydev_metadata: {
+              total_cost: totalCost,
+              total_credits_used: totalCreditsUsed,
+              provider_breakdown: providerBreakdown,
+              models_processed: responses.length,
+              successful_models: responses.filter(r => r && !r.error).length,
+              failed_models: responses.filter(r => r && r.error).length,
+              session_id: currentSessionId
+            }
+          }
+          
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(metadata)}\n\n`))
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+          controller.close()
+        }
+      })
+      
+      return new Response(streamingResponse, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        }
+      })
+    }
+
     return NextResponse.json({
       responses,
       usage: totalUsage,
@@ -1302,6 +1412,32 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('Chat completions error:', error)
+    
+    if (stream) {
+      // Return streaming error response
+      const encoder = new TextEncoder()
+      const errorData = {
+        type: 'error',
+        message: 'Failed to process chat completion',
+        error_type: 'api_error'
+      }
+      const errorStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorData)}\n\n`))
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+          controller.close()
+        }
+      })
+      
+      return new Response(errorStream, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        }
+      })
+    }
+    
     return NextResponse.json(
       { 
         error: { 
