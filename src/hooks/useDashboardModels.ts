@@ -212,7 +212,7 @@ export function useDashboardModels() {
               
               if (modelData) {
                 // Helper function to get the correct logo based on model creator
-                const getModelCreatorLogo = (modelData: any, cachedProviderData: any, providerConfig: any, currentProviderId: string) => {
+                const getModelCreatorLogo = (modelData: any, cachedProviderData: any, providerConfig: any, currentProviderId: string, modelId?: string) => {
                   // Check if model has original_id indicating different creator (e.g., "anthropic/claude-sonnet-4")
                   const originalId = modelData.models_dev_metadata?.original_id || modelData.original_id
                   if (originalId && originalId.includes('/')) {
@@ -222,6 +222,12 @@ export function useDashboardModels() {
                       return `https://models.dev/logos/${creatorId}.svg`
                     }
                   }
+                  
+                  // Special handling for Claude models - if modelId contains "claude" and current provider is openrouter/other
+                  if (modelId && modelId.toLowerCase().includes('claude') && currentProviderId !== 'anthropic') {
+                    return `https://models.dev/logos/anthropic.svg`
+                  }
+                  
                   // Fallback to provider logo
                   return cachedProviderData?.logo || providerConfig?.logo_url
                 }
@@ -231,7 +237,7 @@ export function useDashboardModels() {
                   name: modelData.display_name || modelData.name,
                   provider: providerId,
                   providerName: providerConfig?.name || providerId,
-                  providerLogo: getModelCreatorLogo(modelData, cachedProviderData, providerConfig, providerId),
+                  providerLogo: getModelCreatorLogo(modelData, cachedProviderData, providerConfig, providerId, modelId),
                   tier: getTierFromProvider(providerId, cliResults, hasApiKey),
                   price: modelData.input_cost_per_million && modelData.output_cost_per_million ? {
                     input: modelData.input_cost_per_million / 1000,
@@ -254,12 +260,20 @@ export function useDashboardModels() {
             // Fallback: create basic model info from models.dev if available
             if (providerConfig?.supportedModels?.[modelId]) {
               const modelInfo = providerConfig.supportedModels[modelId]
+              // Use smart logo resolution even in fallback
+              const getLogoForFallback = (modelId: string, providerId: string, providerConfig: any) => {
+                if (modelId.toLowerCase().includes('claude') && providerId !== 'anthropic') {
+                  return `https://models.dev/logos/anthropic.svg`
+                }
+                return providerConfig?.logo_url
+              }
+              
               dashboardModels.push({
                 id: modelId,
                 name: formatModelName(modelId),
                 provider: providerId,
                 providerName: providerConfig.name,
-                providerLogo: providerConfig?.logo_url,
+                providerLogo: getLogoForFallback(modelId, providerId, providerConfig),
                 tier: getTierFromProvider(providerId, cliResults, hasApiKey),
                 price: {
                   input: modelInfo.inputPrice || 0,
@@ -277,11 +291,19 @@ export function useDashboardModels() {
               })
             } else {
               // Last fallback: create minimal model info
+              const getLogoForMinimalFallback = (modelId: string, providerId: string, providerConfig: any) => {
+                if (modelId.toLowerCase().includes('claude') && providerId !== 'anthropic') {
+                  return `https://models.dev/logos/anthropic.svg`
+                }
+                return providerConfig?.logo_url
+              }
+              
               dashboardModels.push({
                 id: modelId,
                 name: formatModelName(modelId),
                 provider: providerId,
                 providerName: providerConfig?.name || providerId,
+                providerLogo: getLogoForMinimalFallback(modelId, providerId, providerConfig),
                 tier: getTierFromProvider(providerId, cliResults, hasApiKey),
                 description: `${formatModelName(modelId)} - ${providerConfig?.name || providerId}`
               })

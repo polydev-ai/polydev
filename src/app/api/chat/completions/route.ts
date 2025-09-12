@@ -669,9 +669,9 @@ export async function POST(request: NextRequest) {
                 const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
                 const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
                 cost = {
-                  input: Number(inputCost.toFixed(6)),
-                  output: Number(outputCost.toFixed(6)),
-                  total: Number((inputCost + outputCost).toFixed(6))
+                  input_cost: Number(inputCost.toFixed(6)),
+                  output_cost: Number(outputCost.toFixed(6)),
+                  total_cost: Number((inputCost + outputCost).toFixed(6))
                 }
                 console.log(`[DEBUG CLI Cost] Calculated cost:`, cost)
               } else {
@@ -796,9 +796,9 @@ export async function POST(request: NextRequest) {
               const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
               const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
               cost = {
-                input: Number(inputCost.toFixed(6)),
-                output: Number(outputCost.toFixed(6)),
-                total: Number((inputCost + outputCost).toFixed(6))
+                input_cost: Number(inputCost.toFixed(6)),
+                output_cost: Number(outputCost.toFixed(6)),
+                total_cost: Number((inputCost + outputCost).toFixed(6))
               }
               console.log(`[DEBUG API Cost] Calculated cost:`, cost)
             } else {
