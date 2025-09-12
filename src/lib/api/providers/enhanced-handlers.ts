@@ -291,17 +291,6 @@ export class EnhancedGoogleHandler extends BaseEnhancedHandler {
     }
     
     const headers = this.prepareHeaders(options)
-    const isResponsesApi = !!options.model && options.model.startsWith('gemini-2')
-    if (isResponsesApi) {
-      const body = { ...requestBody, model: `models/${options.model}` }
-      const endpoint = `${this.baseUrl}/responses:${options.stream ? 'streamGenerate' : 'generate'}`
-      return fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body)
-      })
-    }
-
     const endpoint = options.stream
       ? `${this.baseUrl}/models/${options.model}:streamGenerateContent`
       : `${this.baseUrl}/models/${options.model}:generateContent`

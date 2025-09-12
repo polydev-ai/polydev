@@ -587,19 +587,11 @@ export class UniversalProviderHandler {
   }
 
   private prepareRequest(config: ProviderConfig, options: ApiHandlerOptions): any {
-    let req: any
     if (config.requestTransform) {
-      req = config.requestTransform(options)
-    } else {
-      const transformer = getTransformer(config.id)
-      req = transformer.transformRequest(options)
+      return config.requestTransform(options)
     }
-    // For Gemini 2.x, the Responses API requires a top-level model field
-    if ((config.id === 'gemini' || config.id === 'google') && options.model && options.model.startsWith('gemini-2')) {
-      req = req || {}
-      req.model = `models/${options.model}`
-    }
-    return req
+    const transformer = getTransformer(config.id)
+    return transformer.transformRequest(options)
   }
 
   private prepareHeaders(config: ProviderConfig, options: ApiHandlerOptions): Record<string, string> {
@@ -633,12 +625,9 @@ export class UniversalProviderHandler {
         break
       case 'gemini':
       case 'google':
-        if (options.model && options.model.startsWith('gemini-2')) {
-          // Use Responses API for Gemini 2.x
-          endpoint += `/responses:${options.stream ? 'streamGenerate' : 'generate'}`
-        } else {
-          endpoint += `/models/${options.model}:generateContent`
-        }
+        endpoint += options.stream
+          ? `/models/${options.model}:streamGenerateContent`
+          : `/models/${options.model}:generateContent`
         break
       case 'vertex':
         endpoint += `/projects/${options.projectId}/locations/${options.region}/publishers/google/models/${options.model}:generateContent`
