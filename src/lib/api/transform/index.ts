@@ -273,39 +273,51 @@ export class GoogleTransformer implements MessageTransformer {
   
   transformStreamChunk(chunk: string): any {
     try {
-      const lines = chunk.split('\n').filter(line => line.trim())
-      
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = JSON.parse(line.slice(6))
-          
-          // Handle candidates more robustly - could be array or single object
-          let candidate = null
-          if (data.candidates) {
-            if (Array.isArray(data.candidates)) {
-              candidate = data.candidates[0]
-            } else {
-              candidate = data.candidates
-            }
-          }
-          
-          if (candidate?.content?.parts) {
-            const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
-            const text = parts[0]?.text
-            if (text) {
-              return {
-                type: 'content',
-                content: text
-              }
-            }
-          }
-          
-          if (candidate?.finishReason) {
-            return { type: 'done' }
+      const tryParse = (raw: string) => {
+        const data = JSON.parse(raw)
+        let candidate: any = null
+        if (data.candidates) {
+          candidate = Array.isArray(data.candidates) ? data.candidates[0] : data.candidates
+        }
+        if (candidate?.content?.parts) {
+          const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
+          const text = parts[0]?.text
+          if (text) {
+            return { type: 'content', content: text }
           }
         }
+        if (candidate?.finishReason) {
+          return { type: 'done' }
+        }
+        return null
       }
-      
+
+      // Support either normalized 'data: <json>' or raw JSON
+      if (chunk.startsWith('data: ')) {
+        const raw = chunk.slice(6).trim()
+        if (raw === '[DONE]') return { type: 'done' }
+        return tryParse(raw)
+      }
+
+      const trimmed = chunk.trim()
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        return tryParse(trimmed)
+      }
+
+      // Fallback: attempt to find a JSON object within multi-line input
+      const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean)
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const raw = line.slice(6).trim()
+          if (raw === '[DONE]') return { type: 'done' }
+          const parsed = tryParse(raw)
+          if (parsed) return parsed
+        } else if (line.startsWith('{') || line.startsWith('[')) {
+          const parsed = tryParse(line)
+          if (parsed) return parsed
+        }
+      }
+
       return null
     } catch (error) {
       console.error('Failed to parse Google SSE chunk:', error)

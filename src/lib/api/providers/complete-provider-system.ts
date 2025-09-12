@@ -144,6 +144,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       const transformer = getTransformer('google')
       return transformer.transformRequest(options)
     },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('google')
+      return transformer.transformStreamChunk(chunk)
+    },
     rateLimits: {
       requestsPerMinute: 300,
       tokensPerMinute: 32000
@@ -163,6 +167,10 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     requestTransform: (options) => {
       const transformer = getTransformer('google')
       return transformer.transformRequest(options)
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('google')
+      return transformer.transformStreamChunk(chunk)
     },
     rateLimits: {
       requestsPerMinute: 300,
@@ -689,23 +697,156 @@ export class UniversalProviderHandler {
   private createStreamProcessor(config: ProviderConfig, body: ReadableStream): ReadableStream {
     const reader = body.getReader()
     const decoder = new TextDecoder()
-    
+    const encoder = new TextEncoder()
+
+    // Buffer to accumulate partial chunks between reads
+    let buffer = ''
+
+    // Helper: process a single SSE message block (no trailing blank line)
+    const processSseBlock = (block: string): any[] => {
+      try {
+        const lines = block.split(/\r?\n/)
+        const dataLines: string[] = []
+        for (const rawLine of lines) {
+          const line = rawLine.trimEnd()
+          if (!line) continue
+          if (line.startsWith(':')) continue // comment/keep-alive
+          if (line.toLowerCase().startsWith('event:')) continue // ignore event name
+          if (line.toLowerCase().startsWith('retry:')) continue // ignore retry hints
+          if (line.toLowerCase().startsWith('id:')) continue // ignore ids
+          if (line.toLowerCase().startsWith('data:')) {
+            // Preserve leading space after 'data:' per SSE spec
+            const val = line.slice(line.indexOf(':') + 1)
+            dataLines.push(val.startsWith(' ') ? val.slice(1) : val)
+          }
+        }
+
+        if (dataLines.length === 0) return []
+
+        const payload = dataLines.join('\n')
+        if (payload === '[DONE]') {
+          // Standardized done event
+          return [{ type: 'done' }]
+        }
+
+        if (config.streamParser) {
+          // Pass a normalized 'data: <json>' string to parsers expecting that format
+          const parsed = config.streamParser(`data: ${payload}`)
+          return parsed ? [parsed] : []
+        }
+
+        // Fallback: try JSON parse and emit a generic content chunk if possible
+        try {
+          const json = JSON.parse(payload)
+          // Common OpenAI delta shape
+          const text = json?.choices?.[0]?.delta?.content
+          if (typeof text === 'string' && text.length) {
+            return [{ type: 'content', content: text }]
+          }
+          // Google candidate shape (single update)
+          const parts = json?.candidates?.[0]?.content?.parts
+          if (parts && Array.isArray(parts) && parts[0]?.text) {
+            return [{ type: 'content', content: parts[0].text }]
+          }
+        } catch {
+          // ignore
+        }
+
+        return []
+      } catch (err) {
+        // Never throw from parser; just ignore this block
+        return []
+      }
+    }
+
+    // Helper: process non-SSE JSON streaming (e.g., Gemini streamGenerateContent)
+    const processJsonLines = (text: string): { consumed: number; events: any[] } => {
+      // We will split by newlines and attempt to JSON.parse each complete line.
+      // Incomplete trailing fragment will be kept in buffer by caller.
+      const events: any[] = []
+      let lastNewline = text.lastIndexOf('\n')
+      if (lastNewline === -1) {
+        return { consumed: 0, events }
+      }
+      const consumable = text.slice(0, lastNewline)
+      const lines = consumable.split(/\r?\n/).filter(l => l.trim().length > 0)
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          try {
+            const obj = JSON.parse(trimmed)
+            // Try to normalize to content events
+            const parts = obj?.candidates?.[0]?.content?.parts
+            if (parts && Array.isArray(parts)) {
+              for (const p of parts) {
+                if (p?.text) {
+                  events.push({ type: 'content', content: p.text })
+                }
+              }
+            }
+            if (obj?.candidates?.[0]?.finishReason) {
+              events.push({ type: 'done' })
+            }
+          } catch {
+            // ignore bad JSON line
+          }
+        }
+      }
+      // Consume through the last newline index (inclusive)
+      return { consumed: lastNewline + 1, events }
+    }
+
     return new ReadableStream({
       async start(controller) {
         try {
           while (true) {
             const { done, value } = await reader.read()
-            
             if (done) {
+              // Flush any remaining SSE block (if it ends without blank line)
+              if (buffer.trim().length > 0) {
+                // Try processing as SSE block first
+                const events = processSseBlock(buffer)
+                for (const ev of events) {
+                  controller.enqueue(encoder.encode(JSON.stringify(ev) + '\n'))
+                }
+              }
               controller.close()
               break
             }
-            
-            const chunk = decoder.decode(value, { stream: true })
-            const processed = config.streamParser ? config.streamParser(chunk) : chunk
-            
-            if (processed) {
-              controller.enqueue(new TextEncoder().encode(JSON.stringify(processed) + '\n'))
+
+            buffer += decoder.decode(value, { stream: true })
+
+            // Prefer SSE framing when present (blank-line delimited)
+            let progressed = true
+            while (progressed) {
+              progressed = false
+              const split = buffer.split(/\r?\n\r?\n/)
+              if (split.length > 1) {
+                // All but last are complete SSE blocks
+                const incomplete = split.pop() as string
+                for (const block of split) {
+                  const events = processSseBlock(block)
+                  for (const ev of events) {
+                    controller.enqueue(encoder.encode(JSON.stringify(ev) + '\n'))
+                  }
+                }
+                buffer = incomplete
+                progressed = true
+              }
+            }
+
+            // If no SSE framing, try JSON-lines mode (Gemini style)
+            if (!/\r?\n\r?\n/.test(buffer)) {
+              const { consumed, events } = processJsonLines(buffer)
+              if (consumed > 0) {
+                // Remove consumable part safely
+                buffer = buffer.slice(consumed)
+              }
+              if (events.length) {
+                for (const ev of events) {
+                  controller.enqueue(encoder.encode(JSON.stringify(ev) + '\n'))
+                }
+              }
             }
           }
         } catch (error) {
