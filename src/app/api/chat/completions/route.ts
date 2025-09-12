@@ -682,7 +682,7 @@ export async function POST(request: NextRequest) {
                 model: modelId,
                 content: responseData.content?.[0]?.text || responseData.choices?.[0]?.message?.content || '',
                 usage: usage,
-                cost: cost,
+                costInfo: cost,
                 provider: `${selectedProvider} (CLI)`,
                 fallback_method: fallbackMethod
               }
@@ -809,7 +809,7 @@ export async function POST(request: NextRequest) {
               model: modelId,
               content: content,
               usage: usage,
-              cost: cost,
+              costInfo: cost,
               provider: `${selectedProvider} (API)`,
               fallback_method: fallbackMethod
             }
@@ -868,10 +868,24 @@ export async function POST(request: NextRequest) {
             }
             
             const parsedUsage = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+            
+            // Calculate cost information
+            let costInfo = null
+            if (modelPricing && parsedUsage.prompt_tokens && parsedUsage.completion_tokens) {
+              const inputCost = (parsedUsage.prompt_tokens / 1000000) * modelPricing.input
+              const outputCost = (parsedUsage.completion_tokens / 1000000) * modelPricing.output
+              costInfo = {
+                input_cost: inputCost,
+                output_cost: outputCost,
+                total_cost: inputCost + outputCost
+              }
+            }
+            
             return {
               model: modelId,
               content: content,
               usage: parsedUsage,
+              costInfo: costInfo,
               provider: selectedConfig.type === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)',
               fallback_method: fallbackMethod,
               credits_used: selectedConfig.type === 'credits' ? (parsedUsage.total_tokens || 0) / 1000000 * inputCostPerMillion : undefined
@@ -918,10 +932,25 @@ export async function POST(request: NextRequest) {
                 
                 if (apiResponse.ok) {
                   console.log(`API fallback successful for ${modelId} with ${requiredProvider}`)
+                  const usage = apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+                  
+                  // Calculate cost information
+                  let costInfo = null
+                  if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
+                    const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
+                    const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
+                    costInfo = {
+                      input_cost: inputCost,
+                      output_cost: outputCost,
+                      total_cost: inputCost + outputCost
+                    }
+                  }
+                  
                   return {
                     model: modelId,
                     content: apiResult.choices?.[0]?.message?.content || apiResult.content?.[0]?.text || '',
-                    usage: apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                    usage: usage,
+                    costInfo: costInfo,
                     provider: `${requiredProvider} (API - CLI Fallback)`,
                     fallback_method: 'api'
                   }
@@ -995,13 +1024,28 @@ export async function POST(request: NextRequest) {
                   
                   if (apiResponse.ok) {
                     console.log(`OpenRouter credits fallback successful for ${modelId}`)
+                    
+                    // Calculate cost
+                    const parsedUsage = apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+                    let costInfo = null
+                    if (modelPricing && parsedUsage.prompt_tokens && parsedUsage.completion_tokens) {
+                      const inputCost = (parsedUsage.prompt_tokens / 1000000) * modelPricing.input
+                      const outputCost = (parsedUsage.completion_tokens / 1000000) * modelPricing.output
+                      costInfo = {
+                        input_cost: inputCost,
+                        output_cost: outputCost,
+                        total_cost: inputCost + outputCost
+                      }
+                    }
+                    
                     return {
                       model: modelId,
                       content: apiResult.choices?.[0]?.message?.content || '',
-                      usage: apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                      usage: parsedUsage,
+                      costInfo: costInfo,
                       provider: 'OpenRouter (Credits - CLI Fallback)',
                       fallback_method: 'credits',
-                      credits_used: (apiResult.usage?.total_tokens || 0) / 1000000 * 50
+                      credits_used: (parsedUsage.total_tokens || 0) / 1000000 * 50
                     }
                   }
                 }
