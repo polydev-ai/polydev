@@ -830,7 +830,7 @@ export async function POST(request: NextRequest) {
                     finalModel = parsed.model
                   }
                 } catch (parseError) {
-                  console.warn(`[Streaming] Failed to parse streaming chunk: ${data}`)
+                  console.warn(`[Streaming] Failed to parse streaming chunk: ${chunk}`)
                 }
               }
               
