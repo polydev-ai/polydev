@@ -25,9 +25,10 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
+    const selectOptions = includeCount ? { count: 'exact' as const } : undefined
     let query = service
       .from('usage_sessions')
-      .select('*', { count: includeCount ? 'exact' : 'none' })
+      .select('*', selectOptions)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
@@ -37,9 +38,8 @@ export async function GET(request: NextRequest) {
     if (provider) query = query.eq('provider', provider)
     if (model) query = query.eq('model_name', model)
     if (onlyCredits) {
-      // Filter sessions that used credits. We store credits_used under metadata; filter where > 0
-      // PostgREST: metadata->>credits_used is text; compare numerically by casting. Using gt on text works lexicographically for numbers > 0
-      query = query.filter('metadata->>credits_used', 'gt', '0')
+      // Filter sessions with any credits charge recorded
+      query = query.filter('cost_credits', 'gt', '0')
     }
 
     const { data, error, count } = await query
