@@ -795,7 +795,6 @@ export default function Dashboard() {
               </a>
             </div>
           )}
-        )}
 
         {/* Request Logs Tab */}
         {activeTab === 'request-logs' && (
