@@ -1033,17 +1033,12 @@ export async function POST(request: NextRequest) {
         
         // STEP 1: PRIORITY 1 - CLI Tools (highest priority, ignore preferences)
         const requiredProvider = await getProviderFromModel(modelId, supabase, user.id)
-        console.log(`[Chat API] Model ${modelId} requires provider: ${requiredProvider}`)
-        console.log(`[Chat API] Available provider configs:`, Object.keys(providerConfigs))
-        
         if (providerConfigs[requiredProvider]?.cli) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].cli
           fallbackMethod = 'cli'
+          // Resolve CLI-specific model ID
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
-          console.log(`[Chat API] ✅ Using CLI for ${modelId}: ${requiredProvider}`)
-        } else {
-          console.log(`[Chat API] ❌ No CLI config for ${requiredProvider}`)
         }
         
         // STEP 2: PRIORITY 2 - Direct API Keys (if CLI not available)
@@ -1051,10 +1046,8 @@ export async function POST(request: NextRequest) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].api
           fallbackMethod = 'api'
+          // Resolve API-specific model ID
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
-          console.log(`[Chat API] ✅ Using API key for ${modelId}: ${requiredProvider}`)
-        } else if (!selectedProvider) {
-          console.log(`[Chat API] ❌ No API key for ${requiredProvider}`)
         }
         
         // STEP 3: Check if user has OpenRouter as API provider for this model
@@ -1069,12 +1062,7 @@ export async function POST(request: NextRequest) {
         
         // STEP 4: PRIORITY 3 - OpenRouter Credits (lowest priority, last resort)
         if (!selectedProvider && totalCredits > 0) {
-          console.log(`[Chat API] Checking credits fallback for ${modelId}, totalCredits: ${totalCredits}`)
-          console.log(`[Chat API] OPENROUTER_API_KEY available: ${!!process.env.OPENROUTER_API_KEY}`)
-          
           const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
-          console.log(`[Chat API] Resolved ${modelId} → ${openrouterModelId} for OpenRouter`)
-          
           if (openrouterModelId !== modelId) { // Only use credits if we have a mapping
             selectedProvider = 'openrouter'
             selectedConfig = {
@@ -1085,12 +1073,7 @@ export async function POST(request: NextRequest) {
             }
             actualModelId = openrouterModelId
             fallbackMethod = 'credits'
-            console.log(`[Chat API] ✅ Using credits fallback for ${modelId} → ${openrouterModelId}`)
-          } else {
-            console.log(`[Chat API] ❌ No OpenRouter mapping found for ${modelId} (${openrouterModelId} === ${modelId})`)
           }
-        } else {
-          console.log(`[Chat API] ❌ Credit fallback not available: selectedProvider=${!!selectedProvider}, totalCredits=${totalCredits}`)
         }
         
         // Model-specific parameter adjustments
@@ -2060,19 +2043,6 @@ export async function POST(request: NextRequest) {
         })
     } catch (logError) {
       console.warn('Failed to save chat history/log interaction:', logError)
-    }
-    
-    // Check if any models succeeded - this generates the specific error you're seeing
-    const successfulResponses = responses.filter(r => r && !r.error)
-    if (successfulResponses.length === 0) {
-      console.error('[Chat API] All models failed! Responses:', responses)
-      return NextResponse.json({
-        error: {
-          message: 'No valid models selected. Please configure models in your dashboard and select from those.',
-          type: 'invalid_model_selection',
-          details: responses.map(r => ({ model: r?.model, error: r?.error }))
-        }
-      }, { status: 400 })
     }
     
     // Return response in OpenAI format for single model, Polydev format for multiple
