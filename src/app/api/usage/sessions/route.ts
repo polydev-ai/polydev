@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const onlyCredits = url.searchParams.get('onlyCredits') === 'true'
     const provider = url.searchParams.get('provider') || undefined
     const model = url.searchParams.get('model') || undefined
+    const source = url.searchParams.get('source') || undefined // 'api' | 'cli' | 'credits'
     const includeCount = url.searchParams.get('includeCount') === 'true'
 
     const service = createServiceClient(
@@ -37,6 +38,15 @@ export async function GET(request: NextRequest) {
     if (toDate) query = query.lte('created_at', toDate)
     if (provider) query = query.eq('provider', provider)
     if (model) query = query.eq('model_name', model)
+    if (source) {
+      const mapping: Record<string, string> = {
+        api: 'api_key',
+        cli: 'cli_tool',
+        credits: 'credits',
+      }
+      const mapped = mapping[source]
+      if (mapped) query = query.eq('session_type', mapped)
+    }
     if (onlyCredits) {
       // Filter sessions with any credits charge recorded
       query = query.filter('cost_credits', 'gt', '0')

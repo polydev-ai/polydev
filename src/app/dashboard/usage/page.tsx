@@ -90,6 +90,8 @@ export default function UnifiedUsagePage() {
   const [sourceFilter, setSourceFilter] = useState<'all' | 'api' | 'cli' | 'credits'>('all')
   const [providerFilter, setProviderFilter] = useState<string>('')
   const [modelFilter, setModelFilter] = useState<string>('')
+  const [providerOptions, setProviderOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
+  const [modelOptions, setModelOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
   const [limit, setLimit] = useState(100)
   const [offset, setOffset] = useState(0)
   const [useCustomRange, setUseCustomRange] = useState(false)
@@ -130,6 +132,9 @@ export default function UnifiedUsagePage() {
       if (from) params.set('from', from)
       if (to) params.set('to', to)
       if (sourceFilter === 'credits') params.set('onlyCredits', 'true')
+      if (sourceFilter === 'api') params.set('source', 'api')
+      if (sourceFilter === 'cli') params.set('source', 'cli')
+      if (sourceFilter === 'credits') params.set('source', 'credits')
       if (providerFilter) params.set('provider', providerFilter)
       if (modelFilter) params.set('model', modelFilter)
       params.set('includeCount', 'true')
@@ -187,6 +192,50 @@ export default function UnifiedUsagePage() {
     }
     loadData()
   }, [timeframe, includeDetails, sourceFilter, providerFilter, modelFilter, limit, offset, useCustomRange, fromDate, toDate])
+
+  // Load distinct provider/model options based on timeframe/source and current filters
+  useEffect(() => {
+    const loadDistinct = async () => {
+      try {
+        const now = new Date()
+        let from: string | undefined
+        let to: string | undefined
+        if (useCustomRange && fromDate) from = new Date(fromDate).toISOString()
+        if (useCustomRange && toDate) to = new Date(toDate).toISOString()
+        if (!useCustomRange) {
+          if (timeframe === 'day') from = new Date(now.getTime() - 24*60*60*1000).toISOString()
+          if (timeframe === 'week') from = new Date(now.getTime() - 7*24*60*60*1000).toISOString()
+          if (timeframe === 'month') from = new Date(now.getTime() - 30*24*60*60*1000).toISOString()
+          if (timeframe === 'year') from = new Date(now.getTime() - 365*24*60*60*1000).toISOString()
+        }
+        // Providers list
+        const baseParams = new URLSearchParams()
+        if (from) baseParams.set('from', from)
+        if (to) baseParams.set('to', to)
+        if (sourceFilter !== 'all') baseParams.set('source', sourceFilter)
+        if (modelFilter) baseParams.set('model', modelFilter)
+        const resProviders = await fetch(`/api/usage/distinct?${baseParams.toString()}`)
+        if (resProviders.ok) {
+          const dataP = await resProviders.json()
+          setProviderOptions((dataP.providers || []) as typeof providerOptions)
+        }
+        // Models list narrowed by provider if selected (and without model itself to avoid over-filtering)
+        const modelParams = new URLSearchParams()
+        if (from) modelParams.set('from', from)
+        if (to) modelParams.set('to', to)
+        if (sourceFilter !== 'all') modelParams.set('source', sourceFilter)
+        if (providerFilter) modelParams.set('provider', providerFilter)
+        const resModels = await fetch(`/api/usage/distinct?${modelParams.toString()}`)
+        if (resModels.ok) {
+          const dataM = await resModels.json()
+          setModelOptions((dataM.models || []) as typeof modelOptions)
+        }
+      } catch (e) {
+        console.error('Error loading distinct options:', e)
+      }
+    }
+    loadDistinct()
+  }, [timeframe, useCustomRange, fromDate, toDate, sourceFilter, providerFilter, modelFilter])
 
   if (loading) {
     return (
@@ -337,20 +386,32 @@ export default function UnifiedUsagePage() {
                 className="px-3 py-2 border rounded-md"
               >
                 <option value="">All Providers</option>
-                {(usageData?.summary.unique_providers || []).map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
+                {providerOptions.map((p) => {
+                  const label = sourceFilter === 'all'
+                    ? `${p.name} (A${p.bySource.api || 0}/CLI${p.bySource.cli || 0}/Cr${p.bySource.credits || 0})`
+                    : `${p.name} (${p.count})`
+                  return (
+                    <option key={p.name} value={p.name}>{label}</option>
+                  )
+                })}
               </select>
+              <span className="text-xs text-muted-foreground">{providerOptions.length} providers</span>
               <select
                 value={modelFilter}
                 onChange={(e) => { setModelFilter(e.target.value); setOffset(0) }}
                 className="px-3 py-2 border rounded-md max-w-[260px]"
               >
                 <option value="">All Models</option>
-                {(usageData?.summary.unique_models || []).map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
+                {modelOptions.map((m) => {
+                  const label = sourceFilter === 'all'
+                    ? `${m.name} (A${m.bySource.api || 0}/CLI${m.bySource.cli || 0}/Cr${m.bySource.credits || 0})`
+                    : `${m.name} (${m.count})`
+                  return (
+                    <option key={m.name} value={m.name}>{label}</option>
+                  )
+                })}
               </select>
+              <span className="text-xs text-muted-foreground">{modelOptions.length} models</span>
               <select
                 value={limit}
                 onChange={(e) => { setLimit(Number(e.target.value)); setOffset(0) }}

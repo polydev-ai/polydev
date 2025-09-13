@@ -168,6 +168,8 @@ export default function CreditsPage() {
   const [csTotal, setCsTotal] = useState<number | null>(null)
   const [csProvider, setCsProvider] = useState<string>('')
   const [csModel, setCsModel] = useState<string>('')
+  const [csProviderOptions, setCsProviderOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
+  const [csModelOptions, setCsModelOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
   const [csUseCustomRange, setCsUseCustomRange] = useState(false)
   const [csFromDate, setCsFromDate] = useState<string>('')
   const [csToDate, setCsToDate] = useState<string>('')
@@ -207,6 +209,51 @@ export default function CreditsPage() {
     }
     loadCreditSessions()
   }, [csTimeframe, csLimit, csOffset, csUseCustomRange, csFromDate, csToDate, csProvider, csModel])
+
+  // Load distinct provider/model options for dropdowns (narrow providers by model and models by provider)
+  useEffect(() => {
+    const loadDistinctOptions = async () => {
+      try {
+        const now = new Date()
+        let from: string | undefined
+        let to: string | undefined
+        if (csUseCustomRange && csFromDate) from = new Date(csFromDate).toISOString()
+        if (csUseCustomRange && csToDate) to = new Date(csToDate).toISOString()
+        if (!csUseCustomRange) {
+          if (csTimeframe === 'day') from = new Date(now.getTime() - 24*60*60*1000).toISOString()
+          if (csTimeframe === 'week') from = new Date(now.getTime() - 7*24*60*60*1000).toISOString()
+          if (csTimeframe === 'month') from = new Date(now.getTime() - 30*24*60*60*1000).toISOString()
+          if (csTimeframe === 'year') from = new Date(now.getTime() - 365*24*60*60*1000).toISOString()
+        }
+        const paramsBase = new URLSearchParams()
+        paramsBase.set('onlyCredits', 'true')
+        paramsBase.set('source', 'credits')
+        if (from) paramsBase.set('from', from)
+        if (to) paramsBase.set('to', to)
+
+        // Providers, narrowed by model if selected
+        const paramsProviders = new URLSearchParams(paramsBase)
+        if (csModel) paramsProviders.set('model', csModel)
+        const resProviders = await fetch(`/api/usage/distinct?${paramsProviders.toString()}`)
+        if (resProviders.ok) {
+          const dataP = await resProviders.json()
+          setCsProviderOptions((dataP.providers || []) as typeof csProviderOptions)
+        }
+
+        // Models, narrowed by provider if selected
+        const paramsModels = new URLSearchParams(paramsBase)
+        if (csProvider) paramsModels.set('provider', csProvider)
+        const resModels = await fetch(`/api/usage/distinct?${paramsModels.toString()}`)
+        if (resModels.ok) {
+          const dataM = await resModels.json()
+          setCsModelOptions((dataM.models || []) as typeof csModelOptions)
+        }
+      } catch (e) {
+        console.error('Error loading distinct options:', e)
+      }
+    }
+    loadDistinctOptions()
+  }, [csTimeframe, csUseCustomRange, csFromDate, csToDate, csProvider, csModel])
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -393,6 +440,112 @@ export default function CreditsPage() {
 
         <TabsContent value="analytics" className="space-y-6">
           <AnalyticsDashboard creditBalance={creditBalance} />
+
+          {/* Credit Usage Only */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Credit Usage (Polydev Credits)</CardTitle>
+                  <CardDescription>Only requests billed via Polydev credits</CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={csTimeframe}
+                    onChange={(e) => { setCsTimeframe(e.target.value); setCsOffset(0) }}
+                    className="px-3 py-2 border rounded-md"
+                  >
+                    <option value="day">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="year">This Year</option>
+                  </select>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={csUseCustomRange} onChange={(e) => { setCsUseCustomRange(e.target.checked); setCsOffset(0) }} /> Custom range
+                  </label>
+                  {csUseCustomRange && (
+                    <>
+                      <input type="datetime-local" value={csFromDate} onChange={(e) => { setCsFromDate(e.target.value); setCsOffset(0) }} className="px-3 py-2 border rounded-md" />
+                      <input type="datetime-local" value={csToDate} onChange={(e) => { setCsToDate(e.target.value); setCsOffset(0) }} className="px-3 py-2 border rounded-md" />
+                    </>
+                  )}
+                  <select
+                    value={csProvider}
+                    onChange={(e) => { setCsProvider(e.target.value); setCsOffset(0) }}
+                    className="px-3 py-2 border rounded-md"
+                  >
+                    <option value="">All Providers</option>
+                    {csProviderOptions.map((p) => (
+                      <option key={p.name} value={p.name}>{`${p.name} (${p.bySource.credits || 0})`}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-muted-foreground">{csProviderOptions.length} providers</span>
+                  <select
+                    value={csModel}
+                    onChange={(e) => { setCsModel(e.target.value); setCsOffset(0) }}
+                    className="px-3 py-2 border rounded-md max-w-[260px]"
+                  >
+                    <option value="">All Models</option>
+                    {csModelOptions.map((m) => (
+                      <option key={m.name} value={m.name}>{`${m.name} (${m.bySource.credits || 0})`}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-muted-foreground">{csModelOptions.length} models</span>
+                  <select
+                    value={csLimit}
+                    onChange={(e) => { setCsLimit(Number(e.target.value)); setCsOffset(0) }}
+                    className="px-3 py-2 border rounded-md"
+                  >
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={200}>200</option>
+                  </select>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground hidden md:inline">
+                      Page {Math.floor(csOffset / csLimit) + 1}{csTotal ? ` of ${Math.max(1, Math.ceil(csTotal / csLimit))}` : ''}
+                    </span>
+                    <Button variant="outline" size="sm" onClick={() => setCsOffset(Math.max(0, csOffset - csLimit))} disabled={csOffset === 0}>Prev</Button>
+                    <Button variant="outline" size="sm" onClick={() => setCsOffset(csOffset + csLimit)} disabled={csTotal !== null ? (csOffset + csLimit >= (csTotal || 0)) : (creditSessions.length < csLimit)}>Next</Button>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 dark:text-gray-400">
+                      <th className="py-2 pr-4">Timestamp</th>
+                      <th className="py-2 pr-4">Provider / Model</th>
+                      <th className="py-2 pr-4">App</th>
+                      <th className="py-2 pr-4">Tokens</th>
+                      <th className="py-2 pr-4">Cost</th>
+                      <th className="py-2 pr-4">Speed</th>
+                      <th className="py-2 pr-4">Finish</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {creditSessions.map((u: any) => (
+                      <tr key={u.id} className="border-t border-gray-200 dark:border-gray-700">
+                        <td className="py-2 pr-4">{new Date(u.timestamp || u.date).toLocaleString()}</td>
+                        <td className="py-2 pr-4">{u.provider || '—'} / {u.model || '—'}</td>
+                        <td className="py-2 pr-4">{u.app || '—'}</td>
+                        <td className="py-2 pr-4">{u.tokens?.toLocaleString?.() || u.tokens || 0}</td>
+                        <td className="py-2 pr-4">${(u.cost || 0).toFixed(4)}</td>
+                        <td className="py-2 pr-4">{u.tps ? `${u.tps} tps` : '—'}</td>
+                        <td className="py-2 pr-4">{u.finish || '—'}</td>
+                      </tr>
+                    ))}
+                    {creditSessions.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-4 text-center text-muted-foreground">No credit-based requests yet</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
@@ -565,104 +718,6 @@ function AnalyticsDashboard({ creditBalance }: { creditBalance: CreditBalance | 
             ) : (
               <p className="text-center text-muted-foreground py-4">No usage data yet</p>
             )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Credit Usage Only */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Credit Usage (Polydev Credits)</CardTitle>
-              <CardDescription>Only requests billed via Polydev credits</CardDescription>
-            </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <select
-                value={csTimeframe}
-                onChange={(e) => { setCsTimeframe(e.target.value); setCsOffset(0) }}
-                className="px-3 py-2 border rounded-md"
-              >
-                <option value="day">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="year">This Year</option>
-              </select>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={csUseCustomRange} onChange={(e) => { setCsUseCustomRange(e.target.checked); setCsOffset(0) }} /> Custom range
-              </label>
-              {csUseCustomRange && (
-                <>
-                  <input type="datetime-local" value={csFromDate} onChange={(e) => { setCsFromDate(e.target.value); setCsOffset(0) }} className="px-3 py-2 border rounded-md" />
-                  <input type="datetime-local" value={csToDate} onChange={(e) => { setCsToDate(e.target.value); setCsOffset(0) }} className="px-3 py-2 border rounded-md" />
-                </>
-              )}
-              <input
-                type="text"
-                value={csProvider}
-                onChange={(e) => { setCsProvider(e.target.value); setCsOffset(0) }}
-                placeholder="Provider"
-                className="px-3 py-2 border rounded-md"
-              />
-              <input
-                type="text"
-                value={csModel}
-                onChange={(e) => { setCsModel(e.target.value); setCsOffset(0) }}
-                placeholder="Model"
-                className="px-3 py-2 border rounded-md"
-              />
-              <select
-                value={csLimit}
-                onChange={(e) => { setCsLimit(Number(e.target.value)); setCsOffset(0) }}
-                className="px-3 py-2 border rounded-md"
-              >
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value={200}>200</option>
-              </select>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground hidden md:inline">
-                  Page {Math.floor(csOffset / csLimit) + 1}{csTotal ? ` of ${Math.max(1, Math.ceil(csTotal / csLimit))}` : ''}
-                </span>
-                <Button variant="outline" size="sm" onClick={() => setCsOffset(Math.max(0, csOffset - csLimit))} disabled={csOffset === 0}>Prev</Button>
-                <Button variant="outline" size="sm" onClick={() => setCsOffset(csOffset + csLimit)} disabled={csTotal !== null ? (csOffset + csLimit >= (csTotal || 0)) : (creditSessions.length < csLimit)}>Next</Button>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="text-left text-gray-500 dark:text-gray-400">
-                  <th className="py-2 pr-4">Timestamp</th>
-                  <th className="py-2 pr-4">Provider / Model</th>
-                  <th className="py-2 pr-4">App</th>
-                  <th className="py-2 pr-4">Tokens</th>
-                  <th className="py-2 pr-4">Cost</th>
-                  <th className="py-2 pr-4">Speed</th>
-                  <th className="py-2 pr-4">Finish</th>
-                </tr>
-              </thead>
-              <tbody>
-                {creditSessions.map((u: any) => (
-                  <tr key={u.id} className="border-t border-gray-200 dark:border-gray-700">
-                    <td className="py-2 pr-4">{new Date(u.timestamp || u.date).toLocaleString()}</td>
-                    <td className="py-2 pr-4">{u.provider || '—'} / {u.model || '—'}</td>
-                    <td className="py-2 pr-4">{u.app || '—'}</td>
-                    <td className="py-2 pr-4">{u.tokens?.toLocaleString?.() || u.tokens || 0}</td>
-                    <td className="py-2 pr-4">${(u.cost || 0).toFixed(4)}</td>
-                    <td className="py-2 pr-4">{u.tps ? `${u.tps} tps` : '—'}</td>
-                    <td className="py-2 pr-4">{u.finish || '—'}</td>
-                  </tr>
-                ))}
-                {creditSessions.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-4 text-center text-muted-foreground">No credit-based requests yet</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
           </div>
         </CardContent>
       </Card>
