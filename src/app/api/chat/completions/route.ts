@@ -985,7 +985,10 @@ export async function POST(request: NextRequest) {
             // Emit final event expected by the UI plus a summary block
             const summary = {
               type: 'summary',
-              totals: { tokens: totalTokens, cost: totalCost },
+              totals: {
+                tokens: finalResponses.reduce((sum, r) => sum + (r.usage?.total_tokens || 0), 0),
+                cost: finalResponses.reduce((sum, r) => sum + ((r as any)?.cost?.total_cost || 0), 0)
+              },
               responses: finalResponses.map(r => ({
                 model: r.model,
                 provider: r.provider,

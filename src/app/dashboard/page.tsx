@@ -729,11 +729,11 @@ export default function Dashboard() {
                     <p className="text-2xl font-semibold text-gray-900">{realTimeData.totalApiKeys || 0}</p>
                   </div>
                 </div>
-              </div>
             </div>
+          </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow">
+          {/* Quick Actions */}
+          <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
               </div>
@@ -779,6 +779,22 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Admin Link (visible to allowlisted admins) */}
+          {user?.email && (['admin@polydev.ai','venkat@polydev.ai'].includes(user.email)) && (
+            <div className="mt-6 bg-white rounded-lg shadow p-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Admin Operations</h3>
+                <p className="text-sm text-gray-600">Run backfill and models.dev sync</p>
+              </div>
+              <a
+                href="/admin"
+                className="inline-flex items-center px-4 py-2 bg-gray-900 text-white rounded-md text-sm font-medium hover:bg-black"
+              >
+                Open Admin
+              </a>
+            </div>
+          )}
         )}
 
         {/* Request Logs Tab */}
