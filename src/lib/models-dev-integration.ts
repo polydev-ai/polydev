@@ -437,14 +437,15 @@ class ModelsDevService {
     const cleanProviderId = this.extractProviderIdFromDisplayName(providerId)
     
     // First try to get from model_mappings table which has provider-specific pricing
-    const { data: mappingData, error: mappingError } = await supabase
+    const { data: mappingArr, error: mappingError } = await supabase
       .from('model_mappings')
       .select('providers_mapping')
       .eq('friendly_id', friendlyId)
-      .single()
+      .limit(1)
 
-    if (!mappingError && mappingData && mappingData.providers_mapping && mappingData.providers_mapping[cleanProviderId]) {
-      const providerMapping = mappingData.providers_mapping[cleanProviderId]
+    const mappingData = Array.isArray(mappingArr) && mappingArr.length > 0 ? mappingArr[0] : null
+    if (!mappingError && mappingData && (mappingData as any).providers_mapping && (mappingData as any).providers_mapping[cleanProviderId]) {
+      const providerMapping = (mappingData as any).providers_mapping[cleanProviderId]
       const result: { maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } = {
         maxTokens: providerMapping.capabilities?.max_tokens || 4096,
         contextLength: providerMapping.capabilities?.context_length || 32768
@@ -462,14 +463,15 @@ class ModelsDevService {
     }
 
     // Fallback to models_registry table
-    const { data, error } = await supabase
+    const { data: modelRows, error } = await supabase
       .from('models_registry')
       .select('max_tokens, context_length, input_cost_per_million, output_cost_per_million')
       .eq('friendly_id', friendlyId)
       .eq('provider_id', cleanProviderId)
       .eq('is_active', true)
-      .single()
+      .limit(1)
 
+    const data = Array.isArray(modelRows) && modelRows.length > 0 ? modelRows[0] : null
     if (error || !data) return null
 
     const result: { maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } = {

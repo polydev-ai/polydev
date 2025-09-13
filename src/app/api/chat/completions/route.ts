@@ -809,22 +809,27 @@ export async function POST(request: NextRequest) {
                 }
               } catch {}
 
-              // Compute cost if possible
+              // Compute cost if possible and set credits_used properly from models.dev pricing
               try {
                 const pricingProvider = requiredProvider || selectedProvider
                 const resolvedModel = collected[friendlyModelId].modelResolved || actualModelId
                 const limits = await modelsDevService.getModelLimits(resolvedModel, pricingProvider)
+                const u = collected[friendlyModelId].usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                 if (limits?.pricing) {
-                  const u = collected[friendlyModelId].usage || { prompt_tokens: 0, completion_tokens: 0 }
-                  const inputCost = (u.prompt_tokens / 1_000_000) * limits.pricing.input
-                  const outputCost = (u.completion_tokens / 1_000_000) * limits.pricing.output
-                  collected[friendlyModelId].cost = { input_cost: inputCost, output_cost: outputCost, total_cost: inputCost + outputCost }
+                  const inputCost = ((u.prompt_tokens || 0) / 1_000_000) * limits.pricing.input
+                  const outputCost = ((u.completion_tokens || 0) / 1_000_000) * limits.pricing.output
+                  const totalCost = inputCost + outputCost
+                  collected[friendlyModelId].cost = { input_cost: inputCost, output_cost: outputCost, total_cost: totalCost }
+                  if (selectedConfig?.type === 'credits') {
+                    collected[friendlyModelId].creditsUsed = totalCost
+                  }
+                } else if (selectedConfig?.type === 'credits') {
+                  // No pricing info; as a safe fallback don't deduct blindly
+                  collected[friendlyModelId].creditsUsed = 0
                 }
-                if (selectedConfig?.type === 'credits') {
-                  const u = collected[friendlyModelId].usage || { total_tokens: 0 }
-                  collected[friendlyModelId].creditsUsed = ((u.total_tokens || 0) / 1_000_000) * 50
-                }
-              } catch {}
+              } catch (e) {
+                // Leave cost/credits undefined on failure
+              }
             } catch (err: any) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: err?.message || 'Provider error' })}\n\n`))
             }
@@ -906,7 +911,7 @@ export async function POST(request: NextRequest) {
                   created_at: new Date().toISOString()
                 })
 
-                // Deduct credits (OpenRouter credits) if used during this stream (promo first, then balance)
+                // Deduct credits using unified total balance (promo + purchased treated as one)
                 if (totalCreditsUsedNow > 0 && userCredits) {
                   try {
                     const { data: creditRow } = await supabase
@@ -916,14 +921,14 @@ export async function POST(request: NextRequest) {
                       .single()
                     let promo = parseFloat((creditRow?.promotional_balance ?? 0).toString())
                     let bal = parseFloat((creditRow?.balance ?? 0).toString())
-                    let remaining = totalCreditsUsedNow
-                    const usePromo = Math.min(promo, remaining)
-                    promo -= usePromo
-                    remaining -= usePromo
-                    if (remaining > 0) bal = Math.max(0, bal - remaining)
+                    const total = Math.max(0, promo + bal)
+                    const newTotal = Math.max(0, total - totalCreditsUsedNow)
+                    // Keep fields consistent without prioritizing either bucket
+                    let newPromo = Math.min(promo, newTotal)
+                    let newBal = Math.max(0, newTotal - newPromo)
                     await supabase
                       .from('user_credits')
-                      .update({ balance: bal.toFixed(6), promotional_balance: promo.toFixed(6) })
+                      .update({ balance: newBal.toFixed(6), promotional_balance: newPromo.toFixed(6) })
                       .eq('user_id', user.id)
                   } catch (creditErr) {
                     console.warn('Failed to deduct user credits after streaming:', creditErr)
@@ -1583,7 +1588,7 @@ export async function POST(request: NextRequest) {
             const outputCost = modelPricing ? ((usageForCost.completion_tokens || 0) / 1_000_000) * modelPricing.output : 0
             const totalCostUsd = inputCost + outputCost
 
-            // If using credits, deduct promo-first, then purchased
+            // Deduct credits using unified total balance (promo + purchased treated as one)
             if (selectedConfig.type === 'credits' && totalCostUsd > 0) {
               try {
                 const { data: creditRow } = await supabase
@@ -1593,14 +1598,13 @@ export async function POST(request: NextRequest) {
                   .single()
                 let promo = parseFloat((creditRow?.promotional_balance ?? 0).toString())
                 let bal = parseFloat((creditRow?.balance ?? 0).toString())
-                let remaining = totalCostUsd
-                const usePromo = Math.min(promo, remaining)
-                promo -= usePromo
-                remaining -= usePromo
-                if (remaining > 0) bal = Math.max(0, bal - remaining)
+                const total = Math.max(0, promo + bal)
+                const newTotal = Math.max(0, total - totalCostUsd)
+                let newPromo = Math.min(promo, newTotal)
+                let newBal = Math.max(0, newTotal - newPromo)
                 await supabase
                   .from('user_credits')
-                  .update({ balance: bal.toFixed(6), promotional_balance: promo.toFixed(6) })
+                  .update({ balance: newBal.toFixed(6), promotional_balance: newPromo.toFixed(6) })
                   .eq('user_id', user.id)
               } catch (creditErr) {
                 console.warn('Failed to deduct user credits (non-stream):', creditErr)
@@ -2261,6 +2265,45 @@ export async function POST(request: NextRequest) {
           'X-Accel-Buffering': 'no',
         }
       })
+    }
+
+    // Non-stream: persist analytics into usage_sessions for each response
+    try {
+      const supabase = await createClient()
+      for (const r of responses) {
+        if (!r || (r as any).error) continue
+        const tps = r.usage?.completion_tokens && r.response_time_ms
+          ? (r.usage.completion_tokens || 0) / Math.max(0.001, (r.response_time_ms as number) / 1000)
+          : null
+        await supabase
+          .from('usage_sessions')
+          .insert({
+            user_id: user.id,
+            session_type: (r as any).fallback_method === 'credits' ? 'credits' : ((r as any).fallback_method === 'cli' ? 'cli_tool' : 'api_key'),
+            model_name: r.model,
+            provider: r.provider,
+            message_count: 1,
+            input_tokens: r.usage?.prompt_tokens || 0,
+            output_tokens: r.usage?.completion_tokens || 0,
+            total_tokens: r.usage?.total_tokens || 0,
+            cost_usd: (r as any).fallback_method === 'credits' ? 0 : ((r as any).costInfo?.total_cost || 0),
+            cost_credits: (r as any).fallback_method === 'credits' ? ((r as any).costInfo?.total_cost || 0) : 0,
+            metadata: {
+              app: 'Polydev Multi-LLM Platform',
+              prompt_tokens: r.usage?.prompt_tokens || 0,
+              completion_tokens: r.usage?.completion_tokens || 0,
+              input_cost: (r as any).costInfo?.input_cost || 0,
+              output_cost: (r as any).costInfo?.output_cost || 0,
+              response_time_ms: (r as any).response_time_ms || 0,
+              tps: tps ? Number(tps.toFixed(1)) : null,
+              finish: 'stop',
+              fallback_method: (r as any).fallback_method,
+              credits_used: (r as any).credits_used || 0
+            }
+          })
+      }
+    } catch (e) {
+      console.warn('Failed to record non-stream usage analytics:', e)
     }
 
     return NextResponse.json({
