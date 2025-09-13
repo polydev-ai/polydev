@@ -1088,21 +1088,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.log(`[MCP] API Keys:`, apiKeys.map(k => ({ provider: k.provider, preview: k.key_preview })))
   }
 
-  // Get user credit balance for fallback decisions
-  let userCreditBalance = 0
-  try {
-    const { data: creditData } = await serviceRoleSupabase
-      .from('user_credits')
-      .select('balance, promotional_balance')
-      .eq('user_id', user.id)
-      .single()
-    userCreditBalance = (creditData?.balance || 0) + (creditData?.promotional_balance || 0)
-  } catch (creditError) {
-    console.warn('[MCP] Failed to check credits for model selection:', creditError)
-  }
-
-  // Use models from args, or get models from user preferences with credit fallback, or defaults
-  const models = args.models || getModelsFromApiKeysAndPreferences(apiKeys || [], preferences, userCreditBalance) || ['gpt-5-2025-08-07']
+  // Use models from args, or get models from available API keys, or fallback defaults
+  const models = args.models || getModelsFromApiKeysAndPreferences(apiKeys || [], preferences) || ['gpt-5-2025-08-07']
 
   // Use temperature and max_tokens from args, or user preferences, or defaults
   const temperature = args.temperature ?? preferences?.default_temperature ?? 0.7
@@ -2371,87 +2358,82 @@ function getDefaultModelForProvider(provider: string): string {
 }
 
 // Get models from available API keys and user preferences
-function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any, userCreditBalance: number = 0): string[] {
-  console.log('[MCP] Getting models with preference priority and credit fallback')
+function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): string[] {
+  if (!apiKeys || apiKeys.length === 0) {
+    console.log('[MCP] No API keys available, using system defaults')
+    return ['gpt-5-2025-08-07'] // System fallback
+  }
+  
+  console.log('[MCP] Getting models from API keys and preferences')
   console.log('[MCP] Available API keys:', apiKeys.map(k => ({ provider: k.provider, default_model: k.default_model })))
   console.log('[MCP] User preferences:', preferences?.model_preferences)
-  console.log('[MCP] User credit balance:', userCreditBalance)
   
   const models: string[] = []
   const usedProviders = new Set<string>()
-  const hasValidCredits = userCreditBalance > 0.1 // Minimum threshold for credit usage
   
-  // Process user preferences in priority order (regardless of API key availability)
+  // First, try to use models from user preferences if they match available API keys
   if (preferences?.model_preferences && typeof preferences.model_preferences === 'object') {
     const sortedProviders = Object.entries(preferences.model_preferences)
       .filter(([_, pref]: [string, any]) => pref && typeof pref === 'object')
       .sort(([_, a]: [string, any], [__, b]: [string, any]) => (a.order || 0) - (b.order || 0))
-      .slice(0, 3) // Only take top 3 preferences
     
-    for (const [prefProvider, pref] of sortedProviders.slice(0, 3)) {
-      // Process only top 3 preferences
-      
+    for (const [prefProvider, pref] of sortedProviders) {
+      // Normalize provider names for matching
       const normalizedPrefProvider = normalizeProviderName(prefProvider)
       
-      // Check if we have an API key for this provider
+      // Find matching API key with flexible provider name matching
       const matchingApiKey = apiKeys.find(key => {
         const normalizedKeyProvider = normalizeProviderName(key.provider)
         return normalizedKeyProvider === normalizedPrefProvider
       })
       
-      // Get the preferred model
-      let selectedModel: string | null = null
-      if (pref && typeof pref === 'object' && (pref as any).models && Array.isArray((pref as any).models) && (pref as any).models.length > 0) {
-        selectedModel = (pref as any).models[0]
-      }
-      
-      if (selectedModel) {
-        if (matchingApiKey) {
-          // Has API key - use it
-          models.push(selectedModel)
-          usedProviders.add(normalizedPrefProvider)
-          console.log(`[MCP] Added model from preferences (API key): ${selectedModel} (${matchingApiKey.provider})`)
-        } else if (hasValidCredits) {
-          // No API key but has credits - include for credit fallback
-          models.push(selectedModel)
-          usedProviders.add(normalizedPrefProvider)
-          console.log(`[MCP] Added model from preferences (credit fallback): ${selectedModel} (${prefProvider})`)
+      if (matchingApiKey) {
+        // Use the model from preferences, or the default model from API key, or provider default
+        let selectedModel: string | null = null
+        
+        if (pref && typeof pref === 'object' && (pref as any).models && Array.isArray((pref as any).models) && (pref as any).models.length > 0) {
+          selectedModel = (pref as any).models[0]
+        } else if (matchingApiKey.default_model) {
+          selectedModel = matchingApiKey.default_model
         } else {
-          console.log(`[MCP] Skipping preference ${prefProvider} - no API key and insufficient credits (${userCreditBalance})`)
+          selectedModel = getDefaultModelForProvider(normalizedPrefProvider)
         }
-      }
-    }
-  }
-  
-  // If we have less than 3 models, fill remaining slots with API key models
-  const remainingSlots = 3 - models.length
-  if (remainingSlots > 0) {
-    const unusedApiKeys = apiKeys.filter(apiKey => {
-      const normalizedProvider = normalizeProviderName(apiKey.provider)
-      return !usedProviders.has(normalizedProvider)
-    }).slice(0, remainingSlots)
-    
-    for (const apiKey of unusedApiKeys) {
-      
-      const normalizedProvider = normalizeProviderName(apiKey.provider)
-      if (!usedProviders.has(normalizedProvider)) {
-        const selectedModel = apiKey.default_model || getDefaultModelForProvider(normalizedProvider)
+        
         if (selectedModel) {
           models.push(selectedModel)
-          usedProviders.add(normalizedProvider)
-          console.log(`[MCP] Added model from available API key: ${selectedModel} (${apiKey.provider})`)
+          usedProviders.add(normalizedPrefProvider)
+          console.log(`[MCP] Added model from preferences: ${selectedModel} (${matchingApiKey.provider})`)
         }
+      } else {
+        console.log(`[MCP] Preference provider ${prefProvider} not found in API keys`)
       }
     }
   }
   
-  // Fallback if no models selected
-  if (models.length === 0) {
-    console.log('[MCP] No models selected, using system defaults')
-    return ['gpt-4o'] // Safe fallback
+  // Then, add models from remaining API keys that weren't in preferences (max 3 total)
+  for (const apiKey of apiKeys) {
+    if (models.length >= 3) break // Limit to 3 models for performance
+    
+    const normalizedProvider = normalizeProviderName(apiKey.provider)
+    if (!usedProviders.has(normalizedProvider)) {
+      const selectedModel = apiKey.default_model || getDefaultModelForProvider(normalizedProvider)
+      if (selectedModel) {
+        models.push(selectedModel)
+        usedProviders.add(normalizedProvider)
+        console.log(`[MCP] Added model from available API key: ${selectedModel} (${apiKey.provider})`)
+      }
+    }
   }
   
-  console.log(`[MCP] Final selected models (${models.length}/3): ${models.join(', ')}`)
+  // If still no models, use the first available API key's default model or provider default
+  if (models.length === 0 && apiKeys.length > 0) {
+    const firstApiKey = apiKeys[0]
+    const fallbackModel = firstApiKey.default_model || getDefaultModelForProvider(normalizeProviderName(firstApiKey.provider))
+    models.push(fallbackModel)
+    console.log(`[MCP] Used fallback model from first API key: ${fallbackModel} (${firstApiKey.provider})`)
+  }
+  
+  console.log(`[MCP] Final selected models: ${models.join(', ')}`)
   return models
 }
 
