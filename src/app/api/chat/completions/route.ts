@@ -2272,8 +2272,9 @@ export async function POST(request: NextRequest) {
       const supabase = await createClient()
       for (const r of responses) {
         if (!r || (r as any).error) continue
-        const tps = r.usage?.completion_tokens && r.response_time_ms
-          ? (r.usage.completion_tokens || 0) / Math.max(0.001, (r.response_time_ms as number) / 1000)
+        const rt = (r as any).response_time_ms as number | undefined
+        const tps = r.usage?.completion_tokens && rt
+          ? (r.usage.completion_tokens || 0) / Math.max(0.001, (rt as number) / 1000)
           : null
         await supabase
           .from('usage_sessions')
