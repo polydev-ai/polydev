@@ -48,7 +48,7 @@ export async function GET() {
               order: 2
             },
             google: {
-              models: ['gemini-2.0-flash-exp'],
+              models: ['gemini-2.5-flash'],
               order: 3
             },
             'x-ai': {

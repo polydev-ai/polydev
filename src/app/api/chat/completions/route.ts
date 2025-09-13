@@ -411,8 +411,8 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
         }
       }
       
-      console.warn(`Model ${model} not found in registry or user preferences, falling back to openai`)
-      return 'openai'
+      // Strict: do not fallback to other providers if model is not configured in preferences/registry
+      throw new Error(`Model ${model} is not configured or unavailable`)
     }
     
     // If we have a user ID, check their preferences to determine which provider they want to use for this model
@@ -445,14 +445,12 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
       }
     }
     
-    // If no user preference found, return the first available provider
-    const firstProvider = modelProviders[0]
-    console.log(`Using first available provider for ${model}: ${firstProvider.provider_id}`)
-    return firstProvider.provider_id
+    // Strict: require an explicit preference; otherwise, error
+    throw new Error(`No preferred provider configured for model ${model}`)
   } catch (error) {
     console.warn(`Failed to lookup provider for model ${model}:`, error)
     console.log(`Model ${model} not found in models_registry. Consider checking for similar models or updating the registry.`)
-    return 'openai' // Fallback to OpenAI
+    throw new Error(`Provider lookup failed for model ${model}`)
   }
 }
 
@@ -513,6 +511,34 @@ export async function POST(request: NextRequest) {
       targetModels = [preferences.default_model]
     }
     
+    // Enforce strict: only allow models explicitly configured by the user in model_preferences
+    try {
+      const allowed: string[] = []
+      if (preferences?.model_preferences) {
+        for (const [, pref] of Object.entries(preferences.model_preferences)) {
+          const arr = (pref as any)?.models || []
+          for (const mid of arr) {
+            if (typeof mid === 'string') allowed.push(mid)
+          }
+        }
+      }
+      const before = targetModels.slice()
+      targetModels = targetModels.filter(m => allowed.includes(m))
+      if (targetModels.length === 0) {
+        return NextResponse.json({
+          error: {
+            message: 'No valid models selected. Please configure models in your dashboard and select from those.',
+            type: 'invalid_model_selection'
+          }
+        }, { status: 400 })
+      }
+      if (before.length !== targetModels.length) {
+        console.log('[models] Filtered out non-configured models:', before.filter(b => !targetModels.includes(b)))
+      }
+    } catch (e) {
+      console.warn('Failed to enforce strict model list:', e)
+    }
+
     // PRIORITY SYSTEM: CLI > API KEYS > OPENROUTER (CREDITS)
     
     // Step 1: Get all CLI configurations
