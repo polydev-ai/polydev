@@ -85,6 +85,16 @@ export default function UnifiedUsagePage() {
   const [loading, setLoading] = useState(true)
   const [timeframe, setTimeframe] = useState('month')
   const [includeDetails, setIncludeDetails] = useState(false)
+  const [sessions, setSessions] = useState<any[]>([])
+  const [totalSessions, setTotalSessions] = useState<number | null>(null)
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'api' | 'cli' | 'credits'>('all')
+  const [providerFilter, setProviderFilter] = useState<string>('')
+  const [modelFilter, setModelFilter] = useState<string>('')
+  const [limit, setLimit] = useState(100)
+  const [offset, setOffset] = useState(0)
+  const [useCustomRange, setUseCustomRange] = useState(false)
+  const [fromDate, setFromDate] = useState<string>('')
+  const [toDate, setToDate] = useState<string>('')
 
   const fetchUsageData = async () => {
     try {
@@ -97,6 +107,41 @@ export default function UnifiedUsagePage() {
       }
     } catch (error) {
       console.error('Error fetching usage data:', error)
+    }
+  }
+
+  const fetchSessions = async () => {
+    try {
+      const now = new Date()
+      let from: string | undefined
+      let to: string | undefined
+      if (useCustomRange && fromDate) from = new Date(fromDate).toISOString()
+      if (useCustomRange && toDate) to = new Date(toDate).toISOString()
+      if (!useCustomRange) {
+        if (timeframe === 'day') from = new Date(now.getTime() - 24*60*60*1000).toISOString()
+        if (timeframe === 'week') from = new Date(now.getTime() - 7*24*60*60*1000).toISOString()
+        if (timeframe === 'month') from = new Date(now.getTime() - 30*24*60*60*1000).toISOString()
+        if (timeframe === 'year') from = new Date(now.getTime() - 365*24*60*60*1000).toISOString()
+      }
+
+      const params = new URLSearchParams()
+      params.set('limit', String(limit))
+      params.set('offset', String(offset))
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
+      if (sourceFilter === 'credits') params.set('onlyCredits', 'true')
+      if (providerFilter) params.set('provider', providerFilter)
+      if (modelFilter) params.set('model', modelFilter)
+      params.set('includeCount', 'true')
+
+      const res = await fetch(`/api/usage/sessions?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSessions(data.items || [])
+        setTotalSessions(typeof data.total === 'number' ? data.total : null)
+      }
+    } catch (e) {
+      console.error('Error fetching sessions:', e)
     }
   }
 
@@ -137,11 +182,11 @@ export default function UnifiedUsagePage() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([fetchUsageData(), fetchCLIConfigs()])
+      await Promise.all([fetchUsageData(), fetchCLIConfigs(), fetchSessions()])
       setLoading(false)
     }
     loadData()
-  }, [timeframe, includeDetails])
+  }, [timeframe, includeDetails, sourceFilter, providerFilter, modelFilter, limit, offset, useCustomRange, fromDate, toDate])
 
   if (loading) {
     return (
@@ -181,7 +226,7 @@ export default function UnifiedUsagePage() {
             Comprehensive tracking across API keys, credits, and CLI tools
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <select
             value={timeframe}
             onChange={(e) => setTimeframe(e.target.value)}
@@ -192,10 +237,19 @@ export default function UnifiedUsagePage() {
             <option value="month">This Month</option>
             <option value="year">This Year</option>
           </select>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={useCustomRange} onChange={(e) => { setUseCustomRange(e.target.checked); setOffset(0) }} /> Custom range
+          </label>
+          {useCustomRange && (
+            <>
+              <input type="datetime-local" value={fromDate} onChange={(e) => { setFromDate(e.target.value); setOffset(0) }} className="px-3 py-2 border rounded-md" />
+              <input type="datetime-local" value={toDate} onChange={(e) => { setToDate(e.target.value); setOffset(0) }} className="px-3 py-2 border rounded-md" />
+            </>
+          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchUsageData()}
+            onClick={() => { fetchUsageData(); fetchSessions() }}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
@@ -257,6 +311,111 @@ export default function UnifiedUsagePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* All Requests */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>All Requests</CardTitle>
+              <CardDescription>Across API, CLI, and Credits</CardDescription>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value as any)}
+                className="px-3 py-2 border rounded-md"
+              >
+                <option value="all">All Sources</option>
+                <option value="api">API</option>
+                <option value="cli">CLI</option>
+                <option value="credits">Credits</option>
+              </select>
+              <select
+                value={providerFilter}
+                onChange={(e) => { setProviderFilter(e.target.value); setOffset(0) }}
+                className="px-3 py-2 border rounded-md"
+              >
+                <option value="">All Providers</option>
+                {(usageData?.summary.unique_providers || []).map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              <select
+                value={modelFilter}
+                onChange={(e) => { setModelFilter(e.target.value); setOffset(0) }}
+                className="px-3 py-2 border rounded-md max-w-[260px]"
+              >
+                <option value="">All Models</option>
+                {(usageData?.summary.unique_models || []).map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <select
+                value={limit}
+                onChange={(e) => { setLimit(Number(e.target.value)); setOffset(0) }}
+                className="px-3 py-2 border rounded-md"
+              >
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground hidden md:inline">
+                  Page {Math.floor(offset / limit) + 1}{totalSessions ? ` of ${Math.max(1, Math.ceil(totalSessions / limit))}` : ''}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}>Prev</Button>
+                <Button variant="outline" size="sm" onClick={() => setOffset(offset + limit)} disabled={totalSessions !== null ? (offset + limit >= (totalSessions || 0)) : (sessions.length < limit)}>Next</Button>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 dark:text-gray-400">
+                  <th className="py-2 pr-4">Timestamp</th>
+                  <th className="py-2 pr-4">Provider / Model</th>
+                  <th className="py-2 pr-4">App</th>
+                  <th className="py-2 pr-4">Tokens</th>
+                  <th className="py-2 pr-4">Cost</th>
+                  <th className="py-2 pr-4">Speed</th>
+                  <th className="py-2 pr-4">Finish</th>
+                  <th className="py-2 pr-4">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions.map((s) => (
+                  <tr key={s.id} className="border-t border-gray-200 dark:border-gray-700">
+                    <td className="py-2 pr-4">{new Date(s.timestamp).toLocaleString()}</td>
+                    <td className="py-2 pr-4">{s.provider || '—'} / {s.model || '—'}</td>
+                    <td className="py-2 pr-4">{s.app || '—'}</td>
+                    <td className="py-2 pr-4">{s.tokens?.toLocaleString?.() || s.tokens || 0}</td>
+                    <td className="py-2 pr-4">${(s.cost || 0).toFixed(4)}</td>
+                    <td className="py-2 pr-4">{s.tps ? `${s.tps} tps` : '—'}</td>
+                    <td className="py-2 pr-4">{s.finish || '—'}</td>
+                    <td className="py-2 pr-4">
+                      {s.source === 'Credits' ? (
+                        <Badge variant="default">Credits</Badge>
+                      ) : s.source === 'CLI' ? (
+                        <Badge variant="secondary">CLI</Badge>
+                      ) : (
+                        <Badge variant="outline">API</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {sessions.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-4 text-center text-muted-foreground">No sessions</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>

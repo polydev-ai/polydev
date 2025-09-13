@@ -720,6 +720,10 @@ export async function POST(request: NextRequest) {
               collected[friendlyModelId].provider = selectedProvider
               collected[friendlyModelId].fallback = fallbackMethod
 
+              // Metrics for latency
+              const modelStart = Date.now()
+              let firstTokenAt: number | null = null
+
               const reader = upstream.getReader()
               const textDecoder = new TextDecoder()
               let buf = ''
@@ -731,6 +735,7 @@ export async function POST(request: NextRequest) {
                     try {
                       const item = JSON.parse(buf.trim())
                       if (item?.type === 'content' && item.content) {
+                        if (!firstTokenAt) firstTokenAt = Date.now()
                         collected[friendlyModelId].content += item.content
                         const contentEvent = { type: 'content', model: friendlyModelId, content: item.content, provider: selectedProvider }
                         controller.enqueue(encoder.encode(`data: ${JSON.stringify(contentEvent)}\n\n`))
@@ -748,6 +753,7 @@ export async function POST(request: NextRequest) {
                   try {
                     const item = JSON.parse(line)
                     if (item?.type === 'content' && item.content) {
+                      if (!firstTokenAt) firstTokenAt = Date.now()
                       collected[friendlyModelId].content += item.content
                       const contentEvent = { type: 'content', model: friendlyModelId, content: item.content, provider: selectedProvider }
                       controller.enqueue(encoder.encode(`data: ${JSON.stringify(contentEvent)}\n\n`))
@@ -758,6 +764,9 @@ export async function POST(request: NextRequest) {
                   } catch {}
                 }
               }
+
+              // Save latency metrics
+              ;(collected as any)[friendlyModelId].responseTimeMs = Date.now() - modelStart
 
               // If no usage in stream, make a non-streaming call to fetch usage (and content fallback)
               try {
@@ -831,7 +840,8 @@ export async function POST(request: NextRequest) {
               usage: collected[m].usage,
               cost: collected[m].cost,
               fallback_method: collected[m].fallback,
-              credits_used: collected[m].creditsUsed || 0
+              credits_used: collected[m].creditsUsed || 0,
+              response_time_ms: (collected as any)[m]?.responseTimeMs || undefined
             }))
 
             // Persist chat history and logs
@@ -894,17 +904,62 @@ export async function POST(request: NextRequest) {
                   created_at: new Date().toISOString()
                 })
 
-                // Deduct credits (OpenRouter credits) if used during this stream
+                // Deduct credits (OpenRouter credits) if used during this stream (promo first, then balance)
                 if (totalCreditsUsedNow > 0 && userCredits) {
-                  const newBalance = Math.max(0, parseFloat(userCredits.balance || '0') - totalCreditsUsedNow)
                   try {
+                    const { data: creditRow } = await supabase
+                      .from('user_credits')
+                      .select('balance, promotional_balance')
+                      .eq('user_id', user.id)
+                      .single()
+                    let promo = parseFloat((creditRow?.promotional_balance ?? 0).toString())
+                    let bal = parseFloat((creditRow?.balance ?? 0).toString())
+                    let remaining = totalCreditsUsedNow
+                    const usePromo = Math.min(promo, remaining)
+                    promo -= usePromo
+                    remaining -= usePromo
+                    if (remaining > 0) bal = Math.max(0, bal - remaining)
                     await supabase
                       .from('user_credits')
-                      .update({ balance: newBalance.toFixed(6) })
+                      .update({ balance: bal.toFixed(6), promotional_balance: promo.toFixed(6) })
                       .eq('user_id', user.id)
                   } catch (creditErr) {
                     console.warn('Failed to deduct user credits after streaming:', creditErr)
                   }
+                }
+
+                // Record analytics in usage_sessions
+                try {
+                  for (const r of finalResponses) {
+                    const tps = r.usage && r.response_time_ms
+                      ? (r.usage.completion_tokens || 0) / Math.max(0.001, (r.response_time_ms as number) / 1000)
+                      : null
+                    await supabase
+                      .from('usage_sessions')
+                      .insert({
+                        user_id: user.id,
+                        session_id: currentSessionId,
+                        model_name: r.model,
+                        provider: r.provider,
+                        tokens_used: r.usage?.total_tokens || 0,
+                        cost: r.cost?.total_cost || 0,
+                        session_type: 'chat',
+                        metadata: {
+                          app: 'Polydev Multi-LLM Platform',
+                          prompt_tokens: r.usage?.prompt_tokens || 0,
+                          completion_tokens: r.usage?.completion_tokens || 0,
+                          input_cost: r.cost?.input_cost || 0,
+                          output_cost: r.cost?.output_cost || 0,
+                          response_time_ms: r.response_time_ms || 0,
+                          tps: tps ? Number(tps.toFixed(1)) : null,
+                          finish: 'stop',
+                          fallback_method: r.fallback_method,
+                          credits_used: r.credits_used || 0
+                        }
+                      })
+                  }
+                } catch (e) {
+                  console.warn('Failed to record usage analytics:', e)
                 }
               }
             } catch (e) {
@@ -958,33 +1013,14 @@ export async function POST(request: NextRequest) {
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
         }
         
-        // STEP 3: If user's preferred provider IS OpenRouter
-        if (!selectedProvider && requiredProvider === 'openrouter') {
-          // Prefer per-user credits key if present
-          let userCreditsKey: string | null = null
-          try {
-            const { data: userOpenRouterKey } = await supabase
-              .from('openrouter_user_keys')
-              .select('openrouter_key_hash, is_active')
-              .eq('user_id', user.id)
-              .eq('is_active', true)
-              .single()
-            if (userOpenRouterKey?.openrouter_key_hash) userCreditsKey = userOpenRouterKey.openrouter_key_hash
-          } catch {}
-
-          const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
-
-          if (userCreditsKey && openrouterModelId) {
-            selectedProvider = 'openrouter'
-            selectedConfig = { type: 'credits', priority: 3, apiKey: userCreditsKey }
-            fallbackMethod = 'credits'
-            actualModelId = openrouterModelId
-          } else if (providerConfigs['openrouter']?.api) {
-            selectedProvider = 'openrouter'
-            selectedConfig = providerConfigs['openrouter'].api
-            fallbackMethod = 'api'
-            actualModelId = openrouterModelId || modelId
-          }
+        // STEP 3: Check if user has OpenRouter as API provider for this model
+        // Only use OpenRouter if the user's preferred provider IS OpenRouter, not as a fallback
+        if (!selectedProvider && requiredProvider === 'openrouter' && providerConfigs['openrouter']?.api) {
+          selectedProvider = 'openrouter'
+          selectedConfig = providerConfigs['openrouter'].api
+          fallbackMethod = 'api'
+          // Resolve OpenRouter-specific model ID
+          actualModelId = await resolveProviderModelId(modelId, 'openrouter')
         }
         
         // STEP 4: PRIORITY 3 - OpenRouter Credits (lowest priority, last resort)

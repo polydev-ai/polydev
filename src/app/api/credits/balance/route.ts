@@ -99,9 +99,8 @@ export async function GET(request: NextRequest) {
 
     if (analyticsData) {
       analyticsData.forEach(session => {
-        const cost = parseFloat(session.cost_credits || '0')
-        const requests = session.message_count || 0
-        
+        const cost = Number(session.cost || 0)
+        const requests = 1
         analytics.totalSpent += cost
         analytics.totalRequests += requests
 
@@ -142,12 +141,14 @@ export async function GET(request: NextRequest) {
     const formattedRecentUsage = (recentUsage || []).map(session => ({
       id: session.id,
       date: session.created_at,
-      tool: session.tool_name || session.provider || 'Unknown',
+      provider: session.provider,
       model: session.model_name,
-      requests: session.message_count,
-      tokens: session.total_tokens,
-      cost: parseFloat(session.cost_credits || '0'),
-      type: session.session_type
+      app: session.metadata?.app || 'Polydev Multi-LLM Platform',
+      tokens: session.tokens_used || session.total_tokens || 0,
+      cost: Number(session.cost || 0),
+      tps: session.metadata?.tps || null,
+      finish: session.metadata?.finish || 'stop',
+      source: session.metadata?.fallback_method === 'credits' ? 'Credits' : (session.metadata?.fallback_method === 'cli' ? 'CLI' : 'API')
     }))
 
     return NextResponse.json({
