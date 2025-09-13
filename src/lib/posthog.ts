@@ -11,7 +11,11 @@ export function initPostHog() {
       try {
         posthog.init(posthogKey, {
           api_host: posthogHost,
+          // Reduce noisy network calls when misconfigured: disable feature flags/decide
+          disable_feature_flags: true,
+          // Keep profiles but only for identified users
           person_profiles: 'identified_only',
+          // Don't auto-capture pageviews; we'll capture explicitly
           capture_pageview: false,
           capture_pageleave: true,
           loaded: (posthog) => {
@@ -21,6 +25,8 @@ export function initPostHog() {
           },
           // Disable in development to avoid console errors
           disable_session_recording: process.env.NODE_ENV === 'development',
+          // Guard against asset host fetch failures
+          advanced_disable_decide: true,
         })
         isInitialized = true
       } catch (error) {

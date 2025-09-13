@@ -5,6 +5,7 @@ import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 import { modelsDevService } from '@/lib/models-dev-integration'
 import { ResponseValidator } from '@/lib/api/utils/response-validator'
+import OpenRouterManager from '@/lib/openrouterManager'
 
 // Generate a title from conversation context using AI
 async function generateConversationTitle(userMessage: string, assistantResponse?: string): Promise<string> {
@@ -634,11 +635,14 @@ export async function POST(request: NextRequest) {
           actualModelId = await resolveProviderModelId(modelId, 'openrouter')
         }
 
-        if (!selectedProvider && totalCredits > 0 && process.env.OPENROUTER_API_KEY) {
+        if (!selectedProvider && totalCredits > 0) {
           const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
           if (openrouterModelId !== modelId) {
             selectedProvider = 'openrouter'
-            selectedConfig = { type: 'credits', priority: 3, apiKey: process.env.OPENROUTER_API_KEY }
+            // Use per-user OpenRouter key (provision on first use)
+            const orm = new OpenRouterManager()
+            const userApiKey = await orm.getOrCreateUserKey(user.id)
+            selectedConfig = { type: 'credits', priority: 3, apiKey: userApiKey, baseUrl: 'https://openrouter.ai/api/v1' }
             fallbackMethod = 'credits'
             actualModelId = openrouterModelId
           }
@@ -943,7 +947,10 @@ export async function POST(request: NextRequest) {
                         provider: r.provider,
                         tokens_used: r.usage?.total_tokens || 0,
                         cost: r.cost?.total_cost || 0,
-                        session_type: 'chat',
+                        // Normalize session_type for filtering: api_key | credits | cli_tool
+                        session_type: r.fallback_method === 'credits' ? 'credits' : (r.fallback_method === 'cli' ? 'cli_tool' : 'api_key'),
+                        // Credits-specific numeric field
+                        cost_credits: r.fallback_method === 'credits' ? String(r.cost?.total_cost || 0) : null,
                         metadata: {
                           app: 'Polydev Multi-LLM Platform',
                           prompt_tokens: r.usage?.prompt_tokens || 0,
@@ -1025,19 +1032,19 @@ export async function POST(request: NextRequest) {
         
         // STEP 4: PRIORITY 3 - OpenRouter Credits (lowest priority, last resort)
         if (!selectedProvider && totalCredits > 0) {
-          // Use system OpenRouter key for credits and resolve model ID from database
-          if (process.env.OPENROUTER_API_KEY) {
-            const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
-            if (openrouterModelId !== modelId) { // Only use credits if we have a mapping
-              selectedProvider = 'openrouter'
-              selectedConfig = {
-                type: 'credits',
-                priority: 3,
-                apiKey: process.env.OPENROUTER_API_KEY
-              }
-              actualModelId = openrouterModelId
-              fallbackMethod = 'credits'
+          const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
+          if (openrouterModelId !== modelId) { // Only use credits if we have a mapping
+            const orm = new OpenRouterManager()
+            const userApiKey = await orm.getOrCreateUserKey(user.id)
+            selectedProvider = 'openrouter'
+            selectedConfig = {
+              type: 'credits',
+              priority: 3,
+              apiKey: userApiKey,
+              baseUrl: 'https://openrouter.ai/api/v1'
             }
+            actualModelId = openrouterModelId
+            fallbackMethod = 'credits'
           }
         }
         
@@ -1573,21 +1580,33 @@ export async function POST(request: NextRequest) {
               throw new Error(result.error?.message || 'OpenRouter API call failed')
             }
             
-            // Use previously calculated model pricing (already converted from millicents to dollars)
-            const inputCostPerMillion = modelPricing?.input || 1
-            
-            // If using credits, deduct from balance
-            if (selectedConfig.type === 'credits') {
-              const usageTokens = result.usage?.total_tokens || 0
-              const costEstimate = (usageTokens / 1000000) * inputCostPerMillion
-              
-              if (costEstimate > 0 && userCredits) {
+            // Compute cost using models.dev pricing when available
+            const usageForCost = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+            const inputCost = modelPricing ? ((usageForCost.prompt_tokens || 0) / 1_000_000) * modelPricing.input : 0
+            const outputCost = modelPricing ? ((usageForCost.completion_tokens || 0) / 1_000_000) * modelPricing.output : 0
+            const totalCostUsd = inputCost + outputCost
+
+            // If using credits, deduct promo-first, then purchased
+            if (selectedConfig.type === 'credits' && totalCostUsd > 0) {
+              try {
+                const { data: creditRow } = await supabase
+                  .from('user_credits')
+                  .select('balance, promotional_balance')
+                  .eq('user_id', user.id)
+                  .single()
+                let promo = parseFloat((creditRow?.promotional_balance ?? 0).toString())
+                let bal = parseFloat((creditRow?.balance ?? 0).toString())
+                let remaining = totalCostUsd
+                const usePromo = Math.min(promo, remaining)
+                promo -= usePromo
+                remaining -= usePromo
+                if (remaining > 0) bal = Math.max(0, bal - remaining)
                 await supabase
                   .from('user_credits')
-                  .update({ 
-                    balance: Math.max(0, parseFloat(userCredits.balance) - costEstimate).toFixed(6)
-                  })
+                  .update({ balance: bal.toFixed(6), promotional_balance: promo.toFixed(6) })
                   .eq('user_id', user.id)
+              } catch (creditErr) {
+                console.warn('Failed to deduct user credits (non-stream):', creditErr)
               }
             }
             
@@ -1618,9 +1637,9 @@ export async function POST(request: NextRequest) {
               content: content,
               usage: parsedUsage,
               costInfo: costInfo,
-              provider: selectedConfig.type === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)',
+              provider: 'openrouter',
               fallback_method: fallbackMethod,
-              credits_used: selectedConfig.type === 'credits' ? (parsedUsage.total_tokens || 0) / 1000000 * inputCostPerMillion : undefined
+              credits_used: selectedConfig.type === 'credits' ? totalCostUsd : undefined
             }
           }
         } catch (error: any) {

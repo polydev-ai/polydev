@@ -82,6 +82,19 @@ export default function CreditsPage() {
   const [budgetInfo, setBudgetInfo] = useState<BudgetInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(false)
+  // Credit sessions state declared before any conditional returns
+  const [creditSessions, setCreditSessions] = useState<any[]>([])
+  const [csTimeframe, setCsTimeframe] = useState('month')
+  const [csLimit, setCsLimit] = useState(100)
+  const [csOffset, setCsOffset] = useState(0)
+  const [csTotal, setCsTotal] = useState<number | null>(null)
+  const [csProvider, setCsProvider] = useState<string>('')
+  const [csModel, setCsModel] = useState<string>('')
+  const [csProviderOptions, setCsProviderOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
+  const [csModelOptions, setCsModelOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
+  const [csUseCustomRange, setCsUseCustomRange] = useState(false)
+  const [csFromDate, setCsFromDate] = useState<string>('')
+  const [csToDate, setCsToDate] = useState<string>('')
 
   useEffect(() => {
     fetchCreditData()
@@ -160,19 +173,6 @@ export default function CreditsPage() {
       </div>
     )
   }
-
-  const [creditSessions, setCreditSessions] = useState<any[]>([])
-  const [csTimeframe, setCsTimeframe] = useState('month')
-  const [csLimit, setCsLimit] = useState(100)
-  const [csOffset, setCsOffset] = useState(0)
-  const [csTotal, setCsTotal] = useState<number | null>(null)
-  const [csProvider, setCsProvider] = useState<string>('')
-  const [csModel, setCsModel] = useState<string>('')
-  const [csProviderOptions, setCsProviderOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
-  const [csModelOptions, setCsModelOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
-  const [csUseCustomRange, setCsUseCustomRange] = useState(false)
-  const [csFromDate, setCsFromDate] = useState<string>('')
-  const [csToDate, setCsToDate] = useState<string>('')
 
   useEffect(() => {
     const loadCreditSessions = async () => {
