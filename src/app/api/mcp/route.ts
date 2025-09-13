@@ -2562,7 +2562,8 @@ function getTopModelsFromPreferences(preferences: any, count: number = 3): strin
     const list: string[] = []
     const seen = new Set<string>()
     for (const [, pref] of providersSorted) {
-      const models: string[] = Array.isArray(pref.models) ? pref.models : []
+      const prefAny = pref as any
+      const models: string[] = Array.isArray(prefAny?.models) ? (prefAny.models as string[]) : []
       for (const m of models) {
         if (typeof m === 'string' && !seen.has(m)) {
           list.push(m)

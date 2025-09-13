@@ -1,0 +1,402 @@
+'use client'
+
+import React from 'react'
+
+export default function RequestLogsSection({
+  requestLogs,
+  requestLogsLoading,
+  logsFilter,
+  setLogsFilter,
+  loadRequestLogs,
+  selectedLog,
+  setSelectedLog,
+  realTimeData,
+}: {
+  requestLogs: any[]
+  requestLogsLoading: boolean
+  logsFilter: string
+  setLogsFilter: (value: string) => void
+  loadRequestLogs: () => void
+  selectedLog: any | null
+  setSelectedLog: (log: any | null) => void
+  realTimeData: { totalApiKeys: number }
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Request Logs</h2>
+          <p className="text-gray-600 mt-1">Detailed history of all API requests with prompts, responses, and provider breakdowns</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          {/* Filter Dropdown */}
+          <select
+            value={logsFilter}
+            onChange={(e) => setLogsFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">All Requests</option>
+            <option value="success">Successful Only</option>
+            <option value="error">Errors Only</option>
+            <option value="partial_success">Partial Success</option>
+          </select>
+          
+          {/* Refresh Button */}
+          <button
+            onClick={loadRequestLogs}
+            disabled={requestLogsLoading}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center space-x-2"
+          >
+            <svg className={`w-4 h-4 ${requestLogsLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{requestLogsLoading ? 'Loading...' : 'Refresh'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Request Logs Table */}
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        {requestLogsLoading ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading request logs...</p>
+          </div>
+        ) : requestLogs.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prompt</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Models</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Speed</th>
+                  <th className="relative px-6 py-3">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {requestLogs.map((log: any, index: number) => (
+                  <tr key={log.id || index} className="hover:bg-gray-50 cursor-pointer transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap max-w-xs">
+                      <div className="text-sm text-gray-900 truncate" title={log.fullPrompt}>
+                        {log.prompt || 'No prompt available'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="flex flex-wrap gap-1">
+                        {log.providers && log.providers.length > 0 ? (
+                          log.providers.slice(0, 2).map((provider: any, idx: number) => (
+                            <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {provider.model || provider.provider}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
+                        {log.providers && log.providers.length > 2 && (
+                          <span className="text-xs text-gray-500">+{log.providers.length - 2} more</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        log.status === 'success' ? 'bg-green-100 text-green-800' :
+                        log.status === 'error' ? 'bg-red-100 text-red-800' :
+                        log.status === 'partial_success' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {log.status || 'unknown'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {log.totalTokens ? log.totalTokens.toLocaleString() : '0'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${log.cost ? log.cost.toFixed(4) : '0.0000'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {log.speed || '0'} tok/s
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => setSelectedLog(log)}
+                        className="text-blue-600 hover:text-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-8 text-center">
+            <p className="text-gray-600">No request logs available. Make some API requests to see data here.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Logs Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Total Requests</p>
+              <p className="text-lg font-semibold text-gray-900">{requestLogs.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Total Cost</p>
+              <p className="text-lg font-semibold text-gray-900">
+                ${requestLogs.reduce((sum: number, log: any) => sum + (log.cost || 0), 0).toFixed(4)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Total Tokens</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {requestLogs.reduce((sum: number, log: any) => sum + (log.totalTokens || 0), 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+              <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Avg Response</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {requestLogs.length > 0 
+                  ? Math.round(requestLogs.reduce((sum: number, log: any) => sum + (log.responseTime || 0), 0) / requestLogs.length)
+                  : 0}ms
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Request Log Detail Modal */}
+      {selectedLog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Request Details</h3>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Request Overview */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Request Overview</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Timestamp</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {new Date((selectedLog as any).timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Status</p>
+                    <p className={`text-sm font-medium ${
+                      (selectedLog as any).status === 'success' ? 'text-green-600' :
+                      (selectedLog as any).status === 'error' ? 'text-red-600' :
+                      (selectedLog as any).status === 'partial_success' ? 'text-yellow-600' :
+                      'text-gray-600'
+                    }`}>
+                      {(selectedLog as any).status || 'unknown'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Total Tokens</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {(selectedLog as any).totalTokens ? (selectedLog as any).totalTokens.toLocaleString() : '0'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Total Cost</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      ${(selectedLog as any).cost ? (selectedLog as any).cost.toFixed(4) : '0.0000'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Full Prompt */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Full Prompt</h4>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
+                    {(selectedLog as any).fullPrompt || 'No prompt available'}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Provider Breakdown */}
+              {(selectedLog as any).providers && (selectedLog as any).providers.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Provider Breakdown</h4>
+                  <div className="space-y-4">
+                    {(selectedLog as any).providers.map((provider: any, index: number) => (
+                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                              {(provider.provider || 'P').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">{provider.model || provider.provider}</div>
+                              <div className="text-xs text-gray-500">{provider.provider}</div>
+                            </div>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            provider.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {provider.success ? 'Success' : 'Error'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div>
+                            <p className="text-gray-500">Tokens</p>
+                            <p className="font-medium">{provider.tokens || 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Cost</p>
+                            <p className="font-medium">${provider.cost ? provider.cost.toFixed(4) : '0.0000'}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Success</p>
+                            <p className="font-medium">
+                              <span className={`px-2 py-1 rounded-full text-xs ${
+                                provider.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {provider.success ? 'Yes' : 'No'}
+                              </span>
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Latency</p>
+                            <p className="font-medium">{provider.latency || 0}ms</p>
+                          </div>
+                        </div>
+
+                        {/* Provider Response */}
+                        {provider.response && (
+                          <div className="mt-4">
+                            <p className="text-xs text-gray-500 mb-2">Response</p>
+                            <div className="bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">
+                              <pre className="whitespace-pre-wrap text-xs text-gray-700 font-mono">
+                                {typeof provider.response === 'string' 
+                                  ? provider.response 
+                                  : JSON.stringify(provider.response, null, 2)}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Request Metadata */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Request Metadata</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Client</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {(selectedLog as any).client || 'Unknown'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Temperature</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {(selectedLog as any).temperature || 'Default'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Max Tokens</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {(selectedLog as any).maxTokens || 'Default'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Response Time</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {(selectedLog as any).responseTime || 0}ms
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Successful Providers</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {(selectedLog as any).successfulProviders || 0}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Failed Providers</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {(selectedLog as any).failedProviders || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

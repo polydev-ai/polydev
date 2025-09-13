@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         if (!newType && typeof row.session_type === 'string') {
           if (row.session_type === 'api_key') newType = 'api'
           else if (row.session_type === 'cli_tool') newType = 'cli'
-          else if (['api', 'cli', 'credits'].includes(row.session_type)) newType = row.session_type
+          else if ((['api', 'cli', 'credits'] as const).includes(row.session_type as any)) newType = row.session_type as 'api' | 'cli' | 'credits'
         }
 
         // Default if still null
