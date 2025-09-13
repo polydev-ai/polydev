@@ -5,7 +5,7 @@ import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 import { modelsDevService } from '@/lib/models-dev-integration'
 import { ResponseValidator } from '@/lib/api/utils/response-validator'
-import OpenRouterManager from '@/lib/openrouterManager'
+// OpenRouterManager available if we later switch to per-user keys
 
 // Generate a title from conversation context using AI
 async function generateConversationTitle(userMessage: string, assistantResponse?: string): Promise<string> {
@@ -639,10 +639,7 @@ export async function POST(request: NextRequest) {
           const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
           if (openrouterModelId !== modelId) {
             selectedProvider = 'openrouter'
-            // Use per-user OpenRouter key (provision on first use)
-            const orm = new OpenRouterManager()
-            const userApiKey = await orm.getOrCreateUserKey(user.id)
-            selectedConfig = { type: 'credits', priority: 3, apiKey: userApiKey, baseUrl: 'https://openrouter.ai/api/v1' }
+            selectedConfig = { type: 'credits', priority: 3, apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '', baseUrl: 'https://openrouter.ai/api/v1' }
             fallbackMethod = 'credits'
             actualModelId = openrouterModelId
           }
@@ -674,7 +671,8 @@ export async function POST(request: NextRequest) {
                 temperature,
                 maxTokens: max_tokens,
                 stream: true,
-                apiKey: selectedConfig.apiKey
+                apiKey: selectedConfig.apiKey,
+                metadata: { applicationName: 'https://www.polydev.ai', siteUrl: 'Polydev Multi-LLM Platform' }
               }
 
               // Clamp maxTokens to model limits from models.dev when available
@@ -942,15 +940,16 @@ export async function POST(request: NextRequest) {
                       .from('usage_sessions')
                       .insert({
                         user_id: user.id,
-                        session_id: currentSessionId,
-                        model_name: r.model,
-                        provider: r.provider,
-                        tokens_used: r.usage?.total_tokens || 0,
-                        cost: r.cost?.total_cost || 0,
                         // Normalize session_type for filtering: api_key | credits | cli_tool
                         session_type: r.fallback_method === 'credits' ? 'credits' : (r.fallback_method === 'cli' ? 'cli_tool' : 'api_key'),
-                        // Credits-specific numeric field
-                        cost_credits: r.fallback_method === 'credits' ? String(r.cost?.total_cost || 0) : null,
+                        model_name: r.model,
+                        provider: r.provider,
+                        message_count: 1,
+                        input_tokens: r.usage?.prompt_tokens || 0,
+                        output_tokens: r.usage?.completion_tokens || 0,
+                        total_tokens: r.usage?.total_tokens || 0,
+                        cost_usd: r.fallback_method === 'credits' ? 0 : (r.cost?.total_cost || 0),
+                        cost_credits: r.fallback_method === 'credits' ? (r.cost?.total_cost || 0) : 0,
                         metadata: {
                           app: 'Polydev Multi-LLM Platform',
                           prompt_tokens: r.usage?.prompt_tokens || 0,
@@ -1034,13 +1033,11 @@ export async function POST(request: NextRequest) {
         if (!selectedProvider && totalCredits > 0) {
           const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
           if (openrouterModelId !== modelId) { // Only use credits if we have a mapping
-            const orm = new OpenRouterManager()
-            const userApiKey = await orm.getOrCreateUserKey(user.id)
             selectedProvider = 'openrouter'
             selectedConfig = {
               type: 'credits',
               priority: 3,
-              apiKey: userApiKey,
+              apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '',
               baseUrl: 'https://openrouter.ai/api/v1'
             }
             actualModelId = openrouterModelId
@@ -1498,7 +1495,7 @@ export async function POST(request: NextRequest) {
               maxTokens: adjustedMaxTokens,
               stream,
               apiKey: selectedConfig.apiKey,
-              openAiBaseUrl: selectedConfig.baseUrl || 'https://openrouter.ai/api/v1'
+              metadata: { applicationName: 'https://www.polydev.ai', siteUrl: 'Polydev Multi-LLM Platform' }
             }
             
             // Add reasoning effort for reasoning models if supported
@@ -1506,8 +1503,8 @@ export async function POST(request: NextRequest) {
               apiOptions.reasoning_effort = reasoning_effort
             }
             
-            // Make API call through OpenRouter
-            response = await apiManager.createMessage('openai', apiOptions)
+            // Make API call through OpenRouter provider (enhanced handler)
+            response = await apiManager.createMessage('openrouter', apiOptions)
             
             // Handle OpenRouter streaming vs non-streaming responses
             let result
@@ -1816,7 +1813,7 @@ export async function POST(request: NextRequest) {
           
           console.log(`🔄 All API fallbacks exhausted, attempting OpenRouter credits fallback for ${modelId}...`)
           // Final fallback: OpenRouter credits
-          if (totalCredits > 0 && process.env.OPENROUTER_API_KEY) {
+          if (totalCredits > 0) {
               try {
                 const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
                 if (openrouterModelId !== modelId) {
@@ -1829,7 +1826,7 @@ export async function POST(request: NextRequest) {
                     temperature: adjustedTemperature,
                     maxTokens: adjustedMaxTokens,
                     stream,
-                    apiKey: process.env.OPENROUTER_API_KEY
+                    apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || ''
                   }
                   
                   const apiResponse = await apiManager.createMessage('openrouter', apiOptions)

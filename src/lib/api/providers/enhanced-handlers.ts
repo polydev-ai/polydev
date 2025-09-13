@@ -560,7 +560,8 @@ export class EnhancedOpenRouterHandler extends BaseEnhancedHandler {
       headers['X-Title'] = options.metadata.siteUrl
     }
     
-    return fetch(`${this.baseUrl}/api/v1/chat/completions`, {
+    // Base URL from provider config already includes /api/v1
+    return fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody)
