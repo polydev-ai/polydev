@@ -707,7 +707,7 @@ function getTierFromProvider(providerId: string, cliResults?: any[], hasApiKey: 
   }
   
   // If CLI is not available, check if they have API key
-  const apiProviders = ['anthropic', 'openai', 'google', 'gemini', 'mistral', 'bedrock', 'vertex']
+  const apiProviders = ['anthropic', 'openai', 'google', 'gemini', 'mistral', 'bedrock', 'vertex', 'groq', 'deepseek', 'xai', 'moonshotai']
   if (apiProviders.includes(providerId)) {
     return hasApiKey ? 'api' : 'credits'
   }

@@ -1062,6 +1062,7 @@ export async function POST(request: NextRequest) {
         
         // STEP 4: PRIORITY 3 - OpenRouter Credits (lowest priority, last resort)
         if (!selectedProvider && totalCredits > 0) {
+<<<<<<< Updated upstream
           const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
           if (openrouterModelId !== modelId) { // Only use credits if we have a mapping
             selectedProvider = 'openrouter'
@@ -1073,7 +1074,32 @@ export async function POST(request: NextRequest) {
             }
             actualModelId = openrouterModelId
             fallbackMethod = 'credits'
+=======
+          console.log(`[Chat API] Checking credits fallback for ${modelId}, totalCredits: ${totalCredits}`)
+          // Use system OpenRouter key for credits and resolve model ID from database
+          if (process.env.OPENROUTER_API_KEY) {
+            console.log(`[Chat API] OPENROUTER_API_KEY available, resolving model ID...`)
+            const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
+            console.log(`[Chat API] Resolved ${modelId} → ${openrouterModelId} for OpenRouter`)
+            if (openrouterModelId !== modelId) { // Only use credits if we have a mapping
+              selectedProvider = 'openrouter'
+              selectedConfig = {
+                type: 'credits',
+                priority: 3,
+                apiKey: process.env.OPENROUTER_API_KEY
+              }
+              actualModelId = openrouterModelId
+              fallbackMethod = 'credits'
+              console.log(`[Chat API] Using credits fallback for ${modelId} → ${openrouterModelId}`)
+            } else {
+              console.log(`[Chat API] No OpenRouter mapping found for ${modelId} (${openrouterModelId} === ${modelId})`)
+            }
+          } else {
+            console.log(`[Chat API] OPENROUTER_API_KEY not available`)
+>>>>>>> Stashed changes
           }
+        } else {
+          console.log(`[Chat API] Credit fallback not available: selectedProvider=${selectedProvider}, totalCredits=${totalCredits}`)
         }
         
         // Model-specific parameter adjustments
@@ -1939,7 +1965,24 @@ export async function POST(request: NextRequest) {
       })
     )
     
+<<<<<<< Updated upstream
     // Save chat history and log the interaction
+=======
+    // Check if any models succeeded
+    const successfulResponses = responses.filter(r => r && !r.error)
+    if (successfulResponses.length === 0) {
+      console.error('[Chat API] All models failed, responses:', responses)
+      return NextResponse.json({
+        error: {
+          message: 'No valid models selected. Please configure models in your dashboard and select from those.',
+          type: 'invalid_model_selection',
+          details: responses.map(r => ({ model: r?.model, error: r?.error }))
+        }
+      }, { status: 400 })
+    }
+    
+    // Log the interaction
+>>>>>>> Stashed changes
     try {
       const totalTokens = responses.reduce((sum, r) => sum + (r?.usage?.total_tokens || 0), 0)
       const totalCost = responses.reduce((sum, r) => sum + ((r as any)?.costInfo?.total_cost || 0), 0)
