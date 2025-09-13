@@ -796,6 +796,8 @@ export default function Dashboard() {
             </div>
           )}
 
+        )}
+
         {/* Request Logs Tab */}
         {activeTab === 'request-logs' && (
           <div className="space-y-6">
