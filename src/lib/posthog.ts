@@ -11,8 +11,6 @@ export function initPostHog() {
       try {
         posthog.init(posthogKey, {
           api_host: posthogHost,
-          // Reduce noisy network calls when misconfigured: disable feature flags/decide
-          disable_feature_flags: true,
           // Keep profiles but only for identified users
           person_profiles: 'identified_only',
           // Don't auto-capture pageviews; we'll capture explicitly
