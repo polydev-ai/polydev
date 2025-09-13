@@ -48,8 +48,7 @@ export async function GET(request: NextRequest) {
       if (mapped) query = query.eq('session_type', mapped)
     }
     if (onlyCredits) {
-      // Filter sessions with any credits charge recorded
-      query = query.filter('cost_credits', 'gt', '0')
+      query = query.eq('session_type', 'credits')
     }
 
     const { data, error, count } = await query

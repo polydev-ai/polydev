@@ -31,8 +31,8 @@ export async function GET() {
       
       // If no preferences exist, create default ones
       if (error.code === 'PGRST116') {
-        console.log('No preferences found, creating defaults for user:', user.id)
-        const defaultPreferences = {
+        console.log('No preferences found; returning empty preferences for user:', user.id)
+        const emptyPreferences = {
           user_id: user.id,
           default_provider: 'openai',
           default_model: 'gpt-4o',
@@ -59,7 +59,7 @@ export async function GET() {
           mcp_settings: {
             default_temperature: 0.7,
             default_max_tokens: 4000,
-            auto_select_model: true,
+            auto_select_model: false,
             memory_settings: {
               enable_conversation_memory: true,
               enable_project_memory: true,
@@ -68,22 +68,7 @@ export async function GET() {
             }
           }
         }
-        
-        const { data: newPreferences, error: insertError } = await supabase
-          .from('user_preferences')
-          .insert(defaultPreferences)
-          .select()
-          .single()
-        
-        if (insertError) {
-          console.error('Database error creating default preferences:', insertError)
-          console.error('Insert error details:', JSON.stringify(insertError, null, 2))
-          return NextResponse.json({ error: `Failed to create preferences: ${insertError.message}` }, { status: 500 })
-        }
-        
-        console.log('Default preferences created successfully for user:', user.id)
-        
-        return NextResponse.json({ preferences: newPreferences })
+        return NextResponse.json({ preferences: emptyPreferences })
       }
       
       console.error('Unexpected database error fetching preferences:', error)

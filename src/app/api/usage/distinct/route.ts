@@ -33,11 +33,13 @@ export async function GET(request: NextRequest) {
     if (fromDate) query = query.gte('created_at', fromDate)
     if (toDate) query = query.lte('created_at', toDate)
     if (source) {
-      const mapping: Record<string, string> = { api: 'api_key', cli: 'cli_tool', credits: 'credits' }
-      const mapped = mapping[source]
-      if (mapped) query = query.eq('session_type', mapped)
+      // DB now stores 'api' | 'cli' | 'credits' directly in session_type
+      const allowed = ['api', 'cli', 'credits']
+      if (allowed.includes(source)) {
+        query = query.eq('session_type', source)
+      }
     }
-    if (onlyCredits) query = query.filter('cost_credits', 'gt', '0')
+    if (onlyCredits) query = query.eq('session_type', 'credits')
     if (providerFilter) query = query.eq('provider', providerFilter)
     if (modelFilter) query = query.eq('model_name', modelFilter)
 

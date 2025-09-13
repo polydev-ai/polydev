@@ -6,6 +6,7 @@ import { createHash } from 'crypto'
 import { MCPMemoryManager } from '@/lib/mcpMemory'
 import { subscriptionManager } from '@/lib/subscriptionManager'
 import { OpenRouterManager } from '@/lib/openrouterManager'
+import { modelsDevService } from '@/lib/models-dev-integration'
 
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
@@ -1088,8 +1089,10 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.log(`[MCP] API Keys:`, apiKeys.map(k => ({ provider: k.provider, preview: k.key_preview })))
   }
 
-  // Use models from args, or get models from available API keys, or fallback defaults
-  const models = args.models || getModelsFromApiKeysAndPreferences(apiKeys || [], preferences) || ['gpt-5-2025-08-07']
+  // Use models from args, or top 3 from user's Models page (preferences),
+  // or fall back to API-keys-based heuristic, finally a safe default.
+  const preferredTop3 = getTopModelsFromPreferences(preferences, 3)
+  const models = args.models || (preferredTop3.length > 0 ? preferredTop3 : getModelsFromApiKeysAndPreferences(apiKeys || [], preferences)) || ['gpt-5-2025-08-07']
 
   // Use temperature and max_tokens from args, or user preferences, or defaults
   const temperature = args.temperature ?? preferences?.default_temperature ?? 0.7
@@ -1218,9 +1221,25 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               }
             }
             
+            // Resolve OpenRouter-specific model ID from friendly ID or provider-specific
+            let friendlyId = model
+            if (model.includes('/')) {
+              // Convert provider-specific ID to friendly_id
+              const resolved = await modelsDevService.getFriendlyIdFromProviderModelId(model)
+              friendlyId = resolved || model
+            }
+            const openrouterModelId = await modelsDevService.getProviderSpecificModelId(friendlyId, 'openrouter')
+            if (!openrouterModelId) {
+              console.warn(`[MCP] Credits fallback blocked: no OpenRouter mapping for ${model} (friendly: ${friendlyId})`)
+              return {
+                model,
+                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${friendlyId}).`
+              }
+            }
+
             // Temporarily override provider config to use OpenRouter
             provider = openRouterConfig
-            
+
             // Create fake API key object for OpenRouter
             const openRouterApiKey = {
               provider: 'openrouter',
@@ -1237,9 +1256,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             const decryptedKey = strategy.apiKey
             console.log(`[MCP] Using OpenRouter key for ${model}: ${decryptedKey.substring(0, 10)}...`)
             
-            // Make the API call with OpenRouter
+            // Make the API call with OpenRouter (use mapped model ID)
             const response = await callLLMAPI(
-              model, // Keep original model name for OpenRouter
+              openrouterModelId,
               contextualPrompt,
               decryptedKey,
               provider,
@@ -1324,8 +1343,22 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             if (openRouterConfig) {
               console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy due to budget limit`)
               
+              // Map to OpenRouter-specific model ID
+              let friendlyIdB = model
+              if (model.includes('/')) {
+                const resolved = await modelsDevService.getFriendlyIdFromProviderModelId(model)
+                friendlyIdB = resolved || model
+              }
+              const openrouterModelIdB = await modelsDevService.getProviderSpecificModelId(friendlyIdB, 'openrouter')
+              if (!openrouterModelIdB) {
+                console.warn(`[MCP] Budget-fallback credits blocked: no OpenRouter mapping for ${model} (friendly: ${friendlyIdB})`)
+                return {
+                  model,
+                  error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${friendlyIdB}).`
+                }
+              }
               const response = await callLLMAPI(
-                model,
+                openrouterModelIdB,
                 contextualPrompt,
                 strategy.apiKey,
                 openRouterConfig,
@@ -1418,9 +1451,22 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               }
             }
             
-            // Make the API call with OpenRouter
+            // Resolve OpenRouter model ID first
+            let friendlyIdCO = model
+            if (model.includes('/')) {
+              const resolved = await modelsDevService.getFriendlyIdFromProviderModelId(model)
+              friendlyIdCO = resolved || model
+            }
+            const openrouterModelIdCO = await modelsDevService.getProviderSpecificModelId(friendlyIdCO, 'openrouter')
+            if (!openrouterModelIdCO) {
+              console.warn(`[MCP] Credits-only fallback blocked: no OpenRouter mapping for ${model} (friendly: ${friendlyIdCO})`)
+              return {
+                model,
+                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${friendlyIdCO}).`
+              }
+            }
             const response = await callLLMAPI(
-              model,
+              openrouterModelIdCO,
               contextualPrompt,
               strategy.apiKey,
               openRouterConfig,
@@ -1687,14 +1733,29 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         }
 
         // Use the unified API caller with provider-specific preferences and cleaned model name
-        const response = await callLLMAPI(
-          cleanModel, 
-          contextualPrompt, 
-          decryptedKey, 
-          provider,
-          providerTemperature, 
-          providerMaxTokens
-        )
+        let response: APIResponse
+        try {
+          response = await callLLMAPI(
+            cleanModel,
+            contextualPrompt,
+            decryptedKey,
+            provider,
+            providerTemperature,
+            providerMaxTokens
+          )
+        } catch (apiKeyErr: any) {
+          const msg = apiKeyErr instanceof Error ? apiKeyErr.message : String(apiKeyErr)
+          const isAuth = /401|unauthori(z|s)ed|invalid api key|forbidden|key/i.test(msg)
+          console.error(`[MCP] API key issue for ${provider.display_name}: ${msg}`)
+          return {
+            model: cleanModel,
+            originalModel: model,
+            error: isAuth
+              ? `Your API key for ${provider.display_name} appears invalid or unauthorized. Unable to send perspectives with this provider.`
+              : `Provider call failed for ${provider.display_name}: ${msg}`,
+            latency_ms: Date.now() - startTime
+          }
+        }
 
         // Track usage and deduct costs based on usage path
         try {
@@ -2075,6 +2136,37 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.warn('[MCP] Failed to get account status:', statusError)
   }
 
+  // Compute per-response cost using models.dev-backed pricing
+  const perResponseCost: Record<number, number> = {}
+  for (let i = 0; i < responses.length; i++) {
+    const r: any = responses[i]
+    if (r && !r.error && r.tokens_used) {
+      try {
+        // Try to resolve friendly id for pricing lookup
+        let friendlyId = r.model
+        if (friendlyId.includes('/')) {
+          const resolved = await modelsDevService.getFriendlyIdFromProviderModelId(friendlyId)
+          friendlyId = resolved || friendlyId
+        }
+        // Determine provider id (normalized)
+        let providerId = determineProvider(r.model, configMap)?.provider_name || 'openrouter'
+        if (typeof r.provider === 'string' && r.provider.toLowerCase().includes('openrouter')) {
+          providerId = 'openrouter'
+        }
+        const limits = await modelsDevService.getModelLimits(friendlyId, providerId)
+        const pricing = limits?.pricing
+        if (pricing) {
+          const inputTokens = Math.floor(r.tokens_used * 0.25)
+          const outputTokens = r.tokens_used - inputTokens
+          const cost = (inputTokens / 1_000_000) * pricing.input + (outputTokens / 1_000_000) * pricing.output
+          perResponseCost[i] = Number(cost.toFixed(6))
+        }
+      } catch (e) {
+        // Ignore pricing errors; cost will be omitted for that response
+      }
+    }
+  }
+
   // Format the response
   let formatted = `# Multiple AI Perspectives\n\n`
   formatted += `Got ${successCount}/${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.${statusDisplay}\n`
@@ -2090,7 +2182,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       formatted += `## ${modelName}${providerName}\n`
       formatted += `${response.content}\n\n`
       if (response.tokens_used) {
-        formatted += `*Tokens: ${response.tokens_used}, Latency: ${response.latency_ms}ms*\n\n`
+        const costStr = perResponseCost[index] != null ? `, Cost: $${perResponseCost[index].toFixed(6)}` : ''
+        formatted += `*Tokens: ${response.tokens_used}, Latency: ${response.latency_ms}ms${costStr}*\n\n`
       }
     }
     
@@ -2098,6 +2191,26 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       formatted += '---\n\n'
     }
   })
+
+  // Append a hidden JSON summary for programmatic parsing in clients
+  try {
+    const summary = {
+      perspectives: responses.map((r: any, i: number) => ({
+        model: r.model,
+        provider: r.provider,
+        tokens_used: r.tokens_used || 0,
+        cost_usd: perResponseCost[i] ?? null,
+        error: r.error || null
+      })),
+      totals: {
+        tokens: totalTokens,
+        cost_usd: Object.values(perResponseCost).reduce((sum: number, v: any) => sum + (typeof v === 'number' ? v : 0), 0)
+      }
+    }
+    formatted += `\n\n\n\u0060\u0060\u0060json\n${JSON.stringify(summary)}\n\u0060\u0060\u0060\n`
+  } catch (e) {
+    // Do not fail the request if summary building fails
+  }
 
   // Store conversation in memory system if enabled
   console.log(`[MCP] Memory - Checking conversation storage. Enabled: ${memoryPreferences.enable_conversation_memory}`)
@@ -2435,6 +2548,33 @@ function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): s
   
   console.log(`[MCP] Final selected models: ${models.join(', ')}`)
   return models
+}
+
+// Get top N models directly from user's Models page (preferences), in provider order
+function getTopModelsFromPreferences(preferences: any, count: number = 3): string[] {
+  try {
+    const modelPrefs = preferences?.model_preferences
+    if (!modelPrefs || typeof modelPrefs !== 'object') return []
+    // Sort providers by 'order'
+    const providersSorted = Object.entries(modelPrefs)
+      .filter(([, pref]) => pref && typeof pref === 'object')
+      .sort(([, a]: any, [, b]: any) => (a.order || 0) - (b.order || 0))
+    const list: string[] = []
+    const seen = new Set<string>()
+    for (const [, pref] of providersSorted) {
+      const models: string[] = Array.isArray(pref.models) ? pref.models : []
+      for (const m of models) {
+        if (typeof m === 'string' && !seen.has(m)) {
+          list.push(m)
+          seen.add(m)
+          if (list.length >= count) return list
+        }
+      }
+    }
+    return list
+  } catch {
+    return []
+  }
 }
 
 // Normalize provider names to handle variations like "xai" vs "x-ai", "openai" vs "openai-native"

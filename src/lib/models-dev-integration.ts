@@ -472,22 +472,81 @@ class ModelsDevService {
       .limit(1)
 
     const data = Array.isArray(modelRows) && modelRows.length > 0 ? modelRows[0] : null
-    if (error || !data) return null
-
-    const result: { maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } = {
-      maxTokens: data.max_tokens || 4096,
-      contextLength: data.context_length || 32768
-    }
-
-    // Add pricing if available (values are in millicents per million tokens from database, convert to dollars)
-    if (data.input_cost_per_million && data.output_cost_per_million) {
-      result.pricing = {
-        input: Number(data.input_cost_per_million) / 1000, // Convert from millicents to dollars per million tokens
-        output: Number(data.output_cost_per_million) / 1000 // Convert from millicents to dollars per million tokens  
+    if (!error && data) {
+      const result: { maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } = {
+        maxTokens: data.max_tokens || 4096,
+        contextLength: data.context_length || 32768
       }
+      if (data.input_cost_per_million && data.output_cost_per_million) {
+        result.pricing = {
+          input: Number(data.input_cost_per_million) / 1000,
+          output: Number(data.output_cost_per_million) / 1000
+        }
+      }
+      return result
     }
 
-    return result
+    // Second fallback: if friendlyId looks like a provider-specific ID or alias, try provider_model_id
+    const { data: pmRows } = await supabase
+      .from('models_registry')
+      .select('max_tokens, context_length, input_cost_per_million, output_cost_per_million')
+      .eq('provider_model_id', friendlyId)
+      .eq('provider_id', cleanProviderId)
+      .eq('is_active', true)
+      .limit(1)
+
+    const pm = Array.isArray(pmRows) && pmRows.length > 0 ? pmRows[0] : null
+    if (pm) {
+      const result: { maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } = {
+        maxTokens: pm.max_tokens || 4096,
+        contextLength: pm.context_length || 32768
+      }
+      if (pm.input_cost_per_million && pm.output_cost_per_million) {
+        result.pricing = {
+          input: Number(pm.input_cost_per_million) / 1000,
+          output: Number(pm.output_cost_per_million) / 1000
+        }
+      }
+      return result
+    }
+
+    // Final fallback: fetch live data from models.dev if database doesn’t have pricing
+    try {
+      const resp = await fetch('https://models.dev/api/v1/models', { cache: 'no-store' as any })
+      if (resp.ok) {
+        const raw = await resp.json()
+        const list: any[] = Array.isArray(raw) ? raw : Object.values(raw || {})
+        const cand = list.find((m: any) => {
+          const pid = (m.provider_id || m.provider || '').toLowerCase()
+          const mid = (m.id || '').toLowerCase()
+          const fid = (m.friendly_id || m.name || '').toLowerCase()
+          return (
+            (!!pid && pid === cleanProviderId.toLowerCase()) &&
+            (
+              fid === friendlyId.toLowerCase() ||
+              mid.endsWith(`/${friendlyId.toLowerCase()}`) ||
+              mid.includes(`/${friendlyId.toLowerCase()}`)
+            )
+          )
+        })
+        if (cand && cand.cost && (cand.cost.input != null) && (cand.cost.output != null)) {
+          const inputPerMillion = Number(cand.cost.input)
+          const outputPerMillion = Number(cand.cost.output)
+          return {
+            maxTokens: Number(cand.max_tokens) || 4096,
+            contextLength: Number(cand.context_length) || 32768,
+            pricing: {
+              input: inputPerMillion,
+              output: outputPerMillion
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[models.dev] Live fetch fallback failed:', e)
+    }
+
+    return null
   }
 
   async getModelByProviderSpecificId(providerModelId: string, providerId: string): Promise<ModelRegistry | null> {

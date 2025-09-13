@@ -659,8 +659,17 @@ export async function POST(request: NextRequest) {
             try {
               const { requiredProvider, selectedProvider, selectedConfig, fallbackMethod, actualModelId } = await selectProviderForModel(friendlyModelId)
               if (!selectedProvider) {
-                // Provider selection failed
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: 'No available provider', provider: requiredProvider })}\n\n`))
+                // Provider selection failed – clarify if credits can't support due to missing OpenRouter mapping
+                let message = 'No available provider'
+                try {
+                  if (totalCredits > 0) {
+                    const openrouterId = await resolveProviderModelId(friendlyModelId, 'openrouter')
+                    if (openrouterId === friendlyModelId) {
+                      message = `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${friendlyModelId}).`
+                    }
+                  }
+                } catch {}
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message, provider: requiredProvider })}\n\n`))
                 return
               }
 
@@ -945,16 +954,12 @@ export async function POST(request: NextRequest) {
                       .from('usage_sessions')
                       .insert({
                         user_id: user.id,
-                        // Normalize session_type for filtering: api_key | credits | cli_tool
-                        session_type: r.fallback_method === 'credits' ? 'credits' : (r.fallback_method === 'cli' ? 'cli_tool' : 'api_key'),
+                        session_id: currentSessionId || null,
                         model_name: r.model,
                         provider: r.provider,
-                        message_count: 1,
-                        input_tokens: r.usage?.prompt_tokens || 0,
-                        output_tokens: r.usage?.completion_tokens || 0,
-                        total_tokens: r.usage?.total_tokens || 0,
-                        cost_usd: r.fallback_method === 'credits' ? 0 : (r.cost?.total_cost || 0),
-                        cost_credits: r.fallback_method === 'credits' ? (r.cost?.total_cost || 0) : 0,
+                        tokens_used: r.usage?.total_tokens || 0,
+                        cost: r.cost?.total_cost || 0,
+                        session_type: r.fallback_method === 'credits' ? 'credits' : (r.fallback_method === 'cli' ? 'cli' : 'api'),
                         metadata: {
                           app: 'Polydev Multi-LLM Platform',
                           prompt_tokens: r.usage?.prompt_tokens || 0,
@@ -977,7 +982,20 @@ export async function POST(request: NextRequest) {
               console.warn('Failed to save chat history/log interaction (streaming):', e)
             }
 
-            // Emit final event expected by the UI
+            // Emit final event expected by the UI plus a summary block
+            const summary = {
+              type: 'summary',
+              totals: { tokens: totalTokens, cost: totalCost },
+              responses: finalResponses.map(r => ({
+                model: r.model,
+                provider: r.provider,
+                tokens_used: r.usage?.total_tokens || 0,
+                cost: r.cost || null,
+                fallback_method: r.fallback_method,
+                credits_used: r.credits_used || 0
+              }))
+            }
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(summary)}\n\n`))
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'final', responses: finalResponses })}\n\n`))
             controller.enqueue(encoder.encode('data: [DONE]\n\n'))
             controller.close()
@@ -1050,6 +1068,33 @@ export async function POST(request: NextRequest) {
           }
         }
         
+        // If still nothing selected, emit a clear message when credits can't map this model
+        if (!selectedProvider || !selectedConfig) {
+          try {
+            if (totalCredits > 0) {
+              const openrouterId = await resolveProviderModelId(modelId, 'openrouter')
+              if (openrouterId === modelId) {
+                return {
+                  model: modelId,
+                  content: '',
+                  usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                  provider: 'N/A',
+                  fallback_method: 'none',
+                  error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${modelId}).`
+                }
+              }
+            }
+          } catch {}
+          return {
+            model: modelId,
+            content: '',
+            usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+            provider: 'N/A',
+            fallback_method: 'none',
+            error: `No provider available for model: ${modelId}. Please configure API keys at https://www.polydev.ai/dashboard/models or ensure you have sufficient credits.`
+          }
+        }
+        
         // Model-specific parameter adjustments
         let adjustedTemperature = temperature
         let adjustedMaxTokens = max_tokens
@@ -1108,6 +1153,20 @@ export async function POST(request: NextRequest) {
         }
         
         if (!selectedProvider || !selectedConfig) {
+          // If credits were an option but no OpenRouter mapping exists for this model, surface a clear message
+          try {
+            if (totalCredits > 0) {
+              const openrouterId = await resolveProviderModelId(modelId, 'openrouter')
+              if (openrouterId === modelId) {
+                return {
+                  model: modelId,
+                  error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${modelId}).`,
+                  usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+                  fallback_method: 'none'
+                }
+              }
+            }
+          } catch {}
           return {
             model: modelId,
             error: `No provider available for model: ${modelId}. Please configure API keys at https://www.polydev.ai/dashboard/models or ensure you have sufficient credits.`,
@@ -1638,7 +1697,8 @@ export async function POST(request: NextRequest) {
               content: content,
               usage: parsedUsage,
               costInfo: costInfo,
-              provider: 'openrouter',
+              cost: costInfo || undefined,
+              provider: selectedConfig.type === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)',
               fallback_method: fallbackMethod,
               credits_used: selectedConfig.type === 'credits' ? totalCostUsd : undefined
             }
@@ -2089,7 +2149,26 @@ export async function POST(request: NextRequest) {
             }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(streamData)}\n\n`))
 
-            // Emit a final event compatible with the chat UI to update usage/cost without refresh
+            // Emit a summary and final event compatible with the chat UI
+            const summary = {
+              type: 'summary',
+              totals: {
+                tokens: usage.total_tokens || 0,
+                cost: (costInfo as any)?.total_cost || 0
+              },
+              responses: [
+                {
+                  model: response?.model || model,
+                  provider: response?.provider || 'unknown',
+                  tokens_used: usage.total_tokens || 0,
+                  cost: costInfo,
+                  fallback_method: response?.fallback_method,
+                  credits_used: (costInfo as any)?.credits_used || 0
+                }
+              ]
+            }
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(summary)}\n\n`))
+
             const finalPayload = {
               type: 'final',
               responses: [
@@ -2237,7 +2316,9 @@ export async function POST(request: NextRequest) {
               .map(r => ({
                 model: r!.model,
                 content: r!.content || '',
-                provider: r!.provider,
+                provider: r!.provider === 'openrouter'
+                  ? ((r as any).fallback_method === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)')
+                  : r!.provider,
                 usage: r!.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
                 cost: (r as any).costInfo
                   ? {
@@ -2280,15 +2361,12 @@ export async function POST(request: NextRequest) {
           .from('usage_sessions')
           .insert({
             user_id: user.id,
-            session_type: (r as any).fallback_method === 'credits' ? 'credits' : ((r as any).fallback_method === 'cli' ? 'cli_tool' : 'api_key'),
+            session_id: currentSessionId || null,
             model_name: r.model,
             provider: r.provider,
-            message_count: 1,
-            input_tokens: r.usage?.prompt_tokens || 0,
-            output_tokens: r.usage?.completion_tokens || 0,
-            total_tokens: r.usage?.total_tokens || 0,
-            cost_usd: (r as any).fallback_method === 'credits' ? 0 : ((r as any).costInfo?.total_cost || 0),
-            cost_credits: (r as any).fallback_method === 'credits' ? ((r as any).costInfo?.total_cost || 0) : 0,
+            tokens_used: r.usage?.total_tokens || 0,
+            cost: (r as any).costInfo?.total_cost || 0,
+            session_type: (r as any).fallback_method === 'credits' ? 'credits' : ((r as any).fallback_method === 'cli' ? 'cli' : 'api'),
             metadata: {
               app: 'Polydev Multi-LLM Platform',
               prompt_tokens: r.usage?.prompt_tokens || 0,
@@ -2310,6 +2388,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       responses,
       usage: totalUsage,
+      summary: {
+        totals: { tokens: totalUsage?.total_tokens || 0, cost: totalCost, credits_used: totalCreditsUsed },
+        responses: responses.map((r: any) => ({
+          model: r?.model,
+          provider: r?.provider,
+          tokens_used: r?.usage?.total_tokens || 0,
+          cost: r?.costInfo || null,
+          fallback_method: r?.fallback_method,
+          credits_used: r?.credits_used || 0,
+          error: r?.error || null
+        }))
+      },
       // Enhanced Polydev metadata for multiple models
       polydev_metadata: {
         total_cost: totalCost,
