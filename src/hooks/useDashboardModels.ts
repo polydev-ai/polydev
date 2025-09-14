@@ -77,7 +77,8 @@ export function useDashboardModels() {
             try {
               const richResp = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(providerId)}&rich=true`)
               if (richResp.ok) {
-                const rich = await richResp.json()
+                const richData = await richResp.json()
+                const rich = Array.isArray(richData) ? richData[0] : richData
                 if (Array.isArray(rich.models)) {
                   providerModels = rich.models.map((m: any) => ({
                     friendly_id: m.id,
