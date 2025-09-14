@@ -49,10 +49,17 @@ export async function GET(req: NextRequest) {
     let modelsByProvider: Record<string, any[]> = {}
     if (includeModels || modelsOnly || rich) {
       const selectedIds = filteredProviders.map(p => p.id)
+      // Also include original provider IDs to handle normalization mismatch
+      const originalIds = filteredProviders.map(p => {
+        const originalProvider = (providers || []).find(orig => normalizeId(orig.id) === p.id)
+        return originalProvider?.id
+      }).filter(Boolean)
+      const allIds = [...selectedIds, ...originalIds]
+      
       const { data: models, error: mErr } = await supabase
         .from('models_registry')
         .select('*')
-        .in('provider_id', selectedIds)
+        .in('provider_id', allIds)
         .eq('is_active', true)
 
       if (mErr) {
