@@ -107,13 +107,13 @@ export function useDashboardModels() {
               const { provider, models } = await modelsDevClientService.getProviderWithModels(providerId)
               providerModels = models || []
               providerName = (provider as any)?.display_name || (provider as any)?.name || providerId
-              providerLogo = (provider as any)?.logo_url
+              providerLogo = (provider as any)?.logo || (provider as any)?.logo_url
             }
 
             for (const mId of preferredModels) {
               const modelData = (providerModels || []).find((m: any) => m.friendly_id === mId || m.id === mId)
               if (modelData) {
-                dashboardModels.push({
+                const modelEntry = {
                   id: modelData.friendly_id || modelData.id,
                   name: modelData.display_name || modelData.name,
                   provider: providerId,
@@ -134,7 +134,8 @@ export function useDashboardModels() {
                   contextWindow: modelData.context_length,
                   maxTokens: modelData.max_tokens,
                   description: `${modelData.display_name || modelData.name} - ${providerName}`
-                })
+                }
+                dashboardModels.push(modelEntry)
               } else {
                 // Minimal fallback entry if registry lacks details
                 dashboardModels.push({
