@@ -410,20 +410,32 @@ export default function Chat() {
     }
   }
 
-  const getSourceFromProvider = (provider?: string):
+  const getSourceFromProvider = (provider?: string, modelId?: string):
     | { type: 'cli' | 'api' | 'credits'; label: string; cost?: string }
     | null => {
     if (!provider) return null
-    if (provider.includes('CLI')) return { type: 'cli', label: 'CLI', cost: '$0.00' }
-    if (provider.includes('API')) return { type: 'api', label: 'API' }
-    if (provider.includes('Credits')) return { type: 'credits', label: 'Credits' }
-    return null
+    
+    // Check explicit provider suffixes first
+    if (provider.includes('(CLI)') || provider.includes('CLI')) return { type: 'cli', label: 'CLI', cost: '$0.00' }
+    if (provider.includes('(API)') || provider.includes('API')) return { type: 'api', label: 'API' }
+    if (provider.includes('(Credits)') || provider.includes('Credits')) return { type: 'credits', label: 'Credits' }
+    
+    // Try to match with dashboard models for better accuracy
+    if (modelId) {
+      const model = dashboardModels.find(m => m.id === modelId || m.name === modelId)
+      if (model) {
+        return { type: model.tier, label: model.tier.toUpperCase() }
+      }
+    }
+    
+    // Fallback: assume API for most providers
+    return { type: 'api', label: 'API' }
   }
 
   const formatCost = (cost?: number) => {
     if (cost === undefined || cost === null || cost === 0) return '$0.0000'
     if (cost < 0.000001) return '<$0.0001'
-    if (cost < 0.01) return `$${cost.toFixed(4)}`
+    if (cost < 0.01) return `$${cost.toFixed(6)}`
     return `$${cost.toFixed(4)}`
   }
 
@@ -698,6 +710,9 @@ export default function Chat() {
                                 Reasoning
                               </span>
                             )}
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(model.tier)}`}>
+                              {model.tier.toUpperCase()}
+                            </span>
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                             {model.providerName} • {model.contextWindow ? `${(model.contextWindow / 1000).toFixed(0)}K context` : 'Standard'}
@@ -855,7 +870,7 @@ export default function Chat() {
                             </div>
                             <div className="flex items-center space-x-2">
                               {(() => {
-                                const source = getSourceFromProvider(message.provider)
+                                const source = getSourceFromProvider(message.provider, message.model)
                                 if (source) {
                                   return (
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(source.type)}`}>
@@ -1036,7 +1051,7 @@ export default function Chat() {
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   {(() => {
-                                    const source = getSourceFromProvider(message.provider)
+                                    const source = getSourceFromProvider(message.provider, message.model)
                                     if (source) {
                                       return (
                                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(source.type)}`}>
