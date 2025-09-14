@@ -221,8 +221,9 @@ export default function EnhancedApiKeysPage() {
       }
       const data = await response.json()
       
-      // Handle rich data format (single provider object with models array)
-      const models = (data.models || []).map((model: any) => ({
+      // Handle rich data format (array with provider object containing models)
+      const providerData = Array.isArray(data) ? data[0] : data
+      const models = (providerData?.models || []).map((model: any) => ({
         id: model.id,
         provider_id: providerId,
         name: model.name,
@@ -498,8 +499,9 @@ export default function EnhancedApiKeysPage() {
                 throw new Error('Failed to fetch models')
               }
               const data = await response.json()
-              // Handle rich data format
-              const models = (data.models || []).map((model: any) => ({
+              // Handle rich data format (array with provider object containing models)
+              const providerData = Array.isArray(data) ? data[0] : data
+              const models = (providerData?.models || []).map((model: any) => ({
                 id: model.id,
                 provider_id: provider,
                 name: model.name,
@@ -1356,10 +1358,10 @@ export default function EnhancedApiKeysPage() {
                     <option disabled>Loading models...</option>
                   )}
                   {(providerModels[formData.provider] || []).map(model => {
-                    const inputCost = (model.input_cost_per_million || 0) / 1000 // Convert from micro-dollars
-                    const outputCost = (model.output_cost_per_million || 0) / 1000 // Convert from micro-dollars
+                    const inputCost = (model.input_cost_per_million || 0) / 1000000 // Convert to dollars per token, then multiply by 1000 for per 1K
+                    const outputCost = (model.output_cost_per_million || 0) / 1000000
                     const priceText = inputCost > 0 || outputCost > 0 
-                      ? ` - $${inputCost.toFixed(3)}/$${outputCost.toFixed(3)} per 1M tokens`
+                      ? ` - $${(inputCost * 1000).toFixed(3)}/$${(outputCost * 1000).toFixed(3)} per 1K tokens`
                       : ''
                     return (
                       <option key={model.id} value={model.id}>
@@ -1375,8 +1377,8 @@ export default function EnhancedApiKeysPage() {
                 const selectedModel = (providerModels[formData.provider] || []).find(m => m.id === formData.default_model)
                 if (!selectedModel) return null
                 
-                const inputCost = (selectedModel.input_cost_per_million || 0) / 1000 // Convert from micro-dollars
-                const outputCost = (selectedModel.output_cost_per_million || 0) / 1000 // Convert from micro-dollars
+                const inputCost = (selectedModel.input_cost_per_million || 0) / 1000000 // Convert to dollars per token
+                const outputCost = (selectedModel.output_cost_per_million || 0) / 1000000
                 
                 if (inputCost === 0 && outputCost === 0) return null
                 
@@ -1392,20 +1394,20 @@ export default function EnhancedApiKeysPage() {
                       <div className="bg-white dark:bg-blue-800/30 rounded-md p-2 border border-blue-200 dark:border-blue-700">
                         <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Input</div>
                         <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
-                          ${inputCost.toFixed(3)}
+                          ${(inputCost * 1000).toFixed(3)}
                         </div>
-                        <div className="text-xs text-blue-600 dark:text-blue-400">per 1M tokens</div>
+                        <div className="text-xs text-blue-600 dark:text-blue-400">per 1K tokens</div>
                       </div>
                       <div className="bg-white dark:bg-blue-800/30 rounded-md p-2 border border-blue-200 dark:border-blue-700">
                         <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Output</div>
                         <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
-                          ${outputCost.toFixed(3)}
+                          ${(outputCost * 1000).toFixed(3)}
                         </div>
-                        <div className="text-xs text-blue-600 dark:text-blue-400">per 1M tokens</div>
+                        <div className="text-xs text-blue-600 dark:text-blue-400">per 1K tokens</div>
                       </div>
                     </div>
                     <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
-                      💡 Typical prompt (~500 tokens): ~$<span className="font-medium">{((inputCost * 500) / 1000).toFixed(4)}</span> input + response varies by length
+                      💡 Typical prompt (~500 tokens): ~$<span className="font-medium">{(inputCost * 500).toFixed(4)}</span> input + response varies by length
                     </div>
                   </div>
                 )
