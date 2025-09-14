@@ -1379,8 +1379,8 @@ export default function EnhancedApiKeysPage() {
                 const selectedModel = (providerModels[formData.provider] || []).find(m => m.id === formData.default_model)
                 if (!selectedModel) return null
                 
-                const inputCost = (selectedModel.input_cost_per_million || 0) / 1000000 // Convert to dollars per token
-                const outputCost = (selectedModel.output_cost_per_million || 0) / 1000000
+                const inputCost = (selectedModel.input_cost_per_million || 0) / 1000 // Convert to per 1K tokens
+                const outputCost = (selectedModel.output_cost_per_million || 0) / 1000 // Convert to per 1K tokens
                 
                 if (inputCost === 0 && outputCost === 0) return null
                 
@@ -1396,20 +1396,20 @@ export default function EnhancedApiKeysPage() {
                       <div className="bg-white dark:bg-blue-800/30 rounded-md p-2 border border-blue-200 dark:border-blue-700">
                         <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Input</div>
                         <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
-                          ${(inputCost / 1000).toFixed(6)}
+                          ${inputCost.toFixed(6)}
                         </div>
                         <div className="text-xs text-blue-600 dark:text-blue-400">per 1K tokens</div>
                       </div>
                       <div className="bg-white dark:bg-blue-800/30 rounded-md p-2 border border-blue-200 dark:border-blue-700">
                         <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Output</div>
                         <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
-                          ${(outputCost / 1000).toFixed(6)}
+                          ${outputCost.toFixed(6)}
                         </div>
                         <div className="text-xs text-blue-600 dark:text-blue-400">per 1K tokens</div>
                       </div>
                     </div>
                     <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
-                      💡 Typical prompt (~500 tokens): ~$<span className="font-medium">{(inputCost * 500 / 1000000).toFixed(6)}</span> input + response varies by length
+                      💡 Typical prompt (~500 tokens): ~$<span className="font-medium">{(inputCost * 500 / 1000).toFixed(6)}</span> input + response varies by length
                     </div>
                   </div>
                 )
