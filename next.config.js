@@ -1,5 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    domains: ['models.dev'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'models.dev',
+        port: '',
+        pathname: '/logos/**',
+      },
+    ],
+  },
   experimental: {
     serverActions: {
       allowedOrigins: ["localhost:3000", "polydev.ai", "*.vercel.app"]

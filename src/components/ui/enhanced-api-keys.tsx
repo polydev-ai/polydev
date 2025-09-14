@@ -1211,6 +1211,7 @@ export default function EnhancedApiKeysPage() {
                           alt={providerData.displayName}
                           className="w-4 h-4"
                           onError={(e) => {
+                            console.error(`Failed to load logo: ${providerData.logoUrl}`)
                             e.currentTarget.style.display = 'none'
                           }}
                         />
@@ -1233,6 +1234,7 @@ export default function EnhancedApiKeysPage() {
                             alt={providerData.displayName}
                             className="w-6 h-6"
                             onError={(e) => {
+                              console.error(`Failed to load provider logo: ${providerData.logoUrl}`)
                               // Fallback to Lucide icon if image fails to load
                               e.currentTarget.style.display = 'none'
                             }}
