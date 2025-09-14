@@ -163,7 +163,9 @@ export default function EnhancedApiKeysPage() {
   }
 
   // Get enhanced provider display data by combining legacy providers with models.dev data
-  const getProviderDisplayData = useCallback((providerId: string) => {
+  const getProviderDisplayData = useCallback((rawProviderId: string) => {
+    const normalizeId = (pid: string) => pid === 'xai' ? 'x-ai' : pid
+    const providerId = normalizeId(rawProviderId)
     const legacyProvider = legacyProviders[providerId]
     const modelsDevProvider = modelsDevProviders.find(p => p.id === providerId)
     
@@ -338,7 +340,23 @@ export default function EnhancedApiKeysPage() {
           
           // Rich data is an array of providers, need to set modelsDevProviders
           if (Array.isArray(data)) {
-            setModelsDevProviders(data)
+            // Normalize and de-duplicate providers by ID (prefer richer entries with models)
+            const normalizeId = (pid: string) => pid === 'xai' ? 'x-ai' : pid
+            const dedupMap = new Map<string, any>()
+            data.forEach((p: any) => {
+              const nid = normalizeId(p.id)
+              const existing = dedupMap.get(nid)
+              if (!existing) {
+                dedupMap.set(nid, { ...p, id: nid })
+              } else {
+                const existingScore = (existing.models?.length || 0) + (existing.description?.length || 0)
+                const candidateScore = (p.models?.length || 0) + (p.description?.length || 0)
+                if (candidateScore > existingScore) {
+                  dedupMap.set(nid, { ...p, id: nid })
+                }
+              }
+            })
+            setModelsDevProviders(Array.from(dedupMap.values()))
             
             // Convert rich data to legacy format for backward compatibility
             data.forEach((provider: any) => {
@@ -355,7 +373,8 @@ export default function EnhancedApiKeysPage() {
                   }
                 })
                 
-                legacyProvidersData[provider.id] = {
+                const nid = normalizeId(provider.id)
+                legacyProvidersData[nid] = {
                   name: provider.name,
                   description: provider.description,
                   website: provider.website,

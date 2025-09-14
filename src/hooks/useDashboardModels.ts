@@ -52,7 +52,11 @@ export function useDashboardModels() {
 
         const dashboardModels: DashboardModel[] = []
 
-        for (const [providerId, providerPref] of Object.entries(preferences.model_preferences)) {
+        // Normalize certain provider IDs to avoid duplicates and missing data
+        const normalizeProviderId = (pid: string) => pid === 'xai' ? 'x-ai' : pid
+
+        for (const [rawProviderId, providerPref] of Object.entries(preferences.model_preferences)) {
+          const providerId = normalizeProviderId(rawProviderId)
           if (!providerPref) continue
 
           // Normalize models list from preference record
@@ -65,9 +69,45 @@ export function useDashboardModels() {
           if (preferredModels.length === 0) continue
 
           try {
-            const { provider, models: providerModels } = await modelsDevClientService.getProviderWithModels(providerId)
-            const providerName = (provider as any)?.display_name || (provider as any)?.name || providerId
-            const providerLogo = (provider as any)?.logo_url
+            // Prefer rich provider data for accurate logos and pricing
+            let providerName = providerId
+            let providerLogo: string | undefined
+            let providerModels: any[] = []
+
+            try {
+              const richResp = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(providerId)}&rich=true`)
+              if (richResp.ok) {
+                const rich = await richResp.json()
+                if (Array.isArray(rich.models)) {
+                  providerModels = rich.models.map((m: any) => ({
+                    friendly_id: m.id,
+                    id: m.id,
+                    name: m.name,
+                    display_name: m.name,
+                    context_length: m.contextWindow,
+                    max_tokens: m.maxTokens,
+                    input_cost_per_million: m.pricing?.input,
+                    output_cost_per_million: m.pricing?.output,
+                    supports_vision: m.supportsVision,
+                    supports_tools: m.supportsTools,
+                    supports_streaming: m.supportsStreaming,
+                    supports_reasoning: m.supportsReasoning,
+                    description: m.description,
+                  }))
+                }
+                providerName = rich.name || providerId
+                providerLogo = rich.logo || rich.logo_url
+              }
+            } catch (e) {
+              // Ignore and fallback to registry-based API
+            }
+
+            if (providerModels.length === 0) {
+              const { provider, models } = await modelsDevClientService.getProviderWithModels(providerId)
+              providerModels = models || []
+              providerName = (provider as any)?.display_name || (provider as any)?.name || providerId
+              providerLogo = (provider as any)?.logo_url
+            }
 
             for (const mId of preferredModels) {
               const modelData = (providerModels || []).find((m: any) => m.friendly_id === mId || m.id === mId)
@@ -80,8 +120,9 @@ export function useDashboardModels() {
                   providerLogo,
                   // Avoid provider hardcoding; treat all added models as API-tier selections in UI
                   tier: 'api',
+                  // Normalize pricing to per 1M tokens in USD
                   price: (modelData.input_cost_per_million != null && modelData.output_cost_per_million != null)
-                    ? { input: modelData.input_cost_per_million, output: modelData.output_cost_per_million }
+                    ? { input: Number(modelData.input_cost_per_million), output: Number(modelData.output_cost_per_million) }
                     : undefined,
                   features: {
                     supportsImages: modelData.supports_vision,
