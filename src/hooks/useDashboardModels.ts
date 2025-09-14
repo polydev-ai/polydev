@@ -120,7 +120,7 @@ export function useDashboardModels() {
                   providerName,
                   providerLogo,
                   // Avoid provider hardcoding; treat all added models as API-tier selections in UI
-                  tier: 'api',
+                  tier: 'api' as const,
                   // Normalize pricing to per 1M tokens in USD
                   price: (modelData.input_cost_per_million != null && modelData.output_cost_per_million != null)
                     ? { input: Number(modelData.input_cost_per_million), output: Number(modelData.output_cost_per_million) }

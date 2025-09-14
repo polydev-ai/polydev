@@ -510,11 +510,27 @@ class ModelsDevService {
       return result
     }
 
-    // Final fallback: fetch live data from models.dev if database doesn’t have pricing
+    // Final fallback: try to fetch live data from models.dev if database doesn't have pricing
+    // But handle failures gracefully to prevent breaking chat pricing display
     try {
-      const resp = await fetch('https://models.dev/api/v1/models', { cache: 'no-store' as any })
+      const resp = await fetch('https://models.dev/api/v1/models', { 
+        cache: 'no-store' as any,
+        headers: { 'Accept': 'application/json' }
+      })
       if (resp.ok) {
-        const raw = await resp.json()
+        let raw
+        try {
+          raw = await resp.json()
+        } catch (jsonError) {
+          console.warn(`[models.dev] Invalid JSON response for ${friendlyId}:`, jsonError)
+          // Return basic structure without pricing if external API fails
+          return {
+            maxTokens: 4096,
+            contextLength: 32768
+            // No pricing - let the chat handle missing pricing gracefully
+          }
+        }
+        
         const list: any[] = Array.isArray(raw) ? raw : Object.values(raw || {})
         const cand = list.find((m: any) => {
           const pid = (m.provider_id || m.provider || '').toLowerCase()
@@ -546,7 +562,13 @@ class ModelsDevService {
       console.warn('[models.dev] Live fetch fallback failed:', e)
     }
 
-    return null
+    // Graceful fallback: return basic limits without pricing to prevent null errors
+    console.warn(`[models.dev] No pricing data found for ${friendlyId} with provider ${providerId}`)
+    return {
+      maxTokens: 4096,
+      contextLength: 32768
+      // No pricing - chat will show $0.00 but won't crash
+    }
   }
 
   async getModelByProviderSpecificId(providerModelId: string, providerId: string): Promise<ModelRegistry | null> {
