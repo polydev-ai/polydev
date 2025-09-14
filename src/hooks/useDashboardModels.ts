@@ -113,6 +113,18 @@ export function useDashboardModels() {
             for (const mId of preferredModels) {
               const modelData = (providerModels || []).find((m: any) => m.friendly_id === mId || m.id === mId)
               if (modelData) {
+                const price = (modelData.input_cost_per_million != null && modelData.output_cost_per_million != null)
+                  ? { input: Number(modelData.input_cost_per_million), output: Number(modelData.output_cost_per_million) }
+                  : undefined
+                
+                // Debug pricing
+                console.log(`[useDashboardModels] ${mId} pricing debug:`, {
+                  input_raw: modelData.input_cost_per_million,
+                  output_raw: modelData.output_cost_per_million,
+                  price_final: price,
+                  provider: providerId
+                })
+                
                 const modelEntry = {
                   id: modelData.friendly_id || modelData.id,
                   name: modelData.display_name || modelData.name,
@@ -122,9 +134,7 @@ export function useDashboardModels() {
                   // Avoid provider hardcoding; treat all added models as API-tier selections in UI
                   tier: 'api' as const,
                   // Normalize pricing to per 1M tokens in USD
-                  price: (modelData.input_cost_per_million != null && modelData.output_cost_per_million != null)
-                    ? { input: Number(modelData.input_cost_per_million), output: Number(modelData.output_cost_per_million) }
-                    : undefined,
+                  price,
                   features: {
                     supportsImages: modelData.supports_vision,
                     supportsTools: modelData.supports_tools,
