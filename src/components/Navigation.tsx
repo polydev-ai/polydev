@@ -83,6 +83,7 @@ export default function Navigation() {
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Chat', href: '/chat' },
     { name: 'Models', href: '/dashboard/models' },
+    { name: 'Activity', href: '/dashboard/activity' },
     { name: 'Documentation', href: '/docs' },
     { name: 'CLI Integration', href: '/cli' },
   ]

@@ -1,320 +1,306 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
+import { createClient as createServerClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
+    
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const timeframe = searchParams.get('timeframe') || 'month' // day, week, month, year
-    const includeDetails = searchParams.get('details') === 'true'
-
-    // Calculate date range based on timeframe
-    const now = new Date()
-    let startDate: Date
     
-    switch (timeframe) {
-      case 'day':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        break
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        break
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1)
-        break
-      case 'month':
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        break
+    const timeframe = searchParams.get('timeframe') || '30d'
+    const provider = searchParams.get('provider')
+    const model = searchParams.get('model')
+    const costMin = searchParams.get('cost_min') ? parseFloat(searchParams.get('cost_min')!) : undefined
+    const costMax = searchParams.get('cost_max') ? parseFloat(searchParams.get('cost_max')!) : undefined
+    const startDate = searchParams.get('start_date')
+    const endDate = searchParams.get('end_date')
+    const format = searchParams.get('format') || 'json'
+    const groupBy = searchParams.get('group_by') || 'day'
+    const includeComparison = searchParams.get('include_comparison') === 'true'
+
+    const serviceSupabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    let dateFrom = new Date()
+    let dateTo = new Date()
+
+    if (startDate && endDate) {
+      dateFrom = new Date(startDate)
+      dateTo = new Date(endDate)
+    } else {
+      switch (timeframe) {
+        case '24h':
+          dateFrom = new Date(Date.now() - 24 * 60 * 60 * 1000)
+          break
+        case '7d':
+          dateFrom = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          break
+        case '30d':
+          dateFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          break
+        case '90d':
+          dateFrom = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+          break
+        case '1y':
+          dateFrom = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+          break
+        default:
+          dateFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      }
     }
 
-    // Get comprehensive usage sessions
-    const { data: sessions, error: sessionsError } = await supabase
+    let query = serviceSupabase
       .from('usage_sessions')
-      .select('*')
+      .select(`
+        *,
+        chat_messages (
+          id,
+          role,
+          content,
+          tokens_used,
+          cost,
+          model_name,
+          provider,
+          created_at
+        )
+      `)
       .eq('user_id', user.id)
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(includeDetails ? 1000 : 100)
+      .gte('created_at', dateFrom.toISOString())
+      .lte('created_at', dateTo.toISOString())
+
+    if (provider) {
+      query = query.eq('provider', provider)
+    }
+
+    if (model) {
+      query = query.eq('model_name', model)
+    }
+
+    if (costMin !== undefined) {
+      query = query.gte('cost', costMin)
+    }
+
+    if (costMax !== undefined) {
+      query = query.lte('cost', costMax)
+    }
+
+    query = query.order('created_at', { ascending: false })
+
+    const { data: sessions, error: sessionsError } = await query
 
     if (sessionsError) {
-      return NextResponse.json({ error: sessionsError.message }, { status: 500 })
+      console.error('[Usage Comprehensive] Error fetching sessions:', sessionsError)
+      return NextResponse.json({ error: 'Failed to fetch usage data' }, { status: 500 })
     }
 
-    // Get monthly summary for current period
-    const { data: monthlySummary } = await supabase
-      .from('monthly_usage_summary')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('year', now.getFullYear())
-      .eq('month', now.getMonth() + 1)
-      .single()
+    let comparisonData = null
+    if (includeComparison) {
+      const comparisonDateFrom = new Date(dateFrom.getTime() - (dateTo.getTime() - dateFrom.getTime()))
+      const comparisonDateTo = new Date(dateFrom.getTime())
 
-    // Get current credit balance
-    const { data: credits } = await supabase
-      .from('user_credits')
-      .select('balance, promotional_balance, total_purchased, total_spent, promotional_total')
-      .eq('user_id', user.id)
-      .single()
+      let comparisonQuery = serviceSupabase
+        .from('usage_sessions')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('created_at', comparisonDateFrom.toISOString())
+        .lte('created_at', comparisonDateTo.toISOString())
 
-    // Get active promotional credits
-    const { data: activePromoCredits } = await supabase
-      .from('promotional_credits')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .gt('amount', 'used_amount')
+      if (provider) comparisonQuery = comparisonQuery.eq('provider', provider)
+      if (model) comparisonQuery = comparisonQuery.eq('model_name', model)
+      if (costMin !== undefined) comparisonQuery = comparisonQuery.gte('cost', costMin)
+      if (costMax !== undefined) comparisonQuery = comparisonQuery.lte('cost', costMax)
 
-    // Calculate statistics
-    const stats = {
-      total_messages: 0,
-      api_key_messages: 0,
-      credit_messages: 0,
-      cli_tool_messages: 0,
-      total_tokens: 0,
-      total_cost_usd: 0,
-      total_credits_used: 0,
-      promotional_credits_used: 0,
-      unique_models: new Set(),
-      unique_providers: new Set(),
-      unique_tools: new Set()
+      const { data: comparisonSessions } = await comparisonQuery
+      comparisonData = comparisonSessions || []
     }
 
-    // Process sessions
-    sessions?.forEach(session => {
-      stats.total_messages += session.message_count || 0
-      stats.total_tokens += session.total_tokens || 0
-      stats.total_cost_usd += parseFloat(session.cost_usd || '0')
-      stats.total_credits_used += parseFloat(session.cost_credits || '0')
-      stats.promotional_credits_used += parseFloat(session.promotional_credits_used || '0')
+    const aggregateData = (data: any[]) => {
+      const totalCost = data.reduce((sum, session) => sum + (parseFloat(session.cost) || 0), 0)
+      const totalTokens = data.reduce((sum, session) => sum + (session.tokens_used || session.total_tokens || 0), 0)
+      const totalSessions = data.length
 
-      if (session.model_name) stats.unique_models.add(session.model_name)
-      if (session.provider) stats.unique_providers.add(session.provider)
-      if (session.tool_name) stats.unique_tools.add(session.tool_name)
-
-      switch (session.session_type) {
-        case 'api_key':
-          stats.api_key_messages += session.message_count || 0
-          break
-        case 'credits':
-          stats.credit_messages += session.message_count || 0
-          break
-        case 'cli_tool':
-          stats.cli_tool_messages += session.message_count || 0
-          break
-      }
-    })
-
-    // Group sessions by type and tool for breakdown
-    type BreakdownItem = {
-      messages: number
-      tokens: number
-      cost_usd: number
-      cost_credits: number
-      sessions: number
-    }
-    
-    type BreakdownData = {
-      api_keys: Record<string, BreakdownItem>
-      credits: Record<string, BreakdownItem>
-      cli_tools: Record<string, BreakdownItem>
-    }
-    
-    const breakdown: BreakdownData = {
-      api_keys: {},
-      credits: {},
-      cli_tools: {}
-    }
-
-    sessions?.forEach(session => {
-      const key = session.session_type as keyof BreakdownData
-      const toolKey = session.tool_name || session.provider || 'unknown'
-      
-      if (!breakdown[key][toolKey]) {
-        breakdown[key][toolKey] = {
-          messages: 0,
-          tokens: 0,
-          cost_usd: 0,
-          cost_credits: 0,
-          sessions: 0
+      const providerStats = data.reduce((acc, session) => {
+        const provider = session.provider || 'unknown'
+        if (!acc[provider]) {
+          acc[provider] = { cost: 0, tokens: 0, sessions: 0 }
         }
-      }
+        acc[provider].cost += parseFloat(session.cost) || 0
+        acc[provider].tokens += session.tokens_used || session.total_tokens || 0
+        acc[provider].sessions += 1
+        return acc
+      }, {} as Record<string, { cost: number; tokens: number; sessions: number }>)
 
-      const item = breakdown[key][toolKey]
-      item.messages += session.message_count || 0
-      item.tokens += session.total_tokens || 0
-      item.cost_usd += parseFloat(session.cost_usd || '0')
-      item.cost_credits += parseFloat(session.cost_credits || '0')
-      item.sessions += 1
-    })
-
-    // Daily/hourly breakdown for charts
-    type TimeSeriesItem = {
-      messages: number
-      tokens: number
-      cost_usd: number
-      cost_credits: number
-      api_key: number
-      credits: number
-      cli_tools: number
-    }
-    
-    const timeSeriesData: Record<string, TimeSeriesItem> = {}
-    sessions?.forEach(session => {
-      const date = new Date(session.created_at)
-      const key = timeframe === 'day' 
-        ? date.getHours().toString().padStart(2, '0') + ':00'
-        : date.toISOString().split('T')[0]
-
-      if (!timeSeriesData[key]) {
-        timeSeriesData[key] = {
-          messages: 0,
-          tokens: 0,
-          cost_usd: 0,
-          cost_credits: 0,
-          api_key: 0,
-          credits: 0,
-          cli_tools: 0
+      const modelStats = data.reduce((acc, session) => {
+        const model = session.model_name || 'unknown'
+        if (!acc[model]) {
+          acc[model] = { cost: 0, tokens: 0, sessions: 0 }
         }
-      }
+        acc[model].cost += parseFloat(session.cost) || 0
+        acc[model].tokens += session.tokens_used || session.total_tokens || 0
+        acc[model].sessions += 1
+        return acc
+      }, {} as Record<string, { cost: number; tokens: number; sessions: number }>)
 
-      const item = timeSeriesData[key]
-      item.messages += session.message_count || 0
-      item.tokens += session.total_tokens || 0
-      item.cost_usd += parseFloat(session.cost_usd || '0')
-      item.cost_credits += parseFloat(session.cost_credits || '0')
-      
-      switch (session.session_type) {
-        case 'api_key':
-          item.api_key += session.message_count || 0
-          break
-        case 'credits':
-          item.credits += session.message_count || 0
-          break
-        case 'cli_tool':
-          item.cli_tools += session.message_count || 0
-          break
-      }
-    })
+      const timeSeriesData = data.reduce((acc, session) => {
+        const date = new Date(session.created_at)
+        let key: string
 
-    type SessionDetail = {
-      id: string
-      session_type: string
-      tool_name: string | null
-      model_name: string | null
-      provider: string | null
-      message_count: number
-      total_tokens: number
-      cost_credits: string | null
-      cost_usd: string | null
-      created_at: string
-      metadata: any
-    }
-
-    const response: {
-      timeframe: string
-      period: {
-        start: string
-        end: string
-      }
-      summary: {
-        total_messages: number
-        total_tokens: number
-        total_cost_usd: number
-        total_credits_used: number
-        promotional_credits_used: number
-        usage_paths: {
-          api_key_messages: number
-          credit_messages: number
-          cli_tool_messages: number
+        switch (groupBy) {
+          case 'hour':
+            key = date.toISOString().slice(0, 13) + ':00:00.000Z'
+            break
+          case 'day':
+            key = date.toISOString().slice(0, 10)
+            break
+          case 'week':
+            const weekStart = new Date(date)
+            weekStart.setDate(date.getDate() - date.getDay())
+            key = weekStart.toISOString().slice(0, 10)
+            break
+          case 'month':
+            key = date.toISOString().slice(0, 7)
+            break
+          default:
+            key = date.toISOString().slice(0, 10)
         }
-        unique_models: unknown[]
-        unique_providers: unknown[]
-        unique_tools: unknown[]
+
+        if (!acc[key]) {
+          acc[key] = { cost: 0, tokens: 0, sessions: 0, date: key }
+        }
+        acc[key].cost += parseFloat(session.cost) || 0
+        acc[key].tokens += session.tokens_used || session.total_tokens || 0
+        acc[key].sessions += 1
+        return acc
+      }, {} as Record<string, { cost: number; tokens: number; sessions: number; date: string }>)
+
+      return {
+        totalCost: parseFloat(totalCost.toFixed(6)),
+        totalTokens,
+        totalSessions,
+        avgCostPerSession: totalSessions > 0 ? parseFloat((totalCost / totalSessions).toFixed(6)) : 0,
+        avgTokensPerSession: totalSessions > 0 ? Math.round(totalTokens / totalSessions) : 0,
+        providerStats: Object.entries(providerStats).map(([provider, stats]) => ({
+          provider,
+          cost: parseFloat(stats.cost.toFixed(6)),
+          tokens: stats.tokens,
+          sessions: stats.sessions,
+          avgCostPerSession: stats.sessions > 0 ? parseFloat((stats.cost / stats.sessions).toFixed(6)) : 0
+        })).sort((a, b) => b.cost - a.cost),
+        modelStats: Object.entries(modelStats).map(([model, stats]) => ({
+          model,
+          cost: parseFloat(stats.cost.toFixed(6)),
+          tokens: stats.tokens,
+          sessions: stats.sessions,
+          avgCostPerSession: stats.sessions > 0 ? parseFloat((stats.cost / stats.sessions).toFixed(6)) : 0
+        })).sort((a, b) => b.cost - a.cost),
+        timeSeries: Object.values(timeSeriesData).sort((a, b) => a.date.localeCompare(b.date))
       }
-      current_balance: {
-        total: number
-        purchased: number
-        promotional: number
-        lifetime_purchased: number
-        lifetime_spent: number
-        promotional_total: number
-      }
-      breakdown: BreakdownData
-      time_series: Record<string, TimeSeriesItem>
-      monthly_summary: any
-      active_promotional_credits: any[]
-      sessions?: SessionDetail[]
-    } = {
-      timeframe,
-      period: {
-        start: startDate.toISOString(),
-        end: now.toISOString()
-      },
-      summary: {
-        total_messages: stats.total_messages,
-        total_tokens: stats.total_tokens,
-        total_cost_usd: parseFloat(stats.total_cost_usd.toFixed(4)),
-        total_credits_used: parseFloat(stats.total_credits_used.toFixed(4)),
-        promotional_credits_used: parseFloat(stats.promotional_credits_used.toFixed(4)),
-        usage_paths: {
-          api_key_messages: stats.api_key_messages,
-          credit_messages: stats.credit_messages,
-          cli_tool_messages: stats.cli_tool_messages
-        },
-        unique_models: Array.from(stats.unique_models),
-        unique_providers: Array.from(stats.unique_providers),
-        unique_tools: Array.from(stats.unique_tools)
-      },
-      current_balance: {
-        total: (credits?.balance || 0) + (credits?.promotional_balance || 0),
-        purchased: credits?.balance || 0,
-        promotional: credits?.promotional_balance || 0,
-        lifetime_purchased: credits?.total_purchased || 0,
-        lifetime_spent: credits?.total_spent || 0,
-        promotional_total: credits?.promotional_total || 0
-      },
-      breakdown,
-      time_series: timeSeriesData,
-      monthly_summary: monthlySummary,
-      active_promotional_credits: activePromoCredits?.map(pc => ({
-        id: pc.id,
-        amount: pc.amount,
-        used: pc.used_amount,
-        remaining: pc.amount - pc.used_amount,
-        reason: pc.reason,
-        expires_at: pc.expires_at,
-        granted_at: pc.granted_at
-      })) || []
     }
 
-    if (includeDetails) {
-      response.sessions = sessions?.map(session => ({
+    const currentPeriod = aggregateData(sessions || [])
+    const previousPeriod = comparisonData ? aggregateData(comparisonData) : null
+
+    const comparison = previousPeriod ? {
+      costChange: currentPeriod.totalCost - previousPeriod.totalCost,
+      costChangePercent: previousPeriod.totalCost > 0 ? 
+        parseFloat(((currentPeriod.totalCost - previousPeriod.totalCost) / previousPeriod.totalCost * 100).toFixed(2)) : 0,
+      tokensChange: currentPeriod.totalTokens - previousPeriod.totalTokens,
+      tokensChangePercent: previousPeriod.totalTokens > 0 ? 
+        parseFloat(((currentPeriod.totalTokens - previousPeriod.totalTokens) / previousPeriod.totalTokens * 100).toFixed(2)) : 0,
+      sessionsChange: currentPeriod.totalSessions - previousPeriod.totalSessions,
+      sessionsChangePercent: previousPeriod.totalSessions > 0 ? 
+        parseFloat(((currentPeriod.totalSessions - previousPeriod.totalSessions) / previousPeriod.totalSessions * 100).toFixed(2)) : 0
+    } : null
+
+    const responseData = {
+      summary: currentPeriod,
+      previousPeriod,
+      comparison,
+      sessions: sessions?.map(session => ({
         id: session.id,
-        session_type: session.session_type,
-        tool_name: session.tool_name,
-        model_name: session.model_name,
+        createdAt: session.created_at,
         provider: session.provider,
-        message_count: session.message_count,
-        total_tokens: session.total_tokens,
-        cost_credits: session.cost_credits,
-        cost_usd: session.cost_usd,
-        created_at: session.created_at,
-        metadata: session.metadata
-      }))
+        model: session.model_name,
+        tokens: session.tokens_used || session.total_tokens || 0,
+        cost: parseFloat(session.cost) || 0,
+        source: session.metadata?.fallback_method === 'credits' ? 'Credits' : 
+                (session.metadata?.fallback_method === 'cli' ? 'CLI' : 'API'),
+        app: session.metadata?.app || 'Polydev Multi-LLM Platform',
+        finishReason: session.metadata?.finish || 'stop',
+        tps: session.metadata?.tps || null,
+        messages: session.chat_messages || []
+      })) || [],
+      filters: {
+        timeframe,
+        provider,
+        model,
+        costMin,
+        costMax,
+        startDate: dateFrom.toISOString(),
+        endDate: dateTo.toISOString(),
+        groupBy
+      },
+      meta: {
+        totalResults: sessions?.length || 0,
+        generatedAt: new Date().toISOString(),
+        userId: user.id
+      }
     }
 
-    return NextResponse.json(response)
+    if (format === 'csv') {
+      const csvHeaders = [
+        'Date',
+        'Provider',
+        'Model',
+        'Tokens Used',
+        'Cost (USD)',
+        'Source',
+        'App',
+        'Finish Reason',
+        'TPS'
+      ]
+
+      const csvRows = responseData.sessions.map(session => [
+        new Date(session.createdAt).toISOString(),
+        session.provider || '',
+        session.model || '',
+        session.tokens.toString(),
+        session.cost.toFixed(6),
+        session.source || '',
+        session.app || '',
+        session.finishReason || '',
+        session.tps?.toString() || ''
+      ])
+
+      const csvContent = [
+        csvHeaders.join(','),
+        ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n')
+
+      return new NextResponse(csvContent, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="usage-export-${dateFrom.toISOString().slice(0, 10)}-to-${dateTo.toISOString().slice(0, 10)}.csv"`
+        }
+      })
+    }
+
+    return NextResponse.json(responseData)
 
   } catch (error) {
-    console.error('Comprehensive usage fetch error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[Usage Comprehensive] Error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch comprehensive usage data' },
+      { status: 500 }
+    )
   }
 }
 

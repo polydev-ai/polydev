@@ -5,6 +5,7 @@ import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 import { modelsDevService } from '@/lib/models-dev-integration'
 import { ResponseValidator } from '@/lib/api/utils/response-validator'
+import { computeCostUSD } from '@/utils/modelUtils'
 // OpenRouterManager available if we later switch to per-user keys
 
 // Generate a title from conversation context using AI
@@ -872,9 +873,9 @@ export async function POST(request: NextRequest) {
                 const limits = await modelsDevService.getModelLimits(friendlyModelId, pricingProvider)
                 const u = collected[friendlyModelId].usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                 if (limits?.pricing) {
+                  const totalCost = computeCostUSD(u.prompt_tokens || 0, u.completion_tokens || 0, limits.pricing.input, limits.pricing.output)
                   const inputCost = ((u.prompt_tokens || 0) / 1_000_000) * limits.pricing.input
                   const outputCost = ((u.completion_tokens || 0) / 1_000_000) * limits.pricing.output
-                  const totalCost = inputCost + outputCost
                   collected[friendlyModelId].cost = { input_cost: inputCost, output_cost: outputCost, total_cost: totalCost }
                   if (selectedConfig?.type === 'credits') {
                     collected[friendlyModelId].creditsUsed = totalCost
@@ -1286,12 +1287,13 @@ export async function POST(request: NextRequest) {
               let cost = null
               console.log(`[DEBUG CLI Cost] Model: ${modelId}, Usage:`, usage, `ModelPricing:`, modelPricing)
               if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
+                const totalCost = computeCostUSD(usage.prompt_tokens, usage.completion_tokens, modelPricing.input, modelPricing.output)
                 const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
                 const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
                 cost = {
                   input_cost: Number(inputCost.toFixed(6)),
                   output_cost: Number(outputCost.toFixed(6)),
-                  total_cost: Number((inputCost + outputCost).toFixed(6))
+                  total_cost: totalCost
                 }
                 console.log(`[DEBUG CLI Cost] Calculated cost:`, cost)
               } else {
@@ -1578,12 +1580,13 @@ export async function POST(request: NextRequest) {
             let cost = null
             console.log(`[DEBUG API Cost] Model: ${modelId}, Usage:`, usage, `ModelPricing:`, modelPricing)
             if (modelPricing && usage && (usage.prompt_tokens > 0 || usage.completion_tokens > 0)) {
+              const totalCost = computeCostUSD(usage.prompt_tokens || 0, usage.completion_tokens || 0, modelPricing.input, modelPricing.output)
               const inputCost = ((usage.prompt_tokens || 0) / 1000000) * modelPricing.input
               const outputCost = ((usage.completion_tokens || 0) / 1000000) * modelPricing.output
               cost = {
                 input_cost: Number(inputCost.toFixed(6)),
                 output_cost: Number(outputCost.toFixed(6)),
-                total_cost: Number((inputCost + outputCost).toFixed(6))
+                total_cost: totalCost
               }
               console.log(`[DEBUG API Cost] Calculated cost:`, cost)
             } else {
@@ -1694,9 +1697,8 @@ export async function POST(request: NextRequest) {
             
             // Compute cost using models.dev pricing when available
             const usageForCost = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-            const inputCost = modelPricing ? ((usageForCost.prompt_tokens || 0) / 1_000_000) * modelPricing.input : 0
-            const outputCost = modelPricing ? ((usageForCost.completion_tokens || 0) / 1_000_000) * modelPricing.output : 0
-            const totalCostUsd = inputCost + outputCost
+            const totalCostUsd = modelPricing ? 
+              computeCostUSD(usageForCost.prompt_tokens || 0, usageForCost.completion_tokens || 0, modelPricing.input, modelPricing.output) : 0
 
             // Deduct credits using unified total balance (promo + purchased treated as one)
             if (selectedConfig.type === 'credits' && totalCostUsd > 0) {
@@ -1734,12 +1736,13 @@ export async function POST(request: NextRequest) {
             // Calculate cost information
             let costInfo = null
             if (modelPricing && parsedUsage.prompt_tokens && parsedUsage.completion_tokens) {
+              const totalCost = computeCostUSD(parsedUsage.prompt_tokens, parsedUsage.completion_tokens, modelPricing.input, modelPricing.output)
               const inputCost = (parsedUsage.prompt_tokens / 1000000) * modelPricing.input
               const outputCost = (parsedUsage.completion_tokens / 1000000) * modelPricing.output
               costInfo = {
                 input_cost: inputCost,
                 output_cost: outputCost,
-                total_cost: inputCost + outputCost
+                total_cost: totalCost
               }
             }
             
@@ -1827,12 +1830,13 @@ export async function POST(request: NextRequest) {
                   // Calculate cost information
                   let costInfo = null
                   if (modelPricing && usage.prompt_tokens && usage.completion_tokens) {
+                    const totalCost = computeCostUSD(usage.prompt_tokens, usage.completion_tokens, modelPricing.input, modelPricing.output)
                     const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
                     const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
                     costInfo = {
                       input_cost: inputCost,
                       output_cost: outputCost,
-                      total_cost: inputCost + outputCost
+                      total_cost: totalCost
                     }
                   }
                   
@@ -1969,12 +1973,13 @@ export async function POST(request: NextRequest) {
                     const parsedUsage = apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                     let costInfo = null
                     if (modelPricing && parsedUsage.prompt_tokens && parsedUsage.completion_tokens) {
+                      const totalCost = computeCostUSD(parsedUsage.prompt_tokens, parsedUsage.completion_tokens, modelPricing.input, modelPricing.output)
                       const inputCost = (parsedUsage.prompt_tokens / 1000000) * modelPricing.input
                       const outputCost = (parsedUsage.completion_tokens / 1000000) * modelPricing.output
                       costInfo = {
                         input_cost: inputCost,
                         output_cost: outputCost,
-                        total_cost: inputCost + outputCost
+                        total_cost: totalCost
                       }
                     }
                     
@@ -2168,12 +2173,13 @@ export async function POST(request: NextRequest) {
             : 'openai'
           const modelLimits = await modelsDevService.getModelLimits(response?.model || model, providerId)
           if (modelLimits?.pricing) {
+            const totalCost = computeCostUSD(usage.prompt_tokens, usage.completion_tokens, modelLimits.pricing.input, modelLimits.pricing.output)
             const inputCost = (usage.prompt_tokens / 1000000) * modelLimits.pricing.input
             const outputCost = (usage.completion_tokens / 1000000) * modelLimits.pricing.output
             costInfo = {
               input_cost: inputCost,
               output_cost: outputCost,
-              total_cost: inputCost + outputCost
+              total_cost: totalCost
             }
           }
         } catch (error) {
@@ -2311,9 +2317,7 @@ export async function POST(request: NextRequest) {
         try {
           const modelLimits = await modelsDevService.getModelLimits(response.model, response.provider)
           if (modelLimits?.pricing && response.usage) {
-            const inputCost = (response.usage.prompt_tokens / 1000000) * modelLimits.pricing.input
-            const outputCost = (response.usage.completion_tokens / 1000000) * modelLimits.pricing.output
-            const responseCost = inputCost + outputCost
+            const responseCost = computeCostUSD(response.usage.prompt_tokens, response.usage.completion_tokens, modelLimits.pricing.input, modelLimits.pricing.output)
             totalCost += responseCost
             
             if (!providerBreakdown[response.provider]) {

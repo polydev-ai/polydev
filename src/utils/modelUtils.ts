@@ -162,3 +162,35 @@ export async function getModelById(modelId: string): Promise<AvailableModel | un
   const allModels = await getAllAvailableModels()
   return allModels.find(model => model.id === modelId)
 }
+
+// Compute USD cost for a model based on input/output tokens
+export function computeCostUSD(
+  inputTokens: number,
+  outputTokens: number,
+  inputPrice: number,
+  outputPrice: number
+): number {
+  const inputCost = (inputTokens / 1000000) * inputPrice
+  const outputCost = (outputTokens / 1000000) * outputPrice
+  return parseFloat((inputCost + outputCost).toFixed(6))
+}
+
+// Compute USD cost using model information
+export async function computeCostUSDFromModel(
+  modelId: string,
+  inputTokens: number,
+  outputTokens: number
+): Promise<number> {
+  const model = await getModelById(modelId)
+  if (!model) {
+    console.warn(`Model ${modelId} not found, using default pricing`)
+    return computeCostUSD(inputTokens, outputTokens, 0.00001, 0.00003)
+  }
+  
+  return computeCostUSD(
+    inputTokens,
+    outputTokens,
+    model.price.input,
+    model.price.output
+  )
+}

@@ -23,51 +23,72 @@ import {
 } from 'lucide-react'
 
 interface UsageData {
-  timeframe: string
-  period: {
-    start: string
-    end: string
-  }
   summary: {
-    total_messages: number
-    total_tokens: number
-    total_cost_usd: number
-    total_credits_used: number
-    promotional_credits_used: number
-    usage_paths: {
-      api_key_messages: number
-      credit_messages: number
-      cli_tool_messages: number
-    }
-    unique_models: string[]
-    unique_providers: string[]
-    unique_tools: string[]
+    totalCost: number
+    totalTokens: number
+    totalSessions: number
+    avgCostPerSession: number
+    avgTokensPerSession: number
+    providerStats: Array<{
+      provider: string
+      cost: number
+      tokens: number
+      sessions: number
+      avgCostPerSession: number
+    }>
+    modelStats: Array<{
+      model: string
+      cost: number
+      tokens: number
+      sessions: number
+      avgCostPerSession: number
+    }>
+    timeSeries: Array<{
+      cost: number
+      tokens: number
+      sessions: number
+      date: string
+    }>
   }
-  current_balance: {
-    total: number
-    purchased: number
-    promotional: number
-    lifetime_purchased: number
-    lifetime_spent: number
-    promotional_total: number
+  previousPeriod?: {
+    totalCost: number
+    totalTokens: number
+    totalSessions: number
   }
-  breakdown: {
-    api_keys: Record<string, any>
-    credits: Record<string, any>
-    cli_tools: Record<string, any>
+  comparison?: {
+    costChange: number
+    costChangePercent: number
+    tokensChange: number
+    tokensChangePercent: number
+    sessionsChange: number
+    sessionsChangePercent: number
   }
-  time_series: Record<string, any>
-  monthly_summary: any
-  active_promotional_credits: Array<{
+  sessions: Array<{
     id: string
-    amount: number
-    used: number
-    remaining: number
-    reason: string
-    expires_at?: string
-    granted_at: string
+    createdAt: string
+    provider: string
+    model: string
+    tokens: number
+    cost: number
+    source: string
+    app: string
+    finishReason: string
+    tps?: number
+    messages: any[]
   }>
-  sessions?: Array<any>
+  filters: {
+    timeframe: string
+    provider?: string
+    model?: string
+    startDate: string
+    endDate: string
+    groupBy: string
+  }
+  meta: {
+    totalResults: number
+    generatedAt: string
+    userId: string
+  }
 }
 
 interface CLIConfig {
@@ -100,15 +121,35 @@ export default function UnifiedUsagePage() {
 
   const fetchUsageData = async () => {
     try {
-      const response = await fetch(
-        `/api/usage/comprehensive?timeframe=${timeframe}&details=${includeDetails}`
-      )
-      if (response.ok) {
-        const data = await response.json()
-        setUsageData(data)
+      const params = new URLSearchParams()
+      
+      if (useCustomRange && fromDate && toDate) {
+        params.set('start_date', new Date(fromDate).toISOString())
+        params.set('end_date', new Date(toDate).toISOString())
+      } else {
+        params.set('timeframe', timeframe)
       }
+      
+      if (providerFilter) params.set('provider', providerFilter)
+      if (modelFilter) params.set('model', modelFilter)
+      params.set('group_by', 'day')
+      params.set('include_comparison', 'true')
+
+      const response = await fetch(`/api/usage/comprehensive?${params.toString()}`)
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          window.location.href = '/auth/signin'
+          return
+        }
+        throw new Error(`HTTP ${response.status}`)
+      }
+      
+      const data = await response.json()
+      setUsageData(data)
     } catch (error) {
       console.error('Error fetching usage data:', error)
+      setUsageData(null)
     }
   }
 
@@ -246,25 +287,19 @@ export default function UnifiedUsagePage() {
   }
 
   const summary = usageData?.summary || {
-    total_messages: 0,
-    total_tokens: 0,
-    total_cost_usd: 0,
-    total_credits_used: 0,
-    promotional_credits_used: 0,
-    usage_paths: { api_key_messages: 0, credit_messages: 0, cli_tool_messages: 0 },
-    unique_models: [],
-    unique_providers: [],
-    unique_tools: []
+    totalCost: 0,
+    totalTokens: 0,
+    totalSessions: 0,
+    avgCostPerSession: 0,
+    avgTokensPerSession: 0,
+    providerStats: [],
+    modelStats: [],
+    timeSeries: []
   }
 
-  const balance = usageData?.current_balance || {
-    total: 0,
-    purchased: 0,
-    promotional: 0,
-    lifetime_purchased: 0,
-    lifetime_spent: 0,
-    promotional_total: 0
-  }
+  const sessions = usageData?.sessions || []
+  const comparison = usageData?.comparison
+  const filters = usageData?.filters
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -310,13 +345,17 @@ export default function UnifiedUsagePage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Messages</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
             <MessageCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary.total_messages.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{summary.totalSessions.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              Across all usage paths
+              {comparison && (
+                <span className={comparison.sessionsChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {comparison.sessionsChangePercent >= 0 ? '+' : ''}{comparison.sessionsChangePercent}% from previous period
+                </span>
+              )}
             </p>
           </CardContent>
         </Card>
@@ -327,35 +366,43 @@ export default function UnifiedUsagePage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary.total_tokens.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{summary.totalTokens.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              Input + output tokens
+              {comparison && (
+                <span className={comparison.tokensChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {comparison.tokensChangePercent >= 0 ? '+' : ''}{comparison.tokensChangePercent}% from previous period
+                </span>
+              )}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Credits Spent</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary.total_credits_used.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${summary.totalCost.toFixed(4)}</div>
             <p className="text-xs text-muted-foreground">
-              Including {summary.promotional_credits_used.toFixed(2)} promotional
+              {comparison && (
+                <span className={comparison.costChangePercent >= 0 ? 'text-red-600' : 'text-green-600'}>
+                  {comparison.costChangePercent >= 0 ? '+' : ''}{comparison.costChangePercent}% from previous period
+                </span>
+              )}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Avg Cost/Session</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${balance.total.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${summary.avgCostPerSession.toFixed(4)}</div>
             <p className="text-xs text-muted-foreground">
-              ${balance.purchased.toFixed(2)} + ${balance.promotional.toFixed(2)} promo
+              {summary.avgTokensPerSession} avg tokens/session
             </p>
           </CardContent>
         </Card>
@@ -449,13 +496,13 @@ export default function UnifiedUsagePage() {
               <tbody>
                 {sessions.map((s) => (
                   <tr key={s.id} className="border-t border-gray-200 dark:border-gray-700">
-                    <td className="py-2 pr-4">{new Date(s.timestamp).toLocaleString()}</td>
+                    <td className="py-2 pr-4">{new Date(s.createdAt).toLocaleString()}</td>
                     <td className="py-2 pr-4">{s.provider || '—'} / {s.model || '—'}</td>
                     <td className="py-2 pr-4">{s.app || '—'}</td>
                     <td className="py-2 pr-4">{s.tokens?.toLocaleString?.() || s.tokens || 0}</td>
                     <td className="py-2 pr-4">${(s.cost || 0).toFixed(4)}</td>
                     <td className="py-2 pr-4">{s.tps ? `${s.tps} tps` : '—'}</td>
-                    <td className="py-2 pr-4">{s.finish || '—'}</td>
+                    <td className="py-2 pr-4">{s.finishReason || '—'}</td>
                     <td className="py-2 pr-4">
                       {s.source === 'Credits' ? (
                         <Badge variant="default">Credits</Badge>
