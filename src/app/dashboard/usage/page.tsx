@@ -106,7 +106,7 @@ export default function UnifiedUsagePage() {
   const [loading, setLoading] = useState(true)
   const [timeframe, setTimeframe] = useState('month')
   const [includeDetails, setIncludeDetails] = useState(false)
-  const [sessions, setSessions] = useState<any[]>([])
+  const [sessionsList, setSessionsList] = useState<any[]>([])
   const [totalSessions, setTotalSessions] = useState<number | null>(null)
   const [sourceFilter, setSourceFilter] = useState<'all' | 'api' | 'cli' | 'credits'>('all')
   const [providerFilter, setProviderFilter] = useState<string>('')
@@ -183,7 +183,7 @@ export default function UnifiedUsagePage() {
       const res = await fetch(`/api/usage/sessions?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
-        setSessions(data.items || [])
+        setSessionsList(data.items || [])
         setTotalSessions(typeof data.total === 'number' ? data.total : null)
       }
     } catch (e) {
@@ -473,7 +473,7 @@ export default function UnifiedUsagePage() {
                   Page {Math.floor(offset / limit) + 1}{totalSessions ? ` of ${Math.max(1, Math.ceil(totalSessions / limit))}` : ''}
                 </span>
                 <Button variant="outline" size="sm" onClick={() => setOffset(Math.max(0, offset - limit))} disabled={offset === 0}>Prev</Button>
-                <Button variant="outline" size="sm" onClick={() => setOffset(offset + limit)} disabled={totalSessions !== null ? (offset + limit >= (totalSessions || 0)) : (sessions.length < limit)}>Next</Button>
+                <Button variant="outline" size="sm" onClick={() => setOffset(offset + limit)} disabled={totalSessions !== null ? (offset + limit >= (totalSessions || 0)) : (sessionsList.length < limit)}>Next</Button>
               </div>
             </div>
           </div>
@@ -494,7 +494,7 @@ export default function UnifiedUsagePage() {
                 </tr>
               </thead>
               <tbody>
-                {sessions.map((s) => (
+                {sessionsList.map((s) => (
                   <tr key={s.id} className="border-t border-gray-200 dark:border-gray-700">
                     <td className="py-2 pr-4">{new Date(s.createdAt).toLocaleString()}</td>
                     <td className="py-2 pr-4">{s.provider || '—'} / {s.model || '—'}</td>
@@ -514,7 +514,7 @@ export default function UnifiedUsagePage() {
                     </td>
                   </tr>
                 ))}
-                {sessions.length === 0 && (
+                {sessionsList.length === 0 && (
                   <tr>
                     <td colSpan={8} className="py-4 text-center text-muted-foreground">No sessions</td>
                   </tr>
