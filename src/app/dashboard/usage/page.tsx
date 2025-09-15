@@ -842,19 +842,19 @@ export default function UnifiedUsagePage() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Total Purchased</div>
-                  <div className="text-2xl font-bold">${balance.lifetime_purchased.toFixed(2)}</div>
+                  <div className="text-2xl font-bold">${(0).toFixed(2)}</div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Total Spent</div>
-                  <div className="text-2xl font-bold">${balance.lifetime_spent.toFixed(2)}</div>
+                  <div className="text-2xl font-bold">${(0).toFixed(2)}</div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Current Balance</div>
-                  <div className="text-2xl font-bold">${balance.total.toFixed(2)}</div>
+                  <div className="text-2xl font-bold">${(0).toFixed(2)}</div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Promotional Total</div>
-                  <div className="text-2xl font-bold">${balance.promotional_total.toFixed(2)}</div>
+                  <div className="text-2xl font-bold">${(0).toFixed(2)}</div>
                 </div>
               </div>
             </CardContent>
