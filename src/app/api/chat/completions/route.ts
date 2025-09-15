@@ -839,7 +839,8 @@ export async function POST(request: NextRequest) {
               try {
                 const pricingProvider = requiredProvider || selectedProvider
                 const resolvedModel = collected[friendlyModelId].modelResolved || actualModelId
-                const limits = await modelsDevService.getModelLimits(resolvedModel, pricingProvider)
+                // Use the original friendly model id for pricing so mappings work
+                const limits = await modelsDevService.getModelLimits(friendlyModelId, pricingProvider)
                 const u = collected[friendlyModelId].usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                 if (limits?.pricing) {
                   const inputCost = ((u.prompt_tokens || 0) / 1_000_000) * limits.pricing.input
@@ -921,7 +922,7 @@ export async function POST(request: NextRequest) {
                     provider_info: r.provider ? { provider: r.provider, fallback_method: r.fallback_method } : null,
                     usage_info: r.usage || null,
                     cost_info: (r as any).cost || null,
-                    metadata: r.credits_used ? { credits_used: r.credits_used } : null
+                    metadata: (r.credits_used || r.fallback_method) ? { credits_used: r.credits_used || 0, fallback_method: r.fallback_method } : null
                   }))
                 if (assistantMessages.length > 0) {
                   await supabase.from('chat_messages').insert(assistantMessages)

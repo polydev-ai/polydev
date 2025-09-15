@@ -178,7 +178,7 @@ export default function Chat() {
     provider: chatMsg.provider_info?.provider,
     usage: chatMsg.usage_info,
     costInfo: chatMsg.cost_info,
-    fallbackMethod: chatMsg.metadata?.fallback_method,
+    fallbackMethod: (chatMsg.metadata as any)?.fallback_method || (chatMsg.provider_info as any)?.fallback_method,
     creditsUsed: chatMsg.metadata?.credits_used
   })
 
@@ -414,12 +414,21 @@ export default function Chat() {
     }
   }
 
-  const getSourceFromProvider = (provider?: string, modelId?: string, fallbackMethod?: 'cli' | 'api' | 'credits'):
+  const getSourceFromProvider = (
+    provider?: string,
+    modelId?: string,
+    fallbackMethod?: 'cli' | 'api' | 'credits',
+    creditsUsed?: number
+  ):
     | { type: 'cli' | 'api' | 'credits'; label: string; cost?: string }
     | null => {
     // Prefer explicit fallback method from server
     if (fallbackMethod) {
       return { type: fallbackMethod, label: fallbackMethod.toUpperCase(), cost: fallbackMethod === 'cli' ? '$0.00' : undefined }
+    }
+    // Backward-compatible: infer Credits if creditsUsed > 0
+    if (typeof creditsUsed === 'number' && creditsUsed > 0) {
+      return { type: 'credits', label: 'CREDITS' }
     }
     if (!provider) return null
     
@@ -917,7 +926,7 @@ export default function Chat() {
                             </div>
                             <div className="flex items-center space-x-2">
                               {(() => {
-                                const source = getSourceFromProvider(message.provider, message.model, message.fallbackMethod as any)
+                                const source = getSourceFromProvider(message.provider, message.model, message.fallbackMethod as any, message.creditsUsed)
                                 if (source) {
                                   return (
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(source.type)}`}>
@@ -1098,7 +1107,7 @@ export default function Chat() {
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   {(() => {
-                                    const source = getSourceFromProvider(message.provider, message.model, message.fallbackMethod as any)
+                                    const source = getSourceFromProvider(message.provider, message.model, message.fallbackMethod as any, message.creditsUsed)
                                       if (source) {
                                         return (
                                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(source.type)}`}>

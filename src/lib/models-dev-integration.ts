@@ -510,6 +510,32 @@ class ModelsDevService {
       return result
     }
 
+    // Secondary fallback: model_pricing table (per 1K -> per 1M)
+    try {
+      const { data: mp } = await supabase
+        .from('model_pricing')
+        .select('input_cost_per_1k, output_cost_per_1k, max_tokens, provider_name, model_name')
+        .eq('provider_name', cleanProviderId)
+        .ilike('model_name', `%${friendlyId}%`)
+        .limit(1)
+
+      if (mp && Array.isArray(mp) && mp.length > 0) {
+        const row: any = mp[0]
+        const inputPerM = row.input_cost_per_1k != null ? Number(row.input_cost_per_1k) * 1000 : undefined
+        const outputPerM = row.output_cost_per_1k != null ? Number(row.output_cost_per_1k) * 1000 : undefined
+        if (inputPerM != null && outputPerM != null) {
+          return {
+            maxTokens: row.max_tokens || 4096,
+            contextLength: 32768,
+            pricing: {
+              input: inputPerM,
+              output: outputPerM
+            }
+          }
+        }
+      }
+    } catch {}
+
     // Final fallback: try to fetch live data from models.dev if database doesn't have pricing
     // But handle failures gracefully to prevent breaking chat pricing display
     try {
