@@ -187,20 +187,26 @@ export async function GET(request: NextRequest) {
         totalSessions,
         avgCostPerSession: totalSessions > 0 ? parseFloat((totalCost / totalSessions).toFixed(6)) : 0,
         avgTokensPerSession: totalSessions > 0 ? Math.round(totalTokens / totalSessions) : 0,
-        providerStats: Object.entries(providerStats).map(([provider, stats]) => ({
-          provider,
-          cost: parseFloat(stats.cost.toFixed(6)),
-          tokens: stats.tokens,
-          sessions: stats.sessions,
-          avgCostPerSession: stats.sessions > 0 ? parseFloat((stats.cost / stats.sessions).toFixed(6)) : 0
-        })).sort((a, b) => b.cost - a.cost),
-        modelStats: Object.entries(modelStats).map(([model, stats]) => ({
-          model,
-          cost: parseFloat(stats.cost.toFixed(6)),
-          tokens: stats.tokens,
-          sessions: stats.sessions,
-          avgCostPerSession: stats.sessions > 0 ? parseFloat((stats.cost / stats.sessions).toFixed(6)) : 0
-        })).sort((a, b) => b.cost - a.cost),
+        providerStats: Object.entries(providerStats).map(([provider, stats]) => {
+          const typedStats = stats as { cost: number; tokens: number; sessions: number }
+          return {
+            provider,
+            cost: parseFloat(typedStats.cost.toFixed(6)),
+            tokens: typedStats.tokens,
+            sessions: typedStats.sessions,
+            avgCostPerSession: typedStats.sessions > 0 ? parseFloat((typedStats.cost / typedStats.sessions).toFixed(6)) : 0
+          }
+        }).sort((a, b) => b.cost - a.cost),
+        modelStats: Object.entries(modelStats).map(([model, stats]) => {
+          const typedStats = stats as { cost: number; tokens: number; sessions: number }
+          return {
+            model,
+            cost: parseFloat(typedStats.cost.toFixed(6)),
+            tokens: typedStats.tokens,
+            sessions: typedStats.sessions,
+            avgCostPerSession: typedStats.sessions > 0 ? parseFloat((typedStats.cost / typedStats.sessions).toFixed(6)) : 0
+          }
+        }).sort((a, b) => b.cost - a.cost),
         timeSeries: Object.values(timeSeriesData).sort((a, b) => a.date.localeCompare(b.date))
       }
     }
