@@ -307,8 +307,8 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': (options) => `Bearer ${options.apiKey || ''}`,
-      'HTTP-Referer': 'https://polydev.com',
-      'X-Title': 'Polydev Multi-LLM Platform'
+      'HTTP-Referer': 'https://www.polydev.ai',
+      'X-Title': 'Polydev AI'
     },
     streamParser: (chunk) => {
       const transformer = getTransformer('openai') // OpenRouter streams in OpenAI-compatible SSE

@@ -721,18 +721,21 @@ export async function POST(request: NextRequest) {
                     }
                   }
                 }
-              } catch {}
+              } catch (e) {
+                console.warn(`[warn] Base URL mapping failed for ${selectedProvider} ${actualModelId}:`, e)
+              }
 
               // Start provider stream
               let upstream: ReadableStream
               try {
-                // For OpenAI, request usage in the final streamed chunk
-                if (selectedProvider === 'openai') {
+                // For OpenAI-compatible providers, request usage in the final streamed chunk
+                if (['openai','openrouter','groq','deepseek','mistral','xai'].includes(selectedProvider)) {
                   (apiOptions as any).streamOptions = { include_usage: true }
                   ;(apiOptions as any).stream_options = { include_usage: true }
                 }
                 upstream = await apiManager.streamMessage(selectedProvider, apiOptions)
               } catch (err: any) {
+                console.error(`[error] Stream start failed for ${selectedProvider} ${actualModelId}:`, err?.message || err)
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: err?.message || 'Stream error', provider: selectedProvider })}\n\n`))
                 return
               }
@@ -806,9 +809,9 @@ export async function POST(request: NextRequest) {
               ;(collected as any)[friendlyModelId].responseTimeMs = Date.now() - modelStart
 
               // If no usage in stream, optionally make a non-streaming call to fetch usage
-              // OpenAI: skip the post-stream usage call to avoid timeouts; estimate tokens instead
+              // OpenAI & other OpenAI-compatible providers: skip the post-stream usage call to avoid second-billing; estimate tokens instead
               try {
-                if (selectedProvider === 'openai') {
+                if (['openai','openrouter','groq','deepseek','mistral','xai'].includes(selectedProvider)) {
                   if (!collected[friendlyModelId].usage || collected[friendlyModelId].usage.total_tokens === 0) {
                     const estimate = (text: string) => Math.ceil((text || '').length / 4)
                     const lastUser = messages[messages.length - 1]
