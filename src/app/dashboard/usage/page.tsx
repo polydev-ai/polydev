@@ -823,26 +823,7 @@ export default function UnifiedUsagePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {usageData?.active_promotional_credits.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No active promotional credits</p>
-                  ) : (
-                    usageData?.active_promotional_credits.map((credit) => (
-                      <div key={credit.id} className="flex justify-between items-center p-3 border rounded">
-                        <div>
-                          <div className="font-medium">${credit.remaining.toFixed(2)} remaining</div>
-                          <div className="text-sm text-muted-foreground">{credit.reason}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm">${credit.amount.toFixed(2)} total</div>
-                          {credit.expires_at && (
-                            <div className="text-xs text-muted-foreground">
-                              Expires: {new Date(credit.expires_at).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
+                  <p className="text-sm text-muted-foreground">No active promotional credits</p>
                 </div>
               </CardContent>
             </Card>
