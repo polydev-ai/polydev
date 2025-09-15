@@ -46,7 +46,8 @@ export default function Chat() {
     loading: sessionsLoading, 
     error: sessionsError, 
     createSession, 
-    getSessionWithMessages 
+    getSessionWithMessages,
+    deleteSession
   } = useChatSessions()
   const { preferences, updatePreferences } = usePreferences()
   
@@ -302,7 +303,10 @@ export default function Chat() {
                     if (msg.id.startsWith(`streaming-${parsed.model}-`)) {
                       return {
                         ...msg,
-                        content: (prev.find(m => m.id === msg.id)?.content || '') + parsed.content
+                        content: (prev.find(m => m.id === msg.id)?.content || '') + parsed.content,
+                        // Attach fallback method as soon as we learn it from stream
+                        fallbackMethod: (parsed.fallback_method as any) || msg.fallbackMethod,
+                        provider: parsed.provider || msg.provider
                       }
                     }
                     return msg
@@ -410,9 +414,13 @@ export default function Chat() {
     }
   }
 
-  const getSourceFromProvider = (provider?: string, modelId?: string):
+  const getSourceFromProvider = (provider?: string, modelId?: string, fallbackMethod?: 'cli' | 'api' | 'credits'):
     | { type: 'cli' | 'api' | 'credits'; label: string; cost?: string }
     | null => {
+    // Prefer explicit fallback method from server
+    if (fallbackMethod) {
+      return { type: fallbackMethod, label: fallbackMethod.toUpperCase(), cost: fallbackMethod === 'cli' ? '$0.00' : undefined }
+    }
     if (!provider) return null
     
     // Check explicit provider suffixes first
@@ -555,20 +563,41 @@ export default function Chat() {
           
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {sessions.map((session) => (
-              <button
-                key={session.id}
-                onClick={() => router.push(`/chat/${session.id}`)}
-                className={`w-full text-left p-3 rounded-lg transition-colors ${
-                  currentSession?.id === session.id
-                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
-                    : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
-                }`}
-              >
-                <div className="text-sm font-medium truncate">{session.title}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {new Date(session.updated_at).toLocaleDateString()}
-                </div>
-              </button>
+              <div key={session.id} className={`group flex items-center justify-between p-2 rounded-lg transition-colors ${
+                currentSession?.id === session.id
+                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
+                  : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
+              }`}>
+                <button
+                  onClick={() => router.push(`/chat/${session.id}`)}
+                  className="flex-1 text-left"
+                >
+                  <div className="text-sm font-medium truncate">{session.title}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {new Date(session.updated_at).toLocaleDateString()}
+                  </div>
+                </button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    if (!confirm('Delete this conversation?')) return
+                    const ok = await deleteSession(session.id)
+                    if (ok) {
+                      if (currentSession?.id === session.id) {
+                        setCurrentSession(null)
+                        setMessages([])
+                        router.push('/chat/new')
+                      }
+                    }
+                  }}
+                  title="Delete conversation"
+                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-600 transition-opacity"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7h12M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2m-1 0v12a2 2 0 01-2 2h-4a2 2 0 01-2-2V7h8z" />
+                  </svg>
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -888,7 +917,7 @@ export default function Chat() {
                             </div>
                             <div className="flex items-center space-x-2">
                               {(() => {
-                                const source = getSourceFromProvider(message.provider, message.model)
+                                const source = getSourceFromProvider(message.provider, message.model, message.fallbackMethod as any)
                                 if (source) {
                                   return (
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(source.type)}`}>
@@ -1069,16 +1098,16 @@ export default function Chat() {
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   {(() => {
-                                    const source = getSourceFromProvider(message.provider, message.model)
-                                    if (source) {
-                                      return (
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(source.type)}`}>
-                                          {source.label}
-                                        </span>
-                                      )
-                                    }
-                                    return null
-                                  })()}
+                                    const source = getSourceFromProvider(message.provider, message.model, message.fallbackMethod as any)
+                                      if (source) {
+                                        return (
+                                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getTierBadgeColor(source.type)}`}>
+                                            {source.label}
+                                          </span>
+                                        )
+                                      }
+                                      return null
+                                    })()}
                                   {message.usage && (
                                     <span className="text-xs text-gray-400 dark:text-gray-500">
                                       {message.usage.total_tokens}t

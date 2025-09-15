@@ -769,6 +769,23 @@ export class UniversalProviderHandler {
       const events: any[] = []
       let lastNewline = text.lastIndexOf('\n')
       if (lastNewline === -1) {
+        // Try to parse whole buffer as a complete JSON object/array (Gemini sometimes streams arrays)
+        try {
+          const obj = JSON.parse(text.trim())
+          // If this is a complete JSON payload, emit what we can and consume all
+          const parts = obj?.candidates?.[0]?.content?.parts
+          if (parts && Array.isArray(parts)) {
+            for (const p of parts) {
+              if (p?.text) events.push({ type: 'content', content: p.text })
+            }
+            if (obj?.candidates?.[0]?.finishReason) {
+              events.push({ type: 'done' })
+            }
+            return { consumed: text.length, events }
+          }
+        } catch {
+          // not a complete JSON; keep buffering
+        }
         return { consumed: 0, events }
       }
       const consumable = text.slice(0, lastNewline)

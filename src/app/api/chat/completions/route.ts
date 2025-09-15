@@ -654,6 +654,10 @@ export async function POST(request: NextRequest) {
 
       const streamingResponse = new ReadableStream({
         start(controller) {
+          const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+          const CHUNK_SIZE = 32 // characters
+          const CADENCE_MS = 16 // flush every ~1 frame
+
           // Kick off all model streams concurrently
           const tasks = targetModels.map(async (friendlyModelId) => {
             try {
@@ -738,6 +742,21 @@ export async function POST(request: NextRequest) {
               const reader = upstream.getReader()
               const textDecoder = new TextDecoder()
               let buf = ''
+
+              const emitContentChunks = async (text: string) => {
+                if (!text) return
+                if (text.length <= CHUNK_SIZE) {
+                  const contentEvent = { type: 'content', model: friendlyModelId, content: text, provider: selectedProvider, fallback_method: fallbackMethod }
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(contentEvent)}\n\n`))
+                  return
+                }
+                for (let i = 0; i < text.length; i += CHUNK_SIZE) {
+                  const piece = text.slice(i, i + CHUNK_SIZE)
+                  const contentEvent = { type: 'content', model: friendlyModelId, content: piece, provider: selectedProvider, fallback_method: fallbackMethod }
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(contentEvent)}\n\n`))
+                  await sleep(CADENCE_MS)
+                }
+              }
               while (true) {
                 const { done, value } = await reader.read()
                 if (done) {
@@ -748,8 +767,7 @@ export async function POST(request: NextRequest) {
                       if (item?.type === 'content' && item.content) {
                         if (!firstTokenAt) firstTokenAt = Date.now()
                         collected[friendlyModelId].content += item.content
-                        const contentEvent = { type: 'content', model: friendlyModelId, content: item.content, provider: selectedProvider }
-                        controller.enqueue(encoder.encode(`data: ${JSON.stringify(contentEvent)}\n\n`))
+                        await emitContentChunks(item.content)
                       }
                     } catch {}
                   }
@@ -766,8 +784,7 @@ export async function POST(request: NextRequest) {
                     if (item?.type === 'content' && item.content) {
                       if (!firstTokenAt) firstTokenAt = Date.now()
                       collected[friendlyModelId].content += item.content
-                      const contentEvent = { type: 'content', model: friendlyModelId, content: item.content, provider: selectedProvider }
-                      controller.enqueue(encoder.encode(`data: ${JSON.stringify(contentEvent)}\n\n`))
+                      await emitContentChunks(item.content)
                     }
                     if (item?.type === 'done') {
                       // End of this model's stream

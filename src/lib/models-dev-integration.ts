@@ -451,11 +451,11 @@ class ModelsDevService {
         contextLength: providerMapping.capabilities?.context_length || 32768
       }
 
-      // Add pricing if available (values are in millicents per million tokens, convert to dollars)
-      if (providerMapping.cost && providerMapping.cost.input && providerMapping.cost.output) {
+      // Add pricing if available (values are USD per 1M tokens)
+      if (providerMapping.cost && (providerMapping.cost.input != null) && (providerMapping.cost.output != null)) {
         result.pricing = {
-          input: Number(providerMapping.cost.input) / 1000, // Convert from millicents to dollars per million tokens
-          output: Number(providerMapping.cost.output) / 1000 // Convert from millicents to dollars per million tokens
+          input: Number(providerMapping.cost.input),
+          output: Number(providerMapping.cost.output)
         }
       }
 
@@ -477,10 +477,10 @@ class ModelsDevService {
         maxTokens: data.max_tokens || 4096,
         contextLength: data.context_length || 32768
       }
-      if (data.input_cost_per_million && data.output_cost_per_million) {
+      if ((data.input_cost_per_million != null) && (data.output_cost_per_million != null)) {
         result.pricing = {
-          input: Number(data.input_cost_per_million) / 1000,
-          output: Number(data.output_cost_per_million) / 1000
+          input: Number(data.input_cost_per_million),
+          output: Number(data.output_cost_per_million)
         }
       }
       return result
@@ -501,10 +501,10 @@ class ModelsDevService {
         maxTokens: pm.max_tokens || 4096,
         contextLength: pm.context_length || 32768
       }
-      if (pm.input_cost_per_million && pm.output_cost_per_million) {
+      if ((pm.input_cost_per_million != null) && (pm.output_cost_per_million != null)) {
         result.pricing = {
-          input: Number(pm.input_cost_per_million) / 1000,
-          output: Number(pm.output_cost_per_million) / 1000
+          input: Number(pm.input_cost_per_million),
+          output: Number(pm.output_cost_per_million)
         }
       }
       return result
@@ -518,6 +518,14 @@ class ModelsDevService {
         headers: { 'Accept': 'application/json' }
       })
       if (resp.ok) {
+        const ct = resp.headers.get('content-type') || ''
+        if (!ct.includes('application/json')) {
+          console.warn('[models.dev] Unexpected content-type for models API:', ct)
+          return {
+            maxTokens: 4096,
+            contextLength: 32768
+          }
+        }
         let raw
         try {
           raw = await resp.json()
