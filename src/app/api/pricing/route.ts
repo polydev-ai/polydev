@@ -5,7 +5,7 @@
 // Returns USD per 1K costs for single model or list via model_pricing_resolved
 
 import { NextResponse } from 'next/server'
-import { getModelPricingPer1K, getModelPricingByFriendlyPer1K, listResolvedPricing } from '../../../lib/pricing'
+import { getModelPricingPer1K, getModelPricingByFriendlyPer1K, listResolvedPricing } from '@/lib/pricing'
 
 export async function GET(req: Request) {
   try {
