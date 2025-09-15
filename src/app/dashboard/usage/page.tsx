@@ -595,38 +595,36 @@ export default function UnifiedUsagePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Models ({summary.unique_models.length})</h4>
+                  <h4 className="text-sm font-medium mb-2">Models ({summary.modelStats?.length || 0})</h4>
                   <div className="flex flex-wrap gap-1">
-                    {summary.unique_models.slice(0, 6).map((model, index) => (
+                    {(summary.modelStats || []).slice(0, 6).map((modelStat, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
-                        {model}
+                        {modelStat.model}
                       </Badge>
                     ))}
-                    {summary.unique_models.length > 6 && (
+                    {(summary.modelStats?.length || 0) > 6 && (
                       <Badge variant="secondary" className="text-xs">
-                        +{summary.unique_models.length - 6} more
+                        +{(summary.modelStats?.length || 0) - 6} more
                       </Badge>
                     )}
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Providers ({summary.unique_providers.length})</h4>
+                  <h4 className="text-sm font-medium mb-2">Providers ({summary.providerStats?.length || 0})</h4>
                   <div className="flex flex-wrap gap-1">
-                    {summary.unique_providers.map((provider, index) => (
+                    {(summary.providerStats || []).map((providerStat, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
-                        {provider}
+                        {providerStat.provider}
                       </Badge>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Tools ({summary.unique_tools.length})</h4>
+                  <h4 className="text-sm font-medium mb-2">Tools (0)</h4>
                   <div className="flex flex-wrap gap-1">
-                    {summary.unique_tools.map((tool, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {tool}
-                      </Badge>
-                    ))}
+                    <Badge variant="outline" className="text-xs">
+                      No tool data available
+                    </Badge>
                   </div>
                 </div>
               </CardContent>
