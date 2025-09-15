@@ -63,6 +63,15 @@ interface CLIProviderInfo {
   description: string
 }
 
+interface ApiKeyUsage {
+  api_key_id: string
+  total_cost: number
+  monthly_cost: number
+  token_count: number
+  request_count: number
+  last_used: string | null
+}
+
 interface ModelsDevProvider {
   id: string
   name: string
@@ -129,6 +138,9 @@ export default function EnhancedApiKeysPage() {
   // CLI Status State  
   const [cliStatuses, setCliStatuses] = useState<CLIConfig[]>([])
   const [cliStatusLoading, setCliStatusLoading] = useState(false)
+  
+  // API Key Usage State
+  const [apiKeyUsage, setApiKeyUsage] = useState<Record<string, ApiKeyUsage>>({})
   
   // Form state with new fields
   const [formData, setFormData] = useState({
@@ -466,9 +478,24 @@ export default function EnhancedApiKeysPage() {
     }
   }
 
+  const fetchApiKeyUsage = async () => {
+    if (!user?.id) return
+    
+    try {
+      const response = await fetch('/api/usage/api-keys')
+      if (response.ok) {
+        const data = await response.json()
+        setApiKeyUsage(data.usage || {})
+      }
+    } catch (error) {
+      console.error('Error fetching API key usage:', error)
+    }
+  }
+
   useEffect(() => {
     if (user) {
       fetchData()
+      fetchApiKeyUsage()
     }
   }, [user])
 
@@ -1055,9 +1082,22 @@ export default function EnhancedApiKeysPage() {
                                     <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm font-medium">
                                       #{index + 1}
                                     </span>
-                                    <span className="font-medium text-gray-900 dark:text-white capitalize">
-                                      {providerConfig?.name || key.provider}
-                                    </span>
+                                    <div className="flex items-center space-x-2">
+                                      {providerData?.logoUrl && (
+                                        <img 
+                                          src={providerData.logoUrl} 
+                                          alt={providerConfig?.name || key.provider}
+                                          className="w-5 h-5 rounded"
+                                          onError={(e) => {
+                                            console.error(`Failed to load provider logo: ${providerData.logoUrl}`)
+                                            e.currentTarget.style.display = 'none'
+                                          }}
+                                        />
+                                      )}
+                                      <span className="font-medium text-gray-900 dark:text-white capitalize">
+                                        {providerConfig?.name || key.provider}
+                                      </span>
+                                    </div>
                                     {key.is_preferred && (
                                       <Star className="w-4 h-4 text-yellow-500 fill-current" />
                                     )}
@@ -1069,11 +1109,26 @@ export default function EnhancedApiKeysPage() {
                                     </button>
                                   </div>
                                   <div className="flex items-center space-x-2">
-                                    {key.monthly_budget && (
-                                      <span className="text-sm text-green-600 dark:text-green-400">
-                                        ${key.monthly_budget}/month
-                                      </span>
-                                    )}
+                                    {/* Monthly Budget and Usage */}
+                                    <div className="flex items-center space-x-3">
+                                      {key.monthly_budget && (
+                                        <span className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded">
+                                          ${key.monthly_budget}/month
+                                        </span>
+                                      )}
+                                      {apiKeyUsage[key.id] && (
+                                        <div className="flex items-center space-x-2">
+                                          <span className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                                            ${apiKeyUsage[key.id].monthly_cost.toFixed(4)} used
+                                          </span>
+                                          {key.monthly_budget && (
+                                            <span className="text-xs text-gray-500">
+                                              ({((apiKeyUsage[key.id].monthly_cost / key.monthly_budget) * 100).toFixed(1)}%)
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
                                     <div className="flex items-center space-x-2">
                                       <span className="text-sm text-gray-500 font-mono">
                                         {showApiKey[key.id] && key.encrypted_key 

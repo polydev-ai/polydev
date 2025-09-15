@@ -607,7 +607,7 @@ export default function UnifiedUsagePage() {
               <thead>
                 <tr className="text-left text-gray-500 dark:text-gray-400">
                   <th className="py-2 pr-4">Timestamp</th>
-                  <th className="py-2 pr-4">Provider / Model</th>
+                  <th className="py-2 pr-4">Session Provider → Model Provider</th>
                   <th className="py-2 pr-4">App</th>
                   <th className="py-2 pr-4">Tokens</th>
                   <th className="py-2 pr-4">Cost</th>
@@ -621,12 +621,16 @@ export default function UnifiedUsagePage() {
                   <tr key={s.id} className="border-t border-gray-200 dark:border-gray-700">
                     <td className="py-2 pr-4">{formatTimestamp(s.createdAt)}</td>
                     <td className="py-2 pr-4">
-                      <div className="flex items-center gap-1">
-                        <img src={getProviderLogo(s.provider, providersRegistry)} alt={s.provider} className="w-4 h-4" />
-                        <span className="text-xs">{s.provider || '—'}</span>
-                        <span className="text-muted-foreground">/</span>
-                        <img src={getModelLogo(s.model, s.provider, providersRegistry, modelsRegistry)} alt={s.model} className="w-4 h-4" />
-                        <span className="text-xs">{s.model || '—'}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md">
+                          <img src={getProviderLogo(s.provider, providersRegistry)} alt={s.provider} className="w-3 h-3" />
+                          <span className="text-xs font-medium">{s.provider || '—'}</span>
+                        </div>
+                        <span className="text-muted-foreground text-xs">→</span>
+                        <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+                          <img src={getModelLogo(s.model, s.provider, providersRegistry, modelsRegistry)} alt={s.model} className="w-3 h-3" />
+                          <span className="text-xs font-medium">{s.model || '—'}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="py-2 pr-4">{s.app || '—'}</td>
