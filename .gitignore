@@ -8,3 +8,4 @@ yarn-error.log*
 .vercel
 **/*.tgz
 **/*.tar.gz
+# Deployment trigger - Mon Sep 15 12:16:25 PDT 2025
