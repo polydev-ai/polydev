@@ -865,7 +865,8 @@ export async function POST(request: NextRequest) {
 
               // Compute cost if possible and set credits_used properly from models.dev pricing
               try {
-                const pricingProvider = requiredProvider || selectedProvider
+                // When using credits (OpenRouter), use openrouter for pricing data
+                const pricingProvider = selectedConfig?.type === 'credits' ? 'openrouter' : (requiredProvider || selectedProvider)
                 const resolvedModel = collected[friendlyModelId].modelResolved || actualModelId
                 // Use the original friendly model id for pricing so mappings work
                 const limits = await modelsDevService.getModelLimits(friendlyModelId, pricingProvider)
@@ -1167,7 +1168,8 @@ export async function POST(request: NextRequest) {
             const { modelsDevService } = await import('@/lib/models-dev-integration')
             // For pricing lookup, use the user's preferred provider (requiredProvider) instead of selectedProvider
             // This ensures we get correct pricing even when falling back to OpenRouter for API calls
-            const pricingProvider = requiredProvider || selectedProvider
+            // When using credits (OpenRouter), use openrouter for pricing data
+            const pricingProvider = selectedConfig?.type === 'credits' ? 'openrouter' : (requiredProvider || selectedProvider)
             const modelLimits = await modelsDevService.getModelLimits(modelId, pricingProvider)
             
             // Also get full model data for reasoning capabilities
