@@ -550,10 +550,10 @@ export default function UnifiedUsagePage() {
                       <Key className="h-4 w-4 mr-2" />
                       Own API Keys
                     </span>
-                    <span>{summary.usage_paths.api_key_messages}</span>
+                    <span>0</span>
                   </div>
                   <Progress 
-                    value={(summary.usage_paths.api_key_messages / summary.total_messages) * 100} 
+                    value={0} 
                     className="h-2" 
                   />
                 </div>
@@ -563,10 +563,10 @@ export default function UnifiedUsagePage() {
                       <CreditCard className="h-4 w-4 mr-2" />
                       Polydev Credits
                     </span>
-                    <span>{summary.usage_paths.credit_messages}</span>
+                    <span>0</span>
                   </div>
                   <Progress 
-                    value={(summary.usage_paths.credit_messages / summary.total_messages) * 100} 
+                    value={0} 
                     className="h-2" 
                   />
                 </div>
@@ -576,10 +576,10 @@ export default function UnifiedUsagePage() {
                       <Terminal className="h-4 w-4 mr-2" />
                       CLI Tools
                     </span>
-                    <span>{summary.usage_paths.cli_tool_messages}</span>
+                    <span>0</span>
                   </div>
                   <Progress 
-                    value={(summary.usage_paths.cli_tool_messages / summary.total_messages) * 100} 
+                    value={0} 
                     className="h-2" 
                   />
                 </div>
@@ -651,7 +651,7 @@ export default function UnifiedUsagePage() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm">Messages</span>
-                    <span className="font-medium">{summary.usage_paths.api_key_messages}</span>
+                    <span className="font-medium">0</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Est. Cost</span>
@@ -684,7 +684,7 @@ export default function UnifiedUsagePage() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm">Messages</span>
-                    <span className="font-medium">{summary.usage_paths.credit_messages}</span>
+                    <span className="font-medium">0</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Credits Used</span>
@@ -717,7 +717,7 @@ export default function UnifiedUsagePage() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm">Messages</span>
-                    <span className="font-medium">{summary.usage_paths.cli_tool_messages}</span>
+                    <span className="font-medium">0</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Active CLIs</span>
