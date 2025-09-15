@@ -756,8 +756,8 @@ export default function UnifiedUsagePage() {
                       <div className="flex items-center space-x-4">
                         <Terminal className="h-5 w-5" />
                         <div>
-                          <h4 className="font-medium">{config.tool_name.replace('_', ' ')}</h4>
-                          <p className="text-sm text-muted-foreground">{config.cli_path}</p>
+                          <h4 className="font-medium">{config.tool_name?.replace('_', ' ') || 'Unknown Tool'}</h4>
+                          <p className="text-sm text-muted-foreground">{config.cli_path || 'Path not specified'}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
