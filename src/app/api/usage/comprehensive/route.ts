@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
         case '7d':
           dateFrom = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
           break
+        case 'month':
         case '30d':
           dateFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
           break
@@ -59,19 +60,7 @@ export async function GET(request: NextRequest) {
 
     let query = serviceSupabase
       .from('usage_sessions')
-      .select(`
-        *,
-        chat_messages (
-          id,
-          role,
-          content,
-          tokens_used,
-          cost,
-          model_name,
-          provider,
-          created_at
-        )
-      `)
+      .select('*')
       .eq('user_id', user.id)
       .gte('created_at', dateFrom.toISOString())
       .lte('created_at', dateTo.toISOString())
@@ -245,8 +234,7 @@ export async function GET(request: NextRequest) {
                 (session.metadata?.fallback_method === 'cli' ? 'CLI' : 'API'),
         app: session.metadata?.app || 'Polydev Multi-LLM Platform',
         finishReason: session.metadata?.finish || 'stop',
-        tps: session.metadata?.tps || null,
-        messages: session.chat_messages || []
+        tps: session.metadata?.tps || null
       })) || [],
       filters: {
         timeframe,
