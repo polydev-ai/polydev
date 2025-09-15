@@ -860,32 +860,30 @@ export default function UnifiedUsagePage() {
             </CardContent>
           </Card>
 
-          {usageData?.monthly_summary && (
-            <Card>
-              <CardHeader>
-                <CardTitle>This Month</CardTitle>
-                <CardDescription>
-                  Current month usage summary
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <div className="text-sm text-muted-foreground">API Key Messages</div>
-                    <div className="text-lg font-bold">{usageData.monthly_summary.api_key_messages}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm text-muted-foreground">Credit Messages</div>
-                    <div className="text-lg font-bold">{usageData.monthly_summary.credit_messages}</div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm text-muted-foreground">CLI Messages</div>
-                    <div className="text-lg font-bold">{usageData.monthly_summary.cli_tool_messages}</div>
-                  </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>This Month</CardTitle>
+              <CardDescription>
+                Current month usage summary
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">API Key Messages</div>
+                  <div className="text-lg font-bold">0</div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">Credit Messages</div>
+                  <div className="text-lg font-bold">0</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">CLI Messages</div>
+                  <div className="text-lg font-bold">0</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
