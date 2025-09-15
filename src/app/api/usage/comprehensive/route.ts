@@ -207,7 +207,11 @@ export async function GET(request: NextRequest) {
             avgCostPerSession: typedStats.sessions > 0 ? parseFloat((typedStats.cost / typedStats.sessions).toFixed(6)) : 0
           }
         }).sort((a, b) => b.cost - a.cost),
-        timeSeries: Object.values(timeSeriesData).sort((a, b) => a.date.localeCompare(b.date))
+        timeSeries: Object.values(timeSeriesData).sort((a, b) => {
+          const typedA = a as { cost: number; tokens: number; sessions: number; date: string }
+          const typedB = b as { cost: number; tokens: number; sessions: number; date: string }
+          return typedA.date.localeCompare(typedB.date)
+        })
       }
     }
 
