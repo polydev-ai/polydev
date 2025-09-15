@@ -653,15 +653,13 @@ export default function UnifiedUsagePage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Est. Cost</span>
-                    <span className="font-medium">${summary.total_cost_usd.toFixed(4)}</span>
+                    <span className="font-medium">${summary.totalCost.toFixed(4)}</span>
                   </div>
                   <div className="space-y-2">
-                    {Object.entries(usageData?.breakdown.api_keys || {}).map(([provider, data]: [string, any]) => (
-                      <div key={provider} className="flex justify-between text-sm">
-                        <span>{provider}</span>
-                        <span>{data.messages} msgs</span>
-                      </div>
-                    ))}
+                    <div className="flex justify-between text-sm">
+                      <span>No breakdown data</span>
+                      <span>0 msgs</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -689,12 +687,10 @@ export default function UnifiedUsagePage() {
                     <span className="font-medium">{summary.total_credits_used.toFixed(2)}</span>
                   </div>
                   <div className="space-y-2">
-                    {Object.entries(usageData?.breakdown.credits || {}).map(([provider, data]: [string, any]) => (
-                      <div key={provider} className="flex justify-between text-sm">
-                        <span>{provider}</span>
-                        <span>{data.cost_credits.toFixed(2)} credits</span>
-                      </div>
-                    ))}
+                    <div className="flex justify-between text-sm">
+                      <span>No breakdown data</span>
+                      <span>0 credits</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -722,7 +718,7 @@ export default function UnifiedUsagePage() {
                     <span className="font-medium">{cliConfigs.filter(c => c.enabled).length}</span>
                   </div>
                   <div className="space-y-2">
-                    {Object.entries(usageData?.breakdown.cli_tools || {}).map(([tool, data]: [string, any]) => (
+                    {Object.entries({}).map(([tool, data]: [string, any]) => (
                       <div key={tool} className="flex justify-between text-sm">
                         <span>{tool}</span>
                         <span>{data.messages} msgs</span>
