@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
+import { modelsDevService } from '@/lib/models-dev-integration'
 
 const normalizeId = (pid: string) => (pid === 'xai' ? 'x-ai' : pid)
 
@@ -65,7 +66,22 @@ export async function GET(req: NextRequest) {
       if (mErr) {
         return NextResponse.json({ error: mErr.message }, { status: 500 })
       }
-      modelsByProvider = (models || []).reduce((acc: Record<string, any[]>, m: any) => {
+      // Enrich pricing for models missing costs using models.dev limits/pricing
+      const modelsArr = models || []
+      const enriched = await Promise.all(modelsArr.map(async (m: any) => {
+        if (m.input_cost_per_million == null || m.output_cost_per_million == null) {
+          try {
+            const limits = await modelsDevService.getModelLimits(m.friendly_id || m.id, normalizeId(m.provider_id))
+            if (limits?.pricing) {
+              m.input_cost_per_million = limits.pricing.input
+              m.output_cost_per_million = limits.pricing.output
+            }
+          } catch {}
+        }
+        return m
+      }))
+
+      modelsByProvider = enriched.reduce((acc: Record<string, any[]>, m: any) => {
         const pid = normalizeId(m.provider_id)
         if (!acc[pid]) acc[pid] = []
         acc[pid].push(m)
@@ -144,4 +160,3 @@ function toClientModel(m: any) {
     description: m.models_dev_metadata?.description || undefined,
   }
 }
-

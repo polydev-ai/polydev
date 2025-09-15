@@ -546,7 +546,7 @@ class ModelsDevService {
       if (resp.ok) {
         const ct = resp.headers.get('content-type') || ''
         if (!ct.includes('application/json')) {
-          console.warn('[models.dev] Unexpected content-type for models API:', ct)
+          console.info('[models.dev] Skipping live pricing fetch; non-JSON content-type:', ct)
           return {
             maxTokens: 4096,
             contextLength: 32768
@@ -555,8 +555,8 @@ class ModelsDevService {
         let raw
         try {
           raw = await resp.json()
-        } catch (jsonError) {
-          console.warn(`[models.dev] Invalid JSON response for ${friendlyId}:`, jsonError)
+        } catch (jsonError: any) {
+          console.info(`[models.dev] Live pricing JSON parse skipped for ${friendlyId}:`, (jsonError && (jsonError as any).message) ? (jsonError as any).message : String(jsonError))
           // Return basic structure without pricing if external API fails
           return {
             maxTokens: 4096,
@@ -593,7 +593,7 @@ class ModelsDevService {
         }
       }
     } catch (e) {
-      console.warn('[models.dev] Live fetch fallback failed:', e)
+      console.info('[models.dev] Live pricing fetch skipped:', (e as any)?.message || e)
     }
 
     // Graceful fallback: return basic limits without pricing to prevent null errors
