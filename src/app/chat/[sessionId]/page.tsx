@@ -695,6 +695,24 @@ export default function Chat() {
                           onChange={() => toggleModel(model.id)}
                           className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600"
                         />
+                        {model.providerLogo ? (
+                          <img
+                            src={model.providerLogo}
+                            alt={model.providerName}
+                            className="w-6 h-6 rounded-lg flex-shrink-0 object-contain mt-0.5"
+                            onError={(e) => {
+                              const img = e.currentTarget as HTMLImageElement
+                              img.style.display = 'none'
+                              const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
+                              if (fallback) fallback.classList.remove('hidden')
+                            }}
+                          />
+                        ) : null}
+                        <div className={`logo-fallback w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${model.providerLogo ? 'hidden' : ''}`}>
+                          <span className="text-white text-[10px] font-bold">
+                            {model.providerName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
                             <span className="text-sm font-medium text-gray-900 dark:text-white truncate">

@@ -110,12 +110,65 @@ export function useDashboardModels() {
               providerLogo = (provider as any)?.logo || (provider as any)?.logo_url
             }
 
+            // Build a lookup with friendly and normalized keys for robust matching
+            const modelLookup = new Map<string, any>()
+            for (const m of providerModels || []) {
+              const fid = String(m.friendly_id || m.id || '').toLowerCase()
+              const pid = String(m.id || '').toLowerCase()
+              const normalizedFid = toFriendlyId(fid)
+              if (fid) modelLookup.set(fid, m)
+              if (pid) modelLookup.set(pid, m)
+              if (normalizedFid) modelLookup.set(normalizedFid, m)
+            }
+
             for (const mId of preferredModels) {
-              const modelData = (providerModels || []).find((m: any) => m.friendly_id === mId || m.id === mId)
+              // Try direct and normalized matches first
+              const candidates = [
+                String(mId).toLowerCase(),
+                toFriendlyId(String(mId).toLowerCase()),
+              ]
+
+              let modelData: any | undefined
+              for (const key of candidates) {
+                if (modelLookup.has(key)) {
+                  modelData = modelLookup.get(key)
+                  break
+                }
+              }
+
+              // If still not found, best-effort: query mapping API for pricing by friendly id
+              let mappingPricing: { input?: number; output?: number } | undefined
+              if (!modelData) {
+                try {
+                  const fid = toFriendlyId(String(mId))
+                  if (fid) {
+                    const mapResp = await fetch(`/api/models-dev/mappings?friendly_id=${encodeURIComponent(fid)}&provider_id=${encodeURIComponent(providerId)}`)
+                    if (mapResp.ok) {
+                      const mj = await mapResp.json()
+                      if (mj && mj.cost) {
+                        mappingPricing = {
+                          input: Number(mj.cost.input ?? 0),
+                          output: Number(mj.cost.output ?? 0),
+                        }
+                      } else if (mj && mj.pricing && (mj.pricing.input != null)) {
+                        mappingPricing = {
+                          input: Number(mj.pricing.input ?? 0),
+                          output: Number(mj.pricing.output ?? 0),
+                        }
+                      }
+                    }
+                  }
+                } catch (_) {
+                  // ignore mapping failures
+                }
+              }
+
               if (modelData) {
                 const price = (modelData.input_cost_per_million != null && modelData.output_cost_per_million != null)
                   ? { input: Number(modelData.input_cost_per_million), output: Number(modelData.output_cost_per_million) }
-                  : undefined
+                  : (mappingPricing && mappingPricing.input != null && mappingPricing.output != null
+                      ? { input: Number(mappingPricing.input), output: Number(mappingPricing.output) }
+                      : undefined)
                 
                 // Debug pricing
                 console.log(`[useDashboardModels] ${mId} pricing debug:`, {
@@ -155,6 +208,9 @@ export function useDashboardModels() {
                   providerName,
                   providerLogo,
                   tier: 'api',
+                  price: (mappingPricing && mappingPricing.input != null && mappingPricing.output != null)
+                    ? { input: Number(mappingPricing.input), output: Number(mappingPricing.output) }
+                    : undefined,
                   description: `${formatModelName(mId)} - ${providerName}`
                 })
               }
@@ -212,4 +268,17 @@ function formatModelName(modelId: string): string {
     .replace(/\b\w/g, l => l.toUpperCase())
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+// Create a friendly, comparable model id by stripping provider prefixes and version/date suffixes
+function toFriendlyId(modelId: string): string {
+  return String(modelId)
+    .replace(/^[^\/]+\//, '') // remove provider prefix like "openai/"
+    .replace(/-\d{6,8}$/i, '') // remove dates like -20241022 or -241212
+    .replace(/-v\d+$/i, '') // remove version suffix like -v2
+    .toLowerCase()
+}
+
+function normalizeModelId(modelId: string): string {
+  return toFriendlyId(modelId)
 }
