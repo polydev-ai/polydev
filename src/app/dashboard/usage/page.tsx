@@ -684,7 +684,7 @@ export default function UnifiedUsagePage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm">Credits Used</span>
-                    <span className="font-medium">{summary.total_credits_used.toFixed(2)}</span>
+                    <span className="font-medium">{(0).toFixed(2)}</span>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
