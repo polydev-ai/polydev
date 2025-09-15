@@ -980,8 +980,8 @@ class ModelsDevService {
       'google': 'google',
       'gemini': 'google',
       'groq': 'groq',
-      'xai': 'xai',
-      'x.ai': 'xai',
+      'xai': 'x-ai',
+      'x.ai': 'x-ai',
       'deepseek': 'deepseek',
       'mistral': 'mistral',
       'openrouter': 'openrouter'

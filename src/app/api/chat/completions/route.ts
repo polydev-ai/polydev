@@ -726,6 +726,11 @@ export async function POST(request: NextRequest) {
               // Start provider stream
               let upstream: ReadableStream
               try {
+                // For OpenAI, request usage in the final streamed chunk
+                if (selectedProvider === 'openai') {
+                  (apiOptions as any).streamOptions = { include_usage: true }
+                  ;(apiOptions as any).stream_options = { include_usage: true }
+                }
                 upstream = await apiManager.streamMessage(selectedProvider, apiOptions)
               } catch (err: any) {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: err?.message || 'Stream error', provider: selectedProvider })}\n\n`))
@@ -768,6 +773,8 @@ export async function POST(request: NextRequest) {
                         if (!firstTokenAt) firstTokenAt = Date.now()
                         collected[friendlyModelId].content += item.content
                         await emitContentChunks(item.content)
+                      } else if (item?.type === 'usage' && item.usage) {
+                        collected[friendlyModelId].usage = item.usage
                       }
                     } catch {}
                   }
@@ -785,6 +792,8 @@ export async function POST(request: NextRequest) {
                       if (!firstTokenAt) firstTokenAt = Date.now()
                       collected[friendlyModelId].content += item.content
                       await emitContentChunks(item.content)
+                    } else if (item?.type === 'usage' && item.usage) {
+                      collected[friendlyModelId].usage = item.usage
                     }
                     if (item?.type === 'done') {
                       // End of this model's stream
@@ -796,40 +805,56 @@ export async function POST(request: NextRequest) {
               // Save latency metrics
               ;(collected as any)[friendlyModelId].responseTimeMs = Date.now() - modelStart
 
-              // If no usage in stream, make a non-streaming call to fetch usage (and content fallback)
+              // If no usage in stream, optionally make a non-streaming call to fetch usage
+              // OpenAI: skip the post-stream usage call to avoid timeouts; estimate tokens instead
               try {
-                const usageOptions = { ...apiOptions, stream: false }
-                const usageResp = await apiManager.createMessage(selectedProvider, usageOptions)
-                if (usageResp.ok) {
-                  const ct = usageResp.headers.get('content-type') || ''
-                  const payload = ct.includes('application/json') ? await usageResp.json() : await usageResp.text()
-                  const usage = parseUsageData(payload) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-                  collected[friendlyModelId].usage = usage
-                  collected[friendlyModelId].modelResolved = (payload && (payload.model || payload?.choices?.[0]?.model)) || actualModelId
+                if (selectedProvider === 'openai') {
+                  if (!collected[friendlyModelId].usage || collected[friendlyModelId].usage.total_tokens === 0) {
+                    const estimate = (text: string) => Math.ceil((text || '').length / 4)
+                    const lastUser = messages[messages.length - 1]
+                    const prompt_tokens = estimate(lastUser?.content || '')
+                    const completion_tokens = estimate(collected[friendlyModelId].content || '')
+                    collected[friendlyModelId].usage = {
+                      prompt_tokens,
+                      completion_tokens,
+                      total_tokens: prompt_tokens + completion_tokens
+                    }
+                    collected[friendlyModelId].modelResolved = actualModelId
+                  }
+                } else {
+                  const usageOptions = { ...apiOptions, stream: false }
+                  const usageResp = await apiManager.createMessage(selectedProvider, usageOptions)
+                  if (usageResp.ok) {
+                    const ct = usageResp.headers.get('content-type') || ''
+                    const payload = ct.includes('application/json') ? await usageResp.json() : await usageResp.text()
+                    const usage = parseUsageData(payload) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+                    collected[friendlyModelId].usage = usage
+                    collected[friendlyModelId].modelResolved = (payload && (payload.model || payload?.choices?.[0]?.model)) || actualModelId
 
-                  // Fallback content extraction if streaming yielded no content
-                  if (!collected[friendlyModelId].content || collected[friendlyModelId].content.length === 0) {
-                    let fallbackContent = ''
-                    try {
-                      if (typeof payload === 'object') {
-                        // Google/Gemini format
-                        if (payload.candidates?.[0]?.content?.parts) {
-                          const parts = Array.isArray(payload.candidates[0].content.parts)
-                            ? payload.candidates[0].content.parts
-                            : [payload.candidates[0].content.parts]
-                          fallbackContent = parts.map((p: any) => p?.text || '').join('')
+                    // Fallback content extraction if streaming yielded no content
+                    if (!collected[friendlyModelId].content || collected[friendlyModelId].content.length === 0) {
+                      let fallbackContent = ''
+                      try {
+                        if (typeof payload === 'object') {
+                          // Google/Gemini format
+                          if (payload.candidates?.[0]?.content?.parts) {
+                            const parts = Array.isArray(payload.candidates[0].content.parts)
+                              ? payload.candidates[0].content.parts
+                              : [payload.candidates[0].content.parts]
+                            fallbackContent = parts.map((p: any) => p?.text || '').join('')
+                          }
+                          // OpenAI-like format
+                          else if (payload.choices?.[0]?.message?.content) {
+                            fallbackContent = payload.choices[0].message.content
+                          }
+                        } else if (typeof payload === 'string') {
+                          fallbackContent = payload
                         }
-                        // OpenAI-like format
-                        else if (payload.choices?.[0]?.message?.content) {
-                          fallbackContent = payload.choices[0].message.content
-                        }
-                      } else if (typeof payload === 'string') {
-                        fallbackContent = payload
+                      } catch {}
+
+                      if (fallbackContent) {
+                        collected[friendlyModelId].content = fallbackContent
                       }
-                    } catch {}
-
-                    if (fallbackContent) {
-                      collected[friendlyModelId].content = fallbackContent
                     }
                   }
                 }

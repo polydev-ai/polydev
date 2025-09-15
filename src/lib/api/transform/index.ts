@@ -53,6 +53,11 @@ export class OpenAITransformer implements MessageTransformer {
       temperature: finalTemperature,
       stream: true
     }
+    // Include usage in final streamed chunk when requested
+    const streamOpts = (options as any).streamOptions || (options as any).stream_options
+    if (options.stream && streamOpts && streamOpts.include_usage) {
+      request.stream_options = { include_usage: true }
+    }
     
     if (tools && tools.length > 0) {
       request.tools = tools.map((tool: Tool) => ({
@@ -87,6 +92,14 @@ export class OpenAITransformer implements MessageTransformer {
           return {
             type: 'content',
             content: delta.content
+          }
+        }
+
+        // Final usage (when stream_options.include_usage === true)
+        if (parsed.usage) {
+          return {
+            type: 'usage',
+            usage: parsed.usage
           }
         }
         
