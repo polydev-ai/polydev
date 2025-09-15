@@ -108,6 +108,13 @@ interface ProviderInfo {
   display_name: string
 }
 
+interface ModelInfo {
+  id: string
+  name: string
+  provider_id: string
+  actual_provider: string
+}
+
 // Provider logo mapping using real models.dev logos
 const getProviderLogo = (provider: string, providersRegistry: ProviderInfo[]) => {
   const providerKey = provider?.toLowerCase() || ''
@@ -119,9 +126,33 @@ const getProviderLogo = (provider: string, providersRegistry: ProviderInfo[]) =>
   return providerInfo?.logo_url || 'https://models.dev/logos/default.svg'
 }
 
-// Get model logo based on provider (since models belong to providers)
-const getModelLogo = (model: string, provider: string, providersRegistry: ProviderInfo[]) => {
+// Get model logo based on actual model provider
+const getModelLogo = (model: string, provider: string, providersRegistry: ProviderInfo[], modelsRegistry: ModelInfo[]) => {
+  // Find the model in the registry
+  const modelInfo = modelsRegistry.find(m => m.id === model || m.name === model)
+  
+  if (modelInfo?.actual_provider) {
+    // Use the actual provider (e.g., "anthropic" for Claude models)
+    return getProviderLogo(modelInfo.actual_provider, providersRegistry)
+  }
+  
+  // Fallback to session provider
   return getProviderLogo(provider, providersRegistry)
+}
+
+// Format timestamp with proper error handling
+const formatTimestamp = (timestamp: string | null | undefined): string => {
+  if (!timestamp) return '—'
+  
+  try {
+    const date = new Date(timestamp)
+    if (isNaN(date.getTime())) {
+      return '—'
+    }
+    return date.toLocaleString()
+  } catch (error) {
+    return '—'
+  }
 }
 
 export default function UnifiedUsagePage() {
@@ -143,6 +174,7 @@ export default function UnifiedUsagePage() {
   const [fromDate, setFromDate] = useState<string>('')
   const [toDate, setToDate] = useState<string>('')
   const [providersRegistry, setProvidersRegistry] = useState<ProviderInfo[]>([])
+  const [modelsRegistry, setModelsRegistry] = useState<ModelInfo[]>([])
   const [userCredits, setUserCredits] = useState<{ balance: number, promotional_balance: number, monthly_allocation: number } | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
@@ -232,6 +264,18 @@ export default function UnifiedUsagePage() {
     }
   }
 
+  const fetchModelsRegistry = async () => {
+    try {
+      const response = await fetch('/api/models/registry')
+      if (response.ok) {
+        const data = await response.json()
+        setModelsRegistry(data.models || [])
+      }
+    } catch (error) {
+      console.error('Error fetching models registry:', error)
+    }
+  }
+
   const fetchUserCredits = async () => {
     try {
       const response = await fetch('/api/user/credits')
@@ -286,6 +330,7 @@ export default function UnifiedUsagePage() {
         fetchCLIConfigs(), 
         fetchSessions(),
         fetchProvidersRegistry(),
+        fetchModelsRegistry(),
         fetchUserCredits()
       ])
       setLoading(false)
@@ -574,13 +619,13 @@ export default function UnifiedUsagePage() {
               <tbody>
                 {sessionsList.map((s) => (
                   <tr key={s.id} className="border-t border-gray-200 dark:border-gray-700">
-                    <td className="py-2 pr-4">{new Date(s.createdAt).toLocaleString()}</td>
+                    <td className="py-2 pr-4">{formatTimestamp(s.createdAt)}</td>
                     <td className="py-2 pr-4">
                       <div className="flex items-center gap-1">
                         <img src={getProviderLogo(s.provider, providersRegistry)} alt={s.provider} className="w-4 h-4" />
                         <span className="text-xs">{s.provider || '—'}</span>
                         <span className="text-muted-foreground">/</span>
-                        <img src={getModelLogo(s.model, s.provider, providersRegistry)} alt={s.model} className="w-4 h-4" />
+                        <img src={getModelLogo(s.model, s.provider, providersRegistry, modelsRegistry)} alt={s.model} className="w-4 h-4" />
                         <span className="text-xs">{s.model || '—'}</span>
                       </div>
                     </td>
@@ -694,7 +739,7 @@ export default function UnifiedUsagePage() {
                   <div className="flex flex-wrap gap-1">
                     {(summary.modelStats || []).slice(0, 6).map((modelStat, index) => (
                       <Badge key={index} variant="outline" className="text-xs flex items-center gap-1">
-                        <img src={getModelLogo(modelStat.model, '', providersRegistry)} alt={modelStat.model} className="w-3 h-3" />
+                        <img src={getModelLogo(modelStat.model, '', providersRegistry, modelsRegistry)} alt={modelStat.model} className="w-3 h-3" />
                         {modelStat.model}
                       </Badge>
                     ))}
