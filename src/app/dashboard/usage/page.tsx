@@ -798,19 +798,17 @@ export default function UnifiedUsagePage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="text-3xl font-bold">
-                    ${balance.promotional.toFixed(2)}
+                    ${(0).toFixed(2)}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Total granted: ${balance.promotional_total.toFixed(2)}
+                    Total granted: ${(0).toFixed(2)}
                   </div>
                   <Progress 
-                    value={balance.promotional_total > 0 ? 
-                      ((balance.promotional_total - balance.promotional) / balance.promotional_total) * 100 : 0
-                    } 
+                    value={0} 
                     className="h-2" 
                   />
                   <div className="text-xs text-muted-foreground">
-                    Used: ${(balance.promotional_total - balance.promotional).toFixed(2)}
+                    Used: ${(0).toFixed(2)}
                   </div>
                 </div>
               </CardContent>
