@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         : (s.metadata?.fallback_method === 'cli' ? 'CLI' : 'API')
       return {
         id: s.id,
-        timestamp: s.created_at,
+        createdAt: s.created_at,
         provider: s.provider,
         model: s.model_name,
         app: s.metadata?.app || 'Polydev Multi-LLM Platform',
