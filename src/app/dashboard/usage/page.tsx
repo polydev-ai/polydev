@@ -100,52 +100,28 @@ interface CLIConfig {
   config_options: Record<string, any>
 }
 
-// Provider logo mapping
-const getProviderLogo = (provider: string) => {
-  const logos: Record<string, string> = {
-    'openai': '🤖',
-    'anthropic': '🔮', 
-    'google': '🟦',
-    'gemini': '💎',
-    'meta': '🌐',
-    'claude': '🔮',
-    'gpt': '🤖',
-    'openrouter': '🔀',
-    'together': '🤝',
-    'mistral': '🌊',
-    'cohere': '💬',
-    'replicate': '🔄',
-    'huggingface': '🤗',
-    'bedrock': '⚡',
-    'vertex': '📐',
-    'xai': '❌',
-    'groq': '⚡',
-    'deepseek': '🔍',
-    'qwen': '🎯',
-    'yi': '🎲'
-  }
-  
-  const providerKey = provider?.toLowerCase() || ''
-  for (const [key, emoji] of Object.entries(logos)) {
-    if (providerKey.includes(key)) {
-      return emoji
-    }
-  }
-  return '🤖' // Default
+// Provider registry data
+interface ProviderInfo {
+  id: string
+  name: string
+  logo_url: string
+  display_name: string
 }
 
-// Get model logo based on model name
-const getModelLogo = (model: string) => {
-  const modelKey = model?.toLowerCase() || ''
-  if (modelKey.includes('gpt') || modelKey.includes('openai')) return '🤖'
-  if (modelKey.includes('claude') || modelKey.includes('anthropic')) return '🔮'
-  if (modelKey.includes('gemini') || modelKey.includes('google')) return '💎'
-  if (modelKey.includes('llama') || modelKey.includes('meta')) return '🦙'
-  if (modelKey.includes('mistral')) return '🌊'
-  if (modelKey.includes('grok') || modelKey.includes('xai')) return '❌'
-  if (modelKey.includes('qwen')) return '🎯'
-  if (modelKey.includes('deepseek')) return '🔍'
-  return '🤖'
+// Provider logo mapping using real models.dev logos
+const getProviderLogo = (provider: string, providersRegistry: ProviderInfo[]) => {
+  const providerKey = provider?.toLowerCase() || ''
+  const providerInfo = providersRegistry.find(p => 
+    p.id === providerKey || 
+    p.name.toLowerCase() === providerKey ||
+    providerKey.includes(p.id)
+  )
+  return providerInfo?.logo_url || 'https://models.dev/logos/default.svg'
+}
+
+// Get model logo based on provider (since models belong to providers)
+const getModelLogo = (model: string, provider: string, providersRegistry: ProviderInfo[]) => {
+  return getProviderLogo(provider, providersRegistry)
 }
 
 export default function UnifiedUsagePage() {
@@ -166,9 +142,14 @@ export default function UnifiedUsagePage() {
   const [useCustomRange, setUseCustomRange] = useState(false)
   const [fromDate, setFromDate] = useState<string>('')
   const [toDate, setToDate] = useState<string>('')
+  const [providersRegistry, setProvidersRegistry] = useState<ProviderInfo[]>([])
+  const [userCredits, setUserCredits] = useState<{ balance: number, promotional_balance: number, monthly_allocation: number } | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const fetchUsageData = async () => {
     try {
+      setLastUpdated(new Date())
+      
       const params = new URLSearchParams()
       
       if (useCustomRange && fromDate && toDate) {
@@ -239,6 +220,30 @@ export default function UnifiedUsagePage() {
     }
   }
 
+  const fetchProvidersRegistry = async () => {
+    try {
+      const response = await fetch('/api/providers/registry')
+      if (response.ok) {
+        const data = await response.json()
+        setProvidersRegistry(data.providers || [])
+      }
+    } catch (error) {
+      console.error('Error fetching providers registry:', error)
+    }
+  }
+
+  const fetchUserCredits = async () => {
+    try {
+      const response = await fetch('/api/user/credits')
+      if (response.ok) {
+        const data = await response.json()
+        setUserCredits(data.credits || null)
+      }
+    } catch (error) {
+      console.error('Error fetching user credits:', error)
+    }
+  }
+
   const fetchCLIConfigs = async () => {
     try {
       const response = await fetch('/api/cli-config')
@@ -276,7 +281,13 @@ export default function UnifiedUsagePage() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([fetchUsageData(), fetchCLIConfigs(), fetchSessions()])
+      await Promise.all([
+        fetchUsageData(), 
+        fetchCLIConfigs(), 
+        fetchSessions(),
+        fetchProvidersRegistry(),
+        fetchUserCredits()
+      ])
       setLoading(false)
     }
     loadData()
@@ -376,7 +387,7 @@ export default function UnifiedUsagePage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="text-xs text-muted-foreground">
-            Last updated: {new Date().toLocaleString()}
+            Last updated: {lastUpdated ? lastUpdated.toLocaleString() : 'Never'}
           </div>
           <select
             value={timeframe}
@@ -566,10 +577,10 @@ export default function UnifiedUsagePage() {
                     <td className="py-2 pr-4">{new Date(s.createdAt).toLocaleString()}</td>
                     <td className="py-2 pr-4">
                       <div className="flex items-center gap-1">
-                        <span>{getProviderLogo(s.provider)}</span>
+                        <img src={getProviderLogo(s.provider, providersRegistry)} alt={s.provider} className="w-4 h-4" />
                         <span className="text-xs">{s.provider || '—'}</span>
                         <span className="text-muted-foreground">/</span>
-                        <span>{getModelLogo(s.model)}</span>
+                        <img src={getModelLogo(s.model, s.provider, providersRegistry)} alt={s.model} className="w-4 h-4" />
                         <span className="text-xs">{s.model || '—'}</span>
                       </div>
                     </td>
@@ -683,7 +694,7 @@ export default function UnifiedUsagePage() {
                   <div className="flex flex-wrap gap-1">
                     {(summary.modelStats || []).slice(0, 6).map((modelStat, index) => (
                       <Badge key={index} variant="outline" className="text-xs flex items-center gap-1">
-                        <span>{getModelLogo(modelStat.model)}</span>
+                        <img src={getModelLogo(modelStat.model, '', providersRegistry)} alt={modelStat.model} className="w-3 h-3" />
                         {modelStat.model}
                       </Badge>
                     ))}
@@ -699,7 +710,7 @@ export default function UnifiedUsagePage() {
                   <div className="flex flex-wrap gap-1">
                     {(summary.providerStats || []).map((providerStat, index) => (
                       <Badge key={index} variant="outline" className="text-xs flex items-center gap-1">
-                        <span>{getProviderLogo(providerStat.provider)}</span>
+                        <img src={getProviderLogo(providerStat.provider, providersRegistry)} alt={providerStat.provider} className="w-3 h-3" />
                         {providerStat.provider}
                       </Badge>
                     ))}
@@ -759,7 +770,7 @@ export default function UnifiedUsagePage() {
                     {summary.providerStats.filter(p => sessions.some(s => s.source === 'API' && s.provider === p.provider)).slice(0, 3).map((provider, index) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span className="flex items-center gap-1">
-                          {getProviderLogo(provider.provider)}
+                          <img src={getProviderLogo(provider.provider, providersRegistry)} alt={provider.provider} className="w-4 h-4" />
                           {provider.provider}
                         </span>
                         <span>{sessions.filter(s => s.source === 'API' && s.provider === provider.provider).length} msgs</span>
@@ -801,7 +812,7 @@ export default function UnifiedUsagePage() {
                     {summary.providerStats.filter(p => sessions.some(s => s.source === 'Credits' && s.provider === p.provider)).slice(0, 3).map((provider, index) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span className="flex items-center gap-1">
-                          {getProviderLogo(provider.provider)}
+                          <img src={getProviderLogo(provider.provider, providersRegistry)} alt={provider.provider} className="w-4 h-4" />
                           {provider.provider}
                         </span>
                         <span>{sessions.filter(s => s.source === 'Credits' && s.provider === provider.provider).length} msgs</span>
@@ -944,38 +955,19 @@ export default function UnifiedUsagePage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="text-3xl font-bold">
-                    ${(() => {
-                      const totalUsed = sessions.reduce((sum, s) => sum + (s.cost || 0), 0);
-                      const promotionalUsed = sessions
-                        .filter(s => s.source === 'Credits')
-                        .reduce((sum, s) => sum + (s.cost || 0), 0);
-                      const estimatedBalance = Math.max(0, 10 - promotionalUsed); // Assuming $10 promotional balance
-                      return estimatedBalance.toFixed(2);
-                    })()}
+                    ${userCredits ? (userCredits.balance + userCredits.promotional_balance).toFixed(2) : '0.00'}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Total granted: ${(() => {
-                      const promotionalGranted = 10.00; // Default promotional amount
-                      return promotionalGranted.toFixed(2);
-                    })()}
+                    Monthly allocation: ${userCredits ? userCredits.monthly_allocation.toFixed(2) : '0.00'}
                   </div>
                   <Progress 
-                    value={(() => {
-                      const promotionalUsed = sessions
-                        .filter(s => s.source === 'Credits')
-                        .reduce((sum, s) => sum + (s.cost || 0), 0);
-                      const promotionalGranted = 10.00;
-                      return Math.min(100, (promotionalUsed / promotionalGranted) * 100);
-                    })()} 
+                    value={userCredits && userCredits.monthly_allocation > 0 ? 
+                      Math.min(100, ((userCredits.monthly_allocation - userCredits.balance - userCredits.promotional_balance) / userCredits.monthly_allocation) * 100) : 0
+                    } 
                     className="h-2" 
                   />
                   <div className="text-xs text-muted-foreground">
-                    Used: ${(() => {
-                      const promotionalUsed = sessions
-                        .filter(s => s.source === 'Credits')
-                        .reduce((sum, s) => sum + (s.cost || 0), 0);
-                      return promotionalUsed.toFixed(2);
-                    })()}
+                    Used: ${userCredits ? (userCredits.monthly_allocation - userCredits.balance - userCredits.promotional_balance).toFixed(2) : '0.00'}
                   </div>
                 </div>
               </CardContent>
@@ -1022,7 +1014,7 @@ export default function UnifiedUsagePage() {
                           <div className="flex justify-between items-center p-3 border rounded-lg">
                             <div>
                               <div className="font-medium">Welcome Bonus</div>
-                              <div className="text-sm text-muted-foreground">$10.00 promotional credits</div>
+                              <div className="text-sm text-muted-foreground">${userCredits ? userCredits.promotional_balance.toFixed(2) : '0.00'} promotional credits</div>
                             </div>
                             <Badge variant="outline">Available</Badge>
                           </div>
@@ -1051,12 +1043,7 @@ export default function UnifiedUsagePage() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Total Purchased</div>
-                  <div className="text-2xl font-bold">${(() => {
-                    // Estimate based on actual spending patterns
-                    const totalSpent = summary.totalCost || 0;
-                    const estimatedPurchased = totalSpent > 0 ? Math.max(10, totalSpent * 1.5) : 0;
-                    return estimatedPurchased.toFixed(2);
-                  })()}</div>
+                  <div className="text-2xl font-bold">${userCredits ? userCredits.monthly_allocation.toFixed(2) : '0.00'}</div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Total Spent</div>
@@ -1064,22 +1051,11 @@ export default function UnifiedUsagePage() {
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Current Balance</div>
-                  <div className="text-2xl font-bold">${(() => {
-                    const totalSpent = summary.totalCost || 0;
-                    const estimatedPurchased = totalSpent > 0 ? Math.max(10, totalSpent * 1.5) : 10;
-                    const balance = Math.max(0, estimatedPurchased - totalSpent);
-                    return balance.toFixed(2);
-                  })()}</div>
+                  <div className="text-2xl font-bold">${userCredits ? (userCredits.balance + userCredits.promotional_balance).toFixed(2) : '0.00'}</div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">Promotional Total</div>
-                  <div className="text-2xl font-bold">${(() => {
-                    const promotionalUsed = sessions
-                      .filter(s => s.source === 'Credits')
-                      .reduce((sum, s) => sum + (s.cost || 0), 0);
-                    const promotionalGranted = 10.00;
-                    return promotionalGranted.toFixed(2);
-                  })()}</div>
+                  <div className="text-2xl font-bold">${userCredits ? userCredits.promotional_balance.toFixed(2) : '0.00'}</div>
                 </div>
               </div>
             </CardContent>
