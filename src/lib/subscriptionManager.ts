@@ -154,8 +154,8 @@ export class SubscriptionManager {
         const subscription = await this.getUserSubscription(userId, useServiceRole)
         const isPro = subscription?.tier === 'pro' && subscription?.status === 'active'
         
-        // Get base limit (200 free) + referral bonuses
-        const baseLimit = isPro ? 999999 : 200 // Unlimited for pro users
+        // Get base limit (1000 free) + referral bonuses
+        const baseLimit = isPro ? 999999 : 1000 // Unlimited for pro users
         const referralBonus = await this.getReferralBonus(userId, useServiceRole)
         
         const { data: newUsage, error: createError } = await supabase
@@ -194,15 +194,15 @@ export class SubscriptionManager {
           shouldUpdate = true
           console.log(`[SubscriptionManager] User ${userId} is pro, upgrading to unlimited messages`)
         } else if (!isPro && usage.messages_limit === 999999) {
-          // User is not pro but has unlimited messages - downgrade them  
-          newLimit = 200 + referralBonus
+          // User is not pro but has unlimited messages - downgrade them
+          newLimit = 1000 + referralBonus
           shouldUpdate = true
           console.log(`[SubscriptionManager] User ${userId} is not pro, downgrading from unlimited to ${newLimit} messages`)
-        } else if (!isPro && usage.messages_limit === 50) {
-          // Free user with old limit (50) - upgrade to new free limit (200)
-          newLimit = 200 + referralBonus
+        } else if (!isPro && (usage.messages_limit === 50 || usage.messages_limit === 200)) {
+          // Free user with old limit (50 or 200) - upgrade to new free limit (1000)
+          newLimit = 1000 + referralBonus
           shouldUpdate = true
-          console.log(`[SubscriptionManager] User ${userId} is free, upgrading from 50 to ${newLimit} messages`)
+          console.log(`[SubscriptionManager] User ${userId} is free, upgrading from ${usage.messages_limit} to ${newLimit} messages`)
         }
         
         if (shouldUpdate) {

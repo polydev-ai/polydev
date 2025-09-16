@@ -61,7 +61,7 @@ export const useCredits = () => {
       setBalance({
         balance: data.balance || 0,
         totalSpent: data.totalSpent || 0,
-        promotionalBalance: data.promotionalBalance || 0,
+        promotionalBalance: data.promotional_balance || 0,
         hasOpenRouterKey: data.hasOpenRouterKey || false,
         lastUpdated: new Date().toISOString()
       })

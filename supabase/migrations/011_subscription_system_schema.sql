@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS user_message_usage (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   month_year TEXT NOT NULL, -- Format: YYYY-MM
   messages_sent INTEGER DEFAULT 0,
-  messages_limit INTEGER DEFAULT 50,
+  messages_limit INTEGER DEFAULT 1000,
   cli_usage_allowed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
