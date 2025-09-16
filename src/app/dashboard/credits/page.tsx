@@ -103,16 +103,31 @@ const getModelLogo = (model: string, provider: string, providersRegistry: Array<
 }
 
 // Format timestamp with proper error handling
-const formatTimestamp = (timestamp: string | null | undefined): string => {
+const formatTimestamp = (timestamp: string | number | null | undefined): string => {
   if (!timestamp) return '—'
 
   try {
-    const date = new Date(timestamp)
-    if (isNaN(date.getTime())) {
+    let date: Date
+
+    // Handle different timestamp formats
+    if (typeof timestamp === 'number') {
+      // Unix timestamp (seconds or milliseconds)
+      date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000)
+    } else if (typeof timestamp === 'string') {
+      // ISO string or other date string
+      date = new Date(timestamp)
+    } else {
       return '—'
     }
+
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid timestamp:', timestamp)
+      return '—'
+    }
+
     return date.toLocaleString()
   } catch (error) {
+    console.warn('Error formatting timestamp:', timestamp, error)
     return '—'
   }
 }
@@ -597,7 +612,7 @@ export default function CreditsPage() {
                   <tbody>
                     {creditSessions.map((u: any) => (
                       <tr key={u.id} className="border-t border-gray-200 dark:border-gray-700">
-                        <td className="py-2 pr-4">{formatTimestamp(u.timestamp || u.date)}</td>
+                        <td className="py-2 pr-4">{formatTimestamp(u.createdAt || u.timestamp || u.date)}</td>
                         <td className="py-2 pr-4">
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md">
