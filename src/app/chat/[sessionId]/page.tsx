@@ -67,7 +67,7 @@ export default function Chat() {
 
   // Set default selected models when dashboard models load and preferences are available
   useEffect(() => {
-    if (dashboardModels.length > 0 && selectedModels.length === 0) {
+    if (dashboardModels.length > 0) {
       // Check if user has saved chat model preferences
       const savedChatModels = preferences?.mcp_settings?.saved_chat_models
 
@@ -77,16 +77,20 @@ export default function Chat() {
         const validSavedModels = savedChatModels.filter(modelId => availableModelIds.includes(modelId))
 
         if (validSavedModels.length > 0) {
+          console.log('[Chat] Loading saved chat models from preferences:', validSavedModels)
           setSelectedModels(validSavedModels)
           return
         }
       }
 
-      // Simplified default selection: use top 3 models from user's configured models page
-      const defaults = dashboardModels.slice(0, 3).map(m => m.id)
-      setSelectedModels(defaults)
+      // Fallback: if no saved models or they're all invalid, use top 3 models from user's configured models page
+      if (selectedModels.length === 0) {
+        const defaults = dashboardModels.slice(0, 3).map(m => m.id)
+        console.log('[Chat] No saved models found, using defaults:', defaults)
+        setSelectedModels(defaults)
+      }
     }
-  }, [dashboardModels, selectedModels.length, preferences])
+  }, [dashboardModels, preferences])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -96,11 +100,23 @@ export default function Chat() {
     scrollToBottom()
   }, [messages])
 
-  // Refresh models when page becomes visible (e.g., user switches back from models page)
+  // Refresh models and preferences when page becomes visible (e.g., user switches back from models page)
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && refreshModels) {
-        refreshModels()
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        console.log('[Chat] Page became visible, refreshing models and preferences...')
+        // Refresh both preferences and models when returning to chat
+        if (refreshModels) {
+          await refreshModels()
+        }
+        // Also trigger a sync in case models were updated on the models page
+        try {
+          await fetch('/api/sync-models', { method: 'POST' })
+          // Wait a bit then refresh again to pick up any changes
+          setTimeout(() => refreshModels?.(), 500)
+        } catch (error) {
+          console.error('[Chat] Error syncing models on visibility change:', error)
+        }
       }
     }
 
