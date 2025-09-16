@@ -219,8 +219,8 @@ export function useDashboardModels() {
 
         // Sort by API key display_order, then by name
         dashboardModels.sort((a, b) => {
-          const aApiKey = apiKeys.find(k => normalizeProviderId(k.provider) === a.provider)
-          const bApiKey = apiKeys.find(k => normalizeProviderId(k.provider) === b.provider)
+          const aApiKey = apiKeys.find((k: any) => normalizeProviderId(k.provider) === a.provider)
+          const bApiKey = apiKeys.find((k: any) => normalizeProviderId(k.provider) === b.provider)
           const aOrder = aApiKey?.display_order ?? 999
           const bOrder = bApiKey?.display_order ?? 999
           if (aOrder !== bOrder) return aOrder - bOrder
