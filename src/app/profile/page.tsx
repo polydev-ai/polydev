@@ -28,6 +28,7 @@ interface UserStats {
     model: string
     tokens: number
     cost: number
+    title?: string
   }>
 }
 
@@ -219,14 +220,25 @@ export default function Profile() {
                 {stats?.recentActivity && stats.recentActivity.length > 0 ? (
                   <div className="space-y-4">
                     {stats.recentActivity.map((activity, index) => (
-                      <div key={index} className="flex items-center space-x-3">
-                        <div className="h-2 w-2 bg-blue-400 rounded-full"></div>
+                      <div key={index} className="flex items-start space-x-3">
+                        <div className={`h-2 w-2 rounded-full mt-2 ${
+                          activity.action.includes('Chat') ? 'bg-green-400' :
+                          activity.action.includes('Session') ? 'bg-blue-400' :
+                          activity.action.includes('API') ? 'bg-purple-400' :
+                          'bg-gray-400'
+                        }`}></div>
                         <div className="flex-1">
                           <p className="text-sm text-gray-900 dark:text-white">
-                            {activity.action} - {activity.model}
+                            <span className="font-medium">{activity.action}</span>
+                            {activity.title && (
+                              <span className="text-gray-600 dark:text-gray-400"> - {activity.title}</span>
+                            )}
                           </p>
-                          <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span>{new Date(activity.timestamp).toLocaleDateString()}</span>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Model: {activity.model}
+                          </p>
+                          <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <span>{new Date(activity.timestamp).toLocaleDateString()} {new Date(activity.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                             {activity.tokens > 0 && (
                               <>
                                 <span>•</span>

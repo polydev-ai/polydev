@@ -112,3 +112,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
+
+// Add GET method that does the same as POST for compatibility
+export async function GET(request: NextRequest) {
+  return POST(request)
+}

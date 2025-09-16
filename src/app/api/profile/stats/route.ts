@@ -29,7 +29,35 @@ export async function GET(request: NextRequest) {
     const joinedDate = user.created_at ? new Date(user.created_at) : new Date()
     const daysSinceJoined = Math.floor((Date.now() - joinedDate.getTime()) / (1000 * 60 * 60 * 24))
 
-    // Get real usage data from request logs
+    // Get chat sessions data
+    const { data: chatSessions, error: chatSessionsError } = await supabase
+      .from('chat_sessions')
+      .select('id, title, created_at, updated_at')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+
+    // Get chat messages data
+    const { data: chatMessages, error: chatMessagesError } = await supabase
+      .from('chat_messages')
+      .select('id, session_id, model_id, usage_info, cost_info, created_at')
+      .in('session_id', chatSessions?.map(s => s.id) || [])
+      .order('created_at', { ascending: false })
+
+    // Get usage sessions data
+    const { data: usageSessions, error: usageSessionsError } = await supabase
+      .from('usage_sessions')
+      .select('session_id, model_name, provider, tokens_used, cost, session_type, created_at, metadata')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    // Get regular sessions data
+    const { data: regularSessions, error: regularSessionsError } = await supabase
+      .from('sessions')
+      .select('id, name, model, provider, message_count, total_tokens, total_cost_usd, created_at, updated_at, last_activity_at')
+      .eq('user_id', user.id)
+      .order('last_activity_at', { ascending: false })
+
+    // Get real usage data from request logs as backup
     const { data: requestLogs, error: requestLogsError } = await supabase
       .from('mcp_request_logs')
       .select('total_tokens, total_cost, created_at, provider_responses, models_requested')
@@ -43,24 +71,57 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
-    // Use detailed logs if available, otherwise fallback to simple logs
+    // Combine all data sources for comprehensive stats
+    const allSessions = [...(chatSessions || []), ...(regularSessions || []), ...(usageSessions || [])]
     const usageData = requestLogs && requestLogs.length > 0 ? requestLogs : usageLogs
 
-    console.log('[Profile Stats] Usage data:', { 
-      requestLogs: requestLogs?.length, 
+    console.log('[Profile Stats] Usage data:', {
+      chatSessions: chatSessions?.length,
+      chatMessages: chatMessages?.length,
+      usageSessions: usageSessions?.length,
+      regularSessions: regularSessions?.length,
+      requestLogs: requestLogs?.length,
       usageLogs: usageLogs?.length,
-      using: requestLogs && requestLogs.length > 0 ? 'detailed' : 'simple'
+      using: 'comprehensive'
     })
 
-    // Calculate real statistics
-    const totalChats = usageData?.length || 0
-    const totalTokens = usageData?.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    // Calculate real statistics from all sources
+    const totalChats = (chatSessions?.length || 0) + (regularSessions?.length || 0)
 
-    // Determine favorite model from actual usage
+    // Calculate total tokens from all sources
+    let totalTokens = 0
+    totalTokens += chatMessages?.reduce((sum, msg) => sum + (msg.usage_info?.total_tokens || 0), 0) || 0
+    totalTokens += usageSessions?.reduce((sum, session) => sum + (session.tokens_used || 0), 0) || 0
+    totalTokens += regularSessions?.reduce((sum, session) => sum + (session.total_tokens || 0), 0) || 0
+    totalTokens += usageData?.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+
+    // Determine favorite model from all sources
     let favoriteModel = 'No usage yet'
+    const modelUsage: Record<string, number> = {}
+
+    // Count from chat messages
+    chatMessages?.forEach(msg => {
+      if (msg.model_id) {
+        modelUsage[msg.model_id] = (modelUsage[msg.model_id] || 0) + 1
+      }
+    })
+
+    // Count from usage sessions
+    usageSessions?.forEach(session => {
+      if (session.model_name) {
+        modelUsage[session.model_name] = (modelUsage[session.model_name] || 0) + 1
+      }
+    })
+
+    // Count from regular sessions
+    regularSessions?.forEach(session => {
+      if (session.model) {
+        modelUsage[session.model] = (modelUsage[session.model] || 0) + 1
+      }
+    })
+
+    // Count from usage logs
     if (usageData && usageData.length > 0) {
-      const modelUsage: Record<string, number> = {}
-      
       usageData.forEach(log => {
         if ('provider_responses' in log && log.provider_responses && typeof log.provider_responses === 'object') {
           // For detailed logs, extract models from provider_responses
@@ -82,24 +143,69 @@ export async function GET(request: NextRequest) {
           })
         }
       })
-
-      // Find the most used model
-      const sortedModels = Object.entries(modelUsage).sort(([,a], [,b]) => b - a)
-      if (sortedModels.length > 0) {
-        favoriteModel = sortedModels[0][0]
-      }
     }
 
-    // Generate recent activity from actual usage data
-    const recentActivity: any[] = []
-    if (usageData && usageData.length > 0) {
-      const sortedLogs = usageData
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 5)
+    // Find the most used model
+    const sortedModels = Object.entries(modelUsage).sort(([,a], [,b]) => b - a)
+    if (sortedModels.length > 0) {
+      favoriteModel = sortedModels[0][0]
+    }
 
-      sortedLogs.forEach(log => {
+    // Generate recent activity from all sources
+    const recentActivity: any[] = []
+    const allActivities: any[] = []
+
+    // Add chat sessions
+    chatSessions?.forEach(session => {
+      allActivities.push({
+        timestamp: session.updated_at || session.created_at,
+        action: 'Chat Session',
+        model: 'Chat Window',
+        tokens: 0,
+        cost: 0,
+        title: session.title || 'Untitled Chat'
+      })
+    })
+
+    // Add chat messages with model info
+    chatMessages?.forEach(msg => {
+      allActivities.push({
+        timestamp: msg.created_at,
+        action: 'Chat Message',
+        model: msg.model_id || 'Unknown Model',
+        tokens: msg.usage_info?.total_tokens || 0,
+        cost: msg.cost_info?.total_cost || 0
+      })
+    })
+
+    // Add usage sessions
+    usageSessions?.forEach(session => {
+      allActivities.push({
+        timestamp: session.created_at,
+        action: session.session_type || 'API Session',
+        model: session.model_name || 'Unknown Model',
+        tokens: session.tokens_used || 0,
+        cost: session.cost || 0
+      })
+    })
+
+    // Add regular sessions
+    regularSessions?.forEach(session => {
+      allActivities.push({
+        timestamp: session.last_activity_at || session.updated_at || session.created_at,
+        action: 'Session Activity',
+        model: session.model || 'Unknown Model',
+        tokens: session.total_tokens || 0,
+        cost: session.total_cost_usd || 0,
+        title: session.name || 'Untitled Session'
+      })
+    })
+
+    // Add API request logs
+    if (usageData && usageData.length > 0) {
+      usageData.forEach(log => {
         let modelName = 'Multiple Models'
-        
+
         // Extract model name from different log formats
         if ('provider_responses' in log && log.provider_responses && typeof log.provider_responses === 'object') {
           const firstProvider = Object.keys(log.provider_responses)[0]
@@ -115,7 +221,7 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        recentActivity.push({
+        allActivities.push({
           timestamp: log.created_at,
           action: 'API Request',
           model: modelName,
@@ -125,13 +231,20 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Calculate last active time
+    // Sort all activities by timestamp and take the most recent 10
+    const sortedActivities = allActivities
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 10)
+
+    recentActivity.push(...sortedActivities)
+
+    // Calculate last active time from most recent activity
     let lastActive = 'Never'
-    if (usageData && usageData.length > 0) {
-      const lastUsage = new Date(usageData[0].created_at)
+    if (sortedActivities.length > 0) {
+      const lastUsage = new Date(sortedActivities[0].timestamp)
       const now = new Date()
       const diffInHours = Math.floor((now.getTime() - lastUsage.getTime()) / (1000 * 60 * 60))
-      
+
       if (diffInHours < 1) {
         lastActive = 'Just now'
       } else if (diffInHours < 24) {
