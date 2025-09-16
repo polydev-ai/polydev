@@ -135,6 +135,7 @@ export default function EnhancedApiKeysPage() {
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null)
   const [showApiKey, setShowApiKey] = useState<{[keyId: string]: boolean}>({})
   const [expandedProviders, setExpandedProviders] = useState<{[provider: string]: boolean}>({})
+  const [expandedAvailableProviders, setExpandedAvailableProviders] = useState<{[provider: string]: boolean}>({})
   const [updateApiKey, setUpdateApiKey] = useState(false)
   
   // CLI Status State  
@@ -632,6 +633,13 @@ export default function EnhancedApiKeysPage() {
 
   const toggleProviderExpanded = (provider: string) => {
     setExpandedProviders(prev => ({
+      ...prev,
+      [provider]: !prev[provider]
+    }))
+  }
+
+  const toggleAvailableProviderExpanded = (provider: string) => {
+    setExpandedAvailableProviders(prev => ({
       ...prev,
       [provider]: !prev[provider]
     }))
@@ -1726,8 +1734,9 @@ export default function EnhancedApiKeysPage() {
         ) : (
           <div className="space-y-4">
             {modelsDevProviders.map((provider) => (
-              <div key={provider.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600">
-                <div className="flex items-center justify-between mb-3">
+              <div key={provider.id} className="border rounded-lg bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                     onClick={() => toggleAvailableProviderExpanded(provider.id)}>
                   <div className="flex items-center space-x-3">
                     {provider.logo && (
                       <img
@@ -1750,60 +1759,76 @@ export default function EnhancedApiKeysPage() {
                       )}
                     </div>
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {provider.modelsCount || provider.models?.length || 0} models
+                  <div className="flex items-center space-x-3">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {provider.modelsCount || provider.models?.length || 0} models
+                    </div>
+                    <button className="text-gray-400 hover:text-gray-600">
+                      {expandedAvailableProviders[provider.id] ?
+                        <ChevronDown className="w-4 h-4" /> :
+                        <ChevronRight className="w-4 h-4" />
+                      }
+                    </button>
                   </div>
                 </div>
 
-                {/* Load and display models for this provider */}
-                {provider.models && provider.models.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-                    {provider.models.map((model) => (
-                      <div key={model.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3">
-                        <div className="font-medium text-gray-900 dark:text-white text-sm">
-                          {model.name}
-                        </div>
-                        {(model.pricing?.input || model.pricing?.output) && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            ${model.pricing.input?.toFixed(2) || '0.00'} / ${model.pricing.output?.toFixed(2) || '0.00'} per 1M tokens
+                {/* Only show models when expanded */}
+                {expandedAvailableProviders[provider.id] && (
+                  <div className="px-4 pb-4">
+                    {/* Load and display models for this provider */}
+                    {provider.models && provider.models.length > 0 && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                        {provider.models.map((model) => (
+                          <div key={model.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                            <div className="font-medium text-gray-900 dark:text-white text-sm">
+                              {model.name}
+                            </div>
+                            {(model.pricing?.input || model.pricing?.output) && (
+                              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                ${model.pricing.input?.toFixed(2) || '0.00'} / ${model.pricing.output?.toFixed(2) || '0.00'} per 1M tokens
+                              </div>
+                            )}
+                            {model.contextWindow && (
+                              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                {model.contextWindow.toLocaleString()} tokens
+                              </div>
+                            )}
+                            <div className="flex items-center space-x-2 mt-2">
+                              {(model.supportsVision || model.supports_vision) && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                  Vision
+                                </span>
+                              )}
+                              {(model.supportsTools || model.supports_tools) && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                  Tools
+                                </span>
+                              )}
+                              {(model.supportsReasoning || model.supports_reasoning) && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                  Reasoning
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        {model.contextWindow && (
-                          <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                            {model.contextWindow.toLocaleString()} tokens
-                          </div>
-                        )}
-                        <div className="flex items-center space-x-2 mt-2">
-                          {(model.supportsVision || model.supports_vision) && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                              Vision
-                            </span>
-                          )}
-                          {(model.supportsTools || model.supports_tools) && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                              Tools
-                            </span>
-                          )}
-                          {(model.supportsReasoning || model.supports_reasoning) && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                              Reasoning
-                            </span>
-                          )}
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )}
 
-                {/* Show loading state or fetch button for providers without models */}
-                {(!provider.models || provider.models.length === 0) && (
-                  <button
-                    onClick={() => fetchProviderModels(provider.id)}
-                    disabled={loadingModels[provider.id]}
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm disabled:opacity-50"
-                  >
-                    {loadingModels[provider.id] ? 'Loading models...' : 'Load models'}
-                  </button>
+                    {/* Show loading state or fetch button for providers without models */}
+                    {(!provider.models || provider.models.length === 0) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          fetchProviderModels(provider.id)
+                        }}
+                        disabled={loadingModels[provider.id]}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm disabled:opacity-50 mt-3"
+                      >
+                        {loadingModels[provider.id] ? 'Loading models...' : 'Load models'}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
