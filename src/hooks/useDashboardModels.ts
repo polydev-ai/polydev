@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { usePreferences } from './usePreferences'
 import { modelsDevClientService } from '../lib/models-dev-client'
 
 export interface DashboardModel {
@@ -26,7 +25,6 @@ export interface DashboardModel {
 }
 
 export function useDashboardModels() {
-  const { preferences, loading: preferencesLoading, error: preferencesError, refetch: refetchPreferences } = usePreferences()
   const [models, setModels] = useState<DashboardModel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,44 +32,37 @@ export function useDashboardModels() {
 
   useEffect(() => {
     const fetchDashboardModels = async () => {
-      if (preferencesLoading) return
-
-      if (preferencesError) {
-        setError(preferencesError)
-        setLoading(false)
-        return
-      }
-
       try {
         setLoading(true)
 
-        // If no preferences, expose no models
-        if (!preferences?.model_preferences || Object.keys(preferences.model_preferences).length === 0) {
-          console.log('[useDashboardModels] No model preferences found')
+        // Fetch API keys directly from the database instead of using model_preferences
+        const response = await fetch('/api/api-keys')
+        if (!response.ok) {
+          throw new Error('Failed to fetch API keys')
+        }
+
+        const { apiKeys } = await response.json()
+        console.log('[useDashboardModels] Fetched API keys:', apiKeys)
+
+        // If no API keys configured, show no models
+        if (!apiKeys || apiKeys.length === 0) {
+          console.log('[useDashboardModels] No API keys found')
           setModels([])
           setError(null)
           return
         }
-
-        console.log('[useDashboardModels] Processing model preferences:', preferences.model_preferences)
 
         const dashboardModels: DashboardModel[] = []
 
         // Normalize certain provider IDs to avoid duplicates and missing data
         const normalizeProviderId = (pid: string) => pid === 'xai' ? 'x-ai' : pid
 
-        for (const [rawProviderId, providerPref] of Object.entries(preferences.model_preferences)) {
-          const providerId = normalizeProviderId(rawProviderId)
-          if (!providerPref) continue
+        // Process each API key to create models
+        for (const apiKey of apiKeys) {
+          const providerId = normalizeProviderId(apiKey.provider)
+          const defaultModel = apiKey.default_model
 
-          // Normalize models list from preference record
-          let preferredModels: string[] = []
-          if (typeof providerPref === 'string') {
-            preferredModels = [providerPref]
-          } else if (typeof (providerPref as any) === 'object' && Array.isArray((providerPref as any).models)) {
-            preferredModels = (providerPref as any).models as string[]
-          }
-          if (preferredModels.length === 0) continue
+          if (!defaultModel) continue
 
           try {
             // Prefer rich provider data for accurate logos and pricing
@@ -126,110 +117,112 @@ export function useDashboardModels() {
               if (normalizedFid) modelLookup.set(normalizedFid, m)
             }
 
-            for (const mId of preferredModels) {
-              // Try direct and normalized matches first
-              const candidates = [
-                String(mId).toLowerCase(),
-                toFriendlyId(String(mId).toLowerCase()),
-              ]
+            // Process the default model from this API key
+            const mId = defaultModel
 
-              let modelData: any | undefined
-              for (const key of candidates) {
-                if (modelLookup.has(key)) {
-                  modelData = modelLookup.get(key)
-                  break
-                }
+            // Try direct and normalized matches first
+            const candidates = [
+              String(mId).toLowerCase(),
+              toFriendlyId(String(mId).toLowerCase()),
+            ]
+
+            let modelData: any | undefined
+            for (const key of candidates) {
+              if (modelLookup.has(key)) {
+                modelData = modelLookup.get(key)
+                break
               }
+            }
 
-              // If still not found, best-effort: query mapping API for pricing by friendly id
-              let mappingPricing: { input?: number; output?: number } | undefined
-              if (!modelData) {
-                try {
-                  const fid = toFriendlyId(String(mId))
-                  if (fid) {
-                    const mapResp = await fetch(`/api/models-dev/mappings?friendly_id=${encodeURIComponent(fid)}&provider_id=${encodeURIComponent(providerId)}`)
-                    if (mapResp.ok) {
-                      const mj = await mapResp.json()
-                      if (mj && mj.cost) {
-                        mappingPricing = {
-                          input: Number(mj.cost.input ?? 0),
-                          output: Number(mj.cost.output ?? 0),
-                        }
-                      } else if (mj && mj.pricing && (mj.pricing.input != null)) {
-                        mappingPricing = {
-                          input: Number(mj.pricing.input ?? 0),
-                          output: Number(mj.pricing.output ?? 0),
-                        }
+            // If still not found, best-effort: query mapping API for pricing by friendly id
+            let mappingPricing: { input?: number; output?: number } | undefined
+            if (!modelData) {
+              try {
+                const fid = toFriendlyId(String(mId))
+                if (fid) {
+                  const mapResp = await fetch(`/api/models-dev/mappings?friendly_id=${encodeURIComponent(fid)}&provider_id=${encodeURIComponent(providerId)}`)
+                  if (mapResp.ok) {
+                    const mj = await mapResp.json()
+                    if (mj && mj.cost) {
+                      mappingPricing = {
+                        input: Number(mj.cost.input ?? 0),
+                        output: Number(mj.cost.output ?? 0),
+                      }
+                    } else if (mj && mj.pricing && (mj.pricing.input != null)) {
+                      mappingPricing = {
+                        input: Number(mj.pricing.input ?? 0),
+                        output: Number(mj.pricing.output ?? 0),
                       }
                     }
                   }
-                } catch (_) {
-                  // ignore mapping failures
                 }
+              } catch (_) {
+                // ignore mapping failures
               }
+            }
 
-              if (modelData) {
-                const price = (modelData.input_cost_per_million != null && modelData.output_cost_per_million != null)
-                  ? { input: Number(modelData.input_cost_per_million), output: Number(modelData.output_cost_per_million) }
-                  : (mappingPricing && mappingPricing.input != null && mappingPricing.output != null
-                      ? { input: Number(mappingPricing.input), output: Number(mappingPricing.output) }
-                      : undefined)
-                
-                // Debug pricing
-                console.log(`[useDashboardModels] ${mId} pricing debug:`, {
-                  input_raw: modelData.input_cost_per_million,
-                  output_raw: modelData.output_cost_per_million,
-                  price_final: price,
-                  provider: providerId
-                })
-                
-                const modelEntry = {
-                  id: modelData.friendly_id || modelData.id,
-                  name: modelData.display_name || modelData.name,
-                  provider: providerId,
-                  providerName,
-                  providerLogo,
-                  // Avoid provider hardcoding; treat all added models as API-tier selections in UI
-                  tier: 'api' as const,
-                  // Normalize pricing to per 1M tokens in USD
-                  price,
-                  features: {
-                    supportsImages: modelData.supports_vision,
-                    supportsTools: modelData.supports_tools,
-                    supportsStreaming: modelData.supports_streaming,
-                    supportsReasoning: modelData.supports_reasoning
-                  },
-                  contextWindow: modelData.context_length,
-                  maxTokens: modelData.max_tokens,
-                  description: `${modelData.display_name || modelData.name} - ${providerName}`
-                }
-                dashboardModels.push(modelEntry)
-              } else {
-                // Minimal fallback entry if registry lacks details
-                dashboardModels.push({
-                  id: mId,
-                  name: formatModelName(mId),
-                  provider: providerId,
-                  providerName,
-                  providerLogo,
-                  tier: 'api',
-                  price: (mappingPricing && mappingPricing.input != null && mappingPricing.output != null)
+            if (modelData) {
+              const price = (modelData.input_cost_per_million != null && modelData.output_cost_per_million != null)
+                ? { input: Number(modelData.input_cost_per_million), output: Number(modelData.output_cost_per_million) }
+                : (mappingPricing && mappingPricing.input != null && mappingPricing.output != null
                     ? { input: Number(mappingPricing.input), output: Number(mappingPricing.output) }
-                    : undefined,
-                  description: `${formatModelName(mId)} - ${providerName}`
-                })
+                    : undefined)
+
+              // Debug pricing
+              console.log(`[useDashboardModels] ${mId} pricing debug:`, {
+                input_raw: modelData.input_cost_per_million,
+                output_raw: modelData.output_cost_per_million,
+                price_final: price,
+                provider: providerId
+              })
+
+              const modelEntry = {
+                id: modelData.friendly_id || modelData.id,
+                name: modelData.display_name || modelData.name,
+                provider: providerId,
+                providerName,
+                providerLogo,
+                tier: 'api' as const,
+                isConfigured: apiKey.active, // Mark as configured if API key is active
+                price,
+                features: {
+                  supportsImages: modelData.supports_vision,
+                  supportsTools: modelData.supports_tools,
+                  supportsStreaming: modelData.supports_streaming,
+                  supportsReasoning: modelData.supports_reasoning
+                },
+                contextWindow: modelData.context_length,
+                maxTokens: modelData.max_tokens,
+                description: `${modelData.display_name || modelData.name} - ${providerName}`
               }
+              dashboardModels.push(modelEntry)
+            } else {
+              // Minimal fallback entry if registry lacks details
+              dashboardModels.push({
+                id: mId,
+                name: formatModelName(mId),
+                provider: providerId,
+                providerName,
+                providerLogo,
+                tier: 'api',
+                isConfigured: apiKey.active,
+                price: (mappingPricing && mappingPricing.input != null && mappingPricing.output != null)
+                  ? { input: Number(mappingPricing.input), output: Number(mappingPricing.output) }
+                  : undefined,
+                description: `${formatModelName(mId)} - ${providerName}`
+              })
             }
           } catch (e) {
             console.warn(`[useDashboardModels] Failed to fetch provider/models for ${providerId}:`, e)
           }
         }
 
-        // Sort by provider order, then by name
-        const modelPreferences = preferences?.model_preferences || {}
+        // Sort by API key display_order, then by name
         dashboardModels.sort((a, b) => {
-          const aOrder = (modelPreferences[a.provider] as any)?.order ?? 999
-          const bOrder = (modelPreferences[b.provider] as any)?.order ?? 999
+          const aApiKey = apiKeys.find(k => normalizeProviderId(k.provider) === a.provider)
+          const bApiKey = apiKeys.find(k => normalizeProviderId(k.provider) === b.provider)
+          const aOrder = aApiKey?.display_order ?? 999
+          const bOrder = bApiKey?.display_order ?? 999
           if (aOrder !== bOrder) return aOrder - bOrder
           return a.name.localeCompare(b.name)
         })
@@ -246,17 +239,16 @@ export function useDashboardModels() {
     }
 
     fetchDashboardModels()
-  }, [preferences, preferencesLoading, preferencesError, refreshTrigger])
+  }, [refreshTrigger])
 
   const refresh = async () => {
-    await refetchPreferences()
     setRefreshTrigger(prev => prev + 1)
   }
 
   return {
     models,
-    loading: loading || preferencesLoading,
-    error: error || preferencesError,
+    loading,
+    error,
     hasModels: models.length > 0,
     refresh
   }
