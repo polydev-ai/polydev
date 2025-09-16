@@ -107,6 +107,7 @@ interface ModelsDevModel {
   supports_tools?: boolean
   supportsTools?: boolean
   supports_reasoning?: boolean
+  supportsReasoning?: boolean
   reasoning_levels?: number
   description?: string
   pricing?: {
@@ -1771,17 +1772,17 @@ export default function EnhancedApiKeysPage() {
                           </div>
                         )}
                         <div className="flex items-center space-x-2 mt-2">
-                          {model.supportsVision && (
+                          {(model.supportsVision || model.supports_vision) && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                               Vision
                             </span>
                           )}
-                          {model.supportsTools && (
+                          {(model.supportsTools || model.supports_tools) && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                               Tools
                             </span>
                           )}
-                          {model.supportsReasoning && (
+                          {(model.supportsReasoning || model.supports_reasoning) && (
                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                               Reasoning
                             </span>
