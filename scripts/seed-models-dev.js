@@ -135,10 +135,10 @@ async function seedModelsDevData() {
             provider_model_id: model.id,
             max_tokens: model.limit?.output || 4096,
             context_length: model.limit?.context || 32768,
-            input_cost_per_million: (model.cost?.input || 0) * 1000, // Convert to per million
-            output_cost_per_million: (model.cost?.output || 0) * 1000,
-            cache_read_cost_per_million: model.cost?.cache_read ? model.cost.cache_read * 1000 : null,
-            cache_write_cost_per_million: model.cost?.cache_write ? model.cost.cache_write * 1000 : null,
+            input_cost_per_million: model.cost?.input || 0, // Already in per million format
+            output_cost_per_million: model.cost?.output || 0,
+            cache_read_cost_per_million: model.cost?.cache_read || null,
+            cache_write_cost_per_million: model.cost?.cache_write || null,
             supports_vision: model.attachment || false,
             supports_tools: model.tool_call || false,
             supports_streaming: true,
