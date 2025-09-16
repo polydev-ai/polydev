@@ -482,12 +482,59 @@ export default function EnhancedApiKeysPage() {
     }
   }
 
+  // Auto-sync existing API key models to preferences
+  const syncExistingModelsToPreferences = async () => {
+    if (!user || !preferences || apiKeys.length === 0) return
+
+    console.log('[EnhancedApiKeys] Syncing existing API key models to preferences...')
+
+    let hasChanges = false
+    const currentPrefs = preferences.model_preferences || {}
+    const newPreferences = { ...currentPrefs }
+
+    // Go through all API keys and ensure their models are in preferences
+    for (const apiKey of apiKeys) {
+      if (apiKey.default_model && apiKey.provider && apiKey.active) {
+        const provider = apiKey.provider
+        const model = apiKey.default_model
+
+        // Initialize provider if it doesn't exist
+        if (!newPreferences[provider]) {
+          newPreferences[provider] = {
+            models: [],
+            order: Object.keys(newPreferences).length + 1
+          }
+        }
+
+        // Add model if it's not already in the list
+        if (!newPreferences[provider].models.includes(model)) {
+          newPreferences[provider].models.push(model)
+          hasChanges = true
+          console.log(`[EnhancedApiKeys] Auto-added model ${model} from provider ${provider}`)
+        }
+      }
+    }
+
+    // Update preferences if there were changes
+    if (hasChanges) {
+      console.log('[EnhancedApiKeys] Syncing preferences with new models:', newPreferences)
+      await updateUserPreferences({ model_preferences: newPreferences })
+    }
+  }
+
   useEffect(() => {
     if (user && !preferencesLoading) {
       fetchData()
       fetchApiKeyUsage()
     }
   }, [user, preferences, preferencesLoading])
+
+  // Sync existing models to preferences when API keys are loaded
+  useEffect(() => {
+    if (apiKeys.length > 0 && preferences && !preferencesLoading) {
+      syncExistingModelsToPreferences()
+    }
+  }, [apiKeys, preferences, preferencesLoading, user])
 
   // Preload models for existing providers in parallel
   useEffect(() => {
@@ -559,6 +606,7 @@ export default function EnhancedApiKeysPage() {
 
       // Update through the shared hook to trigger refresh across all components
       await updateUserPreferences({ model_preferences: newPreferences })
+      console.log('[EnhancedApiKeys] Updated model preferences:', newPreferences)
     } catch (err: any) {
       setError(err.message)
     }
@@ -574,10 +622,11 @@ export default function EnhancedApiKeysPage() {
 
   const addModelToProvider = async (provider: string, model: string) => {
     if (!preferences) return
-    
+
+    console.log(`[EnhancedApiKeys] Adding model ${model} to provider ${provider}`)
     const currentPref = preferences.model_preferences?.[provider] || { models: [], order: Object.keys(preferences.model_preferences || {}).length + 1 }
     const updatedModels = [...currentPref.models, model].filter((m, i, arr) => arr.indexOf(m) === i) // Remove duplicates
-    
+
     const newPreferences = {
       ...(preferences.model_preferences || {}),
       [provider]: {
@@ -585,18 +634,19 @@ export default function EnhancedApiKeysPage() {
         models: updatedModels
       }
     }
-    
+
     await updatePreferenceOrder(newPreferences)
   }
 
   const removeModelFromProvider = async (provider: string, model: string) => {
     if (!preferences) return
-    
+
+    console.log(`[EnhancedApiKeys] Removing model ${model} from provider ${provider}`)
     const currentPref = preferences.model_preferences?.[provider]
     if (!currentPref) return
-    
+
     const updatedModels = currentPref.models.filter(m => m !== model)
-    
+
     const newPreferences = {
       ...(preferences.model_preferences || {}),
       [provider]: {
@@ -604,7 +654,7 @@ export default function EnhancedApiKeysPage() {
         models: updatedModels
       }
     }
-    
+
     await updatePreferenceOrder(newPreferences)
   }
 
@@ -666,20 +716,42 @@ export default function EnhancedApiKeysPage() {
           is_preferred: formData.is_preferred,
           monthly_budget: formData.monthly_budget
         }
-        
+
         // Only include API key if user chose to update it
         if (updateApiKey && formData.api_key.trim()) {
           updateData.encrypted_key = btoa(formData.api_key)
-          updateData.key_preview = formData.api_key.length > 8 
+          updateData.key_preview = formData.api_key.length > 8
             ? `${formData.api_key.slice(0, 8)}...${formData.api_key.slice(-4)}`
             : `${formData.api_key.slice(0, 4)}***`
         }
-        
+
         response = await fetch(`/api/api-keys/${editingKey.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updateData)
         })
+
+        if (response.ok) {
+          // Handle model preference changes for existing API key
+          const previousPreferred = editingKey.is_preferred
+          const currentPreferred = formData.is_preferred
+
+          if (!previousPreferred && currentPreferred && formData.default_model && formData.provider) {
+            // Adding to preferences
+            await addModelToProvider(formData.provider, formData.default_model)
+          } else if (previousPreferred && !currentPreferred && editingKey.default_model && editingKey.provider) {
+            // Removing from preferences (use the old model in case it changed)
+            await removeModelFromProvider(editingKey.provider, editingKey.default_model)
+          } else if (currentPreferred && formData.default_model !== editingKey.default_model) {
+            // Model changed but still preferred - remove old, add new
+            if (editingKey.default_model && editingKey.provider) {
+              await removeModelFromProvider(editingKey.provider, editingKey.default_model)
+            }
+            if (formData.default_model && formData.provider) {
+              await addModelToProvider(formData.provider, formData.default_model)
+            }
+          }
+        }
       } else {
         // Create new API key
         response = await fetch('/api/api-keys', {
@@ -690,7 +762,12 @@ export default function EnhancedApiKeysPage() {
       }
       
       if (!response.ok) throw new Error('Failed to save API key')
-      
+
+      // If user checked "Add to my model preferences", add the model to their preferences
+      if (formData.is_preferred && formData.default_model && formData.provider) {
+        await addModelToProvider(formData.provider, formData.default_model)
+      }
+
       await fetchData()
       setShowAddForm(false)
       setEditingKey(null)
@@ -728,12 +805,26 @@ export default function EnhancedApiKeysPage() {
 
   const togglePreferred = async (id: string, currentPreferred: boolean) => {
     try {
+      // Find the API key to get its provider and model
+      const apiKey = apiKeys.find(key => key.id === id)
+      if (!apiKey) throw new Error('API key not found')
+
       const response = await fetch(`/api/api-keys/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_preferred: !currentPreferred })
       })
       if (!response.ok) throw new Error('Failed to update preference')
+
+      // Add or remove model from preferences based on the new preference state
+      if (!currentPreferred && apiKey.default_model && apiKey.provider) {
+        // Adding to preferences
+        await addModelToProvider(apiKey.provider, apiKey.default_model)
+      } else if (currentPreferred && apiKey.default_model && apiKey.provider) {
+        // Removing from preferences
+        await removeModelFromProvider(apiKey.provider, apiKey.default_model)
+      }
+
       await fetchData()
     } catch (err: any) {
       setError(err.message)

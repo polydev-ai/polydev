@@ -277,7 +277,7 @@ export default function SubscriptionPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${credits?.balance?.toFixed(2) || '0.00'}
+              ${((credits?.balance || 0) + (credits?.promotional_balance || 0)).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">
               {isPro ? 'Monthly allocation + purchased' : 'Available credits'}

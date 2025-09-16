@@ -46,10 +46,13 @@ export function useDashboardModels() {
 
         // If no preferences, expose no models
         if (!preferences?.model_preferences || Object.keys(preferences.model_preferences).length === 0) {
+          console.log('[useDashboardModels] No model preferences found')
           setModels([])
           setError(null)
           return
         }
+
+        console.log('[useDashboardModels] Processing model preferences:', preferences.model_preferences)
 
         const dashboardModels: DashboardModel[] = []
 

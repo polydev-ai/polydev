@@ -394,8 +394,8 @@ export default function CreditsPage() {
               Available credits
             </p>
             {creditBalance?.promotional_balance && creditBalance.promotional_balance > 0 && (
-              <p className="text-xs text-green-600 mt-1">
-                +${creditBalance.promotional_balance.toFixed(2)} promotional
+              <p className="text-xs text-muted-foreground mt-1">
+                ${(creditBalance?.balance || 0).toFixed(2)} regular + ${creditBalance.promotional_balance.toFixed(2)} promotional
               </p>
             )}
           </CardContent>
