@@ -1083,17 +1083,20 @@ export default function EnhancedApiKeysPage() {
                                       #{index + 1}
                                     </span>
                                     <div className="flex items-center space-x-2">
-                                      {providerData?.logoUrl && (
-                                        <img 
-                                          src={providerData.logoUrl} 
-                                          alt={providerConfig?.name || key.provider}
-                                          className="w-5 h-5 rounded"
-                                          onError={(e) => {
-                                            console.error(`Failed to load provider logo: ${providerData.logoUrl}`)
-                                            e.currentTarget.style.display = 'none'
-                                          }}
-                                        />
-                                      )}
+                                      {(() => {
+                                        const providerData = getProviderDisplayData(key.provider)
+                                        return providerData?.logoUrl && (
+                                          <img 
+                                            src={providerData.logoUrl} 
+                                            alt={providerConfig?.name || key.provider}
+                                            className="w-5 h-5 rounded"
+                                            onError={(e) => {
+                                              console.error(`Failed to load provider logo: ${providerData.logoUrl}`)
+                                              e.currentTarget.style.display = 'none'
+                                            }}
+                                          />
+                                        )
+                                      })()}
                                       <span className="font-medium text-gray-900 dark:text-white capitalize">
                                         {providerConfig?.name || key.provider}
                                       </span>
