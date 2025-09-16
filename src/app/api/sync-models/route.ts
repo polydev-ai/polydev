@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     // Get current preferences
     const { data: currentPrefs, error: prefsError } = await supabase
       .from('user_preferences')
-      .select('model_preferences')
+      .select('model_preferences, mcp_settings')
       .eq('user_id', user.id)
       .single()
 
