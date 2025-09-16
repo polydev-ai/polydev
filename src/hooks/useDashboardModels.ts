@@ -91,8 +91,8 @@ export function useDashboardModels() {
                     display_name: m.name,
                     context_length: m.contextWindow,
                     max_tokens: m.maxTokens,
-                    input_cost_per_million: m.pricing?.input ? m.pricing.input * 1000 : m.pricing?.input,
-                    output_cost_per_million: m.pricing?.output ? m.pricing.output * 1000 : m.pricing?.output,
+                    input_cost_per_million: m.pricing?.input,
+                    output_cost_per_million: m.pricing?.output,
                     supports_vision: m.supportsVision,
                     supports_tools: m.supportsTools,
                     supports_streaming: m.supportsStreaming,
@@ -151,13 +151,13 @@ export function useDashboardModels() {
                       const mj = await mapResp.json()
                       if (mj && mj.cost) {
                         mappingPricing = {
-                          input: Number(mj.cost.input ?? 0) * 1000,
-                          output: Number(mj.cost.output ?? 0) * 1000,
+                          input: Number(mj.cost.input ?? 0),
+                          output: Number(mj.cost.output ?? 0),
                         }
                       } else if (mj && mj.pricing && (mj.pricing.input != null)) {
                         mappingPricing = {
-                          input: Number(mj.pricing.input ?? 0) * 1000,
-                          output: Number(mj.pricing.output ?? 0) * 1000,
+                          input: Number(mj.pricing.input ?? 0),
+                          output: Number(mj.pricing.output ?? 0),
                         }
                       }
                     }

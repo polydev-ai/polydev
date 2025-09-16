@@ -52,34 +52,40 @@ export async function POST(request: NextRequest) {
     }
 
     const modelPreferences = currentPrefs?.model_preferences || {}
-    const newPreferences = { ...modelPreferences }
+    const mcpSettings = currentPrefs?.mcp_settings || {}
+
+    // Clear existing preferences and rebuild from active API keys only
+    const newPreferences: any = {}
+    const newSavedChatModels: string[] = []
     let hasChanges = false
     const syncedModels: string[] = []
 
     // Auto-sync models from API keys
+    let order = 1
     for (const apiKey of apiKeys) {
       if (apiKey.default_model && apiKey.provider && apiKey.active) {
         const provider = apiKey.provider
         const model = apiKey.default_model
 
-        // Initialize provider if it doesn't exist
-        if (!newPreferences[provider]) {
-          newPreferences[provider] = {
-            models: [],
-            order: Object.keys(newPreferences).length + 1
-          }
-          console.log(`[sync-models] Initialized provider ${provider}`)
+        // Initialize provider
+        newPreferences[provider] = {
+          models: [model],
+          order: order++
         }
 
-        // Add model if it's not already in the list
-        if (!newPreferences[provider].models.includes(model)) {
-          newPreferences[provider].models.push(model)
-          hasChanges = true
-          syncedModels.push(`${provider}/${model}`)
-          console.log(`[sync-models] Auto-added model ${model} from provider ${provider}`)
-        }
+        // Add to saved chat models
+        newSavedChatModels.push(model)
+
+        syncedModels.push(`${provider}/${model}`)
+        console.log(`[sync-models] Synced model ${model} from provider ${provider}`)
       }
     }
+
+    // Check if preferences changed
+    const currentSavedModels = mcpSettings?.saved_chat_models || []
+    const prefsChanged = JSON.stringify(modelPreferences) !== JSON.stringify(newPreferences)
+    const chatModelsChanged = JSON.stringify(currentSavedModels.sort()) !== JSON.stringify(newSavedChatModels.sort())
+    hasChanges = prefsChanged || chatModelsChanged
 
     // Update preferences if there were changes
     if (hasChanges) {
@@ -90,6 +96,10 @@ export async function POST(request: NextRequest) {
         .upsert({
           user_id: user.id,
           model_preferences: newPreferences,
+          mcp_settings: {
+            ...mcpSettings,
+            saved_chat_models: newSavedChatModels
+          },
           updated_at: new Date().toISOString()
         })
 
