@@ -119,7 +119,7 @@ interface ModelsDevModel {
 
 export default function EnhancedApiKeysPage() {
   const { user, loading: authLoading } = useAuth()
-  const { preferences, updatePreferences: updateUserPreferences, loading: preferencesLoading } = usePreferences()
+  const { preferences, updatePreferences: updateUserPreferences, loading: preferencesLoading, refetch: refetchPreferences } = usePreferences()
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [legacyProviders, setLegacyProviders] = useState<Record<string, any>>({})
