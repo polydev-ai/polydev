@@ -235,7 +235,7 @@ export default function SubscriptionPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {messageUsage?.messages_sent || 0}
-              {!isPro && ` / ${messageUsage?.messages_limit || 50}`}
+              {!isPro && ` / ${messageUsage?.messages_limit || 200}`}
             </div>
             <p className="text-xs text-muted-foreground">
               {isPro ? 'Unlimited messages' : 'Messages this month'}
@@ -301,7 +301,7 @@ export default function SubscriptionPage() {
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                50 messages per month
+                {messageUsage?.messages_limit || 200} messages per month
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />

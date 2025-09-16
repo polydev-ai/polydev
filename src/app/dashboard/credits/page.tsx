@@ -66,7 +66,7 @@ interface BudgetInfo {
 // Helper function for safe date formatting
 const formatSafeDate = (dateString: string | null | undefined) => {
   if (!dateString) return 'Unknown date'
-  
+
   try {
     const date = typeof dateString === 'string' ? parseISO(dateString) : new Date(dateString)
     if (!isValid(date)) return 'Invalid date'
@@ -74,6 +74,46 @@ const formatSafeDate = (dateString: string | null | undefined) => {
   } catch (error) {
     console.warn('Invalid date:', dateString)
     return 'Invalid date'
+  }
+}
+
+// Provider logo mapping using real models.dev logos
+const getProviderLogo = (provider: string, providersRegistry: Array<{ id: string, name: string, logo_url: string, display_name: string }>) => {
+  const providerKey = provider?.toLowerCase() || ''
+  const providerInfo = providersRegistry.find(p =>
+    p.id === providerKey ||
+    p.name.toLowerCase() === providerKey ||
+    providerKey.includes(p.id)
+  )
+  return providerInfo?.logo_url || 'https://models.dev/logos/default.svg'
+}
+
+// Get model logo based on actual model provider
+const getModelLogo = (model: string, provider: string, providersRegistry: Array<{ id: string, name: string, logo_url: string, display_name: string }>, modelsRegistry: Array<{ id: string, name: string, provider_id: string, actual_provider: string }>) => {
+  // Find the model in the registry
+  const modelInfo = modelsRegistry.find(m => m.id === model || m.name === model)
+
+  if (modelInfo?.actual_provider) {
+    // Use the actual provider (e.g., "anthropic" for Claude models)
+    return getProviderLogo(modelInfo.actual_provider, providersRegistry)
+  }
+
+  // Fallback to session provider
+  return getProviderLogo(provider, providersRegistry)
+}
+
+// Format timestamp with proper error handling
+const formatTimestamp = (timestamp: string | null | undefined): string => {
+  if (!timestamp) return '—'
+
+  try {
+    const date = new Date(timestamp)
+    if (isNaN(date.getTime())) {
+      return '—'
+    }
+    return date.toLocaleString()
+  } catch (error) {
+    return '—'
   }
 }
 
@@ -95,9 +135,14 @@ export default function CreditsPage() {
   const [csUseCustomRange, setCsUseCustomRange] = useState(false)
   const [csFromDate, setCsFromDate] = useState<string>('')
   const [csToDate, setCsToDate] = useState<string>('')
+  // Provider registry data
+  const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo_url: string, display_name: string }>>([])
+  const [modelsRegistry, setModelsRegistry] = useState<Array<{ id: string, name: string, provider_id: string, actual_provider: string }>>([])
 
   useEffect(() => {
     fetchCreditData()
+    fetchProvidersRegistry()
+    fetchModelsRegistry()
   }, [])
 
   const fetchCreditData = async () => {
@@ -152,6 +197,30 @@ export default function CreditsPage() {
       toast.error('Failed to initiate purchase')
     } finally {
       setPurchasing(false)
+    }
+  }
+
+  const fetchProvidersRegistry = async () => {
+    try {
+      const response = await fetch('/api/providers/registry')
+      if (response.ok) {
+        const data = await response.json()
+        setProvidersRegistry(data.providers || [])
+      }
+    } catch (error) {
+      console.error('Error fetching providers registry:', error)
+    }
+  }
+
+  const fetchModelsRegistry = async () => {
+    try {
+      const response = await fetch('/api/models/registry')
+      if (response.ok) {
+        const data = await response.json()
+        setModelsRegistry(data.models || [])
+      }
+    } catch (error) {
+      console.error('Error fetching models registry:', error)
     }
   }
 
@@ -440,7 +509,7 @@ export default function CreditsPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">
-          <AnalyticsDashboard creditBalance={creditBalance} />
+          <AnalyticsDashboard creditBalance={creditBalance} providersRegistry={providersRegistry} modelsRegistry={modelsRegistry} />
 
           {/* Credit Usage Only */}
           <Card className="lg:col-span-2">
@@ -528,8 +597,20 @@ export default function CreditsPage() {
                   <tbody>
                     {creditSessions.map((u: any) => (
                       <tr key={u.id} className="border-t border-gray-200 dark:border-gray-700">
-                        <td className="py-2 pr-4">{new Date(u.timestamp || u.date).toLocaleString()}</td>
-                        <td className="py-2 pr-4">{u.provider || '—'} / {u.model || '—'}</td>
+                        <td className="py-2 pr-4">{formatTimestamp(u.timestamp || u.date)}</td>
+                        <td className="py-2 pr-4">
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md">
+                              <img src={getProviderLogo(u.provider, providersRegistry)} alt={u.provider} className="w-3 h-3" />
+                              <span className="text-xs font-medium">{u.provider || '—'}</span>
+                            </div>
+                            <span className="text-muted-foreground text-xs">→</span>
+                            <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+                              <img src={getModelLogo(u.model, u.provider, providersRegistry, modelsRegistry)} alt={u.model} className="w-3 h-3" />
+                              <span className="text-xs font-medium">{u.model || '—'}</span>
+                            </div>
+                          </div>
+                        </td>
                         <td className="py-2 pr-4">{u.app || '—'}</td>
                         <td className="py-2 pr-4">{u.tokens?.toLocaleString?.() || u.tokens || 0}</td>
                         <td className="py-2 pr-4">${(u.cost || 0).toFixed(4)}</td>
@@ -676,7 +757,15 @@ function BudgetSettings({ budgetInfo, onUpdate }: { budgetInfo: BudgetInfo | nul
 }
 
 // Analytics Dashboard Component (simplified for now)
-function AnalyticsDashboard({ creditBalance }: { creditBalance: CreditBalance | null }) {
+function AnalyticsDashboard({
+  creditBalance,
+  providersRegistry,
+  modelsRegistry
+}: {
+  creditBalance: CreditBalance | null,
+  providersRegistry: Array<{ id: string, name: string, logo_url: string, display_name: string }>,
+  modelsRegistry: Array<{ id: string, name: string, provider_id: string, actual_provider: string }>
+}) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>
@@ -710,7 +799,10 @@ function AnalyticsDashboard({ creditBalance }: { creditBalance: CreditBalance | 
             {creditBalance?.analytics.topModels?.length ? (
               creditBalance.analytics.topModels.map((model: any, index) => (
                 <div key={index} className="flex items-center justify-between p-2 border rounded">
-                  <span className="font-medium">{model.model}</span>
+                  <div className="flex items-center gap-2">
+                    <img src={getModelLogo(model.model, '', providersRegistry, modelsRegistry)} alt={model.model} className="w-4 h-4" />
+                    <span className="font-medium">{model.model}</span>
+                  </div>
                   <span className="text-sm text-muted-foreground">
                     {model.requests} requests • ${model.cost.toFixed(4)}
                   </span>
