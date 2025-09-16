@@ -153,6 +153,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       balance: userCredits.balance || 0,
+      promotional_balance: userCredits.promotional_balance || 0,
       totalPurchased: userCredits.total_purchased || 0,
       totalSpent: userCredits.total_spent || 0,
       hasOpenRouterKey: false,

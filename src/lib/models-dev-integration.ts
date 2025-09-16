@@ -427,7 +427,16 @@ class ModelsDevService {
 
   async getModelPricing(friendlyId: string, providerId: string): Promise<ModelsDevModel['cost'] | null> {
     const mapping = await this.getModelByFriendlyId(friendlyId)
-    return mapping?.providers[providerId]?.cost || null
+    const cost = mapping?.providers[providerId]?.cost
+    if (!cost) return null
+
+    // Note: model_mappings table has values 1000x higher than they should be, so divide by 1000
+    return {
+      input: cost.input ? cost.input / 1000 : 0,
+      output: cost.output ? cost.output / 1000 : 0,
+      cache_read: cost.cache_read ? cost.cache_read / 1000 : null,
+      cache_write: cost.cache_write ? cost.cache_write / 1000 : null
+    }
   }
 
   async getModelLimits(friendlyId: string, providerId: string): Promise<{ maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } | null> {
@@ -452,10 +461,11 @@ class ModelsDevService {
       }
 
       // Add pricing if available (values are USD per 1M tokens)
+      // Note: model_mappings table has values 1000x higher than they should be, so divide by 1000
       if (providerMapping.cost && (providerMapping.cost.input != null) && (providerMapping.cost.output != null)) {
         result.pricing = {
-          input: Number(providerMapping.cost.input),
-          output: Number(providerMapping.cost.output)
+          input: Number(providerMapping.cost.input) / 1000,
+          output: Number(providerMapping.cost.output) / 1000
         }
       }
 

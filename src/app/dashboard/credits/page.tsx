@@ -22,6 +22,7 @@ import { formatDistanceToNow, isValid, parseISO } from 'date-fns'
 
 interface CreditBalance {
   balance: number
+  promotional_balance: number
   totalPurchased: number
   totalSpent: number
   hasOpenRouterKey: boolean
@@ -392,6 +393,11 @@ export default function CreditsPage() {
             <p className="text-xs text-muted-foreground">
               Available credits
             </p>
+            {creditBalance?.promotional_balance && creditBalance.promotional_balance > 0 && (
+              <p className="text-xs text-green-600 mt-1">
+                +${creditBalance.promotional_balance.toFixed(2)} promotional
+              </p>
+            )}
           </CardContent>
         </Card>
         

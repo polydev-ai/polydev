@@ -21,11 +21,22 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({ error: 'Provider mapping not found' }, { status: 404 })
         }
 
+        // Apply pricing correction - model_mappings table has values 1000x higher than they should be
+        const correctedMapping = { ...providerMapping }
+        if (correctedMapping.cost) {
+          correctedMapping.cost = {
+            input: correctedMapping.cost.input ? correctedMapping.cost.input / 1000 : 0,
+            output: correctedMapping.cost.output ? correctedMapping.cost.output / 1000 : 0,
+            cache_read: correctedMapping.cost.cache_read ? correctedMapping.cost.cache_read / 1000 : null,
+            cache_write: correctedMapping.cost.cache_write ? correctedMapping.cost.cache_write / 1000 : null
+          }
+        }
+
         return NextResponse.json({
           friendly_id: mapping.friendly_id,
           display_name: mapping.display_name,
           provider_id: providerId,
-          ...providerMapping
+          ...correctedMapping
         })
       }
 
