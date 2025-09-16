@@ -65,17 +65,32 @@ export default function Chat() {
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Set selected models directly from dashboard models (same as models page)
+  // Set selected models from saved preferences or fallback to all configured models
   useEffect(() => {
-    if (dashboardModels.length > 0) {
-      // Get all configured API key models (same logic as models page)
+    if (dashboardModels.length > 0 && preferences) {
+      const savedChatModels = preferences.mcp_settings?.saved_chat_models
+
+      if (savedChatModels && savedChatModels.length > 0) {
+        // Filter saved models to only include those that are still configured
+        const validSavedModels = savedChatModels.filter(modelId =>
+          dashboardModels.some(model => model.id === modelId && model.isConfigured)
+        )
+
+        if (validSavedModels.length > 0) {
+          console.log('[Chat] Loading saved model selections from preferences:', validSavedModels)
+          setSelectedModels(validSavedModels)
+          return
+        }
+      }
+
+      // Fallback: Get all configured API key models (same logic as models page)
       const configuredModels = dashboardModels.filter(model => model.isConfigured)
       const modelIds = configuredModels.map(m => m.id)
 
-      console.log('[Chat] Loading models from dashboard (same as models page):', modelIds)
+      console.log('[Chat] No saved selections, loading all configured models:', modelIds)
       setSelectedModels(modelIds)
     }
-  }, [dashboardModels])
+  }, [dashboardModels, preferences])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

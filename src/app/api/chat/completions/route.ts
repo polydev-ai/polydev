@@ -271,15 +271,15 @@ function parseUsageData(response: any): any {
   return null
 }
 
-async function authenticateRequest(request: NextRequest): Promise<{ user: any; preferences: any } | null> {
+async function authenticateRequest(request: NextRequest): Promise<{ user: any } | null> {
   const supabase = await createClient()
-  
+
   // Check for MCP API key in Authorization header
   const authorization = request.headers.get('Authorization')
   if (authorization?.startsWith('Bearer pd_')) {
     const apiKey = authorization.replace('Bearer ', '')
     const tokenHash = createHash('sha256').update(apiKey).digest('hex')
-    
+
     // Find user by token hash
     const { data: token, error } = await supabase
       .from('mcp_user_tokens')
@@ -287,53 +287,30 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
       .eq('token_hash', tokenHash)
       .eq('active', true)
       .single()
-    
+
     if (error || !token) {
       return null
     }
-    
+
     // Update last_used_at
     await supabase
       .from('mcp_user_tokens')
       .update({ last_used_at: new Date().toISOString() })
       .eq('token_hash', tokenHash)
-    
-    // Get user preferences - NO HARDCODED DEFAULTS
-    const { data: preferences } = await supabase
-      .from('user_preferences')
-      .select('*')
-      .eq('user_id', token.user_id)
-      .single()
-    
-    if (!preferences) {
-      throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
-    }
-    
+
     return {
-      user: { id: token.user_id },
-      preferences
+      user: { id: token.user_id }
     }
   }
-  
+
   // Check for web session
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) {
     return null
   }
-  
-  const { data: preferences } = await supabase
-    .from('user_preferences')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
-  
-  if (!preferences) {
-    throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
-  }
-  
+
   return {
-    user,
-    preferences
+    user
   }
 }
 
@@ -381,7 +358,7 @@ async function resolveProviderModelId(inputModelId: string, providerId: string):
   }
 }
 
-async function getProviderFromModel(model: string, supabase: any, userId?: string): Promise<string> {
+async function getProviderFromModel(model: string, supabase: any, userId: string): Promise<string> {
   try {
     // Get all providers that support this model from models_registry
     const { data: modelProviders } = await supabase
@@ -389,71 +366,67 @@ async function getProviderFromModel(model: string, supabase: any, userId?: strin
       .select('provider_id')
       .eq('friendly_id', model)
       .eq('is_active', true)
-    
+
     if (!modelProviders || modelProviders.length === 0) {
       console.log(`No providers found for model: ${model} in models_registry`)
-      // Fall back to user preferences to determine provider
-      if (userId) {
-        const { data: userPrefs } = await supabase
-          .from('user_preferences')
-          .select('model_preferences')
-          .eq('user_id', userId)
-          .single()
-        
-        if (userPrefs?.model_preferences) {
-          // Find which provider the user has configured this model under
-          for (const [providerId, providerConfig] of Object.entries(userPrefs.model_preferences)) {
-            const config = providerConfig as any
-            if (config?.models?.includes(model)) {
-              console.log(`Found model ${model} in user preferences under provider: ${providerId}`)
-              return providerId
-            }
-          }
-        }
-      }
-      
-      console.warn(`Model ${model} not found in registry or user preferences, falling back to openai`)
-      return 'openai'
+      return 'openrouter' // Default fallback
     }
-    
-    // If we have a user ID, check their preferences to determine which provider they want to use for this model
-    if (userId) {
-      const { data: userPrefs } = await supabase
-        .from('user_preferences')
-        .select('model_preferences')
-        .eq('user_id', userId)
-        .single()
-      
-      if (userPrefs?.model_preferences) {
-        // Check each provider in user's preference order to see if they have this model configured
-        const modelPrefs = userPrefs.model_preferences
-        
-        // Sort providers by user's preference order
-        const sortedProviders = Object.entries(modelPrefs)
-          .sort(([,a], [,b]) => ((a as any)?.order || 999) - ((b as any)?.order || 999))
-        
-        for (const [providerKey, providerConfig] of sortedProviders) {
-          // Check if this provider supports the requested model and user has it in their preferences
-          const isProviderInRegistry = modelProviders.some((mp: any) => 
-            mp.provider_id === providerKey
+
+    // Get user's API keys to determine which providers they have configured
+    const { data: userApiKeys } = await supabase
+      .from('user_api_keys')
+      .select('provider, default_model, display_order, active')
+      .eq('user_id', userId)
+      .eq('active', true)
+
+    if (userApiKeys && userApiKeys.length > 0) {
+      // Normalize provider IDs
+      const normalizeProviderId = (pid: string) => pid === 'xai' ? 'x-ai' : pid
+
+      // Check if any user's API key has this model as default_model
+      for (const apiKey of userApiKeys) {
+        const normalizedProvider = normalizeProviderId(apiKey.provider)
+        if (apiKey.default_model === model) {
+          // Verify this provider actually supports the model in registry
+          const isProviderInRegistry = modelProviders.some((mp: any) =>
+            normalizeProviderId(mp.provider_id) === normalizedProvider
           )
-          
-          if (isProviderInRegistry && (providerConfig as any)?.models?.includes(model)) {
-            console.log(`Found user preferred provider for ${model}: ${providerKey}`)
-            return providerKey
+
+          if (isProviderInRegistry) {
+            console.log(`Found user preferred provider for ${model}: ${normalizedProvider}`)
+            return normalizedProvider
           }
         }
       }
+
+      // If no direct match, check if any configured provider supports this model
+      const userProviders = userApiKeys
+        .map((key: any) => normalizeProviderId(key.provider))
+        .sort((a: string, b: string) => {
+          const aApiKey = userApiKeys.find((k: any) => normalizeProviderId(k.provider) === a)
+          const bApiKey = userApiKeys.find((k: any) => normalizeProviderId(k.provider) === b)
+          return (aApiKey?.display_order ?? 999) - (bApiKey?.display_order ?? 999)
+        })
+
+      for (const userProvider of userProviders) {
+        const isProviderInRegistry = modelProviders.some((mp: any) =>
+          normalizeProviderId(mp.provider_id) === userProvider
+        )
+
+        if (isProviderInRegistry) {
+          console.log(`Found configured provider for ${model}: ${userProvider}`)
+          return userProvider
+        }
+      }
     }
-    
-    // If no user preference found, return the first available provider
-    const firstProvider = modelProviders[0]
-    console.log(`Using first available provider for ${model}: ${firstProvider.provider_id}`)
-    return firstProvider.provider_id
+
+    // If no user API key found, return the first provider from the registry
+    const firstProvider = modelProviders[0].provider_id
+    console.log(`Using first available provider for ${model}: ${firstProvider}`)
+    return firstProvider
   } catch (error) {
-    console.warn(`Failed to lookup provider for model ${model}:`, error)
-    console.log(`Model ${model} not found in models_registry. Consider checking for similar models or updating the registry.`)
-    return 'openai' // Fallback to OpenAI
+    console.error(`Error determining provider for model ${model}:`, error)
+    return 'openrouter' // Safe fallback
   }
 }
 
@@ -467,7 +440,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { user, preferences } = authResult
+    const { user } = authResult
     const supabase = await createClient()
     
     // Parse request body - support both OpenAI format and Polydev format  
@@ -507,11 +480,26 @@ export async function POST(request: NextRequest) {
       // Polydev format - multiple models (no limit)
       targetModels = models
     } else {
-      // No model specified - use user's preferred models from dashboard
-      if (!preferences.default_model) {
-        throw new Error('No model specified and no default model configured. Please set up models at https://www.polydev.ai/dashboard/models')
+      // No model specified - get models from user's configured API keys
+      const { data: userApiKeys } = await supabase
+        .from('user_api_keys')
+        .select('provider, default_model, display_order, active')
+        .eq('user_id', user.id)
+        .eq('active', true)
+        .order('display_order', { ascending: true })
+
+      if (!userApiKeys || userApiKeys.length === 0) {
+        throw new Error('No model specified and no API keys configured. Please set up models at https://www.polydev.ai/dashboard/models')
       }
-      targetModels = [preferences.default_model]
+
+      // Use all default models from configured API keys
+      targetModels = userApiKeys
+        .filter(key => key.default_model)
+        .map(key => key.default_model)
+
+      if (targetModels.length === 0) {
+        throw new Error('No default models configured in API keys. Please set up models at https://www.polydev.ai/dashboard/models')
+      }
     }
     
     // PRIORITY SYSTEM: CLI > API KEYS > OPENROUTER (CREDITS)
@@ -662,7 +650,7 @@ export async function POST(request: NextRequest) {
           // Kick off all model streams concurrently
           const tasks = targetModels.map(async (friendlyModelId) => {
             try {
-              const { requiredProvider, selectedProvider, selectedConfig, fallbackMethod, actualModelId } = await selectProviderForModel(friendlyModelId)
+              let { requiredProvider, selectedProvider, selectedConfig, fallbackMethod, actualModelId } = await selectProviderForModel(friendlyModelId)
               if (!selectedProvider) {
                 // Provider selection failed – clarify if credits can't support due to missing OpenRouter mapping
                 let message = 'No available provider'
@@ -737,8 +725,64 @@ export async function POST(request: NextRequest) {
                 upstream = await apiManager.streamMessage(selectedProvider, apiOptions)
               } catch (err: any) {
                 console.error(`[error] Stream start failed for ${selectedProvider} ${actualModelId}:`, err?.message || err)
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: err?.message || 'Stream error', provider: selectedProvider })}\n\n`))
-                return
+
+                // Check if this is a 401 error and we have credits available for retry
+                const is401Error = err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('No auth credentials')
+                if (is401Error && fallbackMethod !== 'credits' && totalCredits > 0) {
+                  console.log(`[401 Retry] Attempting to retry ${friendlyModelId} with credits after 401 error`)
+
+                  try {
+                    // Try to get OpenRouter model ID for credits fallback
+                    const openrouterModelId = await resolveProviderModelId(friendlyModelId, 'openrouter')
+                    if (openrouterModelId !== friendlyModelId) {
+                      // Update to use credits
+                      selectedProvider = 'openrouter'
+                      selectedConfig = {
+                        type: 'credits',
+                        priority: 3,
+                        apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '',
+                        baseUrl: 'https://openrouter.ai/api/v1'
+                      }
+                      fallbackMethod = 'credits'
+                      actualModelId = openrouterModelId
+
+                      // Update API options for credits retry
+                      apiOptions = {
+                        messages: messages.map((msg: any) => ({ role: msg.role, content: msg.content })),
+                        model: actualModelId,
+                        temperature,
+                        maxTokens: max_tokens,
+                        stream: true,
+                        apiKey: selectedConfig.apiKey,
+                        metadata: { applicationName: 'https://www.polydev.ai', siteUrl: 'Polydev Multi-LLM Platform' }
+                      }
+
+                      // Apply OpenAI-compatible streaming options for OpenRouter
+                      ;(apiOptions as any).streamOptions = { include_usage: true }
+                      ;(apiOptions as any).stream_options = { include_usage: true }
+
+                      console.log(`[401 Retry] Retrying ${friendlyModelId} -> ${actualModelId} on OpenRouter with credits`)
+                      upstream = await apiManager.streamMessage(selectedProvider, apiOptions)
+
+                      // Update collected info to reflect the credits fallback
+                      collected[friendlyModelId].provider = selectedProvider
+                      collected[friendlyModelId].fallback = fallbackMethod
+                    } else {
+                      // No OpenRouter mapping available
+                      console.error(`[401 Retry] No OpenRouter mapping available for ${friendlyModelId}`)
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: `API key failed and no credits mapping available for ${friendlyModelId}`, provider: selectedProvider })}\n\n`))
+                      return
+                    }
+                  } catch (retryErr: any) {
+                    console.error(`[401 Retry] Credits retry failed for ${friendlyModelId}:`, retryErr?.message || retryErr)
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: `API key failed and credits retry failed: ${retryErr?.message || 'Unknown error'}`, provider: selectedProvider })}\n\n`))
+                    return
+                  }
+                } else {
+                  // Not a 401 error or no credits available
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: err?.message || 'Stream error', provider: selectedProvider })}\n\n`))
+                  return
+                }
               }
 
               collected[friendlyModelId].provider = selectedProvider
@@ -1759,12 +1803,114 @@ export async function POST(request: NextRequest) {
           }
         } catch (error: any) {
           console.error(`Error with ${selectedProvider} for model ${modelId}:`, error)
-          
+
+          // Check if this is a 401 error and we have credits available for immediate retry
+          const is401Error = error?.message?.includes('401') || error?.message?.includes('Unauthorized') || error?.message?.includes('No auth credentials')
+          if (is401Error && fallbackMethod !== 'credits' && totalCredits > 0) {
+            console.log(`[401 Retry] Attempting to retry ${modelId} with credits after 401 error`)
+
+            try {
+              // Try to get OpenRouter model ID for credits fallback
+              const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
+              if (openrouterModelId !== modelId) {
+                const apiOptions: any = {
+                  messages: messages.map((msg: any) => ({
+                    role: msg.role,
+                    content: msg.content
+                  })),
+                  model: openrouterModelId,
+                  temperature: adjustedTemperature,
+                  maxTokens: adjustedMaxTokens,
+                  stream,
+                  apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '',
+                  metadata: { applicationName: 'https://www.polydev.ai', siteUrl: 'Polydev Multi-LLM Platform' }
+                }
+
+                // Add reasoning effort for reasoning models if supported
+                if (modelData?.supports_reasoning && reasoning_effort) {
+                  apiOptions.reasoning_effort = reasoning_effort
+                }
+
+                console.log(`[401 Retry] Retrying ${modelId} -> ${openrouterModelId} on OpenRouter with credits`)
+                const response = await apiManager.createMessage('openrouter', apiOptions)
+
+                // Handle the response same as normal OpenRouter processing
+                let result
+                const contentType = response.headers.get('content-type') || ''
+
+                if (contentType.includes('application/json')) {
+                  try {
+                    result = await response.json()
+                  } catch (parseError) {
+                    console.error(`[401 Retry] Failed to parse OpenRouter credits response:`, parseError)
+                    throw new Error(`Invalid JSON response from OpenRouter credits retry`)
+                  }
+                } else {
+                  console.error(`[401 Retry] OpenRouter credits returned non-JSON response with content-type: ${contentType}`)
+                  const textResult = await response.text()
+                  throw new Error(`Expected JSON response from OpenRouter credits retry, got: ${textResult.substring(0, 200)}`)
+                }
+
+                if (response.ok) {
+                  console.log(`[401 Retry] Credits retry successful for ${modelId}`)
+
+                  // Calculate and deduct credits cost
+                  const usage = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+                  let creditsUsed = 0
+                  let cost = null
+                  if (modelPricing && usage && (usage.prompt_tokens > 0 || usage.completion_tokens > 0)) {
+                    const totalCostUsd = computeCostUSD(usage.prompt_tokens || 0, usage.completion_tokens || 0, modelPricing.input, modelPricing.output)
+                    const inputCost = ((usage.prompt_tokens || 0) / 1000000) * modelPricing.input
+                    const outputCost = ((usage.completion_tokens || 0) / 1000000) * modelPricing.output
+                    cost = {
+                      input_cost: Number(inputCost.toFixed(6)),
+                      output_cost: Number(outputCost.toFixed(6)),
+                      total_cost: totalCostUsd
+                    }
+                    creditsUsed = totalCostUsd
+
+                    // Deduct credits
+                    try {
+                      const supabase = await createClient()
+                      const { error: creditError } = await supabase.rpc('deduct_user_credits', {
+                        p_user_id: user.id,
+                        p_amount: totalCostUsd
+                      })
+                      if (creditError) {
+                        console.warn('[401 Retry] Failed to deduct user credits:', creditError)
+                      }
+                    } catch (creditErr) {
+                      console.warn('[401 Retry] Failed to deduct user credits:', creditErr)
+                    }
+                  }
+
+                  return {
+                    model: modelId,
+                    content: result.choices?.[0]?.message?.content || '',
+                    usage: usage,
+                    costInfo: cost,
+                    provider: 'OpenRouter (Credits - 401 Retry)',
+                    fallback_method: 'credits',
+                    credits_used: creditsUsed
+                  }
+                } else {
+                  throw new Error(`OpenRouter credits retry failed: ${result?.error?.message || 'Unknown error'}`)
+                }
+              } else {
+                console.error(`[401 Retry] No OpenRouter mapping available for ${modelId}`)
+                // Fall through to normal error handling
+              }
+            } catch (retryErr: any) {
+              console.error(`[401 Retry] Credits retry failed for ${modelId}:`, retryErr?.message || retryErr)
+              // Fall through to normal error handling
+            }
+          }
+
           // Check for API key exhaustion before attempting fallbacks
           const exhaustionCheck = ResponseValidator.checkApiKeyExhaustion(error.message || '', requiredProvider)
           if (exhaustionCheck.isExhausted) {
             console.warn(`[API Key Exhaustion] ${requiredProvider}: ${exhaustionCheck.message}`)
-            
+
             // Skip fallbacks to same provider if it's a permanent issue
             if (exhaustionCheck.isPermanent && fallbackMethod === 'cli') {
               console.log(`Permanent exhaustion detected for ${requiredProvider}, skipping same-provider API fallback`)
