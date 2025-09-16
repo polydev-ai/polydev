@@ -660,6 +660,12 @@ export default function EnhancedApiKeysPage() {
     try {
       setSaving(true)
       
+      // Validate API key requirement based on provider
+      if (formData.provider !== 'openrouter' && !editingKey && !formData.api_key.trim()) {
+        setError('API key required: This provider requires direct API access. Use OpenRouter for credit-based access.')
+        return
+      }
+      
       let response
       if (editingKey) {
         // Update existing API key
@@ -1309,7 +1315,7 @@ export default function EnhancedApiKeysPage() {
                         <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
                           <div>API URL: <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{providerData.baseUrl}</code></div>
                           <div className="mt-1">Models: {'modelCount' in providerData ? providerData.modelCount : 'Multiple'} available</div>
-                          <div className="mt-1">Auth: {'authType' in providerData ? (providerData.authType === 'api_key' ? 'API Key Required' : providerData.authType) : 'API Key Required'}</div>
+                          <div className="mt-1">Auth: {formData.provider === 'openrouter' ? 'API Key Optional (Credits Available)' : 'API Key Required'}</div>
                           {providerData.modelsDevData && (
                             <div className="mt-1 flex flex-wrap gap-1">
                               {'supportsVision' in providerData && providerData.supportsVision && <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-1 rounded text-xs">Vision</span>}
@@ -1362,8 +1368,13 @@ export default function EnhancedApiKeysPage() {
               {/* API Key */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    API Key
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center space-x-2">
+                    <span>API Key</span>
+                    {formData.provider === 'openrouter' ? (
+                      <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded-full text-xs font-medium border border-green-200 dark:border-green-700">✓ Optional</span>
+                    ) : (
+                      <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-1 rounded-full text-xs font-medium border border-orange-200 dark:border-orange-700">⚠ Required</span>
+                    )}
                   </label>
                   {editingKey && (
                     <button
@@ -1380,7 +1391,7 @@ export default function EnhancedApiKeysPage() {
                     type="password"
                     value={formData.api_key}
                     onChange={(e) => setFormData(prev => ({...prev, api_key: e.target.value}))}
-                    placeholder="Enter your API key (optional - will use credits if not provided)"
+                    placeholder={formData.provider === 'openrouter' ? "Enter your API key (optional - will use credits if not provided)" : "Enter your API key (required for this provider)"}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
                   />
                 ) : (
@@ -1391,9 +1402,11 @@ export default function EnhancedApiKeysPage() {
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center space-x-1">
                   <CheckCircle className="w-3 h-3" />
                   <span>
-                    {!editingKey ? 
-                      'API key is optional! If not provided or budget exceeded, we\'ll automatically use your credits via OpenRouter.' :
-                      'Leave empty to keep current API key, or enter new key to update.'
+                    {formData.provider === 'openrouter' ? 
+                      'Optional: Add your own OpenRouter API key, or we\'ll use your Polydev credits automatically when needed.' :
+                      !editingKey ?
+                        'Required: Direct API access to this provider. Models will be unavailable without a valid API key.' :
+                        'Leave empty to keep current API key, or enter new key to update.'
                     }
                   </span>
                 </p>
@@ -1552,7 +1565,7 @@ export default function EnhancedApiKeysPage() {
             <div className="flex space-x-3 mt-6">
               <button
                 onClick={saveApiKey}
-                disabled={saving || !formData.default_model}
+                disabled={saving || !formData.default_model || (formData.provider !== 'openrouter' && !editingKey && !formData.api_key.trim())}
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
               >
                 {saving ? (
