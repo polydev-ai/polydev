@@ -40,7 +40,7 @@ export default function Chat() {
   const sessionId = params.sessionId as string
   
   const { user, loading, isAuthenticated } = useAuth()
-  const { models: dashboardModels, loading: modelsLoading, error: modelsError, hasModels } = useDashboardModels()
+  const { models: dashboardModels, loading: modelsLoading, error: modelsError, hasModels, refresh: refreshModels } = useDashboardModels()
   const { 
     sessions, 
     loading: sessionsLoading, 
@@ -121,6 +121,21 @@ export default function Chat() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Refresh models when page becomes visible (e.g., user switches back from models page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && refreshModels) {
+        refreshModels()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [refreshModels])
 
   // Load specific session based on sessionId parameter
   useEffect(() => {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { usePreferences } from '../../hooks/usePreferences'
 import { createClient } from '../../app/utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw, Copy } from 'lucide-react'
 import { ProviderConfig } from '../../types/providers'
@@ -118,8 +119,8 @@ interface ModelsDevModel {
 
 export default function EnhancedApiKeysPage() {
   const { user, loading: authLoading } = useAuth()
+  const { preferences, updatePreferences: updateUserPreferences, loading: preferencesLoading } = usePreferences()
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
-  const [preferences, setPreferences] = useState<UserPreferences | null>(null)
   const [providers, setProviders] = useState<ProviderConfig[]>([])
   const [legacyProviders, setLegacyProviders] = useState<Record<string, any>>({})
   const [modelsDevProviders, setModelsDevProviders] = useState<ModelsDevProvider[]>([])
@@ -313,7 +314,7 @@ export default function EnhancedApiKeysPage() {
 
     try {
       // Execute all API calls in parallel for much faster loading
-      const [keysResult, prefsResult, providersResult, cliStatusResult] = await Promise.allSettled([
+      const [keysResult, providersResult, cliStatusResult] = await Promise.allSettled([
         // API keys from Supabase
         supabase
           .from('user_api_keys')
@@ -321,17 +322,10 @@ export default function EnhancedApiKeysPage() {
           .eq('user_id', user.id)
           .order('display_order', { ascending: true, nullsFirst: false })
           .order('created_at', { ascending: false }),
-        
-        // User preferences from Supabase
-        supabase
-          .from('user_preferences')
-          .select('*')
-          .eq('user_id', user.id)
-          .single(),
-        
+
         // Providers data from models.dev API (rich data for models page)
         fetch('/api/models-dev/providers?rich=true'),
-        
+
         // CLI status
         fetch('/api/cli-status')
       ])
@@ -341,9 +335,6 @@ export default function EnhancedApiKeysPage() {
       if (keysResult.status === 'fulfilled' && keysResult.value.error) {
         throw keysResult.value.error
       }
-
-      // Process preferences
-      const prefsData = prefsResult.status === 'fulfilled' && !prefsResult.value.error ? prefsResult.value.data : null
 
       // Process providers data
       let legacyProvidersData: Record<string, any> = {}
@@ -456,8 +447,8 @@ export default function EnhancedApiKeysPage() {
       }
       
       // Add providers from user preferences (configured models)
-      if (prefsData?.model_preferences) {
-        Object.keys(prefsData.model_preferences).forEach(provider => {
+      if (preferences?.model_preferences) {
+        Object.keys(preferences.model_preferences).forEach(provider => {
           userConfiguredProviders.add(provider)
         })
       }
@@ -468,7 +459,6 @@ export default function EnhancedApiKeysPage() {
       )
 
       setApiKeys(keysData || [])
-      setPreferences(prefsData)
       setProviders(providersWithKeys as ProviderConfig[])
       
     } catch (err: any) {
@@ -493,11 +483,11 @@ export default function EnhancedApiKeysPage() {
   }
 
   useEffect(() => {
-    if (user) {
+    if (user && !preferencesLoading) {
       fetchData()
       fetchApiKeyUsage()
     }
-  }, [user])
+  }, [user, preferences, preferencesLoading])
 
   // Preload models for existing providers in parallel
   useEffect(() => {
@@ -564,10 +554,11 @@ export default function EnhancedApiKeysPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reorderedPreferences: newPreferences })
       })
-      
+
       if (!response.ok) throw new Error('Failed to update preference order')
-      
-      setPreferences(prev => prev ? { ...prev, model_preferences: newPreferences } : null)
+
+      // Update through the shared hook to trigger refresh across all components
+      await updateUserPreferences({ model_preferences: newPreferences })
     } catch (err: any) {
       setError(err.message)
     }
@@ -777,7 +768,7 @@ export default function EnhancedApiKeysPage() {
     await reorderApiKeys(orderedIds)
   }
 
-  if (authLoading || loading) {
+  if (authLoading || loading || preferencesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

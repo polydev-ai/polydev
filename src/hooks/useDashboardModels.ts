@@ -25,10 +25,11 @@ export interface DashboardModel {
 }
 
 export function useDashboardModels() {
-  const { preferences, loading: preferencesLoading, error: preferencesError } = usePreferences()
+  const { preferences, loading: preferencesLoading, error: preferencesError, refetch: refetchPreferences } = usePreferences()
   const [models, setModels] = useState<DashboardModel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
     const fetchDashboardModels = async () => {
@@ -241,13 +242,19 @@ export function useDashboardModels() {
     }
 
     fetchDashboardModels()
-  }, [preferences, preferencesLoading, preferencesError])
+  }, [preferences, preferencesLoading, preferencesError, refreshTrigger])
+
+  const refresh = async () => {
+    await refetchPreferences()
+    setRefreshTrigger(prev => prev + 1)
+  }
 
   return {
     models,
     loading: loading || preferencesLoading,
     error: error || preferencesError,
-    hasModels: models.length > 0
+    hasModels: models.length > 0,
+    refresh
   }
 }
 

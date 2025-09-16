@@ -5,16 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { 
-  CreditCard, 
-  Crown, 
-  MessageSquare, 
+import {
+  CreditCard,
+  Crown,
+  MessageSquare,
   Zap,
   Calendar,
   DollarSign,
   Settings,
   CheckCircle,
-  X
+  X,
+  MessageCircle
 } from 'lucide-react'
 
 interface Subscription {
@@ -31,6 +32,14 @@ interface MessageUsage {
   month_year: string
 }
 
+interface ProfileStats {
+  totalChats: number
+  totalTokens: number
+  favoriteModel: string
+  joinedDays: number
+  lastActive: string
+}
+
 interface Credits {
   balance: number
   promotional_balance: number
@@ -42,6 +51,7 @@ export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [messageUsage, setMessageUsage] = useState<MessageUsage | null>(null)
   const [credits, setCredits] = useState<Credits | null>(null)
+  const [profileStats, setProfileStats] = useState<ProfileStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpgrading, setIsUpgrading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -52,14 +62,23 @@ export default function SubscriptionPage() {
 
   const fetchSubscriptionData = async () => {
     try {
-      const response = await fetch('/api/subscription')
-      if (response.ok) {
-        const data = await response.json()
-        setSubscription(data.subscription)
-        setMessageUsage(data.messageUsage)
-        setCredits(data.credits)
+      const [subscriptionResponse, profileStatsResponse] = await Promise.all([
+        fetch('/api/subscription'),
+        fetch('/api/profile/stats')
+      ])
+
+      if (subscriptionResponse.ok) {
+        const subscriptionData = await subscriptionResponse.json()
+        setSubscription(subscriptionData.subscription)
+        setMessageUsage(subscriptionData.messageUsage)
+        setCredits(subscriptionData.credits)
       } else {
         setMessage({ type: 'error', text: 'Failed to load subscription data' })
+      }
+
+      if (profileStatsResponse.ok) {
+        const profileData = await profileStatsResponse.json()
+        setProfileStats(profileData)
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to load subscription data' })
@@ -106,7 +125,11 @@ export default function SubscriptionPage() {
         }
       } else {
         const error = await response.json()
-        setMessage({ type: 'error', text: error.error || 'Failed to open billing portal' })
+        if (error.action === 'upgrade_required') {
+          setMessage({ type: 'error', text: error.details || 'Please upgrade to Pro to access billing management.' })
+        } else {
+          setMessage({ type: 'error', text: error.error || 'Failed to open billing portal' })
+        }
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to open billing portal' })
@@ -238,7 +261,7 @@ export default function SubscriptionPage() {
               {!isPro && ` / ${messageUsage?.messages_limit || 200}`}
             </div>
             <p className="text-xs text-muted-foreground">
-              {isPro ? 'Unlimited messages' : 'Messages this month'}
+              {isPro ? 'Messages sent this month' : 'Messages this month'}
             </p>
             {!isPro && messageUsage && (
               <Progress value={messageUsagePercentage} className="mt-2" />
@@ -264,6 +287,22 @@ export default function SubscriptionPage() {
                 +${credits.promotional_balance.toFixed(2)} promotional
               </p>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Chat Sessions */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Chat Sessions</CardTitle>
+            <MessageCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {profileStats?.totalChats || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total chat sessions created
+            </p>
           </CardContent>
         </Card>
 

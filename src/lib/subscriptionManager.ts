@@ -68,11 +68,11 @@ export class SubscriptionManager {
           const serviceRoleResult = await this.getUserSubscription(userId, true, createIfMissing)
           return serviceRoleResult
         }
-        
+
         // Only create if using service role and createIfMissing is true
         if (useServiceRole && createIfMissing) {
           console.log(`[SubscriptionManager] Creating default FREE subscription for user: ${userId}`)
-          
+
           const { data: newSubscription, error: createError } = await supabase
             .from('user_subscriptions')
             .insert({
@@ -98,6 +98,34 @@ export class SubscriptionManager {
       } else if (error) {
         console.error('Error getting user subscription:', error)
         return null
+      }
+
+      // Validate subscription integrity - if it claims to be pro but has no Stripe data, downgrade to free
+      if (data && data.tier === 'pro' && (!data.stripe_customer_id || !data.stripe_subscription_id)) {
+        console.warn(`[SubscriptionManager] Found orphaned pro subscription for user ${userId}, downgrading to free`)
+
+        const { data: fixedSubscription, error: fixError } = await supabase
+          .from('user_subscriptions')
+          .update({
+            tier: 'free',
+            status: 'active',
+            stripe_customer_id: null,
+            stripe_subscription_id: null,
+            current_period_start: null,
+            current_period_end: null,
+            cancel_at_period_end: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId)
+          .select()
+          .single()
+
+        if (fixError) {
+          console.error('Error fixing orphaned subscription:', fixError)
+          return data // Return original data if fix fails
+        }
+
+        return fixedSubscription
       }
 
       return data

@@ -14,9 +14,13 @@ export async function POST(request: NextRequest) {
 
     // Get user's subscription to find Stripe customer ID
     const subscription = await subscriptionManager.getUserSubscription(user.id)
-    
+
     if (!subscription?.stripe_customer_id) {
-      return NextResponse.json({ error: 'No subscription found' }, { status: 404 })
+      return NextResponse.json({
+        error: 'No billing portal available',
+        details: 'No active Stripe subscription found. Please upgrade to Pro to access billing management.',
+        action: 'upgrade_required'
+      }, { status: 404 })
     }
 
     // Get the base URL from the request
