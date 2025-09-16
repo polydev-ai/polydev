@@ -389,7 +389,7 @@ export default function CreditsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${creditBalance?.balance?.toFixed(2) || '0.00'}</div>
+            <div className="text-2xl font-bold">${((creditBalance?.balance || 0) + (creditBalance?.promotional_balance || 0)).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Available credits
             </p>
