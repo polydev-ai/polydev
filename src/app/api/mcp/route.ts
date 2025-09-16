@@ -1732,11 +1732,26 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           }
         }
 
-        // Use the unified API caller with provider-specific preferences and cleaned model name
+        // Resolve model ID for the specific provider (same as chat API)
+        let resolvedModelId = cleanModel
+        try {
+          const providerSpecificId = await modelsDevService.getProviderSpecificModelId(cleanModel, provider.provider_name)
+          if (providerSpecificId) {
+            resolvedModelId = providerSpecificId
+            console.log(`[MCP] Resolved model ${cleanModel} for ${provider.provider_name} to: ${resolvedModelId}`)
+          } else {
+            console.log(`[MCP] No specific mapping found for ${cleanModel} with ${provider.provider_name}, using original`)
+          }
+        } catch (resolutionError) {
+          console.warn(`[MCP] Model resolution failed for ${cleanModel}:`, resolutionError)
+          // Continue with original model ID
+        }
+
+        // Use the unified API caller with provider-specific preferences and resolved model ID
         let response: APIResponse
         try {
           response = await callLLMAPI(
-            cleanModel,
+            resolvedModelId, // Use resolved model ID instead of cleanModel
             contextualPrompt,
             decryptedKey,
             provider,

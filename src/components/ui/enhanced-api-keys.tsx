@@ -653,7 +653,7 @@ export default function EnhancedApiKeysPage() {
       
       // Validate API key requirement based on provider
       if (formData.provider !== 'openrouter' && !editingKey && !formData.api_key.trim()) {
-        setError('API key required: This provider requires direct API access. Use OpenRouter for credit-based access.')
+        setError('Please enter an API key for this provider, or use OpenRouter for credit-based model access.')
         return
       }
       
@@ -1362,9 +1362,13 @@ export default function EnhancedApiKeysPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center space-x-2">
                     <span>API Key</span>
                     {formData.provider === 'openrouter' ? (
-                      <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-2 py-1 rounded-full text-xs font-medium border border-green-200 dark:border-green-700">✓ Optional</span>
+                      <span className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full text-xs font-medium border border-emerald-200 dark:border-emerald-700 shadow-sm">
+                        ✓ Optional
+                      </span>
                     ) : (
-                      <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-1 rounded-full text-xs font-medium border border-orange-200 dark:border-orange-700">⚠ Required</span>
+                      <span className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 px-3 py-1 rounded-full text-xs font-medium border border-amber-200 dark:border-amber-700 shadow-sm">
+                        ● Required
+                      </span>
                     )}
                   </label>
                   {editingKey && (
@@ -1394,9 +1398,9 @@ export default function EnhancedApiKeysPage() {
                   <CheckCircle className="w-3 h-3" />
                   <span>
                     {formData.provider === 'openrouter' ? 
-                      'Optional: Add your own OpenRouter API key, or we\'ll use your Polydev credits automatically when needed.' :
+                      'Your OpenRouter API key is optional. When not provided, models will automatically use your Polydev credits.' :
                       !editingKey ?
-                        'Required: Direct API access to this provider. Models will be unavailable without a valid API key.' :
+                        'This provider requires your personal API key for direct access to their models.' :
                         'Leave empty to keep current API key, or enter new key to update.'
                     }
                   </span>
