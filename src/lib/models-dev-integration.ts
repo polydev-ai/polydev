@@ -434,8 +434,8 @@ class ModelsDevService {
     return {
       input: cost.input ? cost.input / 1000 : 0,
       output: cost.output ? cost.output / 1000 : 0,
-      cache_read: cost.cache_read ? cost.cache_read / 1000 : null,
-      cache_write: cost.cache_write ? cost.cache_write / 1000 : null
+      cache_read: cost.cache_read ? cost.cache_read / 1000 : undefined,
+      cache_write: cost.cache_write ? cost.cache_write / 1000 : undefined
     }
   }
 

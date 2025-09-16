@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
 
     let userCredits = {
       balance: 0,
+      promotional_balance: 0,
       total_purchased: 0,
       total_spent: 0,
       created_at: new Date().toISOString(),
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
         .insert({
           user_id: user.id,
           balance: 0,
+          promotional_balance: 0,
           total_purchased: 0,
           total_spent: 0
         })
@@ -51,6 +53,7 @@ export async function GET(request: NextRequest) {
         // Return default values if table doesn't exist
         userCredits = {
           balance: 0,
+          promotional_balance: 0,
           total_purchased: 0,
           total_spent: 0,
           created_at: new Date().toISOString(),

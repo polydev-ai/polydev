@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
           correctedMapping.cost = {
             input: correctedMapping.cost.input ? correctedMapping.cost.input / 1000 : 0,
             output: correctedMapping.cost.output ? correctedMapping.cost.output / 1000 : 0,
-            cache_read: correctedMapping.cost.cache_read ? correctedMapping.cost.cache_read / 1000 : null,
-            cache_write: correctedMapping.cost.cache_write ? correctedMapping.cost.cache_write / 1000 : null
+            cache_read: correctedMapping.cost.cache_read ? correctedMapping.cost.cache_read / 1000 : undefined,
+            cache_write: correctedMapping.cost.cache_write ? correctedMapping.cost.cache_write / 1000 : undefined
           }
         }
 
