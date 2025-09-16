@@ -9,6 +9,7 @@ export interface DashboardModel {
   providerName: string
   providerLogo?: string
   tier: 'cli' | 'api' | 'credits'
+  isConfigured?: boolean
   price?: {
     input: number
     output: number
