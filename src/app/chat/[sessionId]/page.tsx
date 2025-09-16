@@ -70,46 +70,20 @@ export default function Chat() {
     if (dashboardModels.length > 0 && selectedModels.length === 0) {
       // Check if user has saved chat model preferences
       const savedChatModels = preferences?.mcp_settings?.saved_chat_models
-      
+
       if (savedChatModels && Array.isArray(savedChatModels) && savedChatModels.length > 0) {
         // Restore saved model preferences, filtering out models that are no longer available
         const availableModelIds = dashboardModels.map(m => m.id)
         const validSavedModels = savedChatModels.filter(modelId => availableModelIds.includes(modelId))
-        
+
         if (validSavedModels.length > 0) {
           setSelectedModels(validSavedModels)
           return
         }
       }
-      
-      // Fall back to default selection if no saved preferences or invalid models
-      const modelsByTier = dashboardModels.reduce((acc, model) => {
-        if (!acc[model.tier]) acc[model.tier] = []
-        acc[model.tier].push(model)
-        return acc
-      }, {} as Record<'cli' | 'api' | 'credits', DashboardModel[]>)
 
-      const defaults: string[] = []
-      
-      // Select up to 5 models by default for a better multi-model experience
-      // Priority: CLI models first, then API models, then credits models
-      if (modelsByTier.cli?.length > 0) {
-        defaults.push(...modelsByTier.cli.slice(0, Math.min(3, modelsByTier.cli.length)).map(m => m.id))
-      }
-      if (modelsByTier.api?.length > 0 && defaults.length < 5) {
-        const remaining = 5 - defaults.length
-        defaults.push(...modelsByTier.api.slice(0, Math.min(remaining, modelsByTier.api.length)).map(m => m.id))
-      }
-      if (modelsByTier.credits?.length > 0 && defaults.length < 5) {
-        const remaining = 5 - defaults.length
-        defaults.push(...modelsByTier.credits.slice(0, Math.min(remaining, modelsByTier.credits.length)).map(m => m.id))
-      }
-      
-      // Ensure we have at least one model selected
-      if (defaults.length === 0 && dashboardModels.length > 0) {
-        defaults.push(dashboardModels[0].id)
-      }
-      
+      // Simplified default selection: use top 3 models from user's configured models page
+      const defaults = dashboardModels.slice(0, 3).map(m => m.id)
       setSelectedModels(defaults)
     }
   }, [dashboardModels, selectedModels.length, preferences])
