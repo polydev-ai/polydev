@@ -484,41 +484,32 @@ export default function EnhancedApiKeysPage() {
 
   // Auto-sync existing API key models to preferences
   const syncExistingModelsToPreferences = async () => {
-    if (!user || !preferences || apiKeys.length === 0) return
+    try {
+      console.log('[EnhancedApiKeys] Calling model sync endpoint...')
 
-    console.log('[EnhancedApiKeys] Syncing existing API key models to preferences...')
-
-    let hasChanges = false
-    const currentPrefs = preferences.model_preferences || {}
-    const newPreferences = { ...currentPrefs }
-
-    // Go through all API keys and ensure their models are in preferences
-    for (const apiKey of apiKeys) {
-      if (apiKey.default_model && apiKey.provider && apiKey.active) {
-        const provider = apiKey.provider
-        const model = apiKey.default_model
-
-        // Initialize provider if it doesn't exist
-        if (!newPreferences[provider]) {
-          newPreferences[provider] = {
-            models: [],
-            order: Object.keys(newPreferences).length + 1
-          }
+      const response = await fetch('/api/sync-models', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         }
+      })
 
-        // Add model if it's not already in the list
-        if (!newPreferences[provider].models.includes(model)) {
-          newPreferences[provider].models.push(model)
-          hasChanges = true
-          console.log(`[EnhancedApiKeys] Auto-added model ${model} from provider ${provider}`)
-        }
+      if (!response.ok) {
+        throw new Error(`Sync failed: ${response.statusText}`)
       }
-    }
 
-    // Update preferences if there were changes
-    if (hasChanges) {
-      console.log('[EnhancedApiKeys] Syncing preferences with new models:', newPreferences)
-      await updateUserPreferences({ model_preferences: newPreferences })
+      const result = await response.json()
+      console.log('[EnhancedApiKeys] Sync result:', result)
+
+      if (result.synced) {
+        console.log(`[EnhancedApiKeys] Successfully synced ${result.models.length} models:`, result.models)
+        // Refresh preferences to reflect the changes
+        await refetchPreferences()
+      } else {
+        console.log('[EnhancedApiKeys] No models needed syncing')
+      }
+    } catch (error) {
+      console.error('[EnhancedApiKeys] Error during sync:', error)
     }
   }
 
@@ -531,8 +522,18 @@ export default function EnhancedApiKeysPage() {
 
   // Sync existing models to preferences when API keys are loaded
   useEffect(() => {
+    console.log('[EnhancedApiKeys] useEffect triggered for auto-sync with:', {
+      apiKeysLength: apiKeys.length,
+      hasPreferences: !!preferences,
+      preferencesLoading,
+      user: !!user
+    })
+
     if (apiKeys.length > 0 && preferences && !preferencesLoading) {
+      console.log('[EnhancedApiKeys] Conditions met, calling syncExistingModelsToPreferences')
       syncExistingModelsToPreferences()
+    } else {
+      console.log('[EnhancedApiKeys] Conditions not met for auto-sync')
     }
   }, [apiKeys, preferences, preferencesLoading, user])
 
