@@ -905,14 +905,6 @@ export default function EnhancedApiKeysPage() {
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={syncExistingModelsToPreferences}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
-            title="Sync API key models to chat preferences"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Sync Models</span>
-          </button>
-          <button
             onClick={() => setShowAddForm(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
           >
