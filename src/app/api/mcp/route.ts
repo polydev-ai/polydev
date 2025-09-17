@@ -1438,7 +1438,6 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 strategy: strategy.strategy,
                 fallback: true
               }
-            }
           } catch (fallbackError) {
             console.error(`[MCP] Budget fallback failed:`, fallbackError)
           }
