@@ -7,6 +7,7 @@ import { MCPMemoryManager } from '@/lib/mcpMemory'
 import { subscriptionManager } from '@/lib/subscriptionManager'
 import { OpenRouterManager } from '@/lib/openrouterManager'
 import { modelsDevService } from '@/lib/models-dev-integration'
+import { resolveProviderModelId } from '@/lib/model-resolver'
 
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
@@ -1066,7 +1067,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.log(`[MCP] Added client context from bridge (${clientContext.length} chars)`)
   }
   
-  // Get user preferences with comprehensive settings using service role
+  // Get user preferences with comprehensive settings using service role (kept for temperature/max_tokens settings)
   const { data: preferences } = await serviceRoleSupabase
     .from('user_preferences')
     .select('*')
@@ -1075,24 +1076,49 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
   console.log(`[MCP] User preferences:`, preferences)
 
-  // Get user API keys from database using service role (bypasses RLS since we already validated OAuth)
+  // Get user API keys from database - SAME AS CHAT API
   console.log(`[MCP] Authenticated user: ${user.id}`)
   console.log(`[MCP] Querying API keys for user_id: ${user.id}`)
   const { data: apiKeys, error: apiKeysError } = await serviceRoleSupabase
     .from('user_api_keys')
-    .select('provider, encrypted_key, key_preview, api_base, default_model, monthly_budget, current_usage, max_tokens')
+    .select('provider, encrypted_key, key_preview, api_base, default_model, monthly_budget, current_usage, max_tokens, display_order')
     .eq('user_id', user.id)
+    .eq('active', true)
+    .order('display_order', { ascending: true })
 
   console.log(`[MCP] API Keys Query Result:`, { apiKeys, error: apiKeysError })
   console.log(`[MCP] Found ${apiKeys?.length || 0} API keys for user ${user.id}`)
   if (apiKeys && apiKeys.length > 0) {
-    console.log(`[MCP] API Keys:`, apiKeys.map(k => ({ provider: k.provider, preview: k.key_preview })))
+    console.log(`[MCP] API Keys (ordered by display_order):`, apiKeys.map(k => ({
+      provider: k.provider,
+      model: k.default_model,
+      order: k.display_order,
+      preview: k.key_preview
+    })))
   }
 
-  // Use models from args, or top 3 from user's Models page (preferences),
-  // or fall back to API-keys-based heuristic, finally a safe default.
-  const preferredTop3 = getTopModelsFromPreferences(preferences, 3)
-  const models = args.models || (preferredTop3.length > 0 ? preferredTop3 : getModelsFromApiKeysAndPreferences(apiKeys || [], preferences)) || ['gpt-5-2025-08-07']
+  // SIMPLIFIED: Use models from args OR directly from user_api_keys (like chat API)
+  // No more complex preferences logic
+  let models: string[] = []
+
+  if (args.models && args.models.length > 0) {
+    // If models explicitly specified, use those
+    models = args.models
+    console.log(`[MCP] Using explicitly specified models:`, models)
+  } else if (apiKeys && apiKeys.length > 0) {
+    // Use models from API keys directly (same as chat API)
+    // Take up to 3 models for performance (configurable)
+    const maxModels = 3
+    models = apiKeys
+      .filter(key => key.default_model) // Only include keys with models set
+      .slice(0, maxModels) // Limit to first N models
+      .map(key => key.default_model)
+    console.log(`[MCP] Using models from API keys (top ${maxModels}):`, models)
+  } else {
+    // Fallback if no API keys configured
+    models = ['gpt-5-2025-08-07']
+    console.log(`[MCP] No API keys found, using fallback model:`, models)
+  }
 
   // Use temperature and max_tokens from args, or user preferences, or defaults
   const temperature = args.temperature ?? preferences?.default_temperature ?? 0.7
@@ -1100,7 +1126,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
   console.log(`[MCP] Using temperature: ${temperature}, maxTokens: ${maxTokens}`)
   console.log(`[MCP] Getting perspectives for user ${user.id}: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`)
-  console.log(`[MCP] Models: ${models.join(', ')}`)
+  console.log(`[MCP] Final selected models: ${models.join(', ')}`)
 
   // Get all provider configurations using service role
   const { data: providerConfigs } = await serviceRoleSupabase
@@ -1170,12 +1196,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         const providerSettings = args.provider_settings?.[provider.provider_name] || {}
         const providerTemperature = providerSettings.temperature ?? temperature
         
-        // Max tokens priority: provider_settings > API key config > user preferences > global default
-        const preferencesMaxTokens = preferences?.model_preferences?.[`${provider.provider_name}_max_tokens`] || 
-                                    preferences?.model_preferences?.[`${provider.id}_max_tokens`]
-        const providerMaxTokens = providerSettings.max_tokens ?? 
-                                 apiKey?.max_tokens ?? 
-                                 preferencesMaxTokens ?? 
+        // Max tokens priority: provider_settings > API key config > global default
+        const providerMaxTokens = providerSettings.max_tokens ??
+                                 apiKey?.max_tokens ??
                                  maxTokens
         
         // If no API key found, try OpenRouter fallback for supported models
@@ -1221,19 +1244,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               }
             }
             
-            // Resolve OpenRouter-specific model ID from friendly ID or provider-specific
-            let friendlyId = model
-            if (model.includes('/')) {
-              // Convert provider-specific ID to friendly_id
-              const resolved = await modelsDevService.getFriendlyIdFromProviderModelId(model)
-              friendlyId = resolved || model
-            }
-            const openrouterModelId = await modelsDevService.getProviderSpecificModelId(friendlyId, 'openrouter')
-            if (!openrouterModelId) {
-              console.warn(`[MCP] Credits fallback blocked: no OpenRouter mapping for ${model} (friendly: ${friendlyId})`)
+            // Resolve OpenRouter-specific model ID using shared resolver
+            const openrouterModelId = await resolveProviderModelId(model, 'openrouter')
+            if (openrouterModelId === model) {
+              // No mapping found - resolver returns original ID when no mapping exists
+              console.warn(`[MCP] Credits fallback blocked: no OpenRouter mapping for ${model}`)
               return {
                 model,
-                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${friendlyId}).`
+                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
               }
             }
 
@@ -1343,18 +1361,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             if (openRouterConfig) {
               console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy due to budget limit`)
               
-              // Map to OpenRouter-specific model ID
-              let friendlyIdB = model
-              if (model.includes('/')) {
-                const resolved = await modelsDevService.getFriendlyIdFromProviderModelId(model)
-                friendlyIdB = resolved || model
-              }
-              const openrouterModelIdB = await modelsDevService.getProviderSpecificModelId(friendlyIdB, 'openrouter')
-              if (!openrouterModelIdB) {
-                console.warn(`[MCP] Budget-fallback credits blocked: no OpenRouter mapping for ${model} (friendly: ${friendlyIdB})`)
+              // Map to OpenRouter-specific model ID using shared resolver
+              const openrouterModelIdB = await resolveProviderModelId(model, 'openrouter')
+              if (openrouterModelIdB === model) {
+                // No mapping found - resolver returns original ID when no mapping exists
+                console.warn(`[MCP] Budget-fallback credits blocked: no OpenRouter mapping for ${model}`)
                 return {
                   model,
-                  error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${friendlyIdB}).`
+                  error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
                 }
               }
               const response = await callLLMAPI(
@@ -1451,18 +1465,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               }
             }
             
-            // Resolve OpenRouter model ID first
-            let friendlyIdCO = model
-            if (model.includes('/')) {
-              const resolved = await modelsDevService.getFriendlyIdFromProviderModelId(model)
-              friendlyIdCO = resolved || model
-            }
-            const openrouterModelIdCO = await modelsDevService.getProviderSpecificModelId(friendlyIdCO, 'openrouter')
-            if (!openrouterModelIdCO) {
-              console.warn(`[MCP] Credits-only fallback blocked: no OpenRouter mapping for ${model} (friendly: ${friendlyIdCO})`)
+            // Resolve OpenRouter model ID using shared resolver
+            const openrouterModelIdCO = await resolveProviderModelId(model, 'openrouter')
+            if (openrouterModelIdCO === model) {
+              // No mapping found - resolver returns original ID when no mapping exists
+              console.warn(`[MCP] Credits-only fallback blocked: no OpenRouter mapping for ${model}`)
               return {
                 model,
-                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${friendlyIdCO}).`
+                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
               }
             }
             const response = await callLLMAPI(
@@ -1732,16 +1742,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           }
         }
 
-        // Resolve model ID for the specific provider (same as chat API)
+        // Resolve model ID for the specific provider using shared resolver (same as chat API)
         let resolvedModelId = cleanModel
         try {
-          const providerSpecificId = await modelsDevService.getProviderSpecificModelId(cleanModel, provider.provider_name)
-          if (providerSpecificId) {
-            resolvedModelId = providerSpecificId
-            console.log(`[MCP] Resolved model ${cleanModel} for ${provider.provider_name} to: ${resolvedModelId}`)
-          } else {
-            console.log(`[MCP] No specific mapping found for ${cleanModel} with ${provider.provider_name}, using original`)
-          }
+          resolvedModelId = await resolveProviderModelId(cleanModel, provider.provider_name)
+          console.log(`[MCP] Model resolution for ${cleanModel} with ${provider.provider_name}: ${resolvedModelId}`)
         } catch (resolutionError) {
           console.warn(`[MCP] Model resolution failed for ${cleanModel}:`, resolutionError)
           // Continue with original model ID
@@ -1999,7 +2004,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         temperature: temperature
       }
 
-      if (!response.error) {
+      if (!response.error && response.content) {
         providerResponses[`${provider}:${response.model}`] = {
           content: response.content.substring(0, 2000), // Limit content size
           tokens_used: response.tokens_used,
@@ -2569,26 +2574,47 @@ function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): s
 function getTopModelsFromPreferences(preferences: any, count: number = 3): string[] {
   try {
     const modelPrefs = preferences?.model_preferences
-    if (!modelPrefs || typeof modelPrefs !== 'object') return []
+    console.log('[MCP] getTopModelsFromPreferences - Input preferences:', JSON.stringify(modelPrefs, null, 2))
+
+    if (!modelPrefs || typeof modelPrefs !== 'object') {
+      console.log('[MCP] getTopModelsFromPreferences - No valid model preferences found')
+      return []
+    }
+
     // Sort providers by 'order'
     const providersSorted = Object.entries(modelPrefs)
       .filter(([, pref]) => pref && typeof pref === 'object')
       .sort(([, a]: any, [, b]: any) => (a.order || 0) - (b.order || 0))
+
+    console.log('[MCP] getTopModelsFromPreferences - Sorted providers:',
+      providersSorted.map(([p, pref]: any) => `${p}(order:${pref.order}, models:${pref.models})`))
+
     const list: string[] = []
     const seen = new Set<string>()
-    for (const [, pref] of providersSorted) {
+
+    for (const [provider, pref] of providersSorted) {
       const prefAny = pref as any
       const models: string[] = Array.isArray(prefAny?.models) ? (prefAny.models as string[]) : []
+      console.log(`[MCP] getTopModelsFromPreferences - Processing ${provider}: models = ${JSON.stringify(models)}`)
+
       for (const m of models) {
         if (typeof m === 'string' && !seen.has(m)) {
           list.push(m)
           seen.add(m)
-          if (list.length >= count) return list
+          console.log(`[MCP] getTopModelsFromPreferences - Added "${m}" from ${provider} (total: ${list.length}/${count})`)
+
+          if (list.length >= count) {
+            console.log(`[MCP] getTopModelsFromPreferences - Reached limit of ${count}, returning:`, list)
+            return list
+          }
         }
       }
     }
+
+    console.log(`[MCP] getTopModelsFromPreferences - Final list (${list.length} models):`, list)
     return list
-  } catch {
+  } catch (error) {
+    console.error('[MCP] getTopModelsFromPreferences - Error:', error)
     return []
   }
 }
@@ -2655,7 +2681,18 @@ function determineProvider(model: string, configMap: Map<string, ProviderConfig>
   if (modelLower.includes('llama') || modelLower.includes('mistral') || modelLower.includes('mixtral')) {
     return configMap.get('openrouter') || configMap.get('groq') || null
   }
-  
+
+  // Kimi models should use OpenRouter (or Groq if configured for it)
+  if (modelLower.includes('kimi')) {
+    // Check if user has Groq configured (since Kimi K2 is on Groq)
+    const groqConfig = configMap.get('groq')
+    if (groqConfig) {
+      return groqConfig
+    }
+    // Otherwise try OpenRouter as fallback
+    return configMap.get('openrouter') || null
+  }
+
   if (modelLower.includes('deepseek')) {
     return configMap.get('deepseek') || {
       id: 'deepseek',
