@@ -230,9 +230,12 @@ export async function GET(request: NextRequest) {
         .eq('user_id', user.id)
     }
 
+    const totalAvailableBalance = (userCredits.balance || 0) + (userCredits.promotional_balance || 0)
+
     return NextResponse.json({
       balance: userCredits.balance || 0,
       promotional_balance: userCredits.promotional_balance || 0,
+      totalAvailableBalance: totalAvailableBalance,
       totalPurchased: userCredits.total_purchased || 0,
       totalSpent: calculatedTotalSpent, // Use calculated value
       hasOpenRouterKey: false,
