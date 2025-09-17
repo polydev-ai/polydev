@@ -1,95 +1,27 @@
 'use client'
+import { useState, useEffect } from 'react'
 
-function getProviderLogo(providerName: string, providersRegistry: any[]) {
-  if (!providerName || !providersRegistry || providersRegistry.length === 0) {
+function getProviderLogo(providerName: string, logoMapping: Record<string, string>) {
+  if (!providerName) {
     return null
   }
 
   // Normalize provider name for matching
   const normalizedName = providerName.toLowerCase().replace(/[^a-z0-9]/g, '')
 
-  // First try fallback URLs for common providers (faster than registry lookup)
-  const fallbackLogos: Record<string, string> = {
-    'openai': 'https://cdn.worldvectorlogo.com/logos/openai-2.svg',
-    'gpt': 'https://cdn.worldvectorlogo.com/logos/openai-2.svg',
-    'anthropic': 'https://cdn.worldvectorlogo.com/logos/anthropic.svg',
-    'claude': 'https://cdn.worldvectorlogo.com/logos/anthropic.svg',
-    'google': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
-    'googlevertexai': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
-    'googlegemini': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
-    'gemini': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
-    'mistral': 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4',
-    'mistralai': 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4',
-    'together': 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4',
-    'togetherai': 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4',
-    'cerebras': 'https://avatars.githubusercontent.com/u/76206399?s=200&v=4',
-    'xai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
-    'x-ai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
-    'perplexity': 'https://avatars.githubusercontent.com/u/83043819?s=200&v=4',
-    'cohere': 'https://avatars.githubusercontent.com/u/30046380?s=200&v=4',
-    'huggingface': 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg',
-    'hugging-face': 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg',
-    'deepseek': 'https://avatars.githubusercontent.com/u/159560534?s=200&v=4'
+  // Try exact match first
+  if (logoMapping[normalizedName]) {
+    return logoMapping[normalizedName]
   }
 
-  // Check fallback logos first
-  for (const [key, logoUrl] of Object.entries(fallbackLogos)) {
+  // Try partial matching
+  for (const [key, logoUrl] of Object.entries(logoMapping)) {
     if (normalizedName.includes(key) || key.includes(normalizedName)) {
       return logoUrl
     }
   }
 
-  // Direct provider name mappings to match with registry
-  const providerMappings: Record<string, string[]> = {
-    'openai': ['openai', 'gpt'],
-    'anthropic': ['anthropic', 'claude'],
-    'google': ['google', 'googlevertexai', 'googlegemini', 'gemini'],
-    'mistral': ['mistral', 'mistralai'],
-    'togetherai': ['together', 'togetherai'],
-    'cerebras': ['cerebras'],
-    'xai': ['xai', 'x-ai'],
-    'perplexity': ['perplexity'],
-    'cohere': ['cohere'],
-    'huggingface': ['huggingface', 'hugging-face'],
-    'deepseek': ['deepseek']
-  }
-
-  // Try exact match first with any field
-  let provider = providersRegistry.find(p => {
-    const fields = [p.id, p.name, p.display_name, p.provider_name].filter(Boolean)
-    return fields.some(field =>
-      field.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedName
-    )
-  })
-
-  // Try mapping-based matching
-  if (!provider) {
-    for (const [registryKey, variations] of Object.entries(providerMappings)) {
-      if (variations.some(v => normalizedName.includes(v) || v.includes(normalizedName))) {
-        provider = providersRegistry.find(p => {
-          const fields = [p.id, p.name, p.display_name, p.provider_name].filter(Boolean)
-          return fields.some(field =>
-            field.toLowerCase().replace(/[^a-z0-9]/g, '').includes(registryKey) ||
-            registryKey.includes(field.toLowerCase().replace(/[^a-z0-9]/g, ''))
-          )
-        })
-        if (provider) break
-      }
-    }
-  }
-
-  // Fallback: try partial matching
-  if (!provider) {
-    provider = providersRegistry.find(p => {
-      const fields = [p.id, p.name, p.display_name, p.provider_name].filter(Boolean)
-      return fields.some(field => {
-        const fieldNormalized = field.toLowerCase().replace(/[^a-z0-9]/g, '')
-        return fieldNormalized.includes(normalizedName) || normalizedName.includes(fieldNormalized)
-      })
-    })
-  }
-
-  return provider?.logo_url || null
+  return null
 }
 
 export default function ProviderAnalyticsSection({
@@ -101,6 +33,19 @@ export default function ProviderAnalyticsSection({
   requestLogs: any[]
   providersRegistry?: any[]
 }) {
+  const [logoMapping, setLogoMapping] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    // Fetch logo mapping from API
+    fetch('/api/providers/logos')
+      .then(res => res.json())
+      .then(data => {
+        if (data.logoMapping) {
+          setLogoMapping(data.logoMapping)
+        }
+      })
+      .catch(err => console.error('Failed to fetch provider logos:', err))
+  }, [])
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -204,7 +149,7 @@ export default function ProviderAnalyticsSection({
                     <div className="flex items-center">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 overflow-hidden">
                         {(() => {
-                          const logoUrl = getProviderLogo(provider.name, providersRegistry)
+                          const logoUrl = getProviderLogo(provider.name, logoMapping)
                           if (logoUrl) {
                             return (
                               <img
@@ -223,7 +168,7 @@ export default function ProviderAnalyticsSection({
                           }
                           return null
                         })()}
-                        <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-green-600 rounded-lg flex items-center justify-center" style={{ display: getProviderLogo(provider.name, providersRegistry) ? 'none' : 'flex' }}>
+                        <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-green-600 rounded-lg flex items-center justify-center" style={{ display: getProviderLogo(provider.name, logoMapping) ? 'none' : 'flex' }}>
                           <span className="text-white text-xs font-bold">{provider.name?.charAt(0).toUpperCase() || 'P'}</span>
                         </div>
                       </div>
