@@ -8,6 +8,37 @@ function getProviderLogo(providerName: string, providersRegistry: any[]) {
   // Normalize provider name for matching
   const normalizedName = providerName.toLowerCase().replace(/[^a-z0-9]/g, '')
 
+  // First try fallback URLs for common providers (faster than registry lookup)
+  const fallbackLogos: Record<string, string> = {
+    'openai': 'https://cdn.worldvectorlogo.com/logos/openai-2.svg',
+    'gpt': 'https://cdn.worldvectorlogo.com/logos/openai-2.svg',
+    'anthropic': 'https://cdn.worldvectorlogo.com/logos/anthropic.svg',
+    'claude': 'https://cdn.worldvectorlogo.com/logos/anthropic.svg',
+    'google': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
+    'googlevertexai': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
+    'googlegemini': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
+    'gemini': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
+    'mistral': 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4',
+    'mistralai': 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4',
+    'together': 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4',
+    'togetherai': 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4',
+    'cerebras': 'https://avatars.githubusercontent.com/u/76206399?s=200&v=4',
+    'xai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
+    'x-ai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
+    'perplexity': 'https://avatars.githubusercontent.com/u/83043819?s=200&v=4',
+    'cohere': 'https://avatars.githubusercontent.com/u/30046380?s=200&v=4',
+    'huggingface': 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg',
+    'hugging-face': 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg',
+    'deepseek': 'https://avatars.githubusercontent.com/u/159560534?s=200&v=4'
+  }
+
+  // Check fallback logos first
+  for (const [key, logoUrl] of Object.entries(fallbackLogos)) {
+    if (normalizedName.includes(key) || key.includes(normalizedName)) {
+      return logoUrl
+    }
+  }
+
   // Direct provider name mappings to match with registry
   const providerMappings: Record<string, string[]> = {
     'openai': ['openai', 'gpt'],

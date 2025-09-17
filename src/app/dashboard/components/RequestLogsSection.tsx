@@ -284,8 +284,66 @@ export default function RequestLogsSection({
                       <div key={index} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                              {(provider.provider || 'P').charAt(0).toUpperCase()}
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+                              {(() => {
+                                // Simple provider logo mapping for the detail modal
+                                const getProviderLogoUrl = (providerName: string) => {
+                                  if (!providerName) return null;
+                                  const normalized = providerName.toLowerCase();
+
+                                  if (normalized.includes('openai') || normalized.includes('gpt')) return 'https://cdn.worldvectorlogo.com/logos/openai-2.svg';
+                                  if (normalized.includes('anthropic') || normalized.includes('claude')) return 'https://cdn.worldvectorlogo.com/logos/anthropic.svg';
+                                  if (normalized.includes('google') || normalized.includes('gemini')) return 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg';
+                                  if (normalized.includes('mistral')) return 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4';
+                                  if (normalized.includes('together')) return 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4';
+                                  if (normalized.includes('cerebras')) return 'https://avatars.githubusercontent.com/u/76206399?s=200&v=4';
+                                  if (normalized.includes('xai') || normalized.includes('x-ai')) return 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4';
+                                  if (normalized.includes('perplexity')) return 'https://avatars.githubusercontent.com/u/83043819?s=200&v=4';
+                                  if (normalized.includes('cohere')) return 'https://avatars.githubusercontent.com/u/30046380?s=200&v=4';
+                                  if (normalized.includes('huggingface') || normalized.includes('hugging-face')) return 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg';
+                                  if (normalized.includes('deepseek')) return 'https://avatars.githubusercontent.com/u/159560534?s=200&v=4';
+                                  return null;
+                                };
+
+                                const logoUrl = getProviderLogoUrl(provider.provider);
+                                if (logoUrl) {
+                                  return (
+                                    <img
+                                      src={logoUrl}
+                                      alt={`${provider.provider} logo`}
+                                      className="w-8 h-8 object-contain"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        const fallback = target.nextElementSibling as HTMLElement;
+                                        if (fallback) fallback.style.display = 'flex';
+                                      }}
+                                    />
+                                  );
+                                }
+                                return null;
+                              })()}
+                              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ display: (() => {
+                                const getProviderLogoUrl = (providerName: string) => {
+                                  if (!providerName) return null;
+                                  const normalized = providerName.toLowerCase();
+                                  if (normalized.includes('openai') || normalized.includes('gpt')) return 'url';
+                                  if (normalized.includes('anthropic') || normalized.includes('claude')) return 'url';
+                                  if (normalized.includes('google') || normalized.includes('gemini')) return 'url';
+                                  if (normalized.includes('mistral')) return 'url';
+                                  if (normalized.includes('together')) return 'url';
+                                  if (normalized.includes('cerebras')) return 'url';
+                                  if (normalized.includes('xai') || normalized.includes('x-ai')) return 'url';
+                                  if (normalized.includes('perplexity')) return 'url';
+                                  if (normalized.includes('cohere')) return 'url';
+                                  if (normalized.includes('huggingface') || normalized.includes('hugging-face')) return 'url';
+                                  if (normalized.includes('deepseek')) return 'url';
+                                  return null;
+                                };
+                                return getProviderLogoUrl(provider.provider) ? 'none' : 'flex';
+                              })()} }>
+                                {(provider.provider || 'P').charAt(0).toUpperCase()}
+                              </div>
                             </div>
                             <div>
                               <div className="text-sm font-medium text-gray-900">{provider.model || provider.provider}</div>

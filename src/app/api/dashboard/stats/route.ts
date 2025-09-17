@@ -107,26 +107,46 @@ export async function GET(request: NextRequest) {
 
     console.log('[Dashboard Stats] Chat logs:', { count: chatLogs?.length, error: chatLogsError })
 
-    // Combine all request sources for comprehensive stats
-    const allRequests = [
-      ...(requestLogs || []),
-      ...(usageLogs || []),
-      ...(chatLogs || [])
-    ]
+    // Use the most comprehensive data source available, prioritizing detailed request logs
+    let primaryDataSource = []
+    let dataSourceName = 'none'
 
-    // Calculate real statistics from actual usage
+    if (requestLogs && requestLogs.length > 0) {
+      primaryDataSource = requestLogs
+      dataSourceName = 'detailed request logs'
+    } else if (usageLogs && usageLogs.length > 0) {
+      primaryDataSource = usageLogs
+      dataSourceName = 'usage logs'
+    } else if (chatLogs && chatLogs.length > 0) {
+      primaryDataSource = chatLogs
+      dataSourceName = 'chat logs'
+    }
+
+    console.log(`[Dashboard Stats] Using primary data source: ${dataSourceName} with ${primaryDataSource.length} entries`)
+
+    // Calculate real statistics from primary data source to avoid duplication
     const totalTokens = (allTokens?.length || 0) + (userTokens?.length || 0)
     const activeConnections = activeTokens.length
 
-    // Calculate real API requests from all data sources
-    const totalRequests = allRequests.length || 0
-    const totalUsageTokens = allRequests.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    // Calculate real API requests from primary data source
+    const totalRequests = primaryDataSource.length || 0
+    const totalUsageTokens = primaryDataSource.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
 
-    // Calculate total cost from all sources
-    const totalCostFromLogs = allRequests.reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0
+    // Calculate total cost from primary source only to avoid duplication
+    const totalCostFromLogs = primaryDataSource.reduce((sum, log) => {
+      const cost = parseFloat(log.total_cost) || 0
+      // Skip unrealistic costs (likely test data)
+      if (cost > 10) {
+        console.log(`[Dashboard Stats] Skipping high cost entry: $${cost}`)
+        return sum
+      }
+      return sum + cost
+    }, 0) || 0
+
+    console.log(`[Dashboard Stats] Calculated total cost: $${totalCostFromLogs.toFixed(4)} from ${totalRequests} requests`)
 
     // Calculate average response time from actual data
-    const responseTimes = allRequests
+    const responseTimes = primaryDataSource
       .filter(log => 'response_time_ms' in log && log.response_time_ms && log.response_time_ms > 0)
       .map(log => (log as any).response_time_ms)
 
@@ -135,7 +155,7 @@ export async function GET(request: NextRequest) {
       : 245
 
     // Calculate uptime based on success rate
-    const successfulRequests = allRequests.filter(log => (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)).length
+    const successfulRequests = primaryDataSource.filter(log => (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)).length
     const systemUptime = totalRequests > 0 ? `${((successfulRequests / totalRequests) * 100).toFixed(1)}%` : '99.9%'
 
     // Get provider breakdown based on actual user API keys and usage
@@ -260,14 +280,17 @@ export async function GET(request: NextRequest) {
       responseTime: avgResponseTime,
 
       // Additional detailed stats - calculate today's usage from actual data
-      requestsToday: allRequests.filter(log => {
+      requestsToday: primaryDataSource.filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
       }).length || 0,
-      costToday: parseFloat((allRequests.filter(log => {
+      costToday: parseFloat((primaryDataSource.filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
-      }).reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0).toFixed(4)),
+      }).reduce((sum, log) => {
+        const cost = parseFloat(log.total_cost) || 0
+        return cost > 10 ? sum : sum + cost // Skip unrealistic costs
+      }, 0) || 0).toFixed(4)),
       avgResponseTime: avgResponseTime,
       
       // Real provider breakdown
