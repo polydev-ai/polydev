@@ -99,7 +99,7 @@ export default function Home() {
     {
       step: '02',
       title: 'Polydev fans out intelligently',
-      detail: 'We auto-inject relevant code memory, prefer local CLIs, fall back gracefully, and stream every model's reasoning in parallel.'
+      detail: 'We auto-inject relevant code memory, prefer local CLIs, fall back gracefully, and stream every model\'s reasoning in parallel.'
     },
     {
       step: '03',
@@ -124,7 +124,7 @@ export default function Home() {
       name: 'Miguel Ortega',
       title: 'Founder · Autonomous Agents Startup',
       quote:
-        'We ship agents that default to local CLIs, escalate to customer keys, and finally to our Polydev credit pool-all without extra code. It's the safety net our customers asked for.'
+        'We ship agents that default to local CLIs, escalate to customer keys, and finally to our Polydev credit pool-all without extra code. It\'s the safety net our customers asked for.'
     }
   ]
 
@@ -147,7 +147,7 @@ export default function Home() {
               The multi-model control layer your coding agents were missing.
             </h1>
             <p className="mt-6 text-lg leading-relaxed text-slate-200 sm:text-xl">
-              Polydev is the MCP server that turns "I'm stuck" into "Here are five angles." Fan out across {modelStats.totalProviders}+ providers, stream raw answers, and keep ownership of how you pay for compute-CLI subscriptions first, API keys next, Polydev credits only when you need them.
+              Polydev is the MCP server that turns "I\'m stuck" into "Here are five angles." Fan out across {modelStats.totalProviders}+ providers, stream raw answers, and keep ownership of how you pay for compute-CLI subscriptions first, API keys next, Polydev credits only when you need them.
             </p>
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
