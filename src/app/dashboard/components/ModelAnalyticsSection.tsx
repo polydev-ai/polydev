@@ -1,11 +1,53 @@
 'use client'
 
+function getProviderLogo(providerName: string, providersRegistry: any[]) {
+  // Normalize provider name for matching
+  const normalizedName = providerName.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+  // Try exact match first
+  let provider = providersRegistry.find(p =>
+    p.id.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedName ||
+    p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedName ||
+    (p.display_name && p.display_name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedName)
+  )
+
+  // Try partial matches for common variations
+  if (!provider) {
+    const commonMappings = {
+      'openai': ['openai'],
+      'anthropic': ['anthropic'],
+      'google': ['google', 'googlevertexai', 'googlegemini'],
+      'mistral': ['mistral', 'mistralai'],
+      'together': ['together', 'togetherai'],
+      'cerebras': ['cerebras'],
+      'xai': ['xai', 'x-ai'],
+      'perplexity': ['perplexity'],
+      'cohere': ['cohere'],
+      'huggingface': ['huggingface', 'hugging-face']
+    }
+
+    for (const [key, variations] of Object.entries(commonMappings)) {
+      if (variations.some(v => normalizedName.includes(v) || v.includes(normalizedName))) {
+        provider = providersRegistry.find(p =>
+          p.id.toLowerCase().includes(key) ||
+          p.name.toLowerCase().includes(key)
+        )
+        if (provider) break
+      }
+    }
+  }
+
+  return provider?.logo_url || null
+}
+
 export default function ModelAnalyticsSection({
   modelAnalytics,
   requestLogs,
+  providersRegistry = [],
 }: {
   modelAnalytics: any[] | null
   requestLogs: any[]
+  providersRegistry?: any[]
 }) {
   return (
     <div className="space-y-6">
@@ -114,8 +156,30 @@ export default function ModelAnalyticsSection({
                 <tr key={`${model.provider}:${model.model}`} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
-                        <span className="text-white text-xs font-bold">{model.model?.charAt(0).toUpperCase() || 'M'}</span>
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 overflow-hidden">
+                        {(() => {
+                          const logoUrl = getProviderLogo(model.provider, providersRegistry)
+                          if (logoUrl) {
+                            return (
+                              <img
+                                src={logoUrl}
+                                alt={`${model.provider} logo`}
+                                className="w-8 h-8 object-contain"
+                                onError={(e) => {
+                                  // Fallback to letter circle on image error
+                                  const target = e.target as HTMLImageElement
+                                  target.style.display = 'none'
+                                  const fallback = target.nextElementSibling as HTMLElement
+                                  if (fallback) fallback.style.display = 'flex'
+                                }}
+                              />
+                            )
+                          }
+                          return null
+                        })()}
+                        <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center" style={{ display: getProviderLogo(model.provider, providersRegistry) ? 'none' : 'flex' }}>
+                          <span className="text-white text-xs font-bold">{model.model?.charAt(0).toUpperCase() || 'M'}</span>
+                        </div>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">{model.model || 'Unknown Model'}</div>

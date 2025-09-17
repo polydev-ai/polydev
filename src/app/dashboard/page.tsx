@@ -49,6 +49,7 @@ export default function Dashboard() {
   const [providerAnalytics, setProviderAnalytics] = useState<any[] | null>(null)
   const [modelAnalytics, setModelAnalytics] = useState<any[] | null>(null)
   const [isConnected, setIsConnected] = useState(false)
+  const [providersRegistry, setProvidersRegistry] = useState<any[]>([])
 
   const supabase = createClient()
 
@@ -59,6 +60,7 @@ export default function Dashboard() {
       loadProviderAnalytics()
       loadModelAnalytics()
       loadCreditBalance()
+      loadProvidersRegistry()
       setupRealTimeUpdates()
     }
   }, [user])
@@ -120,6 +122,19 @@ export default function Dashboard() {
         })
       }
     } catch {}
+  }
+
+  const loadProvidersRegistry = async () => {
+    try {
+      const response = await fetch('/api/providers/registry', { credentials: 'include' })
+      if (response.ok) {
+        const data = await response.json()
+        setProvidersRegistry(data.providers || [])
+      }
+    } catch (error) {
+      console.error('Failed to load providers registry:', error)
+      setProvidersRegistry([])
+    }
   }
 
   const loadRequestLogs = async () => {
@@ -534,11 +549,11 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'provider-analytics' && (
-          <ProviderAnalyticsSection providerAnalytics={providerAnalytics} requestLogs={requestLogs} />
+          <ProviderAnalyticsSection providerAnalytics={providerAnalytics} requestLogs={requestLogs} providersRegistry={providersRegistry} />
         )}
 
         {activeTab === 'model-analytics' && (
-          <ModelAnalyticsSection modelAnalytics={modelAnalytics} requestLogs={requestLogs} />
+          <ModelAnalyticsSection modelAnalytics={modelAnalytics} requestLogs={requestLogs} providersRegistry={providersRegistry} />
         )}
 
         {activeTab === 'mcp-clients' && (
