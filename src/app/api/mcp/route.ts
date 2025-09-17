@@ -1770,7 +1770,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         let response: APIResponse
         try {
           // Build API options similar to chat API
-          const apiOptions = {
+          const apiOptions: any = {
             model: resolvedModelId, // Use resolved model ID
             messages: [{ role: 'user' as const, content: contextualPrompt }],
             temperature: providerTemperature,
@@ -1778,6 +1778,12 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             stream: false,
             apiKey: decryptedKey,
             baseUrl: provider.base_url
+          }
+
+          // Handle model-specific parameter requirements (same as chat API)
+          if (model === 'gpt-5' || model.includes('gpt-5')) {
+            apiOptions.max_completion_tokens = providerMaxTokens
+            delete apiOptions.maxTokens
           }
 
           // Call apiManager.createMessage directly like chat API does
@@ -1790,10 +1796,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             if (result.error) {
               throw new Error(result.error.message || 'API error')
             }
-            response = {
-              content: result.choices?.[0]?.message?.content || '',
-              tokens_used: result.usage?.total_tokens || 0
-            }
+            // Use the existing parseResponse function that handles all provider formats
+            response = parseResponse(provider.provider_name, result, resolvedModelId)
           } else if (contentType.includes('text/event-stream')) {
             // Handle streaming responses if needed
             const text = await apiResponse.text()
