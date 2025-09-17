@@ -355,5 +355,5 @@ const response = await llmService.createMessage(
 
 ## Health Check
 
-The application includes a health check endpoint at `/api/health` for monitoring purposes
+The application includes a health check endpoint at `/api/health` for monitoring purposes.
 # Trigger deployment
