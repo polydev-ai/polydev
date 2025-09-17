@@ -8,6 +8,7 @@ import { subscriptionManager } from '@/lib/subscriptionManager'
 import { OpenRouterManager } from '@/lib/openrouterManager'
 import { modelsDevService } from '@/lib/models-dev-integration'
 import { resolveProviderModelId } from '@/lib/model-resolver'
+import { apiManager } from '@/lib/api'
 
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
@@ -1249,16 +1250,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             }
             
             console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy for ${model}`)
-            
-            // Use OpenRouter configuration for the request
-            const openRouterConfig = configMap.get('openrouter')
-            if (!openRouterConfig) {
-              return {
-                model,
-                error: `OpenRouter fallback not available - configuration missing. Please add your ${provider.display_name} API key in the dashboard.`
-              }
-            }
-            
+
             // Resolve OpenRouter-specific model ID using shared resolver
             const openrouterModelId = await resolveProviderModelId(model, 'openrouter')
             if (openrouterModelId === model) {
@@ -1270,34 +1262,36 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               }
             }
 
-            // Temporarily override provider config to use OpenRouter
-            provider = openRouterConfig
-
-            // Create fake API key object for OpenRouter
-            const openRouterApiKey = {
-              provider: 'openrouter',
-              encrypted_key: Buffer.from(strategy.apiKey).toString('base64'),
-              key_preview: 'or-...credits',
-              api_base: openRouterConfig.base_url,
-              default_model: model,
-              monthly_budget: null,
-              current_usage: null,
-              max_tokens: maxTokens
+            // Use apiManager like chat API does for OpenRouter credits
+            const apiOptions = {
+              model: openrouterModelId,
+              messages: [{ role: 'user' as const, content: contextualPrompt }],
+              temperature: providerTemperature,
+              maxTokens: providerMaxTokens,
+              stream: false,
+              apiKey: strategy.apiKey,
+              baseUrl: 'https://openrouter.ai/api/v1'
             }
-            
-            // Use this for the API call
-            const decryptedKey = strategy.apiKey
-            console.log(`[MCP] Using OpenRouter key for ${model}: ${decryptedKey.substring(0, 10)}...`)
-            
-            // Make the API call with OpenRouter (use mapped model ID)
-            const response = await callLLMAPI(
-              openrouterModelId,
-              contextualPrompt,
-              decryptedKey,
-              provider,
-              providerTemperature,
-              providerMaxTokens
-            )
+
+            console.log(`[MCP] Using OpenRouter key for ${model}: ${strategy.apiKey.substring(0, 10)}...`)
+
+            const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
+
+            // Parse the response
+            let response: APIResponse
+            const contentType = apiResponse.headers.get('content-type') || ''
+            if (contentType.includes('application/json')) {
+              const result = await apiResponse.json()
+              if (result.error) {
+                throw new Error(result.error.message || 'OpenRouter API error')
+              }
+              response = {
+                content: result.choices?.[0]?.message?.content || '',
+                tokens_used: result.usage?.total_tokens || 0
+              }
+            } else {
+              throw new Error('Invalid response from OpenRouter')
+            }
             
             const endTime = Date.now()
             const duration = endTime - startTime
@@ -1371,29 +1365,48 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               }
             }
             
-            // Use OpenRouter as fallback (same logic as above)
-            const openRouterConfig = configMap.get('openrouter')
-            if (openRouterConfig) {
-              console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy due to budget limit`)
-              
-              // Map to OpenRouter-specific model ID using shared resolver
-              const openrouterModelIdB = await resolveProviderModelId(model, 'openrouter')
-              if (openrouterModelIdB === model) {
-                // No mapping found - resolver returns original ID when no mapping exists
-                console.warn(`[MCP] Budget-fallback credits blocked: no OpenRouter mapping for ${model}`)
-                return {
-                  model,
-                  error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
-                }
+            // Use OpenRouter as fallback with apiManager (same as chat API)
+            console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy due to budget limit`)
+
+            // Map to OpenRouter-specific model ID using shared resolver
+            const openrouterModelIdB = await resolveProviderModelId(model, 'openrouter')
+            if (openrouterModelIdB === model) {
+              // No mapping found - resolver returns original ID when no mapping exists
+              console.warn(`[MCP] Budget-fallback credits blocked: no OpenRouter mapping for ${model}`)
+              return {
+                model,
+                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
               }
-              const response = await callLLMAPI(
-                openrouterModelIdB,
-                contextualPrompt,
-                strategy.apiKey,
-                openRouterConfig,
-                providerTemperature,
-                providerMaxTokens
-              )
+            }
+
+            // Use apiManager like chat API does for OpenRouter credits
+            const apiOptions = {
+              model: openrouterModelIdB,
+              messages: [{ role: 'user' as const, content: contextualPrompt }],
+              temperature: providerTemperature,
+              maxTokens: providerMaxTokens,
+              stream: false,
+              apiKey: strategy.apiKey,
+              baseUrl: 'https://openrouter.ai/api/v1'
+            }
+
+            const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
+
+            // Parse the response
+            let response: APIResponse
+            const contentType = apiResponse.headers.get('content-type') || ''
+            if (contentType.includes('application/json')) {
+              const result = await apiResponse.json()
+              if (result.error) {
+                throw new Error(result.error.message || 'OpenRouter API error')
+              }
+              response = {
+                content: result.choices?.[0]?.message?.content || '',
+                tokens_used: result.usage?.total_tokens || 0
+              }
+            } else {
+              throw new Error('Invalid response from OpenRouter')
+            }
               
               const endTime = Date.now()
               const duration = endTime - startTime
@@ -1470,16 +1483,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             }
             
             console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy for credits-only ${model}`)
-            
-            // Use OpenRouter configuration for the request
-            const openRouterConfig = configMap.get('openrouter')
-            if (!openRouterConfig) {
-              return {
-                model,
-                error: `Credits-only fallback not available - OpenRouter configuration missing.`
-              }
-            }
-            
+
             // Resolve OpenRouter model ID using shared resolver
             const openrouterModelIdCO = await resolveProviderModelId(model, 'openrouter')
             if (openrouterModelIdCO === model) {
@@ -1490,14 +1494,35 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
               }
             }
-            const response = await callLLMAPI(
-              openrouterModelIdCO,
-              contextualPrompt,
-              strategy.apiKey,
-              openRouterConfig,
-              providerTemperature,
-              providerMaxTokens
-            )
+
+            // Use apiManager like chat API does for OpenRouter credits
+            const apiOptions = {
+              model: openrouterModelIdCO,
+              messages: [{ role: 'user' as const, content: contextualPrompt }],
+              temperature: providerTemperature,
+              maxTokens: providerMaxTokens,
+              stream: false,
+              apiKey: strategy.apiKey,
+              baseUrl: 'https://openrouter.ai/api/v1'
+            }
+
+            const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
+
+            // Parse the response
+            let response: APIResponse
+            const contentType = apiResponse.headers.get('content-type') || ''
+            if (contentType.includes('application/json')) {
+              const result = await apiResponse.json()
+              if (result.error) {
+                throw new Error(result.error.message || 'OpenRouter API error')
+              }
+              response = {
+                content: result.choices?.[0]?.message?.content || '',
+                tokens_used: result.usage?.total_tokens || 0
+              }
+            } else {
+              throw new Error('Invalid response from OpenRouter')
+            }
             
             const endTime = Date.now()
             const duration = endTime - startTime
