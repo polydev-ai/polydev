@@ -59,7 +59,7 @@ By consulting multiple models, your agent can:
 }
 ```
 
-### 3. Use in Your Agent
+### 3. Use in Your Agents
 
 **With CLI Providers (Highest Priority):**
 ```typescript
