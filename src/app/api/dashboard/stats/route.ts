@@ -98,16 +98,45 @@ export async function GET(request: NextRequest) {
     const usageData = requestLogs && requestLogs.length > 0 ? requestLogs : usageLogs
     console.log('[Dashboard Stats] Using data source:', requestLogs && requestLogs.length > 0 ? 'detailed request logs' : 'simple usage logs')
 
-    // Calculate real statistics
+    // Get comprehensive usage data including both MCP and chat logs
+    const { data: chatLogs, error: chatLogsError } = await supabase
+      .from('chat_logs')
+      .select('total_tokens, total_cost, created_at, models_used')
+      .eq('user_id', user.id)
+      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+
+    console.log('[Dashboard Stats] Chat logs:', { count: chatLogs?.length, error: chatLogsError })
+
+    // Combine all request sources for comprehensive stats
+    const allRequests = [
+      ...(requestLogs || []),
+      ...(usageLogs || []),
+      ...(chatLogs || [])
+    ]
+
+    // Calculate real statistics from actual usage
     const totalTokens = (allTokens?.length || 0) + (userTokens?.length || 0)
     const activeConnections = activeTokens.length
-    
-    // Calculate real API requests from usage data
-    const totalRequests = usageData?.length || 0
-    const totalUsageTokens = usageData?.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
 
-    // Calculate uptime based on system health
-    const systemUptime = '99.9%' // This could be calculated from system logs
+    // Calculate real API requests from all data sources
+    const totalRequests = allRequests.length || 0
+    const totalUsageTokens = allRequests.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+
+    // Calculate total cost from all sources
+    const totalCostFromLogs = allRequests.reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0
+
+    // Calculate average response time from actual data
+    const responseTimes = allRequests
+      .filter(log => 'response_time_ms' in log && log.response_time_ms && log.response_time_ms > 0)
+      .map(log => (log as any).response_time_ms)
+
+    const avgResponseTime = responseTimes.length > 0
+      ? Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length)
+      : 245
+
+    // Calculate uptime based on success rate
+    const successfulRequests = allRequests.filter(log => (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)).length
+    const systemUptime = totalRequests > 0 ? `${((successfulRequests / totalRequests) * 100).toFixed(1)}%` : '99.9%'
 
     // Get provider breakdown based on actual user API keys and usage
     const providerStats = apiKeys?.map(apiKey => {
@@ -165,8 +194,8 @@ export async function GET(request: NextRequest) {
       }
     }).filter(provider => provider.status === 'active' || provider.requests > 0 || parseFloat(provider.cost.replace('$', '')) > 0) || []
 
-    // Calculate total cost from usage data
-    const totalCost = usageData?.reduce((sum, log) => sum + (log.total_cost || 0), 0) || 0
+    // Use real cost from comprehensive data
+    const totalCost = totalCostFromLogs
 
     // Generate recent activity from usage data
     const recentActivity: any[] = []
@@ -225,25 +254,21 @@ export async function GET(request: NextRequest) {
     // Prepare real statistics response
     const stats = {
       totalRequests: totalRequests,
-      totalCost: totalCost,
+      totalCost: parseFloat(totalCost.toFixed(4)),
       activeConnections: activeConnections,
       uptime: systemUptime,
-      responseTime: usageData && usageData.length > 0 
-        ? Math.round(usageData.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / usageData.length)
-        : 245,
-      
+      responseTime: avgResponseTime,
+
       // Additional detailed stats - calculate today's usage from actual data
-      requestsToday: usageData?.filter(log => {
+      requestsToday: allRequests.filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
       }).length || 0,
-      costToday: parseFloat((usageData?.filter(log => {
+      costToday: parseFloat((allRequests.filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
-      }).reduce((sum, log) => sum + (log.total_cost || 0), 0) || 0).toFixed(2)),
-      avgResponseTime: usageData && usageData.length > 0 
-        ? Math.round(usageData.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / usageData.length)
-        : 245,
+      }).reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0).toFixed(4)),
+      avgResponseTime: avgResponseTime,
       
       // Real provider breakdown
       providerStats: providerStats,
