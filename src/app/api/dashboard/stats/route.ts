@@ -127,15 +127,15 @@ export async function GET(request: NextRequest) {
 
     // Calculate average response time from actual data
     const responseTimes = allRequests
-      .filter(log => log.response_time_ms && log.response_time_ms > 0)
-      .map(log => log.response_time_ms)
+      .filter(log => 'response_time_ms' in log && log.response_time_ms && log.response_time_ms > 0)
+      .map(log => (log as any).response_time_ms)
 
     const avgResponseTime = responseTimes.length > 0
       ? Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length)
       : 245
 
     // Calculate uptime based on success rate
-    const successfulRequests = allRequests.filter(log => log.status === 'success' || (!log.status && log.total_tokens > 0)).length
+    const successfulRequests = allRequests.filter(log => (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)).length
     const systemUptime = totalRequests > 0 ? `${((successfulRequests / totalRequests) * 100).toFixed(1)}%` : '99.9%'
 
     // Get provider breakdown based on actual user API keys and usage

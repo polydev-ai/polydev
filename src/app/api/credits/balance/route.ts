@@ -88,14 +88,14 @@ export async function GET(request: NextRequest) {
     // Get MCP request logs
     const { data: mcpRequestLogs } = await serviceSupabase
       .from('mcp_request_logs')
-      .select('total_cost, total_tokens, created_at, models_requested, status')
+      .select('id, total_cost, total_tokens, created_at, models_requested, status')
       .eq('user_id', user.id)
       .gte('created_at', thirtyDaysAgo)
 
     // Get chat logs
     const { data: chatLogs } = await serviceSupabase
       .from('chat_logs')
-      .select('total_cost, total_tokens, created_at, models_used')
+      .select('id, total_cost, total_tokens, created_at, models_used')
       .eq('user_id', user.id)
       .gte('created_at', thirtyDaysAgo)
 
