@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
     console.log('[Dashboard Stats] Chat logs:', { count: chatLogs?.length, error: chatLogsError })
 
     // Use the most comprehensive data source available, prioritizing detailed request logs
-    let primaryDataSource = []
+    let primaryDataSource: any[] = []
     let dataSourceName = 'none'
 
     if (requestLogs && requestLogs.length > 0) {
