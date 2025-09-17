@@ -132,9 +132,53 @@ export async function GET(request: NextRequest) {
         const latency = log.provider_latencies?.[key] || 0
         const response = log.provider_responses?.[key]
 
+        // Map provider keys to display names
+        const getProviderDisplayName = (providerKey: string) => {
+          const normalizedKey = providerKey.toLowerCase().trim()
+
+          // Direct mappings for common providers
+          const providerMappings: Record<string, string> = {
+            'openai': 'OpenAI',
+            'anthropic': 'Anthropic',
+            'google': 'Google',
+            'googlevertexai': 'Google',
+            'googlegemini': 'Google',
+            'mistral': 'Mistral',
+            'mistralai': 'Mistral',
+            'together': 'Together AI',
+            'togetherai': 'Together AI',
+            'cerebras': 'Cerebras',
+            'xai': 'xAI',
+            'x-ai': 'xAI',
+            'perplexity': 'Perplexity',
+            'cohere': 'Cohere',
+            'huggingface': 'Hugging Face',
+            'hugging-face': 'Hugging Face',
+            'deepseek': 'DeepSeek',
+            'claude': 'Anthropic',
+            'gpt': 'OpenAI',
+            'gemini': 'Google'
+          }
+
+          // Check direct mappings first
+          if (providerMappings[normalizedKey]) {
+            return providerMappings[normalizedKey]
+          }
+
+          // Check if the key contains any provider name
+          for (const [key, name] of Object.entries(providerMappings)) {
+            if (normalizedKey.includes(key) || key.includes(normalizedKey)) {
+              return name
+            }
+          }
+
+          // Fallback to the original provider key but capitalized
+          return providerKey.charAt(0).toUpperCase() + providerKey.slice(1)
+        }
+
         return {
-          provider,
-          model,
+          provider: getProviderDisplayName(provider),
+          model: model || 'Unknown Model',
           cost: parseFloat(cost as string),
           latency,
           tokens: response?.tokens_used || 0,
@@ -173,15 +217,41 @@ export async function GET(request: NextRequest) {
       source: 'chat',
 
       // Provider breakdown - reconstruct from models_used
-      providers: (log.models_used || []).map((model: string) => ({
-        provider: model.includes('/') ? model.split('/')[0] : 'unknown',
-        model: model.includes('/') ? model.split('/')[1] : model,
-        cost: parseFloat(log.total_cost || '0') / (log.models_used?.length || 1),
-        latency: 0,
-        tokens: Math.round((log.total_tokens || 0) / (log.models_used?.length || 1)),
-        success: true,
-        response: null
-      })),
+      providers: (log.models_used || []).map((model: string) => {
+        const getProviderFromModel = (modelName: string) => {
+          const normalizedModel = modelName.toLowerCase()
+
+          if (normalizedModel.includes('gpt') || normalizedModel.includes('openai')) return 'OpenAI'
+          if (normalizedModel.includes('claude') || normalizedModel.includes('anthropic')) return 'Anthropic'
+          if (normalizedModel.includes('gemini') || normalizedModel.includes('google')) return 'Google'
+          if (normalizedModel.includes('mistral')) return 'Mistral'
+          if (normalizedModel.includes('together')) return 'Together AI'
+          if (normalizedModel.includes('cerebras')) return 'Cerebras'
+          if (normalizedModel.includes('xai') || normalizedModel.includes('x-ai')) return 'xAI'
+          if (normalizedModel.includes('perplexity')) return 'Perplexity'
+          if (normalizedModel.includes('cohere')) return 'Cohere'
+          if (normalizedModel.includes('huggingface') || normalizedModel.includes('hugging-face')) return 'Hugging Face'
+          if (normalizedModel.includes('deepseek')) return 'DeepSeek'
+
+          // If model is in format "provider/model", extract provider
+          if (model.includes('/')) {
+            const provider = model.split('/')[0]
+            return provider.charAt(0).toUpperCase() + provider.slice(1)
+          }
+
+          return 'Unknown Provider'
+        }
+
+        return {
+          provider: getProviderFromModel(model),
+          model: model.includes('/') ? model.split('/')[1] : model,
+          cost: parseFloat(log.total_cost || '0') / (log.models_used?.length || 1),
+          latency: 0,
+          tokens: Math.round((log.total_tokens || 0) / (log.models_used?.length || 1)),
+          success: true,
+          response: null
+        }
+      }),
 
       // Overall metrics
       avgLatency: 0,

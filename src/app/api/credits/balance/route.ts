@@ -82,15 +82,38 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(20)
 
-    // Calculate analytics from usage sessions (last 30 days)
+    // Get comprehensive spending data from multiple sources (last 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    // Get MCP request logs
+    const { data: mcpRequestLogs } = await serviceSupabase
+      .from('mcp_request_logs')
+      .select('total_cost, total_tokens, created_at, models_requested, status')
+      .eq('user_id', user.id)
+      .gte('created_at', thirtyDaysAgo)
+
+    // Get chat logs
+    const { data: chatLogs } = await serviceSupabase
+      .from('chat_logs')
+      .select('total_cost, total_tokens, created_at, models_used')
+      .eq('user_id', user.id)
+      .gte('created_at', thirtyDaysAgo)
+
+    // Fallback to usage sessions
     const { data: analyticsData } = await serviceSupabase
       .from('usage_sessions')
       .select('*')
       .eq('user_id', user.id)
       .gte('created_at', thirtyDaysAgo)
 
-    // Process analytics
+    // Combine all spending data
+    const allSpendingData = [
+      ...(mcpRequestLogs || []).map(log => ({ ...log, source: 'mcp' })),
+      ...(chatLogs || []).map(log => ({ ...log, source: 'chat' })),
+      ...(analyticsData || []).map(log => ({ ...log, source: 'usage' }))
+    ]
+
+    // Process analytics from comprehensive data
     const analytics = {
       totalSpent: 0,
       totalRequests: 0,
@@ -100,23 +123,35 @@ export async function GET(request: NextRequest) {
 
     const modelStats = new Map<string, {usage: number, cost: number}>()
 
-    if (analyticsData) {
-      analyticsData.forEach(session => {
-        const cost = Number(session.cost || 0)
+    if (allSpendingData && allSpendingData.length > 0) {
+      allSpendingData.forEach(log => {
+        const cost = parseFloat(log.total_cost) || 0
         const requests = 1
         analytics.totalSpent += cost
         analytics.totalRequests += requests
 
-        // Track model usage
-        if (session.model_name) {
-          const existing = modelStats.get(session.model_name) || { usage: 0, cost: 0 }
-          existing.usage += requests
-          existing.cost += cost
-          modelStats.set(session.model_name, existing)
+        // Extract models from different sources
+        let models: string[] = []
+        if (log.source === 'mcp' && log.models_requested) {
+          models = Array.isArray(log.models_requested) ? log.models_requested : [log.models_requested]
+        } else if (log.source === 'chat' && log.models_used) {
+          models = Array.isArray(log.models_used) ? log.models_used : [log.models_used]
+        } else if (log.source === 'usage' && log.model_name) {
+          models = [log.model_name]
         }
+
+        // Track model usage
+        models.forEach(model => {
+          if (model) {
+            const existing = modelStats.get(model) || { usage: 0, cost: 0 }
+            existing.usage += requests / models.length
+            existing.cost += cost / models.length
+            modelStats.set(model, existing)
+          }
+        })
       })
 
-      analytics.avgCostPerRequest = analytics.totalRequests > 0 ? 
+      analytics.avgCostPerRequest = analytics.totalRequests > 0 ?
         analytics.totalSpent / analytics.totalRequests : 0
 
       // Get top 5 models by usage
@@ -125,7 +160,7 @@ export async function GET(request: NextRequest) {
         .slice(0, 5)
         .map(([model, stats]) => ({
           model,
-          usage: stats.usage,
+          usage: Math.round(stats.usage),
           cost: stats.cost
         }))
     }
@@ -140,37 +175,78 @@ export async function GET(request: NextRequest) {
       status: purchase.status
     }))
 
-    // Format recent usage
-    const formattedRecentUsage = (recentUsage || []).map(session => ({
-      id: session.id,
-      date: session.created_at,
-      provider: session.provider,
-      model: session.model_name,
-      app: session.metadata?.app || 'Polydev Multi-LLM Platform',
-      tokens: session.tokens_used || session.total_tokens || 0,
-      cost: Number(session.cost || 0),
-      tps: session.metadata?.tps || null,
-      finish: session.metadata?.finish || 'stop',
-      source: session.metadata?.fallback_method === 'credits' ? 'Credits' : (session.metadata?.fallback_method === 'cli' ? 'CLI' : 'API')
-    }))
+    // Format recent usage from all sources, sorted by date
+    const allRecentUsage = [
+      ...(recentUsage || []).map(session => ({
+        id: session.id,
+        date: session.created_at,
+        provider: session.provider || 'Unknown',
+        model: session.model_name || 'Unknown',
+        app: session.metadata?.app || 'Polydev Multi-LLM Platform',
+        tokens: session.tokens_used || session.total_tokens || 0,
+        cost: Number(session.cost || 0),
+        tps: session.metadata?.tps || null,
+        finish: session.metadata?.finish || 'stop',
+        source: session.metadata?.fallback_method === 'credits' ? 'Credits' : (session.metadata?.fallback_method === 'cli' ? 'CLI' : 'API')
+      })),
+      ...(mcpRequestLogs || []).slice(0, 10).map(log => ({
+        id: log.id || `mcp-${Date.now()}`,
+        date: log.created_at,
+        provider: log.models_requested?.[0]?.split('/')[0] || 'Multiple',
+        model: log.models_requested?.[0] || 'Multiple Models',
+        app: 'MCP Client',
+        tokens: log.total_tokens || 0,
+        cost: parseFloat(log.total_cost) || 0,
+        tps: null,
+        finish: log.status || 'completed',
+        source: 'MCP'
+      })),
+      ...(chatLogs || []).slice(0, 10).map(log => ({
+        id: log.id || `chat-${Date.now()}`,
+        date: log.created_at,
+        provider: log.models_used?.[0]?.split('/')[0] || 'Multiple',
+        model: log.models_used?.[0] || 'Multiple Models',
+        app: 'Web Chat',
+        tokens: log.total_tokens || 0,
+        cost: parseFloat(log.total_cost) || 0,
+        tps: null,
+        finish: 'completed',
+        source: 'Chat'
+      }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 20)
+
+    const formattedRecentUsage = allRecentUsage
+
+    // Update user credits with calculated spending (if different)
+    const calculatedTotalSpent = parseFloat(analytics.totalSpent.toFixed(4))
+    if (Math.abs(calculatedTotalSpent - (userCredits.total_spent || 0)) > 0.01) {
+      // Only update if there's a significant difference
+      await serviceSupabase
+        .from('user_credits')
+        .update({
+          total_spent: calculatedTotalSpent,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+    }
 
     return NextResponse.json({
       balance: userCredits.balance || 0,
       promotional_balance: userCredits.promotional_balance || 0,
       totalPurchased: userCredits.total_purchased || 0,
-      totalSpent: userCredits.total_spent || 0,
+      totalSpent: calculatedTotalSpent, // Use calculated value
       hasOpenRouterKey: false,
       openRouterKeyActive: false,
       purchaseHistory: formattedPurchaseHistory,
       recentUsage: formattedRecentUsage,
       analytics: {
-        totalSpent: parseFloat(analytics.totalSpent.toFixed(4)),
+        totalSpent: calculatedTotalSpent,
         totalRequests: analytics.totalRequests,
         avgCostPerRequest: parseFloat(analytics.avgCostPerRequest.toFixed(4)),
         topModels: analytics.topModels
       },
       createdAt: userCredits.created_at,
-      updatedAt: userCredits.updated_at
+      updatedAt: new Date().toISOString() // Use current timestamp
     })
 
   } catch (error) {

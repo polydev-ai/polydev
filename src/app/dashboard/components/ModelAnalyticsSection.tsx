@@ -1,40 +1,61 @@
 'use client'
 
 function getProviderLogo(providerName: string, providersRegistry: any[]) {
+  if (!providerName || !providersRegistry || providersRegistry.length === 0) {
+    return null
+  }
+
   // Normalize provider name for matching
   const normalizedName = providerName.toLowerCase().replace(/[^a-z0-9]/g, '')
 
-  // Try exact match first
-  let provider = providersRegistry.find(p =>
-    p.id.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedName ||
-    p.name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedName ||
-    (p.display_name && p.display_name.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedName)
-  )
+  // Direct provider name mappings to match with registry
+  const providerMappings: Record<string, string[]> = {
+    'openai': ['openai', 'gpt'],
+    'anthropic': ['anthropic', 'claude'],
+    'google': ['google', 'googlevertexai', 'googlegemini', 'gemini'],
+    'mistral': ['mistral', 'mistralai'],
+    'togetherai': ['together', 'togetherai'],
+    'cerebras': ['cerebras'],
+    'xai': ['xai', 'x-ai'],
+    'perplexity': ['perplexity'],
+    'cohere': ['cohere'],
+    'huggingface': ['huggingface', 'hugging-face'],
+    'deepseek': ['deepseek']
+  }
 
-  // Try partial matches for common variations
+  // Try exact match first with any field
+  let provider = providersRegistry.find(p => {
+    const fields = [p.id, p.name, p.display_name, p.provider_name].filter(Boolean)
+    return fields.some(field =>
+      field.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedName
+    )
+  })
+
+  // Try mapping-based matching
   if (!provider) {
-    const commonMappings = {
-      'openai': ['openai'],
-      'anthropic': ['anthropic'],
-      'google': ['google', 'googlevertexai', 'googlegemini'],
-      'mistral': ['mistral', 'mistralai'],
-      'together': ['together', 'togetherai'],
-      'cerebras': ['cerebras'],
-      'xai': ['xai', 'x-ai'],
-      'perplexity': ['perplexity'],
-      'cohere': ['cohere'],
-      'huggingface': ['huggingface', 'hugging-face']
-    }
-
-    for (const [key, variations] of Object.entries(commonMappings)) {
+    for (const [registryKey, variations] of Object.entries(providerMappings)) {
       if (variations.some(v => normalizedName.includes(v) || v.includes(normalizedName))) {
-        provider = providersRegistry.find(p =>
-          p.id.toLowerCase().includes(key) ||
-          p.name.toLowerCase().includes(key)
-        )
+        provider = providersRegistry.find(p => {
+          const fields = [p.id, p.name, p.display_name, p.provider_name].filter(Boolean)
+          return fields.some(field =>
+            field.toLowerCase().replace(/[^a-z0-9]/g, '').includes(registryKey) ||
+            registryKey.includes(field.toLowerCase().replace(/[^a-z0-9]/g, ''))
+          )
+        })
         if (provider) break
       }
     }
+  }
+
+  // Fallback: try partial matching
+  if (!provider) {
+    provider = providersRegistry.find(p => {
+      const fields = [p.id, p.name, p.display_name, p.provider_name].filter(Boolean)
+      return fields.some(field => {
+        const fieldNormalized = field.toLowerCase().replace(/[^a-z0-9]/g, '')
+        return fieldNormalized.includes(normalizedName) || normalizedName.includes(fieldNormalized)
+      })
+    })
   }
 
   return provider?.logo_url || null
