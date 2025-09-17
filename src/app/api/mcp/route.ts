@@ -1159,8 +1159,23 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       }
       
       try {
-        // Determine provider from original model name or use intelligent matching
-        let provider = determineProvider(model, configMap)
+        // First, find the API key configuration for this model (like chat API does)
+        const apiKeyForModel = apiKeys?.find(key => key.default_model === model)
+
+        let provider: ProviderConfig | null = null
+
+        if (apiKeyForModel) {
+          // Use the provider from the user's API key configuration
+          provider = configMap.get(apiKeyForModel.provider) || null
+          console.log(`[MCP] Found model ${model} configured for provider ${apiKeyForModel.provider}`)
+        }
+
+        if (!provider) {
+          // Fallback to intelligent matching if model not in API keys
+          provider = determineProvider(model, configMap)
+          console.log(`[MCP] Using pattern-based provider detection for ${model}`)
+        }
+
         if (!provider) {
           return {
             model,
