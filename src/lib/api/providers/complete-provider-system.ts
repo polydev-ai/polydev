@@ -405,6 +405,51 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     }
   },
 
+  // TOGETHER AI ALIAS (for 'togetherai' provider ID)
+  togetherai: {
+    id: 'togetherai',
+    name: 'Together AI',
+    baseUrl: 'https://api.together.xyz/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
+    }
+  },
+
+  // XAI ALIAS (for 'x-ai' provider ID)
+  'x-ai': {
+    id: 'x-ai',
+    name: 'xAI',
+    baseUrl: 'https://api.x.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    },
+    requestTransform: (options) => {
+      const transformer = getTransformer('openai')
+      const request = transformer.transformRequest(options)
+
+      if (options.enableRealTimeData) {
+        request.functions = [{
+          name: 'real_time_search',
+          description: 'Get real-time information from the web'
+        }]
+      }
+
+      return request
+    },
+    streamParser: (chunk) => {
+      const transformer = getTransformer('openai')
+      return transformer.transformStreamChunk(chunk)
+    }
+  },
+
   // OLLAMA CONFIGURATION (Local)
   ollama: {
     id: 'ollama',

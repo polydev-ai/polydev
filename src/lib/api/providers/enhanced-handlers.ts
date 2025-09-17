@@ -537,6 +537,58 @@ export class EnhancedClaudeCodeHandler extends BaseEnhancedHandler {
   }
 }
 
+// CEREBRAS ENHANCED HANDLER
+export class EnhancedCerebrasHandler extends BaseEnhancedHandler {
+  constructor() {
+    super('cerebras')
+  }
+
+  protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
+    const transformer = getTransformer('openai') // Cerebras uses OpenAI format
+    const requestBody = transformer.transformRequest(options)
+
+    requestBody.stream = options.stream || false
+
+    const headers = this.prepareHeaders(options)
+
+    return fetch(`${this.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    })
+  }
+
+  protected getTestModel(): string {
+    return 'llama3.1-8b'
+  }
+}
+
+// TOGETHER AI ENHANCED HANDLER
+export class EnhancedTogetherAIHandler extends BaseEnhancedHandler {
+  constructor() {
+    super('together')
+  }
+
+  protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
+    const transformer = getTransformer('openai') // Together AI uses OpenAI format
+    const requestBody = transformer.transformRequest(options)
+
+    requestBody.stream = options.stream || false
+
+    const headers = this.prepareHeaders(options)
+
+    return fetch(`${this.baseUrl}/v1/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody)
+    })
+  }
+
+  protected getTestModel(): string {
+    return 'meta-llama/Llama-3.2-3B-Instruct-Turbo'
+  }
+}
+
 // OPENROUTER ENHANCED HANDLER
 export class EnhancedOpenRouterHandler extends BaseEnhancedHandler {
   constructor() {
@@ -617,6 +669,7 @@ export class EnhancedHandlerFactory {
       case 'google':
         return new EnhancedGoogleHandler('google')
       case 'xai':
+      case 'x-ai':
         return new EnhancedXAIHandler()
       case 'deepseek':
         return new EnhancedDeepSeekHandler()
@@ -628,6 +681,11 @@ export class EnhancedHandlerFactory {
         return new EnhancedClaudeCodeHandler()
       case 'openrouter':
         return new EnhancedOpenRouterHandler()
+      case 'cerebras':
+        return new EnhancedCerebrasHandler()
+      case 'together':
+      case 'togetherai':
+        return new EnhancedTogetherAIHandler()
       default:
         throw new Error(`No enhanced handler available for provider: ${providerId}`)
     }
@@ -635,8 +693,8 @@ export class EnhancedHandlerFactory {
   
   static getSupportedProviders(): string[] {
     return [
-      'anthropic', 'openai', 'openai-native', 'gemini', 'google', 'xai', 
-      'deepseek', 'groq', 'ollama', 'claude-code', 'openrouter'
+      'anthropic', 'openai', 'openai-native', 'gemini', 'google', 'xai', 'x-ai',
+      'deepseek', 'groq', 'ollama', 'claude-code', 'openrouter', 'cerebras', 'together', 'togetherai'
     ]
   }
 }
