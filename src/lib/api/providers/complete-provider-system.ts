@@ -544,6 +544,359 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     baseUrl: 'vscode://extension/language-models',
     authType: 'oauth',
     headers: {}
+  },
+
+  // ADDITIONAL PROVIDERS - Generic configurations for missing providers
+  'amazon-bedrock': {
+    id: 'amazon-bedrock',
+    name: 'Amazon Bedrock',
+    baseUrl: 'https://bedrock-runtime.us-east-1.amazonaws.com',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  azure: {
+    id: 'azure',
+    name: 'Azure OpenAI',
+    baseUrl: 'https://api.openai.azure.com',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': (options) => options.apiKey || ''
+    }
+  },
+
+  'fireworks-ai': {
+    id: 'fireworks-ai',
+    name: 'Fireworks AI',
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  'google-vertex': {
+    id: 'google-vertex',
+    name: 'Google Vertex AI',
+    baseUrl: 'https://us-central1-aiplatform.googleapis.com',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  'google-vertex-anthropic': {
+    id: 'google-vertex-anthropic',
+    name: 'Google Vertex AI - Anthropic',
+    baseUrl: 'https://us-central1-aiplatform.googleapis.com',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  nvidia: {
+    id: 'nvidia',
+    name: 'NVIDIA NIM',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  'github-models': {
+    id: 'github-models',
+    name: 'GitHub Models',
+    baseUrl: 'https://models.inference.ai.azure.com',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  vercel: {
+    id: 'vercel',
+    name: 'Vercel AI Gateway',
+    baseUrl: 'https://api.vercel.com/v1/ai',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  deepinfra: {
+    id: 'deepinfra',
+    name: 'Deep Infra',
+    baseUrl: 'https://api.deepinfra.com/v1/openai',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  upstage: {
+    id: 'upstage',
+    name: 'Upstage',
+    baseUrl: 'https://api.upstage.ai/v1/solar',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  // Generic configurations for all other providers
+  alibaba: {
+    id: 'alibaba',
+    name: 'Alibaba',
+    baseUrl: 'https://dashscope.aliyuncs.com/api/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  baseten: {
+    id: 'baseten',
+    name: 'Baseten',
+    baseUrl: 'https://api.baseten.co/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  chutes: {
+    id: 'chutes',
+    name: 'Chutes',
+    baseUrl: 'https://api.chutes.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  'cloudflare-workers-ai': {
+    id: 'cloudflare-workers-ai',
+    name: 'Cloudflare Workers AI',
+    baseUrl: 'https://api.cloudflare.com/client/v4/accounts',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  fastrouter: {
+    id: 'fastrouter',
+    name: 'FastRouter',
+    baseUrl: 'https://api.fastrouter.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  'github-copilot': {
+    id: 'github-copilot',
+    name: 'GitHub Copilot',
+    baseUrl: 'https://api.githubcopilot.com/chat/completions',
+    authType: 'oauth',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  },
+
+  inception: {
+    id: 'inception',
+    name: 'Inception',
+    baseUrl: 'https://api.inception.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  inference: {
+    id: 'inference',
+    name: 'Inference',
+    baseUrl: 'https://api.inference.com/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  llama: {
+    id: 'llama',
+    name: 'Llama',
+    baseUrl: 'https://api.llama-api.com/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  modelscope: {
+    id: 'modelscope',
+    name: 'ModelScope',
+    baseUrl: 'https://dashscope.aliyuncs.com/api/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  moonshotai: {
+    id: 'moonshotai',
+    name: 'Moonshot AI',
+    baseUrl: 'https://api.moonshot.cn/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  'moonshotai-cn': {
+    id: 'moonshotai-cn',
+    name: 'Moonshot AI (China)',
+    baseUrl: 'https://api.moonshot.cn/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  morph: {
+    id: 'morph',
+    name: 'Morph',
+    baseUrl: 'https://api.morph.so/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  opencode: {
+    id: 'opencode',
+    name: 'OpenCode',
+    baseUrl: 'https://api.opencode.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  requesty: {
+    id: 'requesty',
+    name: 'Requesty',
+    baseUrl: 'https://api.requesty.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  submodel: {
+    id: 'submodel',
+    name: 'Submodel',
+    baseUrl: 'https://api.submodel.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  synthetic: {
+    id: 'synthetic',
+    name: 'Synthetic',
+    baseUrl: 'https://api.synthetic.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  v0: {
+    id: 'v0',
+    name: 'v0',
+    baseUrl: 'https://api.v0.dev/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  venice: {
+    id: 'venice',
+    name: 'Venice AI',
+    baseUrl: 'https://api.venice.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  wandb: {
+    id: 'wandb',
+    name: 'Weights & Biases',
+    baseUrl: 'https://api.wandb.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  zai: {
+    id: 'zai',
+    name: 'Z.AI',
+    baseUrl: 'https://api.z.ai/v1',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
+  },
+
+  zhipuai: {
+    id: 'zhipuai',
+    name: 'Zhipu AI',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
   }
 }
 

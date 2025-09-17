@@ -644,6 +644,116 @@ export class EnhancedOpenRouterHandler extends BaseEnhancedHandler {
   }
 }
 
+// GENERIC ENHANCED HANDLER - For providers that don't need custom logic
+export class EnhancedGenericHandler extends BaseEnhancedHandler {
+  constructor(providerId: string) {
+    super(providerId)
+  }
+
+  protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
+    // Use universal provider for all requests
+    return universalProvider.createMessage(this.providerId, options)
+  }
+
+  protected getTestModel(): string {
+    // Use a generic test model - universal provider will handle model mapping
+    return 'gpt-3.5-turbo'
+  }
+
+  async validateApiKey?(apiKey: string): Promise<boolean> {
+    try {
+      const testOptions: ApiHandlerOptions = {
+        apiKey,
+        model: this.getTestModel(),
+        messages: [{ role: 'user', content: 'test' }],
+        maxTokens: 1
+      }
+
+      const response = await this.makeRequest(testOptions)
+      return response.status !== 401 && response.status !== 403
+    } catch (error) {
+      return false
+    }
+  }
+}
+
+// SPECIFIC HANDLERS FOR MAJOR PROVIDERS
+
+// Amazon Bedrock
+export class EnhancedBedrockHandler extends BaseEnhancedHandler {
+  constructor() {
+    super('amazon-bedrock')
+  }
+
+  protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
+    return universalProvider.createMessage('amazon-bedrock', options)
+  }
+
+  protected getTestModel(): string {
+    return 'anthropic.claude-3-haiku-20240307-v1:0'
+  }
+}
+
+// Azure OpenAI
+export class EnhancedAzureHandler extends BaseEnhancedHandler {
+  constructor() {
+    super('azure')
+  }
+
+  protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
+    return universalProvider.createMessage('azure', options)
+  }
+
+  protected getTestModel(): string {
+    return 'gpt-35-turbo'
+  }
+}
+
+// Fireworks AI
+export class EnhancedFireworksHandler extends BaseEnhancedHandler {
+  constructor() {
+    super('fireworks-ai')
+  }
+
+  protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
+    return universalProvider.createMessage('fireworks-ai', options)
+  }
+
+  protected getTestModel(): string {
+    return 'accounts/fireworks/models/llama-v3p1-8b-instruct'
+  }
+}
+
+// Hugging Face
+export class EnhancedHuggingFaceHandler extends BaseEnhancedHandler {
+  constructor() {
+    super('huggingface')
+  }
+
+  protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
+    return universalProvider.createMessage('huggingface', options)
+  }
+
+  protected getTestModel(): string {
+    return 'microsoft/DialoGPT-medium'
+  }
+}
+
+// Mistral
+export class EnhancedMistralHandler extends BaseEnhancedHandler {
+  constructor() {
+    super('mistral')
+  }
+
+  protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
+    return universalProvider.createMessage('mistral', options)
+  }
+
+  protected getTestModel(): string {
+    return 'mistral-small-latest'
+  }
+}
+
 // Handler factory
 export class EnhancedHandlerFactory {
   private static handlers: Map<string, BaseEnhancedHandler> = new Map()
@@ -668,6 +778,9 @@ export class EnhancedHandlerFactory {
         return new EnhancedGoogleHandler('gemini')
       case 'google':
         return new EnhancedGoogleHandler('google')
+      case 'google-vertex':
+      case 'google-vertex-anthropic':
+        return new EnhancedGenericHandler(providerId)
       case 'xai':
       case 'x-ai':
         return new EnhancedXAIHandler()
@@ -686,15 +799,71 @@ export class EnhancedHandlerFactory {
       case 'together':
       case 'togetherai':
         return new EnhancedTogetherAIHandler()
+
+      // Major providers with specific handlers
+      case 'amazon-bedrock':
+        return new EnhancedBedrockHandler()
+      case 'azure':
+        return new EnhancedAzureHandler()
+      case 'fireworks-ai':
+        return new EnhancedFireworksHandler()
+      case 'huggingface':
+        return new EnhancedHuggingFaceHandler()
+      case 'mistral':
+        return new EnhancedMistralHandler()
+
+      // All other providers use generic handler
+      case 'alibaba':
+      case 'baseten':
+      case 'chutes':
+      case 'cloudflare-workers-ai':
+      case 'deepinfra':
+      case 'fastrouter':
+      case 'github-copilot':
+      case 'github-models':
+      case 'inception':
+      case 'inference':
+      case 'llama':
+      case 'lmstudio':
+      case 'modelscope':
+      case 'moonshotai':
+      case 'moonshotai-cn':
+      case 'morph':
+      case 'nvidia':
+      case 'opencode':
+      case 'requesty':
+      case 'submodel':
+      case 'synthetic':
+      case 'upstage':
+      case 'v0':
+      case 'venice':
+      case 'vercel':
+      case 'wandb':
+      case 'zai':
+      case 'zhipuai':
+        return new EnhancedGenericHandler(providerId)
+
       default:
-        throw new Error(`No enhanced handler available for provider: ${providerId}`)
+        // For any unknown providers, use generic handler
+        return new EnhancedGenericHandler(providerId)
     }
   }
   
   static getSupportedProviders(): string[] {
     return [
-      'anthropic', 'openai', 'openai-native', 'gemini', 'google', 'xai', 'x-ai',
-      'deepseek', 'groq', 'ollama', 'claude-code', 'openrouter', 'cerebras', 'together', 'togetherai'
+      // Core providers with specific handlers
+      'anthropic', 'openai', 'openai-native', 'gemini', 'google', 'google-vertex', 'google-vertex-anthropic',
+      'xai', 'x-ai', 'deepseek', 'groq', 'ollama', 'claude-code', 'openrouter', 'cerebras', 'together', 'togetherai',
+
+      // Major providers with dedicated handlers
+      'amazon-bedrock', 'azure', 'fireworks-ai', 'huggingface', 'mistral',
+
+      // All other providers (using generic handler)
+      'alibaba', 'baseten', 'chutes', 'cloudflare-workers-ai', 'deepinfra', 'fastrouter',
+      'github-copilot', 'github-models', 'inception', 'inference', 'llama', 'lmstudio',
+      'modelscope', 'moonshotai', 'moonshotai-cn', 'morph', 'nvidia', 'opencode',
+      'requesty', 'submodel', 'synthetic', 'upstage', 'v0', 'venice', 'vercel',
+      'wandb', 'zai', 'zhipuai'
     ]
   }
 }
