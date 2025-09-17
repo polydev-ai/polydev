@@ -85,7 +85,7 @@ export default function Home() {
       title: 'Polydev credits last',
       subtitle: 'Managed fallback when you need it',
       description:
-        'Tap Polydev's enterprise OpenRouter pool only when other paths aren't available. Perfect for emergencies or teams who want usage guardrails.',
+        'Tap Polydev\'s enterprise OpenRouter pool only when other paths aren\'t available. Perfect for emergencies or teams who want usage guardrails.',
       accent: 'from-purple-400 to-fuchsia-500'
     }
   ]
