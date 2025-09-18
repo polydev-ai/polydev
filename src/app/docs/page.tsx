@@ -450,7 +450,7 @@ polydev keys verify
       // Immediately show sample content to prevent loading delay
       const itemId = initialItem.href.replace('#', '')
       const sampleMarkdown = getSampleContent(itemId)
-      marked(sampleMarkdown).then(html => {
+      Promise.resolve(marked(sampleMarkdown)).then(html => {
         const processedHtml = processMarkdownContent(html)
         setContent(processedHtml)
       })
