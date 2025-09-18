@@ -175,46 +175,15 @@ OPENAI_API_KEY=sk-proj abc def
 OPENAI_API_KEY="sk-proj abc def"
 ```
 
-### 4. Supabase Connection Issues
+### 4. Routing looks wrong (credits used unexpectedly)
 
-**Symptoms:**
-- "Invalid API key" errors
-- Database connection timeouts
-- Authentication failures
+**Symptoms:** You expected CLI or your API key to be used, but it shows credits.
 
-**Diagnostic Commands:**
-```bash
-# Test Supabase connection
-curl -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
-     "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/"
-
-# Test authentication
-curl -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
-     "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/settings"
-
-# Verify service role key
-curl -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-     "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/users"
-```
-
-**Solutions:**
-
-**Invalid API Key:**
-1. Verify keys in Supabase Dashboard → Settings → API
-2. Check for extra spaces or newlines
-3. Ensure using correct project keys
-
-**Connection Timeout:**
-```bash
-# Check DNS resolution
-nslookup your-project.supabase.co
-
-# Test network connectivity
-ping your-project.supabase.co
-
-# Check firewall/proxy settings
-curl -v https://your-project.supabase.co
-```
+**Fixes:**
+1. Open the dashboard → Preferences and ensure routing order is `cli, api_keys, credits`.
+2. Re‑authenticate CLIs (`claude auth login`, `gcloud auth application-default login`).
+3. Verify API keys are active and not rate‑limited in Settings → API Keys.
+4. Re‑run with streaming to see routing decisions live.
 
 ### 5. API Provider Authentication Issues
 
@@ -231,13 +200,13 @@ curl -H "Authorization: Bearer $OPENAI_API_KEY" \
      https://api.openai.com/v1/usage
 ```
 
-**Anthropic Issues:**
+**Anthropic Issues (modern models):**
 ```bash
 # Test API key
 curl -H "x-api-key: $ANTHROPIC_API_KEY" \
      -H "anthropic-version: 2023-06-01" \
      https://api.anthropic.com/v1/messages \
-     -d '{"model":"claude-3-haiku-20240307","max_tokens":10,"messages":[{"role":"user","content":"hi"}]}'
+     -d '{"model":"claude-haiku-2", "max_tokens":10, "messages":[{"role":"user","content":"hi"}]}'
 ```
 
 **Google AI Issues:**

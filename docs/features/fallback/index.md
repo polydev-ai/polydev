@@ -72,9 +72,9 @@ flowchart TD
 - ✅ **High Availability** - Multiple providers as backup
 
 **Supported Providers:**
-- OpenAI (GPT-4, GPT-3.5, GPT-4-Turbo)
-- Anthropic (Claude-3-Opus, Claude-3-Sonnet, Claude-3-Haiku)
-- Google AI (Gemini-Pro, Gemini-Ultra, Gemini-Flash)
+- OpenAI (GPT-5, GPT-4.1, GPT-4.1‑mini)
+- Anthropic (Claude Opus 4)
+- Google AI (Gemini 2.5 Pro)
 - [20+ Additional Providers](../../providers/api-providers/)
 
 ### 3. Polydev Credits (Fallback Priority)
@@ -121,26 +121,26 @@ const detectionResult = {
 // Example fallback routing decision
 const routingDecision = await polydev.perspectives({
   prompt: "Explain React hooks",
-  models: ["claude-3-sonnet", "gpt-4"],
+  models: ["claude-opus-4", "gpt-5"],
   // No provider specified - automatic fallback
 });
 
 // Polydev's internal routing logic:
-// 1. Check Claude Code CLI for claude-3-sonnet ✅ Available
-// 2. Check Codex CLI for gpt-4 ❌ Not available  
-// 3. Check OpenAI API key for gpt-4 ✅ Available
-// 4. Route: claude-3-sonnet → Claude Code CLI, gpt-4 → OpenAI API
+// 1. Check Claude Code CLI for claude-opus-4 ✅ Available
+// 2. Check Codex CLI for gpt-5 ❌ Not available  
+// 3. Check OpenAI API key for gpt-5 ✅ Available
+// 4. Route: claude-opus-4 → Claude Code CLI, gpt-5 → OpenAI API
 
 console.log(routingDecision.routing_used);
 // Output: 
 // {
-//   "claude-3-sonnet": {
+//   "claude-opus-4": {
 //     "provider": "claude_code_cli",
 //     "method": "cli",
 //     "cost": 0,
 //     "response_time": 1.8
 //   },
-//   "gpt-4": {
+//   "gpt-5": {
 //     "provider": "openai_api",
 //     "method": "api_key", 
 //     "cost": 0.034,
@@ -157,31 +157,31 @@ Polydev automatically maps model requests to available providers:
 // Model mapping configuration
 const modelMapping = {
   // Claude models
-  "claude-3-opus": {
+  "claude-opus-4": {
     cli: ["claude_code"],
     api: ["anthropic"],
     credits: ["polydev_anthropic"]
   },
-  "claude-3-sonnet": {
+  "claude-sonnet-4": {
     cli: ["claude_code"],
     api: ["anthropic"],
     credits: ["polydev_anthropic"]
   },
   
   // OpenAI models
-  "gpt-4": {
+  "gpt-5": {
     cli: ["codex_cli"],  // If available
     api: ["openai"],
     credits: ["polydev_openai"]
   },
-  "gpt-3.5-turbo": {
+  "gpt-4.1-mini": {
     cli: [],
     api: ["openai"],
     credits: ["polydev_openai"]
   },
   
   // Google models
-  "gemini-pro": {
+  "gemini-2.5-pro": {
     cli: ["gemini_cli"],
     api: ["google_ai"],
     credits: ["polydev_google"]
@@ -235,12 +235,12 @@ const customRouting = await polydev.perspectives({
   prompt: "Code review task",
   models: [
     {
-      model: "claude-3-opus",
+      model: "claude-opus-4",
       preferred_providers: ["claude_code", "anthropic"],  // Skip credits
       max_cost: 0.10
     },
     {
-      model: "gpt-4",
+      model: "gpt-5",
       preferred_providers: ["openai"],  // API key only
       fallback_allowed: false  // Don't use credits
     }
@@ -351,7 +351,7 @@ console.log(fallbackStats);
 try {
   const response = await polydev.perspectives({
     prompt: "Complex analysis task",
-    models: ["claude-3-opus", "gpt-4-turbo"],
+    models: ["claude-opus-4", "gpt-5"],
     
     fallback_options: {
       degradation_strategy: "graceful",
@@ -451,7 +451,7 @@ const optimizedFallback = {
 // Distribute load across providers
 const loadBalancedRequest = await polydev.perspectives({
   prompt: "Multiple similar requests",
-  models: ["claude-3-sonnet", "gpt-4"],
+  models: ["claude-opus-4", "gpt-5"],
   
   load_balancing: {
     strategy: "round_robin",    // or "least_loaded", "random"
@@ -510,7 +510,7 @@ const apiConfig = {
   providers: {
     openai: {
       api_key: process.env.OPENAI_API_KEY,
-      models: ["gpt-4", "gpt-3.5-turbo", "gpt-4-turbo"],
+      models: ["gpt-5", "gpt-4.1-mini"],
       rate_limits: {
         requests_per_minute: 60,
         tokens_per_minute: 150000
@@ -519,7 +519,7 @@ const apiConfig = {
     
     anthropic: {
       api_key: process.env.ANTHROPIC_API_KEY,
-      models: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku"],
+      models: ["claude-opus-4"],
       rate_limits: {
         requests_per_minute: 50,
         tokens_per_minute: 100000
@@ -528,7 +528,7 @@ const apiConfig = {
     
     google_ai: {
       api_key: process.env.GOOGLE_AI_API_KEY,
-      models: ["gemini-pro", "gemini-ultra", "gemini-flash"],
+      models: ["gemini-2.5-pro"],
       rate_limits: {
         requests_per_minute: 100,
         tokens_per_minute: 200000
@@ -570,7 +570,7 @@ const keyManager = polydev.createAPIKeyManager({
 // Prioritize CLI tools for cost savings
 const costOptimized = await polydev.perspectives({
   prompt: "Regular analysis task",
-  models: ["claude-3-sonnet", "gpt-4"],
+  models: ["claude-opus-4", "gpt-5"],
   
   cost_optimization: {
     prefer_cli: true,
@@ -586,9 +586,9 @@ const costOptimized = await polydev.perspectives({
 ```javascript
 // Choose appropriate model complexity for the task
 const taskBasedModels = {
-  simple_tasks: ["gpt-3.5-turbo", "claude-3-haiku"],
-  complex_tasks: ["gpt-4", "claude-3-opus"],
-  code_tasks: ["codex", "claude-3-sonnet"]
+  simple_tasks: ["gemini-2.5-pro"],
+  complex_tasks: ["gpt-5", "claude-opus-4"],
+  code_tasks: ["codex", "claude-opus-4"]
 };
 ```
 
@@ -680,7 +680,7 @@ const safeConfig = {
 // Enable comprehensive fallback debugging
 const debugResponse = await polydev.perspectives({
   prompt: "Debug test",
-  models: ["claude-3-sonnet"],
+  models: ["claude-opus-4"],
   
   debug: {
     trace_fallback_decisions: true,
@@ -743,7 +743,7 @@ app.post('/ai/analyze', async (req, res) => {
   try {
     const result = await polydev.perspectives({
       prompt: req.body.prompt,
-      models: req.body.models || ['claude-3-sonnet', 'gpt-4'],
+      models: req.body.models || ['claude-opus-4', 'gpt-5'],
       fallback_metadata: {
         user_id: req.user.id,
         request_type: 'analysis'

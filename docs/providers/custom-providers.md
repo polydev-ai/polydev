@@ -139,7 +139,7 @@ services:
   "apiKey": "not-needed",
   "models": [
     {
-      "id": "gpt-3.5-turbo",
+      "id": "gpt-4.1-mini",
       "name": "LocalAI GPT-3.5-Turbo",
       "contextWindow": 4096
     }
@@ -205,10 +205,10 @@ Fast inference for open models:
   "apiVersion": "2024-02-15-preview",
   "models": [
     {
-      "id": "gpt-4-deployment",
+      "id": "gpt-5-deployment",
       "name": "GPT-4 (Azure)",
       "contextWindow": 128000,
-      "deployment": "gpt-4-deployment-name"
+      "deployment": "gpt-5-deployment-name"
     }
   ],
   "headers": {
@@ -229,7 +229,7 @@ Fast inference for open models:
   "secretAccessKey": "your-secret-key",
   "models": [
     {
-      "id": "anthropic.claude-3-sonnet-20240229-v1:0",
+      "id": "anthropic.claude-opus-4-2025-preview",
       "name": "Claude 3 Sonnet (Bedrock)",
       "contextWindow": 200000
     }
@@ -357,8 +357,8 @@ export class CustomAIAdapter implements CustomAdapter {
   private mapModelId(openaiModel: string): string {
     // Map OpenAI model IDs to your API's model IDs
     const modelMapping = {
-      'gpt-4': 'custom-large-model',
-      'gpt-3.5-turbo': 'custom-fast-model'
+      'gpt-5': 'custom-large-model',
+      'gpt-4.1-mini': 'custom-fast-model'
     };
     
     return modelMapping[openaiModel] || openaiModel;

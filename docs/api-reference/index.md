@@ -71,7 +71,7 @@ const response = await fetch('https://api.polydev.ai/v1/perspectives', {
   },
   body: JSON.stringify({
     prompt: "Explain React hooks",
-    models: ["claude-3-sonnet", "gpt-4", "gemini-pro"],
+    models: ["gpt-5", "claude-opus-4", "gemini-2.5-pro", "grok-4-high"],
     project_memory: "smart"
   })
 });
@@ -104,7 +104,7 @@ const response = await fetch('https://api.polydev.ai/v1/chat/completions', {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    model: "claude-3-sonnet",
+    model: "gpt-5",
     messages: [
       { role: "user", content: "Explain async/await in JavaScript" }
     ],
@@ -210,7 +210,7 @@ ws.onmessage = (event) => {
 ws.send(JSON.stringify({
   type: 'start_perspective',
   prompt: 'Explain machine learning',
-  models: ['claude-3-sonnet', 'gpt-4'],
+  models: ['gpt-5', 'claude-opus-4'],
   stream: true
 }));
 ```
@@ -244,7 +244,7 @@ const toolCall = {
     name: "get_perspectives",
     arguments: {
       prompt: "Review this code for issues",
-      models: ["claude-3-sonnet", "gpt-4"],
+      models: ["gpt-5", "claude-opus-4"],
       project_context: {
         root_path: "/path/to/project"
       }
@@ -291,7 +291,7 @@ const client = new PolydevClient({
 
 const result = await client.perspectives({
   prompt: 'Explain React patterns',
-  models: ['claude-3-sonnet', 'gpt-4']
+  models: ['gpt-5', 'claude-opus-4']
 });
 ```
 
@@ -308,7 +308,7 @@ client = polydev.Client(api_key="poly_your_api_key")
 
 result = client.perspectives(
     prompt="Explain Django best practices",
-    models=["claude-3-sonnet", "gpt-4"]
+    models=["gpt-5", "claude-opus-4"]
 )
 
 for perspective in result.perspectives:
@@ -333,7 +333,7 @@ func main() {
     
     result, err := client.Perspectives(&polydev.PerspectivesRequest{
         Prompt: "Explain Go concurrency patterns",
-        Models: []string{"claude-3-sonnet", "gpt-4"},
+        Models: []string{"gpt-5", "claude-opus-4"},
     })
     
     if err != nil {
@@ -360,7 +360,7 @@ import { usePerspectives } from '@polydev/react';
 function MyComponent() {
   const { perspectives, loading, error } = usePerspectives({
     prompt: 'Analyze this component',
-    models: ['claude-3-sonnet', 'gpt-4'],
+    models: ['gpt-5', 'claude-opus-4'],
     dependencies: [componentCode]
   });
 
@@ -405,7 +405,7 @@ import { usePerspectives } from '@polydev/vue';
 
 const { perspectives, loading, error } = usePerspectives({
   prompt: 'Analyze this Vue component',
-  models: ['claude-3-sonnet', 'gpt-4']
+  models: ['claude-opus-4', 'gpt-5']
 });
 </script>
 ```
@@ -464,7 +464,7 @@ const { perspectives, loading, error } = usePerspectives({
 try {
   const result = await client.perspectives({
     prompt: 'Analyze code',
-    models: ['claude-3-sonnet']
+    models: ['claude-opus-4']
   });
 } catch (error) {
   if (error.type === 'rate_limit_error') {
@@ -482,7 +482,7 @@ try {
 try:
     result = client.perspectives(
         prompt="Analyze code",
-        models=["claude-3-sonnet"]
+        models=["claude-opus-4"]
     )
 except polydev.RateLimitError as e:
     print(f"Rate limited. Retry after: {e.retry_after}")
@@ -563,7 +563,7 @@ curl -H "Authorization: Bearer poly_your_api_key" \
 curl -X POST https://api.polydev.ai/v1/perspectives \
   -H "Authorization: Bearer poly_your_api_key" \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"Hello","models":["gpt-3.5-turbo"]}'
+  -d '{"prompt":"Hello","models":["gemini-2.5-pro"]}'
 ```
 
 ### Development Environment

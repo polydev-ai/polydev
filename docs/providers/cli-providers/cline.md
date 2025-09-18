@@ -182,9 +182,9 @@ Create `.vscode/settings.json` in your project:
     },
     "preferences": {
       "defaultModels": [
-        "claude-3-5-sonnet",
-        "gpt-4",
-        "gemini-pro"
+        "claude-opus-4",
+        "gpt-5",
+        "gemini-2.5-pro"
       ],
       "maxTokensPerRequest": 4000,
       "temperature": 0.7,

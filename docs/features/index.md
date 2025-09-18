@@ -5,7 +5,7 @@ Polydev provides advanced features that enhance AI agent capabilities and stream
 ## Core Features
 
 ### 🧠 [Multi-LLM Perspectives](perspectives/)
-Get diverse viewpoints from multiple AI models simultaneously.
+Get diverse viewpoints from multiple AI models simultaneously (e.g., GPT‑5, Claude Opus 4, Gemini 2.5 Pro, Grok 4 High) and compare results side by side.
 
 - **Parallel Processing**: Query multiple models concurrently
 - **Response Aggregation**: Combine insights from different AI perspectives
@@ -20,7 +20,7 @@ Get diverse viewpoints from multiple AI models simultaneously.
 
 ---
 
-### 🔄 [Intelligent Fallback System](fallback/)
+### 🔄 [Intelligent Fallback](fallback/)
 Automatic provider switching ensures maximum availability and cost optimization.
 
 - **Priority-Based Routing**: CLI tools → Personal API keys → Polydev credits
@@ -169,7 +169,7 @@ function CodeReviewer() {
   const reviewCode = async (code) => {
     const review = await perspectives({
       prompt: `Review this code for issues:\n\n${code}`,
-      models: ['claude-3-sonnet', 'gpt-4', 'gemini-pro'],
+      models: ['claude-opus-4', 'gpt-5', 'gemini-2.5-pro'],
       project_memory: 'smart'
     });
     

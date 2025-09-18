@@ -7,14 +7,13 @@ When your AI agent gets stuck on a complex problem, needs diverse perspectives, 
 ## Core Concepts
 
 ### Multi-LLM Intelligence
-Instead of relying on a single AI model's perspective, Polydev allows your agents to consult multiple frontier models simultaneously:
+Instead of relying on a single AI model's perspective, Polydev lets your agents consult multiple frontier models simultaneously:
 
-- **GPT-4** for reasoning and code generation
-- **Claude 3.5 Sonnet** for analysis and explanations  
-- **Gemini Pro** for creative solutions and large context
-- **Groq models** for ultra-fast inference
-- **Perplexity** for research and real-time information
-- **37+ models** across **20+ providers**
+- **GPT-5** for advanced reasoning and code
+- **Claude Opus 4** for complex analysis and planning
+- **Gemini 2.5 Pro** for very large context windows
+- **Grok 4 High** for high‑latency, high‑accuracy reasoning
+- Plus 300+ other models across 30+ providers
 
 ### Intelligent Fallback System
 
@@ -37,10 +36,9 @@ flowchart TD
 ```
 
 **Priority Order:**
-1. **CLI Tools** (Highest) - Use authenticated developer CLIs
-2. **Personal API Keys** - Your configured provider keys  
-3. **Provisioned Keys** - User-specific managed keys
-4. **Credits System** (Fallback) - Pay-per-use via OpenRouter
+1. **CLI tools** (highest) — use authenticated developer CLIs
+2. **Your API keys** — provider keys you control
+3. **Credits** (fallback) — Polydev-managed via OpenRouter
 
 ### Model Context Protocol Native
 
@@ -54,11 +52,11 @@ Built specifically for MCP (Model Context Protocol) integration:
 
 ## Key Features
 
-### 🛠️ CLI Provider Integration
-Direct integration with popular developer CLI tools:
-- **Claude Code** - Official Anthropic CLI
-- **Codex CLI** - OpenAI's developer interface  
-- **Gemini CLI** - Google's AI development tool
+### 🛠️ CLI provider integration
+Direct integration with developer tools:
+- **Claude Code** (Anthropic)
+- **Codex CLI** (OpenAI)
+- **Gemini CLI** (Google)
 
 ### 🔑 Comprehensive API Key Management
 Support for 20+ AI providers with advanced configuration:
@@ -68,14 +66,14 @@ Support for 20+ AI providers with advanced configuration:
 - **Custom Endpoints**: Support for custom deployments
 - **Usage Analytics**: Track costs and performance
 
-### 🧠 Smart Project Memory
+### 🧠 Smart project memory
 TF-IDF-based context selection for better assistance:
 - **Light Memory**: Recently modified files
 - **Full Memory**: Similarity-based snippet selection
 - **Context Budget**: Intelligent token management
 - **File Filtering**: Include/exclude patterns
 
-### ⚡ Performance Optimized
+### ⚡ Performance
 - **Parallel Queries**: Multiple models queried simultaneously
 - **Response Caching**: Intelligent caching of similar requests
 - **Connection Pooling**: Efficient API connection management
@@ -90,8 +88,8 @@ When your agent encounters difficult bugs:
 const solution = await callTool({
   name: "get_perspectives",
   arguments: {
-    prompt: "My React component re-renders excessively despite useMemo. Multiple models help me identify the root cause.",
-    models: ["gpt-4", "claude-3-sonnet", "gemini-pro"],
+    prompt: "My React component re-renders excessively despite useMemo. Help identify the real cause and a minimal fix.",
+    models: ["gpt-5", "claude-opus-4", "gemini-2.5-pro"],
     project_memory: "full"
   }
 });
@@ -105,7 +103,7 @@ const perspectives = await callTool({
   name: "get_perspectives", 
   arguments: {
     prompt: "Should I use microservices or monolith for this fintech app? I need expert perspectives on trade-offs.",
-    models: ["gpt-4", "claude-3-opus", "llama-3.1-405b"]
+    models: ["gpt-5", "claude-opus-4", "grok-4-high"]
   }
 });
 ```

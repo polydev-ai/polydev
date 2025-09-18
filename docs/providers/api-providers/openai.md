@@ -1,14 +1,14 @@
 # OpenAI Provider
 
-Access GPT-4, GPT-3.5-Turbo, and other OpenAI models through direct API integration with advanced configuration options.
+Access GPT‑5, GPT‑4.1 and other OpenAI models through direct API integration with advanced configuration options.
 
 ## Overview
 
-The OpenAI provider gives you direct access to OpenAI's latest models including GPT-4, GPT-4 Turbo, and GPT-3.5-Turbo through your personal API keys with full control over usage and billing.
+The OpenAI provider gives you direct access to OpenAI's latest models including GPT‑5 and the GPT‑4.1 family through your personal API keys with full control over usage and billing.
 
 ### Key Features
 
-- **Latest Models**: GPT-4, GPT-4 Turbo, GPT-3.5-Turbo, and specialized models
+- **Latest Models**: GPT‑5, GPT‑4.1 family, and specialized models
 - **Function Calling**: Native support for structured tool use
 - **Vision Capabilities**: Image analysis with GPT-4 Vision
 - **High Performance**: Optimized API endpoints with low latency
@@ -16,12 +16,12 @@ The OpenAI provider gives you direct access to OpenAI's latest models including 
 
 ### Model Capabilities
 
-| Model | Context Window | Input Cost/1K | Output Cost/1K | Best For |
-|-------|----------------|---------------|----------------|----------|
-| GPT-4 Turbo | 128K | $0.01 | $0.03 | Complex reasoning, long documents |
-| GPT-4 | 8K | $0.03 | $0.06 | High-quality analysis, difficult tasks |
-| GPT-3.5-Turbo | 16K | $0.0005 | $0.0015 | Fast responses, simple tasks |
-| GPT-4 Vision | 128K | $0.01 | $0.03 | Image analysis, multimodal tasks |
+| Model | Context Window | Notes |
+|-------|----------------|-------|
+| GPT‑5 | 128K | Frontier reasoning & code |
+| GPT‑4.1 | 128K | Strong general‑purpose, tool use |
+| GPT‑4.1‑mini | 128K | Lower cost, fast iterations |
+| GPT‑4 Vision | 128K | Image analysis & multimodal |
 
 ## Getting API Keys
 
@@ -77,8 +77,8 @@ OPENAI_BASE_URL=https://api.openai.com/v1  # Optional, for custom deployments
   "budget_limit": 100,
   "rate_limit": 60,
   "models": {
-    "gpt-4": { "enabled": true, "temperature": 0.7 },
-    "gpt-3.5-turbo": { "enabled": true, "temperature": 0.7 },
+    "gpt-5": { "enabled": true, "temperature": 0.7 },
+    "gpt-4.1-mini": { "enabled": true, "temperature": 0.7 },
     "gpt-4-vision-preview": { "enabled": true }
   }
 }
@@ -99,27 +99,27 @@ OPENAI_MONTHLY_LIMIT=100   # USD per month
 OPENAI_DAILY_LIMIT=10      # USD per day
 
 # Default model settings
-OPENAI_DEFAULT_MODEL=gpt-4-turbo-preview
+OPENAI_DEFAULT_MODEL=gpt-5
 OPENAI_DEFAULT_TEMPERATURE=0.7
 OPENAI_DEFAULT_MAX_TOKENS=4096
 ```
 
 ## Available Models
 
-### GPT-4 Family
+### GPT‑5 and GPT‑4.1
 
-**GPT-4 Turbo (Recommended)**
+**GPT‑5 (Recommended)**
 ```bash
-Model ID: gpt-4-turbo-preview
+Model ID: gpt-5
 Context: 128,000 tokens
 Capabilities: Text, function calling, JSON mode
 Best for: Complex analysis, long documents, coding
 ```
 
-**GPT-4**
+**GPT‑4.1**
 ```bash
-Model ID: gpt-4
-Context: 8,192 tokens  
+Model ID: gpt-4.1
+Context: 128,000 tokens  
 Capabilities: Text, function calling
 Best for: Highest quality reasoning
 ```
@@ -134,12 +134,12 @@ Best for: Image analysis, multimodal tasks
 
 ### GPT-3.5 Family
 
-**GPT-3.5-Turbo**
+**GPT‑4.1‑mini**
 ```bash
-Model ID: gpt-3.5-turbo
-Context: 16,385 tokens
+Model ID: gpt-4.1-mini
+Context: 128,000 tokens
 Capabilities: Text, function calling
-Best for: Fast, cost-effective responses
+Best for: Fast, cost‑effective responses
 ```
 
 ### Specialized Models
@@ -175,7 +175,7 @@ const response = await callTool({
   name: "get_perspectives",
   arguments: {
     prompt: "Explain quantum computing in simple terms",
-    models: ["gpt-4"],
+    models: ["gpt-5"],
     provider_settings: {
       openai: {
         temperature: 0.3,
@@ -188,27 +188,33 @@ const response = await callTool({
 
 ### Multi-Model Perspectives
 
-```javascript
-// Compare different OpenAI models
-const perspectives = await callTool({
-  name: "get_perspectives", 
-  arguments: {
-    prompt: "Analyze the pros and cons of microservices architecture",
-    models: ["gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo"],
-    provider_settings: {
-      openai: {
-        temperature: 0.7
-      }
-    }
-  }
-});
-
-// Each response includes model and token usage
-perspectives.responses.forEach(response => {
-  console.log(`${response.model}: ${response.content}`);
-  console.log(`Tokens used: ${response.token_usage.total}`);
-});
-```
+<div class="code-tabs" data-group="openai-perspectives">
+  <div class="flex gap-2 mb-3">
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="curl">cURL</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="node">Node</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="ts">TypeScript</button>
+  </div>
+  <pre data-lang="curl"><code class="language-bash">curl -s https://api.polydev.ai/v1/perspectives \
+  -H "Authorization: Bearer poly_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Analyze the pros and cons of microservices architecture",
+    "models": ["openai/gpt-5", "openai/gpt-4.1", "openai/gpt-4.1-mini"],
+    "provider_settings": { "openai": { "temperature": 0.7 } }
+  }'</code></pre>
+  <pre data-lang="node"><code class="language-javascript">const res = await fetch('https://api.polydev.ai/v1/perspectives', {
+  method: 'POST', headers: { 'Authorization': 'Bearer ' + process.env.POLYDEV_API_KEY, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ prompt: 'Analyze the pros and cons of microservices architecture', models: ['openai/gpt-5','openai/gpt-4.1','openai/gpt-4.1-mini'], provider_settings: { openai: { temperature: 0.7 } } })
+})
+const data = await res.json()</code></pre>
+  <pre data-lang="ts"><code class="language-typescript">const req = {
+  prompt: 'Analyze the pros and cons of microservices architecture',
+  models: ['openai/gpt-5','openai/gpt-4.1','openai/gpt-4.1-mini'],
+  provider_settings: { openai: { temperature: 0.7 } }
+}
+const res = await fetch('https://api.polydev.ai/v1/perspectives', { method: 'POST', headers: { Authorization: `Bearer ${process.env.POLYDEV_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify(req) })
+const data: any = await res.json()</code></pre>
+</div>
 
 ### Function Calling
 
@@ -218,7 +224,7 @@ const result = await callTool({
   name: "get_perspectives",
   arguments: {
     prompt: "Get the current weather in San Francisco and New York",
-    models: ["gpt-4"],
+    models: ["gpt-5"],
     functions: [
       {
         name: "get_weather",
@@ -267,13 +273,13 @@ const analysis = await callTool({
 const getOptimalModel = (taskComplexity) => {
   switch(taskComplexity) {
     case 'simple':
-      return 'gpt-3.5-turbo';     // $0.0005-0.0015/1K tokens
+      return 'gpt-4.1-mini';     // lower-cost option
     case 'medium':
-      return 'gpt-4-turbo-preview'; // $0.01-0.03/1K tokens
+      return 'gpt-5';
     case 'complex':
-      return 'gpt-4';             // $0.03-0.06/1K tokens
+      return 'gpt-5';
     default:
-      return 'gpt-3.5-turbo';
+      return 'gpt-4.1-mini';
   }
 };
 ```
@@ -292,7 +298,7 @@ OPENAI_HARD_LIMIT=120              # Stop at 120%
 ```javascript
 // Optimize token usage
 const optimizedRequest = {
-  model: "gpt-3.5-turbo",
+  model: "gpt-4.1-mini",
   max_tokens: 500,           // Limit response length
   temperature: 0.3,          // Lower temperature for focused responses
   top_p: 0.9,               // Nucleus sampling
@@ -371,9 +377,8 @@ const trackUsage = (response) => {
 // Real-time cost calculation
 const calculateCost = (model, usage) => {
   const pricing = {
-    'gpt-4-turbo-preview': { input: 0.01, output: 0.03 },
-    'gpt-4': { input: 0.03, output: 0.06 },
-    'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 }
+    'gpt-5': { input: 0.03, output: 0.06 },
+    'gpt-4.1-mini': { input: 0.002, output: 0.004 }
   };
   
   const modelPricing = pricing[model];
@@ -516,7 +521,7 @@ const streamingRequest = await callTool({
   name: "get_perspectives",
   arguments: {
     prompt: "Write a detailed analysis of market trends",
-    models: ["gpt-4-turbo-preview"],
+    models: ["gpt-5"],
     stream: true,
     provider_settings: {
       openai: {
@@ -537,7 +542,7 @@ streamingRequest.on('data', (chunk) => {
 ```javascript
 // Use fine-tuned models
 const customModelRequest = {
-  model: "ft:gpt-3.5-turbo:your-org:custom-model:abc123",
+  model: "ft:gpt-4.1-mini:your-org:custom-model:abc123",
   messages: [{
     role: "user",
     content: "Custom task specific to your fine-tuned model"
@@ -550,7 +555,7 @@ const customModelRequest = {
 ```javascript
 // Process multiple prompts efficiently
 const batchRequests = prompts.map(prompt => ({
-  model: "gpt-3.5-turbo",
+  model: "gpt-4.1-mini",
   messages: [{ role: "user", content: prompt }],
   max_tokens: 500
 }));
@@ -570,7 +575,7 @@ const codeAnalysis = await callTool({
   name: "get_perspectives",
   arguments: {
     prompt: "Analyze this codebase for performance bottlenecks and suggest optimizations",
-    models: ["gpt-4-turbo-preview"],
+    models: ["gpt-5"],
     project_memory: "full",
     project_context: {
       root_path: "/path/to/project",
@@ -589,7 +594,7 @@ const comparison = await callTool({
   name: "get_perspectives",
   arguments: {
     prompt: "Design a scalable microservices architecture for an e-commerce platform",
-    models: ["gpt-4", "claude-3-sonnet", "gemini-pro"],
+    models: ["gpt-5", "claude-opus-4", "gemini-2.5-pro"],
     provider_settings: {
       openai: { temperature: 0.7 },
       anthropic: { temperature: 0.7 },
@@ -608,7 +613,7 @@ const comparison = await callTool({
 # Test API key directly
 curl -H "Authorization: Bearer $OPENAI_API_KEY" \
      -H "Content-Type: application/json" \
-     -d '{"model":"gpt-3.5-turbo","messages":[{"role":"user","content":"Hello"}],"max_tokens":5}' \
+     -d '{"model":"gpt-4.1-mini","messages":[{"role":"user","content":"Hello"}],"max_tokens":5}' \
      https://api.openai.com/v1/chat/completions
 ```
 
@@ -652,7 +657,7 @@ OPENAI_DEBUG=1 POLYDEV_DEBUG=1 npm run test:providers
 import openai
 
 response = openai.ChatCompletion.create(
-    model="gpt-4",
+    model="gpt-5",
     messages=[{"role": "user", "content": "Hello"}]
 )
 ```
@@ -663,7 +668,7 @@ const response = await callTool({
   name: "get_perspectives",
   arguments: {
     prompt: "Hello",
-    models: ["gpt-4"]
+    models: ["gpt-5"]
   }
 });
 ```
@@ -673,7 +678,7 @@ const response = await callTool({
 ```bash
 # Old direct curl
 curl -H "Authorization: Bearer $OPENAI_API_KEY" \
-     -d '{"model":"gpt-4","messages":[...]}' \
+     -d '{"model":"gpt-5","messages":[...]}' \
      https://api.openai.com/v1/chat/completions
 ```
 
@@ -683,7 +688,7 @@ const response = await callTool({
   name: "get_perspectives",
   arguments: {
     prompt: "Your prompt here",
-    models: ["gpt-4"]
+    models: ["gpt-5"]
   }
 });
 ```

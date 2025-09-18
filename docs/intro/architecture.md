@@ -206,18 +206,18 @@ When using the fallback system, Polydev automatically maps model IDs:
 ```typescript
 // User requests Claude model
 const userRequest = {
-  model: "claude-3-5-sonnet-20241022",
+  model: "claude-opus-4",
   messages: [...]
 };
 
 // Polydev maps to provider-specific ID
 const mappedRequests = {
   anthropic: {
-    model: "claude-3-5-sonnet-20241022",  // Native ID
+    model: "claude-opus-4",  // Native ID
     messages: [...]
   },
   openrouter: {
-    model: "anthropic/claude-3-5-sonnet-20241022",  // OpenRouter format
+    model: "anthropic/claude-opus-4",  // OpenRouter format
     messages: [...]
   }
 };

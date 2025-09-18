@@ -8,8 +8,8 @@ Use this guide when building or integrating agents that:
 - Run Polydev’s hosted MCP server or the local Node bridge (`mcp/server.js`)
 - Need to align with Polydev’s access preferences: **CLI subscriptions → BYO API keys → Polydev-managed credits**
 
-> **Database Access Requirement**  
-> Whenever you need to inspect or mutate production or staging data, **use the Supabase MCP server** (`npx -y @supabase/mcp-server-supabase@latest --access-token …`). Do not run raw SQL files; instead run the appropriate MCP tool call (`list_tables`, `execute_sql`, `list_migrations`, etc.) so changes remain auditable and consistent.
+> Note on data access  
+> Use the Polydev dashboard and public APIs for any configuration or usage data. Direct database tooling is internal-only.
 
 ---
 
@@ -32,7 +32,7 @@ Use this guide when building or integrating agents that:
 
 ### 3.2 Control Flow Highlights
 - **Perspectives Request**: `/api/perspectives` validates quotas → pulls user preferences (`user_preferences`) → selects models with `models.dev` mapping → for each, executes CLI/API/credit path → aggregates Markdown response and logs tokens/latency to `mcp_request_logs`, `mcp_usage_logs`, `usage_sessions`.
-- **CLI Detection**: `polydev.force_cli_detection` tool triggers `CLIManager.forceCliDetection` → updates cache → optionally writes `cli_provider_configurations` & `cli_status_logs` via Supabase MCP tool.
+      - **CLI Detection**: `polydev.force_cli_detection` triggers `CLIManager.forceCliDetection` → updates cache and updates dashboard status.
 - **Memory Pipeline**: `UniversalMemoryExtractor` inspects CLI memory paths → encrypts contents client-side → stores encrypted blobs + metadata in `mcp_project_memories`, `mcp_conversation_memory`, `user_cli_memory_sources`, `user_memory_audit_log` → `polydev.get_memory_context` fetches relevant snippets for prompt augmentation.
 - **MCP Authentication**: Clients register via `mcp_registered_clients`, request authorization codes (`mcp_auth_codes`) with PKCE, exchange for access tokens (`mcp_access_tokens`). Alternatively, users generate static tokens (`mcp_user_tokens`). All requests must include bearer token headers.
 
@@ -90,7 +90,7 @@ Below is a condensed summary tailored for agent implementations; full detail res
 - `credit_purchases`, `purchase_history`, `stripe_webhook_events`, `stripe_customers`: Stripe billing integration.
 - `user_referrals`, `referral_codes`: Incentive tracking.
 
-Remember: use Supabase MCP tool calls (`list_tables`, `execute_sql`, `get_project_url`, etc.) whenever reading or updating any of the above.
+For data and configuration changes, prefer the dashboard or public APIs; internal database tooling is not required for agents.
 
 ---
 
@@ -116,21 +116,21 @@ Remember: use Supabase MCP tool calls (`list_tables`, `execute_sql`, `get_projec
 - **New MCP Tools**: Update `mcp/manifest.json`, implement handler in `mcp/server.js`, log outputs, consider Supabase persistence via MCP tool call (not direct SQL).
 - **Additional Providers**: Extend `CLIManager` or add API handlers (`src/lib/llm/handlers`). Ensure models.dev mapping exists or add manual pricing data.
 - **Custom Agents**: Use MCP JSON-RPC (`initialize`, `tools/list`, `tools/call`). Respect tool schemas, supply `user_token`, and handle formatted Markdown results.
-- **Automation**: Scripts in `/scripts` (e.g., `sync-claude-to-supabase.js`) demonstrate batch operations; adapt them to run via Supabase MCP where possible.
+- **Automation**: Scripts in `/scripts` (e.g., `sync-claude-to-supabase.js`) demonstrate batch operations; prefer API-backed jobs for external integrations.
 
 ---
 
 ## 9. Operational Playbooks
 1. **Check CLI Availability**  
-   - Call `polydev.force_cli_detection` → inspect returned Markdown for availability/auth hints → CLIManager persists details (view via dashboard or Supabase MCP `execute_sql`).
+   - Call `polydev.force_cli_detection` → inspect returned Markdown for availability/auth hints → status also appears in the dashboard.
 2. **Investigate Memory Sync**  
-   - Use `polydev.detect_memory_sources` and `polydev.extract_memory`. Logs land in `user_memory_audit_log`; fetch via Supabase MCP tool.
+   - Use `polydev.detect_memory_sources` and `polydev.extract_memory`. Memory state is visible in the dashboard.
 3. **Monitor Usage & Billing**  
-   - Dashboards pull from `mcp_usage_logs`, `usage_sessions`, `user_credits`. For deeper introspection, run Supabase MCP `execute_sql` queries.
+   - Dashboards aggregate usage and cost; for deeper introspection, export via usage APIs.
 4. **Troubleshoot MCP Auth**  
-   - Inspect `mcp_auth_codes` / `mcp_access_tokens` via Supabase MCP tools. Ensure PKCE and redirect URIs align with registered client.
+   - If OAuth flows misbehave, verify registered clients and redirect URIs in the dashboard.
 5. **Update Models Catalog**  
-   - Trigger models.dev sync (script or scheduled job) → confirm in `models_dev_sync_log`. Only use Supabase MCP to check data.
+   - Trigger models.dev sync (script or scheduled job) → confirm in the dashboard’s models section.
 
 ---
 

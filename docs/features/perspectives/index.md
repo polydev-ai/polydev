@@ -9,9 +9,9 @@ Polydev's **Multi-LLM Perspectives** feature allows you to query multiple AI mod
 ```mermaid
 graph TB
     A[User Prompt] --> B[Polydev Router]
-    B --> C[Model 1: GPT-4]
-    B --> D[Model 2: Claude-3-Sonnet]
-    B --> E[Model 3: Gemini-Pro]
+    B --> C[Model 1: GPT-5]
+    B --> D[Model 2: Claude Opus 4]
+    B --> E[Model 3: Gemini 2.5 Pro]
     B --> F[Model 4: Codex CLI]
     
     C --> G[Response Aggregator]
@@ -49,78 +49,129 @@ graph TB
 
 ### Basic Multi-Model Query
 
-```javascript
-const response = await perspectives({
-  prompt: "Review this React component for performance issues and suggest optimizations",
-  models: ["gpt-4", "claude-3-sonnet", "gemini-pro"],
-  context: {
-    code: `
-      const Component = () => {
-        const [data, setData] = useState([]);
-        const expensiveComputation = () => {
-          return data.map(item => item.value * 2);
-        };
-        return <div>{expensiveComputation().join(', ')}</div>;
-      };
-    `
-  }
-});
-
-// Response contains perspectives from all 3 models
-console.log(response.perspectives);
-```
+<div class="code-tabs" data-group="persp-basic">
+  <div class="flex gap-2 mb-3">
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="curl">cURL</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="node">Node</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="ts">TypeScript</button>
+  </div>
+  <pre data-lang="curl"><code class="language-bash">curl -s https://api.polydev.ai/v1/perspectives \
+  -H "Authorization: Bearer poly_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Review this React component for performance issues and suggest optimizations",
+    "models": ["gpt-5", "claude-opus-4", "gemini-2.5-pro", "grok-4-high"],
+    "context": {
+      "code": "const Component = () => {\\n  const [data, setData] = useState([]);\\n  const expensiveComputation = () => data.map(item => item.value * 2);\\n  return <div>{expensiveComputation().join(', ')}</div>;\\n};"
+    }
+  }'</code></pre>
+  <pre data-lang="node"><code class="language-javascript">const res = await fetch('https://api.polydev.ai/v1/perspectives', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${process.env.POLYDEV_API_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    prompt: 'Review this React component for performance issues and suggest optimizations',
+    models: ['gpt-5','claude-opus-4','gemini-2.5-pro','grok-4-high'],
+    context: { code: 'const Component = () => { /* ... */ }' }
+  })
+})
+const data = await res.json()</code></pre>
+  <pre data-lang="ts"><code class="language-typescript">interface PerspectivesRequest { prompt: string; models: string[]; context?: any }
+const req: PerspectivesRequest = {
+  prompt: 'Review this React component for performance issues and suggest optimizations',
+  models: ['gpt-5','claude-opus-4','gemini-2.5-pro','grok-4-high'],
+  context: { code: 'const Component = () => { /* ... */ }' }
+}
+const res = await fetch('https://api.polydev.ai/v1/perspectives', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${process.env.POLYDEV_API_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify(req)
+})
+const data: any = await res.json()</code></pre>
+</div>
 
 ### Code Review with Multiple Experts
 
-```javascript
-// Get comprehensive code review from multiple AI experts
-const codeReview = await perspectives({
-  prompt: `
-    Please review this authentication module for:
-    1. Security vulnerabilities
-    2. Performance optimizations
-    3. Code maintainability
-    4. Best practices compliance
-  `,
-  models: ["claude-3-opus", "gpt-4-turbo", "codex"],
-  project_memory: "smart",
-  provider_settings: {
-    temperature: 0.1,  // More focused responses
-    max_tokens: 2000
-  }
-});
-
-// Each perspective is labeled by model
-codeReview.perspectives.forEach(perspective => {
-  console.log(`--- ${perspective.model} ---`);
-  console.log(perspective.content);
-});
-```
+<div class="code-tabs" data-group="persp-review">
+  <div class="flex gap-2 mb-3">
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="curl">cURL</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="node">Node</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="ts">TypeScript</button>
+  </div>
+  <pre data-lang="curl"><code class="language-bash">curl -s https://api.polydev.ai/v1/perspectives \
+  -H "Authorization: Bearer poly_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Please review this authentication module for: 1) Security 2) Performance 3) Maintainability 4) Best practices",
+    "models": ["claude-opus-4", "gpt-5", "gemini-2.5-pro"],
+    "project_memory": "smart",
+    "provider_settings": { "temperature": 0.1, "max_tokens": 2000 }
+  }'
+  </code></pre>
+  <pre data-lang="node"><code class="language-javascript">const res = await fetch('https://api.polydev.ai/v1/perspectives', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${process.env.POLYDEV_API_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    prompt: 'Please review this authentication module for: 1) Security 2) Performance 3) Maintainability 4) Best practices',
+    models: ['claude-opus-4','gpt-5','gemini-2.5-pro'],
+    project_memory: 'smart',
+    provider_settings: { temperature: 0.1, max_tokens: 2000 }
+  })
+})
+const data = await res.json()</code></pre>
+  <pre data-lang="ts"><code class="language-typescript">type ProviderSettings = { temperature?: number; max_tokens?: number }
+const req = {
+  prompt: 'Please review this authentication module for: 1) Security 2) Performance 3) Maintainability 4) Best practices',
+  models: ['claude-opus-4','gpt-5','gemini-2.5-pro'],
+  project_memory: 'smart',
+  provider_settings: { temperature: 0.1, max_tokens: 2000 } as ProviderSettings
+}
+const res = await fetch('https://api.polydev.ai/v1/perspectives', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${process.env.POLYDEV_API_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify(req)
+})
+const data: any = await res.json()</code></pre>
+</div>
 
 ### Architecture Decision Support
 
-```javascript
-// Get diverse opinions on technical architecture choices
-const architectureAdvice = await perspectives({
-  prompt: `
-    We're building a real-time chat application with 100K+ concurrent users.
-    
-    Should we use:
-    A) WebSockets with Redis pub/sub
-    B) Server-Sent Events with PostgreSQL
-    C) GraphQL subscriptions with in-memory store
-    
-    Consider scalability, reliability, and development complexity.
-  `,
-  models: ["claude-3-sonnet", "gpt-4", "gemini-pro", "perplexity"],
-  analysis_depth: "comprehensive"
-});
-
-// Analyze consensus and differences
-const consensus = analyzeConsensus(architectureAdvice.perspectives);
-console.log("Consensus points:", consensus.agreements);
-console.log("Divergent opinions:", consensus.disagreements);
-```
+<div class="code-tabs" data-group="persp-arch">
+  <div class="flex gap-2 mb-3">
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="curl">cURL</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="node">Node</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="ts">TypeScript</button>
+  </div>
+  <pre data-lang="curl"><code class="language-bash">curl -s https://api.polydev.ai/v1/perspectives \
+  -H "Authorization: Bearer poly_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "We are building a real-time chat app (100K+ concurrent). Compare: (A) WebSockets + Redis pub/sub, (B) SSE + Postgres, (C) GraphQL subscriptions. Consider scalability, reliability, dev complexity.",
+    "models": ["claude-opus-4", "gpt-5", "gemini-2.5-pro", "grok-4-high"],
+    "analysis_depth": "comprehensive"
+  }'
+  </code></pre>
+  <pre data-lang="node"><code class="language-javascript">const req = {
+  prompt: 'We are building a real-time chat app (100K+ concurrent). Compare: (A) WebSockets + Redis pub/sub, (B) SSE + Postgres, (C) GraphQL subscriptions. Consider scalability, reliability, dev complexity.',
+  models: ['claude-opus-4','gpt-5','gemini-2.5-pro','grok-4-high'],
+  analysis_depth: 'comprehensive'
+}
+const res = await fetch('https://api.polydev.ai/v1/perspectives', {
+  method: 'POST', headers: { 'Authorization': `Bearer ${process.env.POLYDEV_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify(req)
+})
+const data = await res.json()</code></pre>
+  <pre data-lang="ts"><code class="language-typescript">type AnalysisDepth = 'quick' | 'standard' | 'comprehensive'
+const req: { prompt: string; models: string[]; analysis_depth: AnalysisDepth } = {
+  prompt: 'We are building a real-time chat app (100K+ concurrent). Compare: (A) WebSockets + Redis pub/sub, (B) SSE + Postgres, (C) GraphQL subscriptions. Consider scalability, reliability, dev complexity.',
+  models: ['claude-opus-4','gpt-5','gemini-2.5-pro','grok-4-high'],
+  analysis_depth: 'comprehensive'
+}
+const res = await fetch('https://api.polydev.ai/v1/perspectives', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${process.env.POLYDEV_API_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify(req)
+})
+const data: any = await res.json()</code></pre>
+</div>
 
 ## Model Selection Strategies
 
@@ -132,21 +183,21 @@ Different models excel at different types of tasks:
 // Code-focused perspectives
 const codeReview = await perspectives({
   prompt: "Optimize this algorithm for better performance",
-  models: ["codex", "claude-3-sonnet", "gpt-4"],  // Code-specialized models
+  models: ["codex", "claude-opus-4", "gpt-5"],  // Code-specialized models
   task_type: "code_optimization"
 });
 
 // Creative/Writing perspectives  
 const contentReview = await perspectives({
   prompt: "Improve this marketing copy for better engagement",
-  models: ["gpt-4-turbo", "claude-3-opus", "gemini-pro"],  // Creative models
+  models: ["gpt-5", "claude-opus-4", "gemini-2.5-pro"],  // Creative models
   task_type: "creative_writing"
 });
 
 // Technical Analysis perspectives
 const systemDesign = await perspectives({
   prompt: "Design a microservices architecture for an e-commerce platform",
-  models: ["claude-3-opus", "gpt-4", "perplexity"],  // Analysis-focused models
+  models: ["claude-opus-4", "gpt-5", "perplexity"],  // Analysis-focused models
   task_type: "system_design"
 });
 ```
@@ -157,14 +208,14 @@ const systemDesign = await perspectives({
 // Fast perspectives for quick decisions
 const quickConsensus = await perspectives({
   prompt: "Is this function implementation correct?",
-  models: ["gpt-3.5-turbo", "claude-3-haiku", "gemini-flash"],
+  models: ["gpt-4.1-mini", "claude-haiku-2", "gemini-flash-2"],
   priority: "speed"
 });
 
 // High-quality perspectives for critical decisions
 const thoroughAnalysis = await perspectives({
   prompt: "Comprehensive security audit of this authentication system",
-  models: ["claude-3-opus", "gpt-4-turbo", "gemini-ultra"],
+  models: ["claude-opus-4", "gpt-5", "gemini-2.5-pro"],
   priority: "quality",
   analysis_depth: "comprehensive"
 });
@@ -178,12 +229,12 @@ const thoroughAnalysis = await perspectives({
 {
   "request_id": "req_abc123",
   "timestamp": "2024-01-15T10:30:00Z",
-  "models_queried": ["gpt-4", "claude-3-sonnet", "gemini-pro"],
-  "models_succeeded": ["gpt-4", "claude-3-sonnet", "gemini-pro"],
+  "models_queried": ["gpt-5", "claude-opus-4", "gemini-2.5-pro"],
+  "models_succeeded": ["gpt-5", "claude-opus-4", "gemini-2.5-pro"],
   "models_failed": [],
   "perspectives": [
     {
-      "model": "gpt-4",
+      "model": "gpt-5",
       "provider": "openai",
       "response_time": 2340,
       "tokens_used": 456,
@@ -191,7 +242,7 @@ const thoroughAnalysis = await perspectives({
       "content": "This React component has several performance issues..."
     },
     {
-      "model": "claude-3-sonnet", 
+      "model": "claude-opus-4", 
       "provider": "anthropic",
       "response_time": 1890,
       "tokens_used": 523,
@@ -199,7 +250,7 @@ const thoroughAnalysis = await perspectives({
       "content": "I notice multiple optimization opportunities in this component..."
     },
     {
-      "model": "gemini-pro",
+      "model": "gemini-2.5-pro",
       "provider": "google",
       "response_time": 2100,
       "tokens_used": 478,
@@ -229,7 +280,7 @@ const thoroughAnalysis = await perspectives({
 // Automatic consensus detection
 const analysis = await perspectives({
   prompt: "What are the pros and cons of using TypeScript in this project?",
-  models: ["gpt-4", "claude-3-sonnet", "gemini-pro"],
+  models: ["gpt-5", "claude-opus-4", "gemini-2.5-pro"],
   consensus_analysis: true
 });
 
@@ -257,7 +308,7 @@ const smartPerspectives = await perspectives({
   }
 });
 
-// Polydev might select: ["claude-3-opus", "gpt-4-turbo", "specialized-sql-model"]
+// Polydev might select: ["claude-opus-4", "gpt-5", "specialized-sql-model"]
 ```
 
 ### Perspective Weighting
@@ -268,8 +319,8 @@ Weight different models based on their expertise:
 const weightedPerspectives = await perspectives({
   prompt: "Review this machine learning model architecture",
   models: [
-    { model: "claude-3-opus", weight: 0.4 },      // Strong at analysis
-    { model: "gpt-4-turbo", weight: 0.4 },       // Strong at ML
+    { model: "claude-opus-4", weight: 0.4 },      // Strong at analysis
+    { model: "gpt-5", weight: 0.4 },              // Strong at ML
     { model: "perplexity", weight: 0.2 }         // Good at research
   ],
   weighted_consensus: true
@@ -283,7 +334,7 @@ Leverage project memory for better context:
 ```javascript
 const contextualPerspectives = await perspectives({
   prompt: "How should we refactor the user authentication system?",
-  models: ["claude-3-sonnet", "gpt-4", "codex"],
+  models: ["claude-opus-4", "gpt-5", "codex"],
   project_memory: "full",
   context_selection: {
     include_files: ["**/*auth*", "**/*user*", "**/*login*"],
@@ -308,7 +359,7 @@ function CodeReviewer({ code }: { code: string }) {
     consensus 
   } = usePerspectives({
     prompt: `Review this code: ${code}`,
-    models: ['gpt-4', 'claude-3-sonnet', 'codex'],
+    models: ['gpt-5', 'claude-opus-4', 'codex'],
     auto_refresh: false
   });
 
@@ -356,7 +407,7 @@ export function activate(context: vscode.ExtensionContext) {
         name: 'get_perspectives',
         arguments: {
           prompt: `Review this code for issues and improvements:\n\n${code}`,
-          models: ['claude-3-sonnet', 'gpt-4', 'codex'],
+          models: ['claude-opus-4', 'gpt-5', 'codex'],
           project_context: {
             workspace_root: vscode.workspace.rootPath
           }
@@ -394,7 +445,7 @@ curl -X POST https://api.polydev.ai/v1/perspectives \
   -d '{
     "prompt": "Review this code for security, performance, and maintainability issues:",
     "context": "'"$code_content"'",
-    "models": ["claude-3-sonnet", "gpt-4-turbo", "codex"],
+    "models": ["claude-opus-4", "gpt-5", "codex"],
     "format": "structured"
   }' | jq '.perspectives[] | "\(.model): \(.content)"'
 ```
@@ -407,13 +458,13 @@ curl -X POST https://api.polydev.ai/v1/perspectives \
 // polydev.config.js
 export default {
   perspectives: {
-    default_models: ["claude-3-sonnet", "gpt-4", "gemini-pro"],
-    fallback_models: ["gpt-3.5-turbo", "claude-3-haiku"],
+    default_models: ["claude-opus-4", "gpt-5", "gemini-2.5-pro"],
+    fallback_models: ["gemini-2.5-pro"],
     
     model_preferences: {
-      code_tasks: ["codex", "claude-3-sonnet", "gpt-4"],
-      creative_tasks: ["gpt-4-turbo", "claude-3-opus"],
-      analysis_tasks: ["claude-3-opus", "gpt-4", "perplexity"]
+      code_tasks: ["codex", "claude-opus-4", "gpt-5"],
+      creative_tasks: ["gpt-5", "claude-opus-4"],
+      analysis_tasks: ["claude-opus-4", "gpt-5", "perplexity"]
     },
     
     performance_settings: {
@@ -437,7 +488,7 @@ export default {
 // Custom response processing
 const perspectives = await polydev.perspectives({
   prompt: "Analyze this architecture design",
-  models: ["claude-3-opus", "gpt-4-turbo"],
+  models: ["claude-opus-4", "gpt-5"],
   
   response_processing: {
     extract_code_blocks: true,
@@ -460,7 +511,7 @@ const perspectives = await polydev.perspectives({
 // Enable response caching for similar prompts
 const perspectives = await polydev.perspectives({
   prompt: "Best practices for React performance optimization",
-  models: ["gpt-4", "claude-3-sonnet"],
+  models: ["gpt-5", "claude-opus-4"],
   
   caching: {
     enabled: true,
@@ -479,12 +530,12 @@ const batchResults = await polydev.batchPerspectives([
   {
     id: "review1",
     prompt: "Review component A",
-    models: ["gpt-4", "claude-3-sonnet"]
+    models: ["gpt-5", "claude-opus-4"]
   },
   {
     id: "review2", 
     prompt: "Review component B",
-    models: ["gpt-4", "claude-3-sonnet"]
+    models: ["gpt-5", "claude-opus-4"]
   }
 ]);
 
@@ -502,7 +553,7 @@ batchResults.forEach(result => {
 try {
   const perspectives = await polydev.perspectives({
     prompt: "Complex analysis task",
-    models: ["claude-3-opus", "gpt-4-turbo", "unavailable-model"],
+    models: ["claude-opus-4", "gpt-5", "unavailable-model"],
     
     error_handling: {
       min_successful_models: 2,
@@ -521,7 +572,7 @@ try {
     // Handle case where not enough models succeeded
     const fallbackResponse = await polydev.perspectives({
       prompt: "Complex analysis task", 
-      models: ["gpt-3.5-turbo"],  // Use simpler fallback
+      models: ["gemini-2.5-pro"],  // Use simpler fallback
       simplified: true
     });
   }
@@ -547,7 +598,7 @@ const perspectives = await polydev.perspectives({
     Component code:
     ${componentCode}
   `,
-  models: ["claude-3-sonnet", "gpt-4", "codex"]
+  models: ["claude-opus-4", "gpt-5", "gemini-2.5-pro"]
 });
 ```
 
@@ -556,8 +607,8 @@ const perspectives = await polydev.perspectives({
 ```javascript
 // Don't use prompts tailored to specific models
 const perspectives = await polydev.perspectives({
-  prompt: "As GPT-4, analyze this code...",  // ❌ Model-specific
-  models: ["claude-3-sonnet", "gpt-4", "gemini-pro"]
+  prompt: "Analyze this code...",  // Avoid model-specific prompts
+  models: ["claude-opus-4", "gpt-5", "gemini-2.5-pro"]
 });
 ```
 
@@ -574,7 +625,7 @@ const perspectives = await polydev.perspectives({
 // Use cost-effective models for preliminary analysis
 const quickScreen = await perspectives({
   prompt: "Initial code review - major issues only",
-  models: ["gpt-3.5-turbo", "claude-3-haiku"],
+  models: ["gemini-2.5-pro"],
   format: "brief"
 });
 
@@ -582,7 +633,7 @@ const quickScreen = await perspectives({
 if (quickScreen.summary.issues_found > 0) {
   const detailedAnalysis = await perspectives({
     prompt: "Detailed analysis of identified issues",
-    models: ["claude-3-opus", "gpt-4-turbo"],
+    models: ["claude-opus-4", "gpt-5"],
     context: quickScreen.summary.issues
   });
 }
@@ -598,7 +649,7 @@ if (quickScreen.summary.issues_found > 0) {
 // Enable debug mode to see detailed logs
 const perspectives = await polydev.perspectives({
   prompt: "Test prompt",
-  models: ["claude-3-sonnet", "gpt-4"],
+  models: ["claude-opus-4", "gpt-5"],
   debug: true,
   verbose_errors: true
 });
@@ -610,7 +661,7 @@ const perspectives = await polydev.perspectives({
 // Increase model count for more stable consensus
 const perspectives = await polydev.perspectives({
   prompt: "Analyze this complex algorithm",
-  models: ["claude-3-opus", "gpt-4-turbo", "gemini-pro", "perplexity"],
+  models: ["claude-opus-4", "gpt-5", "gemini-2.5-pro", "grok-4-high"],
   consensus_analysis: true,
   min_agreement_threshold: 0.7
 });
@@ -622,7 +673,7 @@ const perspectives = await polydev.perspectives({
 // Optimize for speed
 const fastPerspectives = await polydev.perspectives({
   prompt: "Quick code review",
-  models: ["gpt-3.5-turbo", "claude-3-haiku"],
+  models: ["gemini-2.5-pro"],
   
   performance_mode: "speed",
   max_response_length: 1000,

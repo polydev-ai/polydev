@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { marked } from 'marked'
-import { ChevronLeft, ChevronRight, Copy, Check, FileText } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, Check, BookOpen, ExternalLink, Zap, Shield, Code2 } from 'lucide-react'
 
 interface DocSection {
   id: string
@@ -36,7 +36,7 @@ function CopyButton({ text }: CopyButtonProps) {
   return (
     <button
       onClick={handleCopy}
-      className="absolute top-3 right-3 p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors duration-200 opacity-0 group-hover:opacity-100"
+      className="absolute top-4 right-4 p-2.5 rounded-lg bg-white hover:bg-gray-50 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-gray-200 shadow-sm"
       title="Copy to clipboard"
     >
       {copied ? (
@@ -53,6 +53,7 @@ export default function Documentation() {
   const [activeItem, setActiveItem] = useState('introduction')
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
+  const [toc, setToc] = useState<{ id: string; text: string; level: number }[]>([])
 
   const docSections: DocSection[] = [
     {
@@ -61,7 +62,7 @@ export default function Documentation() {
       items: [
         { title: 'What is Polydev?', href: '#what-is-polydev', filePath: '/docs/intro/what-is-polydev.md' },
         { title: 'Quick Start', href: '#quick-start', filePath: '/docs/intro/quick-start.md' },
-        { title: 'Architecture', href: '#architecture', filePath: '/docs/intro/architecture.md' }
+        { title: 'Installation', href: '#installation', filePath: '/docs/intro/installation.md' }
       ]
     },
     {
@@ -70,8 +71,7 @@ export default function Documentation() {
       items: [
         { title: 'Environment Setup', href: '#environment', filePath: '/docs/config/environment.md' },
         { title: 'Authentication', href: '#authentication', filePath: '/docs/config/authentication.md' },
-        { title: 'User Preferences', href: '#preferences', filePath: '/docs/config/preferences.md' },
-        { title: 'Troubleshooting', href: '#troubleshooting', filePath: '/docs/config/troubleshooting.md' }
+        { title: 'User Preferences', href: '#preferences', filePath: '/docs/config/preferences.md' }
       ]
     },
     {
@@ -79,29 +79,39 @@ export default function Documentation() {
       title: 'AI Providers',
       items: [
         { title: 'Provider Overview', href: '#providers-overview', filePath: '/docs/providers/index.md' },
+        { title: 'OpenAI', href: '#openai', filePath: '/docs/providers/api-providers/openai.md' },
+        { title: 'Anthropic', href: '#anthropic', filePath: '/docs/providers/api-providers/anthropic.md' },
+        { title: 'Google AI (Gemini)', href: '#google-ai', filePath: '/docs/providers/api-providers/google-ai.md' },
+        { title: 'Groq', href: '#groq', filePath: '/docs/providers/api-providers/groq.md' },
+        { title: 'OpenRouter', href: '#openrouter', filePath: '/docs/providers/api-providers/openrouter.md' },
         { title: 'Claude Code CLI', href: '#claude-code', filePath: '/docs/providers/cli-providers/claude-code.md' },
         { title: 'Continue.dev', href: '#continue', filePath: '/docs/providers/cli-providers/continue.md' },
         { title: 'Cursor', href: '#cursor', filePath: '/docs/providers/cli-providers/cursor.md' },
-        { title: 'Cline (VS Code)', href: '#cline', filePath: '/docs/providers/cli-providers/cline.md' },
-        { title: 'OpenAI API', href: '#openai', filePath: '/docs/providers/api-providers/openai.md' },
-        { title: 'Custom Providers', href: '#custom-providers', filePath: '/docs/providers/custom-providers.md' }
-      ]
-    },
-    {
-      id: 'mcp-integration',
-      title: 'MCP Integration',
-      items: [
-        { title: 'MCP Overview', href: '#mcp-overview', filePath: '/docs/mcp/overview.md' },
-        { title: 'Server Setup', href: '#mcp-server-setup', filePath: '/docs/mcp/server-setup.md' }
+        { title: 'Cline (VS Code)', href: '#cline', filePath: '/docs/providers/cli-providers/cline.md' }
       ]
     },
     {
       id: 'features',
       title: 'Features',
       items: [
-        { title: 'Features Overview', href: '#features-overview', filePath: '/docs/features/index.md' },
-        { title: 'Multi-LLM Perspectives', href: '#perspectives', filePath: '/docs/features/perspectives/index.md' },
-        { title: 'Intelligent Fallback', href: '#fallback', filePath: '/docs/features/fallback/index.md' }
+        { title: 'Perspectives (multi-model)', href: '#perspectives', filePath: '/docs/features/perspectives/index.md' },
+        { title: 'Project Memory', href: '#memory', filePath: '/docs/features/memory/index.md' },
+        { title: 'Intelligent Fallback', href: '#fallback', filePath: '/docs/features/fallback/index.md' },
+        { title: 'Analytics', href: '#analytics', filePath: '/docs/features/analytics/index.md' },
+        { title: 'Security', href: '#security', filePath: '/docs/features/security/index.md' }
+      ]
+    },
+    {
+      id: 'mcp',
+      title: 'MCP Integration',
+      items: [
+        { title: 'Overview', href: '#mcp-overview', filePath: '/docs/mcp/overview.md' },
+        { title: 'Server Setup', href: '#mcp-server', filePath: '/docs/mcp/server-setup.md' },
+        { title: 'Claude Desktop', href: '#mcp-claude-desktop', filePath: '/docs/mcp/clients/claude-desktop.md' },
+        { title: 'Cline (VS Code)', href: '#mcp-cline', filePath: '/docs/mcp/clients/cline.md' },
+        { title: 'Cursor', href: '#mcp-cursor', filePath: '/docs/mcp/clients/cursor.md' },
+        { title: 'Continue', href: '#mcp-continue', filePath: '/docs/mcp/clients/continue.md' },
+        { title: 'Gemini CLI', href: '#mcp-gemini', filePath: '/docs/mcp/clients/gemini-cli.md' }
       ]
     },
     {
@@ -109,7 +119,10 @@ export default function Documentation() {
       title: 'API Reference',
       items: [
         { title: 'API Overview', href: '#api-overview', filePath: '/docs/api-reference/index.md' },
-        { title: 'Perspectives API', href: '#perspectives-api', filePath: '/docs/api-reference/perspectives/index.md' }
+        { title: 'Perspectives API', href: '#perspectives-api', filePath: '/docs/api-reference/perspectives/index.md' },
+        { title: 'Chat Completions', href: '#chat-api', filePath: '/docs/api-reference/chat/index.md' },
+        { title: 'Models', href: '#models-api', filePath: '/docs/api-reference/models/index.md' },
+        { title: 'Webhooks', href: '#webhooks-api', filePath: '/docs/api-reference/webhooks/index.md' }
       ]
     }
   ]
@@ -152,8 +165,22 @@ export default function Documentation() {
     }
   }
 
-  // Enhanced markdown processing with better code block handling
+  // Enhanced markdown processing: heading anchors + copy buttons for code
   const processMarkdownContent = (html: string) => {
+    // Add ids to h2/h3 for anchors
+    const addIds = (s: string) =>
+      s
+        .replace(/<h2>([^<]+)<\\/h2>/g, (_m, t) => {
+          const id = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+          return `<h2 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-gray-300 hover:text-gray-500 no-underline align-middle" aria-label="Link to section">#</a></h2>`
+        })
+        .replace(/<h3>([^<]+)<\\/h3>/g, (_m, t) => {
+          const id = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+          return `<h3 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-gray-300 hover:text-gray-500 no-underline align-middle" aria-label="Link to section">#</a></h3>`
+        })
+
+    html = addIds(html)
+
     // Add copy buttons to code blocks and improve styling
     return html.replace(
       /<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
@@ -166,10 +193,10 @@ export default function Documentation() {
           .replace(/&#39;/g, "'")
 
         return `
-          <div class="relative group my-6">
-            <pre class="bg-slate-50 text-slate-800 rounded-xl p-6 overflow-x-auto border border-slate-200 font-mono text-sm leading-relaxed shadow-sm"><code${attributes}>${code}</code></pre>
-            <button class="copy-btn absolute top-4 right-4 p-2 rounded-lg bg-white hover:bg-slate-50 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-slate-200 shadow-sm" data-code="${decodedCode.replace(/"/g, '&quot;')}" title="Copy to clipboard">
-              <svg class="h-4 w-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="relative group my-8">
+            <pre class="bg-gray-50 text-gray-900 rounded-2xl p-6 overflow-x-auto border border-gray-200 font-mono text-sm leading-relaxed shadow-sm hover:shadow-md transition-shadow duration-200"><code${attributes}>${code}</code></pre>
+            <button class="copy-btn absolute top-4 right-4 p-2.5 rounded-lg bg-white hover:bg-gray-50 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-gray-200 shadow-sm" data-code="${decodedCode.replace(/"/g, '&quot;')}" title="Copy to clipboard">
+              <svg class="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
               </svg>
             </button>
@@ -179,222 +206,672 @@ export default function Documentation() {
     )
   }
 
-  // Sample content to show while loading or when files don't exist
+  // After content mounts, enhance with code-tabs and collect TOC
+  useEffect(() => {
+    const container = document.getElementById('doc-content')
+    if (!container) return
+
+    // Build TOC from h2/h3
+    const headings = Array.from(container.querySelectorAll('h2, h3')) as HTMLHeadingElement[]
+    const tocItems = headings.map(h => ({ id: h.id, text: h.textContent || '', level: h.tagName === 'H2' ? 2 : 3 }))
+    setToc(tocItems)
+
+    // Append visible anchor links to headings if missing
+    headings.forEach(h => {
+      if (!h.id) {
+        const id = (h.textContent || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+        if (id) h.id = id
+      }
+      if (!h.querySelector('a.anchor-link')) {
+        const a = document.createElement('a')
+        a.href = `#${h.id}`
+        a.className = 'ml-2 text-gray-300 hover:text-gray-500 no-underline align-middle anchor-link'
+        a.ariaLabel = 'Link to section'
+        a.textContent = '#'
+        h.appendChild(a)
+      }
+    })
+
+    // Initialize simple code tabs
+    const groups = container.querySelectorAll<HTMLElement>('.code-tabs')
+    groups.forEach(group => {
+      const buttons = Array.from(group.querySelectorAll<HTMLButtonElement>('.tab-button'))
+      const panes = Array.from(group.querySelectorAll<HTMLElement>('pre[data-lang]'))
+      const activate = (lang: string) => {
+        panes.forEach(p => {
+          p.style.display = p.dataset.lang === lang ? 'block' : 'none'
+        })
+        buttons.forEach(b => {
+          if (b.dataset.lang === lang) b.classList.add('bg-slate-900', 'text-white')
+          else b.classList.remove('bg-slate-900', 'text-white')
+        })
+      }
+      // Default to first button
+      const initial = buttons[0]?.dataset.lang || panes[0]?.dataset.lang || 'curl'
+      activate(initial)
+      buttons.forEach(btn => btn.addEventListener('click', () => activate(btn.dataset.lang || initial)))
+    })
+  }, [content])
+
+  // Modern, comprehensive sample content
   const getSampleContent = (itemId: string) => {
     const samples: Record<string, string> = {
       'what-is-polydev': `
 # What is Polydev?
 
-Polydev is a powerful platform that unifies multiple AI models and providers into a single, coherent interface. It allows developers to leverage the best of different AI models without the complexity of managing multiple APIs and integrations.
+**Polydev** is the unified AI platform that connects developers to 340+ AI models from 37+ providers through a single, powerful interface. Stop juggling multiple API keys, wrestling with different SDKs, and dealing with inconsistent responses.
 
-## Key Features
+## Why Polydev?
 
-- **Multi-Model Access**: Query 340+ AI models from 37+ providers
-- **Intelligent Fallback**: Automatically switch between providers for optimal responses
-- **Cost Optimization**: Smart routing to minimize API costs
-- **Developer Integration**: Works seamlessly with popular development tools
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-8 not-prose">
+  <div class="p-6 bg-blue-50 rounded-xl border border-blue-200">
+    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+      ⚡
+    </div>
+    <h3 class="font-semibold text-gray-900 mb-2">Unified Access</h3>
+    <p class="text-gray-600 text-sm">One API, 340+ models. From GPT-5 to Claude Opus 4, access everything through a single interface.</p>
+  </div>
+  <div class="p-6 bg-green-50 rounded-xl border border-green-200">
+    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+      🛡️
+    </div>
+    <h3 class="font-semibold text-gray-900 mb-2">Intelligent Fallback</h3>
+    <p class="text-gray-600 text-sm">Automatic failover between providers ensures your applications never go down.</p>
+  </div>
+  <div class="p-6 bg-purple-50 rounded-xl border border-purple-200">
+    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
+      💰
+    </div>
+    <h3 class="font-semibold text-gray-900 mb-2">Cost Optimization</h3>
+    <p class="text-gray-600 text-sm">Smart routing minimizes costs while maximizing quality and reliability.</p>
+  </div>
+</div>
 
-## Supported AI Providers
+## Supported Providers
+
+Polydev works with all major AI providers and many specialized ones:
 
 \`\`\`javascript
-const providers = [
-  'OpenAI GPT-4, GPT-5',
-  'Anthropic Claude Opus 4',
-  'Google Gemini 2.5 Pro',
-  'Meta Llama',
-  'DeepSeek',
-  'Grok',
-  // ... and 340+ more models
-];
+const availableProviders = {
+  "Leading Models": [
+    "OpenAI GPT-4, GPT-5",
+    "Anthropic Claude Opus 4, Sonnet, Haiku",
+    "Google Gemini 2.5 Pro, Ultra",
+    "xAI Grok-2, Grok-3"
+  ],
+  "Open Source": [
+    "Meta Llama 3.3, 4.0",
+    "Mistral Large, Codestral",
+    "DeepSeek V3, Coder V2",
+    "Qwen 2.5, QwQ"
+  ],
+  "Specialized": [
+    "Perplexity Online Models",
+    "Cohere Command R+",
+    "Together AI Models",
+    "Replicate Models"
+  ]
+}
 \`\`\`
 
-## Getting Started
+## Developer Integration
 
-1. Sign up for a Polydev account
-2. Configure your API keys
-3. Start querying multiple models
-4. Integrate with your favorite development tools
+Polydev seamlessly integrates with your existing development workflow:
 
-Ready to get started? Check out our [Quick Start Guide](#quick-start).
+- **🔧 CLI Tools**: Works with Claude Code, Continue.dev, Cursor, Cline, and Aider
+- **🚀 Zero Config**: Get started in under 2 minutes
+- **📦 Any Framework**: Compatible with any language or framework
+- **🔒 Secure**: Zero-knowledge encryption for sensitive data
+
+## Quick Example
+
+\`\`\`typescript
+import { polydev } from '@polydev/sdk'
+
+// Get perspectives from multiple models
+const response = await polydev.perspectives({
+  prompt: "How should I structure my React app?",
+  models: ["gpt-4", "claude-3-opus", "gemini-pro"],
+  options: {
+    temperature: 0.7,
+    maxTokens: 1000
+  }
+})
+
+// Automatic fallback and cost optimization included
+console.log(response.results)
+\`\`\`
+
+Ready to revolutionize your AI workflow? [Get started in 2 minutes →](#quick-start)
 `,
       'quick-start': `
 # Quick Start Guide
 
-Get up and running with Polydev in less than 5 minutes.
+Get up and running with Polydev in under 2 minutes. No complex setup, no lengthy configuration.
 
 ## Step 1: Create Your Account
 
-1. Visit [polydev.ai](https://polydev.ai)
-2. Click "Sign Up"
-3. Complete the registration process
+<div class="bg-blue-50 border border-blue-200 rounded-xl p-6 my-6">
+  <div class="flex items-start space-x-3">
+    <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+      <span class="text-blue-600 font-bold text-sm">1</span>
+    </div>
+    <div>
+      <h3 class="font-semibold text-blue-900 mb-2">Sign up for free</h3>
+      <p class="text-blue-700 mb-4">Visit <a href="https://polydev.ai" class="underline">polydev.ai</a> and create your account. No credit card required.</p>
+      <p class="text-blue-600 text-sm">✨ Get 100 free requests to start exploring</p>
+    </div>
+  </div>
+</div>
 
-## Step 2: Configure API Keys
+## Step 2: Install the CLI
 
-Navigate to your dashboard and add your API keys:
-
-\`\`\`bash
-# Example: Adding OpenAI API key
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-\`\`\`
-
-## Step 3: Install CLI Tools
-
-\`\`\`bash
-# Install Claude Code CLI
-npm install -g @anthropic/claude-code
-
-# Install Continue.dev extension
-code --install-extension continue.continue
-
-# Install Cursor
-curl -fsSL https://cursor.sh/install.sh | sh
-\`\`\`
-
-## Step 4: Make Your First Request
-
-\`\`\`javascript
-import { polydev } from '@polydev/sdk';
-
-const response = await polydev.perspectives({
-  prompt: "Explain quantum computing",
-  models: ["gpt-4", "claude-3-opus", "gemini-pro"]
-});
-
-console.log(response);
-\`\`\`
-
-## Next Steps
-
-- Explore [Configuration Options](#environment)
-- Learn about [AI Providers](#providers-overview)
-- Try [Multi-LLM Perspectives](#perspectives)
-`,
-      'architecture': `
-# Architecture Overview
-
-Polydev is built with a modular, scalable architecture that ensures reliability and performance.
-
-## System Components
-
-\`\`\`mermaid
-graph TD
-    A[Client Applications] --> B[Polydev API Gateway]
-    B --> C[Model Router]
-    C --> D[Provider Adapters]
-    D --> E[AI Model Providers]
-    B --> F[Authentication Service]
-    B --> G[Usage Analytics]
-    B --> H[Caching Layer]
-\`\`\`
-
-## Key Components
-
-### API Gateway
-- Rate limiting and throttling
-- Request validation
-- Response formatting
-- Error handling
-
-### Model Router
-- Intelligent model selection
-- Fallback strategies
-- Load balancing
-- Cost optimization
-
-### Provider Adapters
-- Unified interface for different AI providers
-- Protocol translation
-- Error normalization
-- Response standardization
-
-## Data Flow
-
-1. **Request Reception**: Client sends request to API Gateway
-2. **Authentication**: Verify user credentials and permissions
-3. **Model Selection**: Router selects optimal model(s)
-4. **Provider Execution**: Adapters communicate with AI providers
-5. **Response Processing**: Standardize and cache responses
-6. **Analytics**: Log usage and performance metrics
-
-## Security
-
-- End-to-end encryption
-- Zero-knowledge architecture for sensitive data
-- API key encryption at rest
-- Regular security audits
-`,
-      'environment': `
-# Environment Setup
-
-Configure your Polydev environment for optimal performance and security.
-
-## API Keys Configuration
-
-Set up your AI provider API keys securely:
+Choose your preferred method:
 
 \`\`\`bash
-# OpenAI
-export OPENAI_API_KEY="sk-..."
+# Using npm (recommended)
+npm install -g @polydev/cli
 
-# Anthropic
-export ANTHROPIC_API_KEY="sk-ant-..."
+# Using yarn
+yarn global add @polydev/cli
 
-# Google
-export GOOGLE_API_KEY="AIza..."
-
-# Optional: Use .env file
-echo "OPENAI_API_KEY=sk-..." >> .env
-echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env
+# Using pnpm
+pnpm add -g @polydev/cli
 \`\`\`
 
-## Environment Variables
+Verify installation:
 
 \`\`\`bash
-# Polydev Configuration
-export POLYDEV_API_URL="https://api.polydev.ai"
-export POLYDEV_TIMEOUT="30000"
-export POLYDEV_RETRY_ATTEMPTS="3"
-
-# Development vs Production
-export NODE_ENV="development"
-export POLYDEV_DEBUG="true"
+polydev --version
+# Output: @polydev/cli v2.1.0
 \`\`\`
 
-## Configuration File
+## Step 3: Authenticate
 
-Create a \`polydev.config.js\` file:
+\`\`\`bash
+# Login to your account
+polydev auth login
+
+# Or use API key directly
+polydev auth set-key YOUR_API_KEY
+\`\`\`
+
+## Step 4: Your First Query
+
+\`\`\`bash
+# Single model query
+polydev ask "Explain React hooks" --model gpt-4
+
+# Multi-model perspectives (recommended)
+polydev perspectives "Best practices for API design" \\
+  --models gpt-4,claude-3-opus,gemini-pro
+\`\`\`
+
+## Step 5: Integrate with Your Editor
+
+### Claude Code CLI
+
+\`\`\`bash
+# Already compatible! Just use Polydev as your provider
+claude config set provider polydev
+\`\`\`
+
+### VS Code with Continue.dev
+
+\`\`\`json
+// .continue/config.json
+{
+  "models": [
+    {
+      "title": "Polydev Multi-Model",
+      "provider": "polydev",
+      "model": "polydev-perspectives",
+      "apiKey": "YOUR_POLYDEV_KEY"
+    }
+  ]
+}
+\`\`\`
+
+### Cursor
+
+\`\`\`bash
+# Set Polydev as your AI provider
+cursor-settings set ai.provider polydev
+cursor-settings set ai.apiKey YOUR_POLYDEV_KEY
+\`\`\`
+
+## Step 6: Advanced Configuration
+
+Create a \`polydev.config.js\` file for advanced settings:
 
 \`\`\`javascript
 module.exports = {
-  apiUrl: process.env.POLYDEV_API_URL,
-  timeout: 30000,
-  retries: 3,
-  models: {
-    preferred: ["gpt-4", "claude-3-opus"],
-    fallback: ["gpt-3.5-turbo", "claude-3-haiku"],
+  // Default models for perspectives
+  defaultModels: ["gpt-4", "claude-3-opus", "gemini-pro"],
+
+  // Fallback chain
+  fallbackChain: [
+    "gpt-4",
+    "claude-3-sonnet",
+    "gemini-pro",
+    "llama-3.3-70b"
+  ],
+
+  // Cost optimization
+  costOptimization: {
+    enabled: true,
+    maxCostPerRequest: 0.10, // $0.10 max per request
+    preferredProviders: ["openai", "anthropic"]
   },
+
+  // Caching
   cache: {
     enabled: true,
-    ttl: 3600, // 1 hour
+    ttl: 3600 // 1 hour
   }
-};
+}
+\`\`\`
+
+## What's Next?
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-8 not-prose">
+  <a href="#environment" class="block p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+    <h3 class="font-semibold text-gray-900 mb-2">🔧 Environment Setup</h3>
+    <p class="text-gray-600 text-sm">Configure API keys and advanced settings</p>
+  </a>
+  <a href="#providers-overview" class="block p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+    <h3 class="font-semibold text-gray-900 mb-2">🤖 Explore Providers</h3>
+    <p class="text-gray-600 text-sm">Learn about 340+ available AI models</p>
+  </a>
+  <a href="#perspectives" class="block p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+    <h3 class="font-semibold text-gray-900 mb-2">🎯 Multi-Model Perspectives</h3>
+    <p class="text-gray-600 text-sm">Get diverse AI viewpoints on complex problems</p>
+  </a>
+  <a href="#api-overview" class="block p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+    <h3 class="font-semibold text-gray-900 mb-2">📚 API Reference</h3>
+    <p class="text-gray-600 text-sm">Detailed documentation for developers</p>
+  </a>
+</div>
+
+> **💡 Pro Tip**: Start with perspectives mode to get diverse viewpoints from multiple models. It's often more valuable than single-model responses!
+`,
+      'installation': `
+# Installation Guide
+
+Choose the installation method that works best for your development environment.
+
+## Prerequisites
+
+- **Node.js**: Version 18.0 or higher
+- **Package Manager**: npm, yarn, or pnpm
+- **Operating System**: macOS, Windows, or Linux
+
+## Method 1: NPM Package (Recommended)
+
+\`\`\`bash
+# Install globally for CLI access
+npm install -g @polydev/cli
+
+# Or install locally in your project
+npm install @polydev/sdk
+\`\`\`
+
+## Method 2: Package Managers
+
+### Yarn
+
+\`\`\`bash
+# Global installation
+yarn global add @polydev/cli
+
+# Project installation
+yarn add @polydev/sdk
+\`\`\`
+
+### PNPM
+
+\`\`\`bash
+# Global installation
+pnpm add -g @polydev/cli
+
+# Project installation
+pnpm add @polydev/sdk
+\`\`\`
+
+## Method 3: Direct Download
+
+For environments without Node.js:
+
+\`\`\`bash
+# macOS/Linux
+curl -fsSL https://install.polydev.ai | sh
+
+# Windows PowerShell
+iwr -useb https://install.polydev.ai/windows | iex
 \`\`\`
 
 ## Verification
 
-Test your setup:
+Verify your installation:
 
 \`\`\`bash
-# Check environment
-polydev env check
+# Check CLI version
+polydev --version
 
-# Test API connection
+# Check available commands
+polydev --help
+
+# Test connection
+polydev status
+\`\`\`
+
+## Framework Integration
+
+### React/Next.js
+
+\`\`\`bash
+npm install @polydev/react
+\`\`\`
+
+\`\`\`jsx
+import { usePolydev } from '@polydev/react'
+
+function MyComponent() {
+  const { ask, perspectives, loading } = usePolydev()
+
+  const handleQuery = async () => {
+    const result = await perspectives('Explain React Server Components')
+    console.log(result)
+  }
+
+  return <button onClick={handleQuery}>Ask AI</button>
+}
+\`\`\`
+
+### Python
+
+\`\`\`bash
+pip install polydev-python
+\`\`\`
+
+\`\`\`python
+from polydev import Client
+
+client = Client(api_key="your-key")
+response = client.perspectives(
+    prompt="Explain Python asyncio",
+    models=["gpt-4", "claude-3-opus"]
+)
+\`\`\`
+
+### Go
+
+\`\`\`bash
+go get github.com/polydev-ai/polydev-go
+\`\`\`
+
+\`\`\`go
+package main
+
+import "github.com/polydev-ai/polydev-go"
+
+func main() {
+    client := polydev.NewClient("your-api-key")
+    response, err := client.Perspectives(polydev.PerspectivesRequest{
+        Prompt: "Explain Go concurrency",
+        Models: []string{"gpt-4", "claude-3-opus"},
+    })
+}
+\`\`\`
+
+## Troubleshooting
+
+### Common Issues
+
+**Permission denied on macOS/Linux:**
+\`\`\`bash
+sudo npm install -g @polydev/cli
+\`\`\`
+
+**Windows PowerShell execution policy:**
+\`\`\`powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+\`\`\`
+
+**Node.js version issues:**
+\`\`\`bash
+# Use nvm to manage Node.js versions
+nvm install 18
+nvm use 18
+\`\`\`
+
+### Getting Help
+
+- **Documentation**: [docs.polydev.ai](https://docs.polydev.ai)
+- **GitHub Issues**: [github.com/polydev-ai/polydev](https://github.com/polydev-ai/polydev)
+- **Discord Community**: [discord.gg/polydev](https://discord.gg/polydev)
+- **Email Support**: support@polydev.ai
+
+Next: [Quick Start Guide →](#quick-start)
+`,
+      'environment': `
+# Environment Setup
+
+Configure Polydev for optimal performance, security, and cost management.
+
+## API Key Configuration
+
+### Option 1: Environment Variables (Recommended)
+
+\`\`\`bash
+# Polydev API key (required)
+export POLYDEV_API_KEY="pd_your_api_key_here"
+
+# Optional: Provider API keys for direct access
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GOOGLE_API_KEY="AIza..."
+\`\`\`
+
+### Option 2: Configuration File
+
+Create \`.polydev/config.json\` in your home directory:
+
+\`\`\`json
+{
+  "apiKey": "pd_your_api_key_here",
+  "providers": {
+    "openai": {
+      "apiKey": "sk-...",
+      "enabled": true
+    },
+    "anthropic": {
+      "apiKey": "sk-ant-...",
+      "enabled": true
+    },
+    "google": {
+      "apiKey": "AIza...",
+      "enabled": true
+    }
+  },
+  "preferences": {
+    "defaultModels": ["gpt-4", "claude-3-opus", "gemini-pro"],
+    "costOptimization": true,
+    "cacheEnabled": true
+  }
+}
+\`\`\`
+
+### Option 3: CLI Configuration
+
+\`\`\`bash
+# Set API key
+polydev config set api-key pd_your_api_key_here
+
+# Set default models
+polydev config set default-models gpt-4,claude-3-opus,gemini-pro
+
+# Enable cost optimization
+polydev config set cost-optimization true
+\`\`\`
+
+## Advanced Configuration
+
+### Cost Management
+
+\`\`\`javascript
+// polydev.config.js
+module.exports = {
+  costOptimization: {
+    enabled: true,
+    maxCostPerRequest: 0.25,        // Maximum $0.25 per request
+    maxDailyCost: 50.00,            // Daily budget limit
+    preferCheaperModels: true,      // Prefer cost-effective options
+    fallbackToFreeProviders: true, // Use CLI tools as fallback
+  },
+
+  routing: {
+    strategy: "cost-optimized",     // or "performance", "balanced"
+    priorities: ["cost", "speed", "quality"]
+  }
+}
+\`\`\`
+
+### Performance Settings
+
+\`\`\`javascript
+module.exports = {
+  performance: {
+    timeout: 30000,          // 30 second timeout
+    retries: 3,              // Retry failed requests 3 times
+    concurrent: 5,           // Max 5 concurrent requests
+    caching: {
+      enabled: true,
+      ttl: 3600,            // Cache for 1 hour
+      strategy: "intelligent" // or "aggressive", "minimal"
+    }
+  },
+
+  fallback: {
+    enabled: true,
+    chain: [
+      "gpt-4",
+      "claude-3-opus",
+      "gemini-pro",
+      "llama-3.3-70b"
+    ],
+    timeout: 10000          // 10 second timeout per model
+  }
+}
+\`\`\`
+
+### Security Configuration
+
+\`\`\`javascript
+module.exports = {
+  security: {
+    encryptLocalCache: true,        // Encrypt cached responses
+    anonymizeRequests: true,        // Remove PII from logs
+    auditLogging: true,             // Enable audit trails
+
+    // Data retention
+    dataRetention: {
+      requests: 30,                 // Keep request logs for 30 days
+      responses: 7,                 // Keep responses for 7 days
+      cache: 1                      // Keep cache for 1 day
+    }
+  }
+}
+\`\`\`
+
+## Environment-Specific Settings
+
+### Development
+
+\`\`\`bash
+# .env.development
+POLYDEV_ENV=development
+POLYDEV_DEBUG=true
+POLYDEV_CACHE_TTL=300
+POLYDEV_COST_LIMIT=5.00
+\`\`\`
+
+### Production
+
+\`\`\`bash
+# .env.production
+POLYDEV_ENV=production
+POLYDEV_DEBUG=false
+POLYDEV_CACHE_TTL=3600
+POLYDEV_COST_LIMIT=100.00
+POLYDEV_MONITORING=true
+\`\`\`
+
+### Testing
+
+\`\`\`bash
+# .env.test
+POLYDEV_ENV=test
+POLYDEV_USE_MOCK=true
+POLYDEV_CACHE_ENABLED=false
+\`\`\`
+
+## Validation & Testing
+
+### Verify Configuration
+
+\`\`\`bash
+# Check configuration status
+polydev config status
+
+# Test API connectivity
 polydev test connection
 
-# Verify API keys
-polydev keys verify
+# Validate API keys
+polydev test auth
+
+# Test model access
+polydev test models --model gpt-4
 \`\`\`
+
+### Health Checks
+
+\`\`\`bash
+# Full system health check
+polydev health
+
+# Check provider status
+polydev status providers
+
+# Check cost usage
+polydev usage today
+\`\`\`
+
+## IDE Integration
+
+### VS Code
+
+Create \`.vscode/settings.json\`:
+
+\`\`\`json
+{
+  "polydev.apiKey": "${env:POLYDEV_API_KEY}",
+  "polydev.defaultModels": ["gpt-4", "claude-3-opus"],
+  "polydev.costOptimization": true
+}
+\`\`\`
+
+### JetBrains IDEs
+
+Configure in IDE settings or \`~/.polydev/jetbrains.properties\`:
+
+\`\`\`properties
+polydev.apiKey=${POLYDEV_API_KEY}
+polydev.defaultModels=gpt-4,claude-3-opus
+polydev.costOptimization=true
+\`\`\`
+
+Ready to configure authentication? [Continue to Authentication →](#authentication)
 `
     }
 
@@ -477,12 +954,12 @@ polydev keys verify
         const svg = button.querySelector('svg')
         if (svg) {
           svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>`
-          svg.classList.remove('text-slate-600')
+          svg.classList.remove('text-gray-600')
           svg.classList.add('text-green-600')
           setTimeout(() => {
             svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>`
             svg.classList.remove('text-green-600')
-            svg.classList.add('text-slate-600')
+            svg.classList.add('text-gray-600')
           }, 2000)
         }
       } catch (err) {
@@ -507,22 +984,32 @@ polydev keys verify
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="border-b border-gray-200 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Modern Header */}
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <FileText className="h-6 w-6 text-gray-900" />
-              <h1 className="text-xl font-semibold text-gray-900">Documentation</h1>
+              <BookOpen className="h-7 w-7 text-blue-600" />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Documentation</h1>
+                <p className="text-sm text-gray-500 hidden sm:block">Polydev AI Platform</p>
+              </div>
             </div>
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <div className="flex items-center space-x-6 text-sm">
               {currentItem && (
-                <>
+                <div className="hidden lg:flex items-center space-x-2 text-gray-500">
                   <span>{currentItem.section.title}</span>
                   <span>•</span>
-                  <span>{currentItem.item.title}</span>
-                </>
+                  <span className="text-gray-900 font-medium">{currentItem.item.title}</span>
+                </div>
               )}
+              <Link
+                href="/dashboard"
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span>Dashboard</span>
+              </Link>
             </div>
           </div>
         </div>
@@ -530,11 +1017,63 @@ polydev keys verify
 
       <div className="max-w-7xl mx-auto">
         <div className="flex">
-          {/* Sidebar */}
-          <div className="w-80 flex-shrink-0 bg-gray-50 border-r border-gray-200 min-h-screen">
-            <div className="sticky top-0 h-screen overflow-y-auto">
+          {/* Modern Sidebar */}
+          <div className="w-80 flex-shrink-0 bg-gray-50/50 border-r border-gray-200 min-h-screen">
+            <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
               <div className="p-6">
+                {/* Quick Actions */}
+                <div className="mb-8">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Quick Start</h3>
+                  <div className="space-y-2">
+                    <Link
+                      href="/docs/quickstart"
+                      className="flex items-center justify-between p-3 bg-slate-900 rounded-xl hover:bg-black transition-colors group"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Zap className="h-5 w-5 text-white" />
+                        <div>
+                          <div className="font-medium text-white">Docs Quickstart</div>
+                          <div className="text-xs text-slate-300">3 steps • 2 minutes</div>
+                        </div>
+                      </div>
+                      <span className="text-slate-300 group-hover:text-white">→</span>
+                    </Link>
+                    <Link
+                      href="/chat"
+                      className="flex items-center space-x-3 p-3 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors group"
+                    >
+                      <Zap className="h-5 w-5 text-blue-600" />
+                      <div>
+                        <div className="font-medium text-blue-900">Try Polydev</div>
+                        <div className="text-xs text-blue-600">Multi-model chat</div>
+                      </div>
+                    </Link>
+                    <Link
+                      href="/dashboard/models"
+                      className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors group"
+                    >
+                      <Shield className="h-5 w-5 text-green-600" />
+                      <div>
+                        <div className="font-medium text-green-900">Setup API Keys</div>
+                        <div className="text-xs text-green-600">Configure providers</div>
+                      </div>
+                    </Link>
+                    <Link
+                      href="/dashboard/mcp-tokens"
+                      className="flex items-center space-x-3 p-3 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors group"
+                    >
+                      <Code2 className="h-5 w-5 text-purple-600" />
+                      <div>
+                        <div className="font-medium text-purple-900">MCP Tokens</div>
+                        <div className="text-xs text-purple-600">For CLI integration</div>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Navigation */}
                 <nav className="space-y-1">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Documentation</h3>
                   {docSections.map((section) => (
                     <div key={section.id} className="space-y-1">
                       <button
@@ -544,24 +1083,24 @@ polydev keys verify
                             handleItemClick(section.items[0])
                           }
                         }}
-                        className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                        className={`w-full text-left px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 ${
                           activeSection === section.id
-                            ? 'text-gray-900 bg-gray-200'
-                            : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
+                            ? 'text-blue-900 bg-blue-50 border border-blue-200'
+                            : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100 border border-transparent'
                         }`}
                       >
                         {section.title}
                       </button>
                       {activeSection === section.id && (
-                        <div className="ml-4 space-y-1">
+                        <div className="ml-2 space-y-1 border-l-2 border-blue-100 pl-4">
                           {section.items.map((item) => (
                             <button
                               key={item.href}
                               onClick={() => handleItemClick(item)}
-                              className={`block w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                              className={`block w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
                                 activeItem === item.href.replace('#', '')
-                                  ? 'text-gray-900 bg-white border border-gray-200 shadow-sm'
-                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                                  ? 'text-blue-900 bg-blue-100 font-medium'
+                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                               }`}
                             >
                               {item.title}
@@ -572,87 +1111,75 @@ polydev keys verify
                     </div>
                   ))}
                 </nav>
-
-                {/* Quick Links */}
-                <div className="mt-8 p-4 bg-white border border-gray-200 rounded-lg">
-                  <h3 className="text-sm font-medium text-gray-900 mb-3">Quick Links</h3>
-                  <div className="space-y-2 text-sm">
-                    <Link
-                      href="/dashboard/models"
-                      className="block text-gray-600 hover:text-gray-900 transition-colors"
-                    >
-                      Configure API Keys
-                    </Link>
-                    <Link
-                      href="/dashboard/mcp-tokens"
-                      className="block text-gray-600 hover:text-gray-900 transition-colors"
-                    >
-                      Generate MCP Tokens
-                    </Link>
-                    <Link
-                      href="/chat"
-                      className="block text-gray-600 hover:text-gray-900 transition-colors"
-                    >
-                      Try Multi-Model Chat
-                    </Link>
-                    <Link
-                      href="/dashboard/preferences"
-                      className="block text-gray-600 hover:text-gray-900 transition-colors"
-                    >
-                      User Preferences
-                    </Link>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Main Content */}
+          {/* Modern Main Content */}
           <div className="flex-1 min-w-0">
-            <div className="px-12 py-12 max-w-4xl">
+            <div className="px-8 lg:px-16 py-12">
               {loading ? (
-                <div className="flex items-center justify-center py-24">
+                <div className="flex items-center justify-center py-32">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto mb-6"></div>
-                    <p className="text-slate-600 text-lg">Loading documentation...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-6"></div>
+                    <p className="text-gray-600 text-lg">Loading documentation...</p>
                   </div>
                 </div>
               ) : (
-                <div
-                  className="prose prose-slate max-w-none prose-lg prose-headings:text-slate-900 prose-headings:font-semibold prose-headings:tracking-tight prose-h1:text-4xl prose-h1:mb-8 prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4 prose-p:text-slate-700 prose-p:leading-8 prose-p:mb-6 prose-li:text-slate-700 prose-li:mb-2 prose-a:text-slate-900 prose-a:font-medium prose-a:no-underline hover:prose-a:text-slate-700 hover:prose-a:underline prose-code:text-slate-800 prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:text-sm prose-code:font-mono prose-code:font-medium prose-pre:bg-slate-50 prose-pre:text-slate-800 prose-pre:border prose-pre:border-slate-200 prose-blockquote:border-l-slate-300 prose-blockquote:bg-slate-50 prose-blockquote:py-4 prose-blockquote:px-6 prose-blockquote:my-8"
-                  dangerouslySetInnerHTML={{ __html: content }}
-                />
+                <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-12">
+                  <article
+                    id="doc-content"
+                    className="prose prose-gray max-w-none prose-xl prose-headings:text-gray-900 prose-headings:font-bold prose-headings:tracking-tight prose-h1:text-5xl prose-h1:mb-8 prose-h1:leading-tight prose-h2:text-4xl prose-h2:leading-tight prose-h2:mt-16 prose-h2:mb-8 prose-h2:border-b prose-h2:border-gray-100 prose-h2:pb-4 prose-h3:text-2xl prose-h3:mt-12 prose-h3:mb-6 prose-h3:font-semibold prose-p:text-gray-700 prose-p:leading-8 prose-p:mb-8 prose-p:text-lg prose-li:text-gray-700 prose-li:mb-3 prose-li:text-lg prose-a:text-blue-600 prose-a:font-medium prose-a:no-underline hover:prose-a:text-blue-700 hover:prose-a:underline prose-code:text-blue-800 prose-code:bg-blue-50 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:text-base prose-code:font-mono prose-code:font-medium prose-pre:bg-gray-50 prose-pre:text-gray-900 prose-pre:border prose-pre:border-gray-200 prose-blockquote:border-l-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:py-6 prose-blockquote:px-8 prose-blockquote:my-10 prose-blockquote:rounded-r-xl prose-blockquote:border-l-4 prose-strong:text-gray-900 prose-strong:font-semibold max-w-3xl"
+                    dangerouslySetInnerHTML={{ __html: content }}
+                  />
+                  <nav className="hidden lg:block sticky top-24 self-start text-sm border-l border-gray-200 pl-6">
+                    <div className="font-semibold text-gray-900 mb-3">On this page</div>
+                    <ul className="space-y-2 text-gray-600">
+                      {toc.map((item, idx) => (
+                        <li key={idx}>
+                          <a href={`#${item.id}`} className={`block hover:text-gray-900 ${item.level === 3 ? 'pl-4 text-gray-500' : ''}`}>{item.text}</a>
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
+                </div>
               )}
 
-              {/* Previous/Next Navigation */}
+              {/* Enhanced Navigation */}
               {(prev || next) && (
-                <div className="mt-20 pt-12 border-t border-slate-200">
-                  <div className="flex justify-between items-center">
+                <div className="mt-24 pt-12 border-t border-gray-200">
+                  <div className="flex justify-between items-center gap-8">
                     {prev ? (
                       <button
                         onClick={() => handleItemClick(prev)}
-                        className="flex items-center space-x-3 px-6 py-4 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                        className="flex items-center space-x-4 px-8 py-6 text-left bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:border-gray-300 hover:shadow-md transition-all duration-300 group flex-1"
                       >
-                        <ChevronLeft className="h-5 w-5" />
-                        <div className="text-left">
-                          <div className="text-xs text-slate-500 uppercase tracking-wide font-medium">Previous</div>
-                          <div className="mt-1 font-semibold">{prev.title}</div>
+                        <div className="p-2 bg-gray-100 rounded-xl group-hover:bg-gray-200 transition-colors">
+                          <ChevronLeft className="h-5 w-5 text-gray-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Previous</div>
+                          <div className="font-bold text-gray-900 text-lg truncate">{prev.title}</div>
+                          <div className="text-sm text-gray-600">{prev.section}</div>
                         </div>
                       </button>
                     ) : (
-                      <div></div>
+                      <div className="flex-1"></div>
                     )}
 
                     {next && (
                       <button
                         onClick={() => handleItemClick(next)}
-                        className="flex items-center space-x-3 px-6 py-4 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm"
+                        className="flex items-center space-x-4 px-8 py-6 text-right bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:border-gray-300 hover:shadow-md transition-all duration-300 group flex-1"
                       >
-                        <div className="text-right">
-                          <div className="text-xs text-slate-500 uppercase tracking-wide font-medium">Next</div>
-                          <div className="mt-1 font-semibold">{next.title}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Next</div>
+                          <div className="font-bold text-gray-900 text-lg truncate">{next.title}</div>
+                          <div className="text-sm text-gray-600">{next.section}</div>
                         </div>
-                        <ChevronRight className="h-5 w-5" />
+                        <div className="p-2 bg-gray-100 rounded-xl group-hover:bg-gray-200 transition-colors">
+                          <ChevronRight className="h-5 w-5 text-gray-600" />
+                        </div>
                       </button>
                     )}
                   </div>
@@ -660,18 +1187,19 @@ polydev keys verify
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-8 py-6 border-t border-gray-200 bg-gray-50">
-              <div className="flex justify-between items-center text-sm">
+            {/* Modern Footer */}
+            <div className="px-8 lg:px-16 py-8 border-t border-gray-200 bg-gray-50/50">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
                 <div className="text-gray-600">
-                  📚 Comprehensive documentation for Polydev AI
+                  <div className="font-medium text-gray-900 mb-1">Polydev Documentation</div>
+                  <div className="text-sm">Unified AI platform for developers</div>
                 </div>
-                <div className="flex space-x-6">
+                <div className="flex space-x-8 text-sm">
                   <a
                     href="https://github.com/polydev-ai/polydev"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900 transition-colors"
+                    className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
                   >
                     GitHub
                   </a>
@@ -679,13 +1207,13 @@ polydev keys verify
                     href="https://discord.gg/polydev"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900 transition-colors"
+                    className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
                   >
                     Discord
                   </a>
                   <Link
                     href="/dashboard/support"
-                    className="text-gray-600 hover:text-gray-900 transition-colors"
+                    className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
                   >
                     Support
                   </Link>

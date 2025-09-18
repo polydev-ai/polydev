@@ -20,7 +20,7 @@ Preferences can also be configured via environment variables for MCP-only setups
 
 ```bash
 # .env.local
-POLYDEV_DEFAULT_MODELS=gpt-4,claude-3-sonnet
+POLYDEV_DEFAULT_MODELS=gpt-5,claude-opus-4
 POLYDEV_PROJECT_MEMORY=full
 POLYDEV_MAX_TOKENS=4000
 ```
@@ -39,10 +39,10 @@ Configure which models to use when no specific models are requested:
 **Environment Configuration:**
 ```bash
 # Primary models (comma-separated)
-POLYDEV_DEFAULT_MODELS=gpt-4,claude-3-5-sonnet-20241022,gemini-pro
+POLYDEV_DEFAULT_MODELS=gpt-5,claude-opus-4,gemini-2.5-pro
 
 # Fallback models (if primary unavailable)
-POLYDEV_FALLBACK_MODELS=gpt-3.5-turbo,claude-3-haiku
+POLYDEV_FALLBACK_MODELS=gpt-4.1-mini,claude-haiku-2
 ```
 
 ### Model Selection Strategy
@@ -61,12 +61,12 @@ interface ModelPreferences {
 **Example Configuration:**
 ```json
 {
-  "primary": ["gpt-4", "claude-3-5-sonnet-20241022"],
-  "fallback": ["gpt-3.5-turbo", "claude-3-haiku"],
+  "primary": ["gpt-5", "claude-opus-4"],
+  "fallback": ["gpt-4.1-mini", "claude-haiku-2"],
   "fastModels": ["groq/llama-3.1-70b", "groq/mixtral-8x7b"],
-  "creativeModels": ["claude-3-opus", "gpt-4"],
-  "codingModels": ["claude-3-5-sonnet", "gpt-4", "codestral"],
-  "researchModels": ["perplexity/llama-3.1-sonar-large", "claude-3-opus"]
+  "creativeModels": ["claude-opus-4", "gpt-5"],
+  "codingModels": ["claude-sonnet-4", "gpt-5", "codestral"],
+  "researchModels": ["perplexity/llama-3.1-sonar-large", "claude-opus-4"]
 }
 ```
 
@@ -266,9 +266,9 @@ Map model IDs for specific use cases:
 {
   "modelAliases": {
     "fastest": "groq/llama-3.1-70b",
-    "best": "gpt-4",
-    "cheapest": "gpt-3.5-turbo",
-    "creative": "claude-3-opus"
+    "best": "gpt-5",
+    "cheapest": "gpt-4.1-mini",
+    "creative": "claude-opus-4"
   }
 }
 ```
@@ -334,12 +334,12 @@ Save different preference configurations for different projects or use cases:
 # Development profile
 POLYDEV_PROFILE=development
 POLYDEV_PROJECT_MEMORY=full
-POLYDEV_DEFAULT_MODELS=claude-3-5-sonnet,gpt-4
+POLYDEV_DEFAULT_MODELS=claude-opus-4,gpt-5
 
 # Production profile  
 POLYDEV_PROFILE=production
 POLYDEV_PROJECT_MEMORY=light
-POLYDEV_DEFAULT_MODELS=gpt-3.5-turbo,claude-3-haiku
+POLYDEV_DEFAULT_MODELS=gpt-4.1-mini,claude-opus-4
 ```
 
 ### Profile Management
@@ -393,7 +393,7 @@ Share standardized preferences across team members:
 ```json
 {
   "teamDefaults": {
-    "models": ["claude-3-5-sonnet", "gpt-4"],
+    "models": ["claude-opus-4", "gpt-5"],
     "context": {
       "memory": "full",
       "budget": 8000

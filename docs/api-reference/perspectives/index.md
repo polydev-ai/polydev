@@ -25,7 +25,7 @@ Authorization: Bearer poly_your_api_key_here
 ```javascript
 {
   "prompt": "Explain React hooks and their benefits",
-  "models": ["claude-3-sonnet", "gpt-4", "gemini-pro"]
+  "models": ["gpt-5", "claude-opus-4", "gemini-2.5-pro", "grok-4-high"]
 }
 ```
 
@@ -37,7 +37,7 @@ Authorization: Bearer poly_your_api_key_here
   "prompt": "Your question or task description",
   
   // Optional model configuration
-  "models": ["claude-3-sonnet", "gpt-4"],           // Specific models to query
+  "models": ["gpt-5", "claude-opus-4"],                // Specific models to query
   "model_count": 3,                                 // Auto-select N best models
   "preferred_providers": ["cli", "api_keys"],       // Provider preference order
   
@@ -96,7 +96,7 @@ Authorization: Bearer poly_your_api_key_here
   
   "perspectives": [
     {
-      "model": "claude-3-sonnet",
+      "model": "claude-opus-4",
       "provider": "claude_code_cli",
       "provider_type": "cli",
       "response_time": 1890,
@@ -106,13 +106,13 @@ Authorization: Bearer poly_your_api_key_here
       "content": "React hooks are functions that let you use state and lifecycle features...",
       "reasoning": "I analyzed this from the perspective of practical React development...",
       "metadata": {
-        "model_version": "claude-3-sonnet-20240229",
+      "model_version": "claude-opus-4-2025-preview",
         "finish_reason": "stop",
         "safety_rating": "safe"
       }
     },
     {
-      "model": "gpt-4",
+      "model": "gpt-5",
       "provider": "openai_api",
       "provider_type": "api_key",
       "response_time": 2100,
@@ -122,7 +122,7 @@ Authorization: Bearer poly_your_api_key_here
       "content": "React hooks revolutionized functional components by providing...",
       "reasoning": "From a software architecture perspective, hooks solve...",
       "metadata": {
-        "model_version": "gpt-4-0613",
+        "model_version": "gpt-5-2025-preview",
         "finish_reason": "stop",
         "safety_rating": "safe"
       }
@@ -176,7 +176,7 @@ Authorization: Bearer poly_your_api_key_here
     "message": "No providers available for requested models",
     "code": "NO_PROVIDERS_AVAILABLE",
     "details": {
-      "requested_models": ["claude-3-sonnet", "gpt-4"],
+      "requested_models": ["claude-opus-4", "gpt-5"],
       "available_providers": [],
       "fallback_attempts": [
         {
@@ -198,30 +198,43 @@ Authorization: Bearer poly_your_api_key_here
 
 ### Basic Multi-Model Query
 
-```javascript
-const response = await fetch('https://api.polydev.ai/v1/perspectives', {
+<div class="code-tabs" data-group="perspectives-basic">
+  <div class="flex gap-2 mb-3">
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="curl">cURL</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="node">Node</button>
+    <button class="tab-button px-3 py-1.5 rounded-md border text-sm" data-lang="ts">TypeScript</button>
+  </div>
+  <pre data-lang="curl"><code class="language-bash">curl -s https://api.polydev.ai/v1/perspectives \
+  -H "Authorization: Bearer poly_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "What are the pros and cons of microservices architecture?",
+    "models": ["gpt-5", "claude-opus-4", "gemini-2.5-pro"]
+  }'</code></pre>
+  <pre data-lang="node"><code class="language-javascript">const response = await fetch('https://api.polydev.ai/v1/perspectives', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer poly_your_api_key',
+    'Authorization': 'Bearer ' + process.env.POLYDEV_API_KEY,
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    prompt: "What are the pros and cons of microservices architecture?",
-    models: ["claude-3-sonnet", "gpt-4", "gemini-pro"]
+    prompt: 'What are the pros and cons of microservices architecture?',
+    models: ['gpt-5','claude-opus-4','gemini-2.5-pro']
   })
-});
-
-const data = await response.json();
-
-// Access individual perspectives
-data.perspectives.forEach(perspective => {
-  console.log(`${perspective.model}: ${perspective.content}`);
-});
-
-// Check consensus
-console.log("Common themes:", data.summary.consensus_points);
-console.log("Different opinions:", data.summary.divergent_opinions);
-```
+})
+const data = await response.json()</code></pre>
+  <pre data-lang="ts"><code class="language-typescript">interface PerspectivesRequest { prompt: string; models: string[] }
+const req: PerspectivesRequest = {
+  prompt: 'What are the pros and cons of microservices architecture?',
+  models: ['gpt-5','claude-opus-4','gemini-2.5-pro']
+}
+const res = await fetch('https://api.polydev.ai/v1/perspectives', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${process.env.POLYDEV_API_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify(req)
+})
+const data: any = await res.json()</code></pre>
+</div>
 
 ### Code Review with Project Context
 
@@ -321,7 +334,7 @@ const architectureDecision = await fetch('https://api.polydev.ai/v1/perspectives
       - Real-time performance requirements
       - Fault tolerance and recovery
     `,
-    models: ["claude-3-opus", "gpt-4-turbo", "gemini-pro"],
+    models: ["claude-opus-4", "gpt-5", "gemini-2.5-pro"],
     analysis_depth: "comprehensive",
     provider_settings: {
       temperature: 0.2,  // More focused analysis
@@ -406,7 +419,7 @@ const streamingResponse = await fetch('https://api.polydev.ai/v1/perspectives', 
   },
   body: JSON.stringify({
     prompt: "Explain machine learning fundamentals step by step",
-    models: ["claude-3-sonnet", "gpt-4"],
+    models: ["claude-opus-4", "gpt-5"],
     streaming: true
   })
 });
@@ -450,14 +463,14 @@ while (true) {
   "prompt": "Creative writing task requiring varied approaches",
   "models": [
     {
-      "model": "claude-3-opus",
+      "model": "claude-opus-4",
       "provider_settings": {
         "temperature": 0.9,    // More creative
         "max_tokens": 2000
       }
     },
     {
-      "model": "gpt-4",
+      "model": "gpt-5",
       "provider_settings": {
         "temperature": 0.3,    // More focused
         "max_tokens": 1500
@@ -473,7 +486,7 @@ while (true) {
 // Use TF-IDF for smart context selection
 {
   "prompt": "How should we optimize the user authentication system?",
-  "models": ["claude-3-sonnet", "gpt-4"],
+  "models": ["claude-opus-4", "gpt-5"],
   "project_memory": "smart",
   "project_context": {
     "root_path": "/path/to/project",
@@ -497,7 +510,7 @@ while (true) {
 // Fine-tune consensus detection
 {
   "prompt": "Evaluate these database design approaches",
-  "models": ["claude-3-opus", "gpt-4-turbo", "gemini-pro"],
+  "models": ["claude-opus-4", "gpt-5", "gemini-2.5-pro"],
   "consensus_analysis": {
     "enabled": true,
     "agreement_threshold": 0.7,       // 70% agreement for consensus
@@ -632,7 +645,7 @@ const makeRequestWithRetry = async (requestData, maxRetries = 3) => {
 try {
   const result = await makeRequestWithRetry({
     prompt: "Analyze this code",
-    models: ["claude-3-sonnet", "gpt-4"]
+    models: ["claude-opus-4", "gpt-5"]
   });
   
   console.log(result.perspectives);
@@ -643,7 +656,7 @@ try {
   // Fallback to simpler request
   const fallbackResult = await makeRequestWithRetry({
     prompt: "Analyze this code", 
-    models: ["gpt-3.5-turbo"],  // Simpler, more available model
+    models: ["gemini-2.5-pro"],  // Simpler, widely available
     analysis_depth: "quick"
   }, 1);
 }
@@ -657,7 +670,7 @@ try {
 // Optimize for speed
 const fastRequest = {
   prompt: "Quick code review",
-  models: ["gpt-3.5-turbo", "claude-3-haiku"],  // Faster models
+  models: ["gemini-2.5-pro"],  // Faster models
   analysis_depth: "quick",
   provider_settings: {
     temperature: 0.3,
@@ -669,7 +682,7 @@ const fastRequest = {
 // Optimize for quality
 const qualityRequest = {
   prompt: "Comprehensive architecture analysis",
-  models: ["claude-3-opus", "gpt-4-turbo"],  // Premium models
+  models: ["claude-opus-4", "gpt-5"],  // Premium models
   analysis_depth: "comprehensive",
   provider_settings: {
     temperature: 0.1,
@@ -685,7 +698,7 @@ const qualityRequest = {
 // Enable aggressive caching for repeated queries
 {
   "prompt": "Explain React best practices",
-  "models": ["claude-3-sonnet", "gpt-4"],
+  "models": ["claude-opus-4", "gpt-5"],
   "cache_ttl": 7200,          // 2 hours
   "cache_key_strategy": "semantic",  // Semantic similarity matching
   "cache_similarity_threshold": 0.9  // 90% similarity for cache hit
@@ -725,7 +738,7 @@ const batchResults = await Promise.all(
       },
       body: JSON.stringify({
         ...query,
-        models: ["claude-3-sonnet", "gpt-4"],
+        models: ["claude-opus-4", "gpt-5"],
         project_memory: "smart",
         analysis_depth: "standard",
         metadata: { batch_id: "component_reviews" }
@@ -753,20 +766,20 @@ import { PolydevClient } from '@polydev/node';
 const client = new PolydevClient({
   apiKey: 'poly_your_api_key',
   baseURL: 'https://api.polydev.ai',
-  defaultModels: ['claude-3-sonnet', 'gpt-4'],
+  defaultModels: ['claude-opus-4', 'gpt-5'],
   timeout: 60000
 });
 
 // Simple usage
 const result = await client.perspectives({
   prompt: "Explain async/await patterns",
-  models: ["claude-3-sonnet", "gpt-4"]
+  models: ["claude-opus-4", "gpt-5"]
 });
 
 // Advanced usage with all options
 const advancedResult = await client.perspectives({
   prompt: "Comprehensive code review",
-  models: ["claude-3-opus", "gpt-4-turbo", "codex"],
+  models: ["claude-opus-4", "gpt-5", "codex"],
   projectMemory: "smart",
   projectContext: {
     rootPath: "/path/to/project",
@@ -794,7 +807,7 @@ client = polydev.Client(api_key="poly_your_api_key")
 # Basic usage
 result = client.perspectives(
     prompt="Explain Python decorators",
-    models=["claude-3-sonnet", "gpt-4"]
+    models=["claude-opus-4", "gpt-5"]
 )
 
 for perspective in result.perspectives:
@@ -803,7 +816,7 @@ for perspective in result.perspectives:
 # Advanced usage
 advanced_result = client.perspectives(
     prompt="Review this Django application architecture",
-    models=["claude-3-opus", "gpt-4-turbo"],
+    models=["claude-opus-4", "gpt-5"],
     project_memory="smart",
     project_context=polydev.ProjectContext(
         root_path="/path/to/django/project",
@@ -854,7 +867,7 @@ const webhook = await fetch('https://api.polydev.ai/v1/webhooks', {
     "status": "completed",
     "perspectives": [
       {
-        "model": "claude-3-sonnet",
+        "model": "claude-opus-4",
         "content": "Detailed analysis result...",
         "confidence_score": 0.92
       }
@@ -904,15 +917,15 @@ const webhook = await fetch('https://api.polydev.ai/v1/webhooks', {
 ```javascript
 // Use appropriate model tiers for different tasks
 const taskModels = {
-  quickQuestions: ["gpt-3.5-turbo", "claude-3-haiku"],
-  codeReview: ["claude-3-sonnet", "gpt-4", "codex"],
-  complexAnalysis: ["claude-3-opus", "gpt-4-turbo"]
+  quickQuestions: ["gemini-2.5-pro"],
+  codeReview: ["claude-opus-4", "gpt-5", "codex"],
+  complexAnalysis: ["claude-opus-4", "gpt-5"]
 };
 
 // Set cost limits
 const costControlledRequest = {
   prompt: "Analyze system architecture",
-  models: ["claude-3-opus", "gpt-4-turbo"],
+  models: ["claude-opus-4", "gpt-5"],
   fallback_options: {
     cost_limit: 0.50,           // Max $0.50 per request
     allow_simpler_models: true   // Fallback to cheaper models if needed
@@ -927,15 +940,15 @@ const costControlledRequest = {
 const getOptimalModels = (taskType) => {
   switch (taskType) {
     case 'code_review':
-      return ["claude-3-sonnet", "gpt-4", "codex"];
+      return ["claude-opus-4", "gpt-5", "codex"];
     case 'creative_writing':
-      return ["gpt-4-turbo", "claude-3-opus"];
+      return ["gpt-5", "claude-opus-4"];
     case 'data_analysis':
-      return ["gpt-4", "claude-3-sonnet", "gemini-pro"];
+      return ["gpt-5", "claude-opus-4", "gemini-2.5-pro"];
     case 'quick_questions':
-      return ["gpt-3.5-turbo", "claude-3-haiku"];
+      return ["gemini-2.5-pro"];
     default:
-      return ["claude-3-sonnet", "gpt-4"];
+      return ["claude-opus-4", "gpt-5"];
   }
 };
 ```

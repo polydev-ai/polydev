@@ -193,7 +193,7 @@ const perspectives = await callTool({
   name: "get_perspectives",
   arguments: {
     prompt: "Help me optimize this database query for better performance",
-    models: ["claude-3-5-sonnet"]  // Will use CLI if available
+    models: ["claude-opus-4"]  // Will use CLI if available
   }
 });
 

@@ -30,7 +30,7 @@ Use Polydev-managed keys for quick testing.
 
 Choose one or more CLI providers to install:
 
-#### Claude Code (Recommended)
+#### Claude Code (Anthropic)
 ```bash
 # Install Claude Code CLI
 npm install -g @anthropic-ai/claude-code
@@ -42,7 +42,7 @@ claude auth login
 claude --version
 ```
 
-#### Codex CLI
+#### Codex CLI (OpenAI)
 ```bash
 # Install from OpenAI (requires ChatGPT Plus)
 # Follow instructions at: https://openai.com/chatgpt/desktop
@@ -218,16 +218,16 @@ Add to your MCP client configuration:
 }
 ```
 
-### 6. Test Multi-LLM Perspectives
+### 6. Test Multi-LLM Perspectives (latest models)
 
 ```javascript
 // Get perspectives from multiple models
 const perspectives = await callTool({
   name: "get_perspectives",
   arguments: {
-    prompt: "What are the pros and cons of using TypeScript vs JavaScript for a large web application?",
+    prompt: "What are the tradeoffs of using TypeScript vs JavaScript for a large Next.js application?",
     mode: "user_keys",
-    models: ["gpt-4", "claude-3-sonnet", "gemini-pro"]
+    models: ["gpt-5", "claude-opus-4", "gemini-2.5-pro", "grok-4-high"]
   }
 });
 
@@ -279,10 +279,10 @@ git clone https://github.com/polydev-ai/polydev.git
 const perspectives = await callTool({
   name: "get_perspectives",
   arguments: {
-    prompt: "Help me understand the difference between REST and GraphQL APIs",
+    prompt: "Help me understand the tradeoffs between REST and GraphQL for our public API",
     user_token: "poly_your_token_here",
     mode: "managed",
-    models: ["gpt-4", "claude-3-sonnet"]  // Limited selection
+    models: ["gpt-5", "claude-opus-4"]
   }
 });
 ```

@@ -19,9 +19,9 @@ Use your existing developer CLI subscriptions - no API key management needed.
 Direct API access with your personal keys for maximum control.
 
 #### Major Providers
-- **[OpenAI](api-providers/openai.md)** - GPT-4, GPT-3.5-Turbo, and specialized models
-- **[Anthropic](api-providers/anthropic.md)** - Claude 3 family (Opus, Sonnet, Haiku)
-- **[Google AI](api-providers/google-ai.md)** - Gemini Pro, Gemini Flash, and PaLM models
+- **[OpenAI](api-providers/openai.md)** - GPT-5 and GPT-4.1 family
+- **[Anthropic](api-providers/anthropic.md)** - Claude Opus 4, Sonnet 4, Haiku 2
+- **[Google AI](api-providers/google-ai.md)** - Gemini 2.5 Pro and Flash 2
 - **[Groq](api-providers/groq.md)** - Ultra-fast inference for Llama and Mixtral models
 
 #### High-Performance Providers
@@ -74,15 +74,15 @@ flowchart TD
 3. **🥉 Provisioned Keys** - Managed keys for your account
 4. **🏅 Credits System** - Pay-per-use fallback via OpenRouter
 
-## Model Mapping
+## Model Mapping (example)
 
 Polydev automatically maps model IDs across providers:
 
 | Universal ID | OpenAI | Anthropic | Google | Groq |
 |--------------|---------|-----------|--------|------|
-| `gpt-4` | `gpt-4` | N/A | N/A | N/A |
-| `claude-3-sonnet` | N/A | `claude-3-5-sonnet-20241022` | N/A | N/A |
-| `gemini-pro` | N/A | N/A | `gemini-1.5-pro-latest` | N/A |
+| `gpt-5` | `gpt-5` | N/A | N/A | N/A |
+| `claude-opus-4` | N/A | `claude-opus-4` | N/A | N/A |
+| `gemini-2.5-pro` | N/A | N/A | `gemini-2.5-pro` | N/A |
 | `llama-3.1-70b` | N/A | N/A | N/A | `llama-3.1-70b-versatile` |
 
 ## Provider Configuration
@@ -94,14 +94,7 @@ Polydev automatically maps model IDs across providers:
    - API Keys: Add provider keys in dashboard
    - Credits: Generate MCP token for managed access
 
-2. **Configure Fallback:**
-   ```bash
-   # Set preferred provider order
-   POLYDEV_PREFERRED_PROVIDERS=claude_code,openai,anthropic,groq
-   
-   # Set fallback models
-   POLYDEV_FALLBACK_MODELS=gpt-3.5-turbo,claude-3-haiku
-   ```
+2. **Configure Fallback:** Use dashboard (Settings → Preferences) to pick routing order and defaults. Keep CLIs first to reduce spend. Choose modern defaults like GPT‑5 and Claude Opus 4.
 
 3. **Test Configuration:**
    ```javascript
@@ -109,7 +102,7 @@ Polydev automatically maps model IDs across providers:
      name: "get_perspectives",
      arguments: {
        prompt: "Test multi-provider setup",
-       models: ["gpt-4", "claude-3-sonnet", "gemini-pro"]
+       models: ["gpt-5", "claude-opus-4", "gemini-2.5-pro"]
      }
    });
    ```
