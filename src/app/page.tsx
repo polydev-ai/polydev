@@ -35,12 +35,11 @@ const fetchModelsDevStats = async () => {
 }
 
 const SUPPORTED_EDITORS = [
-  { name: 'Cursor', logo: 'https://cdn.freelogovectors.net/wp-content/uploads/2025/06/cursor-logo-freelogovectors.net_.png' },
-  { name: 'Claude Code', logo: 'https://sajalsharma.com/_astro/claude_code.GbHphWWe_Z29KFWg.webp.jpg' },
-  { name: 'Continue', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIHtPAJsmkLkem2H02zTflsqpNC-V6kwIcEQ&s' },
-  { name: 'Cline', logo: 'https://cline.bot/assets/branding/logos/cline-wordmark-black.svg' },
-  { name: 'Zed', logo: 'https://zed.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_icon.d67dc948.webp&w=750&q=100' },
-  { name: 'VS Code', logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vscode/vscode-original.svg' }
+  { logo: 'https://cdn.freelogovectors.net/wp-content/uploads/2025/06/cursor-logo-freelogovectors.net_.png' },
+  { logo: 'https://sajalsharma.com/_astro/claude_code.GbHphWWe_Z29KFWg.webp.jpg' },
+  { logo: 'https://cline.bot/assets/branding/logos/cline-wordmark-black.svg' },
+  { logo: 'https://zed.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_icon.d67dc948.webp&w=750&q=100' },
+  { logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vscode/vscode-original.svg' }
 ]
 
 const MODEL_PROVIDERS = [
@@ -52,96 +51,351 @@ const MODEL_PROVIDERS = [
 
 const CODE_EXAMPLES = [
   {
-    title: "Debugging Race Conditions",
-    language: "TypeScript",
-    filename: "queue-processor.ts",
-    problem: "// Race condition in async queue processing",
-    code: `async function processQueue() {
-  const items = await getQueueItems()
-  for (const item of items) {
-    await processItem(item) // ⚠️ Sequential processing
+    title: "Database Query Optimization",
+    language: "SQL",
+    filename: "user_analytics.sql",
+    problem: "// Slow query causing 30s+ response times",
+    code: `SELECT u.id, u.name, COUNT(p.id) as post_count,
+       AVG(p.likes) as avg_likes
+FROM users u
+LEFT JOIN posts p ON u.id = p.user_id
+WHERE u.created_at > '2024-01-01'
+  AND p.status = 'published'
+GROUP BY u.id, u.name
+ORDER BY post_count DESC;`,
+    responses: [
+      {
+        model: "Claude Opus 4",
+        avatar: "https://models.dev/logos/anthropic.svg",
+        text: "This query has multiple performance issues. Add indexes on users.created_at and posts.status. Consider using EXISTS instead of LEFT JOIN, and add LIMIT to prevent scanning millions of rows. Also, the WHERE clause on p.status turns your LEFT JOIN into an INNER JOIN - move it to the JOIN condition or use a proper INNER JOIN.",
+        typing: true
+      },
+      {
+        model: "GPT-5",
+        avatar: "https://models.dev/logos/openai.svg",
+        text: "The performance problem is the lack of proper indexing and inefficient joins. Create a composite index on (user_id, status) for posts table, and (created_at) for users. Use window functions instead of GROUP BY for better performance: SELECT DISTINCT u.id, u.name, COUNT(p.id) OVER (PARTITION BY u.id) as post_count, AVG(p.likes) OVER (PARTITION BY u.id) as avg_likes.",
+        typing: true
+      },
+      {
+        model: "Gemini 2.5 Pro",
+        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+        text: "Consider denormalizing this data into a materialized view or summary table that updates incrementally. For immediate relief, add covering indexes and use query hints. Long-term, implement read replicas for analytics queries and separate them from transactional workload. Add pagination with cursor-based navigation for large result sets.",
+        typing: true
+      }
+    ]
+  },
+  {
+    title: "Memory Leak Investigation",
+    language: "JavaScript",
+    filename: "websocket-manager.js",
+    problem: "// WebSocket connections causing memory leaks in production",
+    code: `class WebSocketManager {
+  constructor() {
+    this.connections = new Map();
+    this.heartbeatInterval = setInterval(() => {
+      this.connections.forEach(ws => ws.ping());
+    }, 30000);
+  }
+
+  addConnection(userId, ws) {
+    this.connections.set(userId, ws);
+    ws.on('close', () => {
+      // Bug: not cleaning up properly
+      console.log('Connection closed');
+    });
   }
 }`,
     responses: [
       {
         model: "Claude Opus 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "The sequential processing here creates unnecessary bottlenecks. Use Promise.all() with batching for concurrent processing while controlling concurrency limits.",
+        text: "Classic memory leak - you're not removing connections from the Map on close. Add this.connections.delete(userId) in the close handler. Also, clear the heartbeat interval in a cleanup method and remove all event listeners. Consider using WeakMap for automatic garbage collection, and implement connection timeouts to prevent zombie connections.",
         typing: true
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "I see the race condition risk. Implement a semaphore pattern with configurable concurrency to prevent overwhelming downstream services.",
+        text: "The memory leak is caused by uncleaned Map references and the global setInterval. Implement proper cleanup: ws.on('close', () => { this.connections.delete(userId); ws.removeAllListeners(); }). Add a destroy() method that clears the interval and closes all connections. Use process monitoring to detect memory growth patterns and implement connection pooling with automatic cleanup.",
         typing: true
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Add proper error handling and use a task queue library like Bull or Agenda for robust distributed processing with retry logic.",
+        text: "Beyond the obvious Map cleanup, consider using Node.js cluster mode to isolate connection pools and prevent memory accumulation. Implement circuit breakers for failed connections, add memory monitoring with process.memoryUsage(), and use tools like clinic.js or 0x for heap analysis. Set up alerts when memory usage exceeds thresholds.",
         typing: true
       }
     ]
   },
   {
-    title: "API Architecture Review",
-    language: "JavaScript",
-    filename: "api-routes.js",
-    problem: "// Designing scalable REST endpoints",
-    code: `// Should this be RESTful or GraphQL?
-app.post('/api/users/:id/posts', async (req, res) => {
-  const post = await createUserPost(req.params.id, req.body)
-  res.json(post) // Missing validation & error handling
-})`,
-    responses: [
-      {
-        model: "Claude Opus 4",
-        avatar: "https://models.dev/logos/anthropic.svg",
-        text: "REST is appropriate here. Add input validation, rate limiting, and proper HTTP status codes. Version your API (/v1/) from the start.",
-        typing: true
-      },
-      {
-        model: "GPT-5",
-        avatar: "https://models.dev/logos/openai.svg",
-        text: "Consider using PATCH for partial updates and implement proper error middleware. Add OpenAPI docs and request/response schemas.",
-        typing: true
-      },
-      {
-        model: "Gemini 2.5 Pro",
-        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Implement caching headers, add pagination for list endpoints, and consider using GraphQL if you need flexible data fetching.",
-        typing: true
-      }
-    ]
-  },
-  {
-    title: "React Performance Issues",
-    language: "React",
-    filename: "UserList.tsx",
-    problem: "// Component re-renders causing performance issues",
-    code: `function UserList({ users, filters }) {
-  const filteredUsers = users.filter(user =>
-    user.name.includes(filters.search) // Re-computed every render
-  )
-  return <div>{filteredUsers.map(renderUser)}</div>
+    title: "Microservices Architecture Design",
+    language: "Go",
+    filename: "service_mesh.go",
+    problem: "// Designing resilient service communication",
+    code: `func (c *OrderService) ProcessOrder(ctx context.Context, order *Order) error {
+    // Direct service calls - brittle and hard to scale
+    inventory := c.inventoryClient.CheckStock(order.ProductID)
+    if !inventory.Available {
+        return errors.New("out of stock")
+    }
+
+    payment := c.paymentClient.ChargeCard(order.Payment)
+    if payment.Failed {
+        return errors.New("payment failed")
+    }
+
+    shipping := c.shippingClient.CreateShipment(order)
+    return c.orderRepo.Save(order)
 }`,
     responses: [
       {
         model: "Claude Opus 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Use useMemo to memoize the filtered results and React.memo to prevent unnecessary re-renders. Move the filter logic to a custom hook.",
+        text: "This synchronous approach creates cascading failures and poor user experience. Implement the Saga pattern for distributed transactions with compensation actions. Use event sourcing: publish OrderRequested event, let each service handle their part asynchronously, and use eventual consistency. Add circuit breakers with hystrix-go and implement proper timeout handling with context.WithTimeout().",
         typing: true
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Implement virtualization for large lists using react-window. Debounce the search input and consider server-side filtering for huge datasets.",
+        text: "Convert to an event-driven architecture using message queues (NATS, RabbitMQ, or Kafka). Implement the CQRS pattern: command side handles order creation, query side provides order status. Add retry logic with exponential backoff, implement idempotency keys, and use distributed tracing with OpenTelemetry. Consider using gRPC with load balancing and service discovery.",
         typing: true
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Add React.memo wrapper, use useCallback for event handlers, and implement incremental loading with Intersection Observer for better UX.",
+        text: "Implement a proper service mesh with Istio or Linkerd for traffic management, security, and observability. Use the Outbox pattern for reliable event publishing, implement health checks with readiness/liveness probes, and add chaos engineering with tools like Chaos Monkey. Design for failure: implement bulkhead pattern, rate limiting, and graceful degradation strategies.",
+        typing: true
+      }
+    ]
+  },
+  {
+    title: "React State Management Complexity",
+    language: "TypeScript",
+    filename: "shopping-cart.tsx",
+    problem: "// Complex state updates causing bugs and performance issues",
+    code: `function ShoppingCart() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [discounts, setDiscounts] = useState({});
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    // Recalculating total on every render - expensive
+    const newTotal = items.reduce((sum, item) => {
+      const discount = discounts[item.id] || 0;
+      return sum + (item.price * item.quantity * (1 - discount));
+    }, 0);
+    setTotal(newTotal);
+  }, [items, discounts]);
+
+  const updateQuantity = (id, quantity) => {
+    setItems(prev => prev.map(item =>
+      item.id === id ? { ...item, quantity } : item
+    ));
+  };
+}`,
+    responses: [
+      {
+        model: "Claude Opus 4",
+        avatar: "https://models.dev/logos/anthropic.svg",
+        text: "This approach has multiple issues: unnecessary re-renders, scattered state updates, and no optimistic updates. Use useReducer for complex state logic with actions like ADD_ITEM, UPDATE_QUANTITY, APPLY_DISCOUNT. Implement useMemo for expensive calculations and consider using Zustand or Redux Toolkit for global state. Add error boundaries and implement optimistic updates for better UX.",
+        typing: true
+      },
+      {
+        model: "GPT-5",
+        avatar: "https://models.dev/logos/openai.svg",
+        text: "Replace multiple useState with a single useReducer to ensure state consistency. Implement memoization with useMemo for total calculation and useCallback for update functions. Consider using React Query for server state management and local state for UI-only concerns. Add TypeScript interfaces for better type safety and implement proper error handling with React Error Boundaries.",
+        typing: true
+      },
+      {
+        model: "Gemini 2.5 Pro",
+        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+        text: "Implement a proper state management solution like Redux Toolkit with RTK Query for API calls, or use Jotai for atomic state management. Add middleware for logging, persistence, and analytics. Implement proper loading states, optimistic updates, and conflict resolution. Consider using Immer for immutable updates and add React DevTools for debugging state changes.",
+        typing: true
+      }
+    ]
+  },
+  {
+    title: "Kubernetes Deployment Issues",
+    language: "YAML",
+    filename: "deployment.yaml",
+    problem: "// Pods crashing and poor resource utilization",
+    code: `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+      - name: web
+        image: myapp:latest
+        ports:
+        - containerPort: 3000
+        # Missing resource limits and health checks`,
+    responses: [
+      {
+        model: "Claude Opus 4",
+        avatar: "https://models.dev/logos/anthropic.svg",
+        text: "Critical missing configurations: Add resource requests/limits to prevent OOMKilled pods, implement readiness/liveness probes for proper health checking, use specific image tags instead of 'latest' for reproducible deployments, add security context with non-root user, and implement proper graceful shutdown with terminationGracePeriodSeconds. Consider using init containers for setup tasks.",
+        typing: true
+      },
+      {
+        model: "GPT-5",
+        avatar: "https://models.dev/logos/openai.svg",
+        text: "Add comprehensive monitoring and observability: resource limits (memory: 512Mi, cpu: 500m), health checks with proper endpoints, pod disruption budgets for high availability, horizontal pod autoscaler based on CPU/memory metrics, and proper labels for monitoring. Implement rolling update strategy with maxSurge and maxUnavailable settings for zero-downtime deployments.",
+        typing: true
+      },
+      {
+        model: "Gemini 2.5 Pro",
+        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+        text: "Implement a complete production-ready configuration: add ConfigMaps and Secrets for configuration management, use NetworkPolicies for security, implement service mesh with Istio for traffic management, add monitoring with Prometheus/Grafana, use admission controllers for policy enforcement, and implement GitOps workflow with ArgoCD for automated deployments.",
+        typing: true
+      }
+    ]
+  },
+  {
+    title: "Security Vulnerability Assessment",
+    language: "Python",
+    filename: "auth_handler.py",
+    problem: "// Authentication system with security flaws",
+    code: `import hashlib
+import jwt
+
+class AuthHandler:
+    def __init__(self):
+        self.secret = "mysecret123"  # Hardcoded secret
+
+    def login(self, username, password):
+        # SQL injection vulnerable
+        query = f"SELECT * FROM users WHERE username='{username}' AND password='{hashlib.md5(password.encode()).hexdigest()}'"
+        user = db.execute(query)
+
+        if user:
+            token = jwt.encode({"user_id": user.id}, self.secret, algorithm="HS256")
+            return {"token": token}
+        return None`,
+    responses: [
+      {
+        model: "Claude Opus 4",
+        avatar: "https://models.dev/logos/anthropic.svg",
+        text: "Multiple critical security vulnerabilities: Use parameterized queries to prevent SQL injection, replace MD5 with bcrypt/scrypt for password hashing, store secrets in environment variables or secret management systems, implement rate limiting to prevent brute force attacks, add proper session management with secure cookies, and use HTTPS only. Consider implementing OAuth2/OIDC for authentication.",
+        typing: true
+      },
+      {
+        model: "GPT-5",
+        avatar: "https://models.dev/logos/openai.svg",
+        text: "Implement comprehensive security measures: use ORM with parameterized queries, bcrypt with salt for password hashing, environment-based secret management, JWT with proper expiration and refresh tokens, implement CSRF protection, add input validation and sanitization, use secure headers (HSTS, CSP), and implement proper logging for security events. Add MFA for additional security.",
+        typing: true
+      },
+      {
+        model: "Gemini 2.5 Pro",
+        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+        text: "Build a production-grade security system: implement OAuth2 with PKCE, use AWS Cognito or Auth0 for authentication service, add comprehensive audit logging, implement zero-trust architecture, use secrets management (HashiCorp Vault, AWS Secrets Manager), add penetration testing with OWASP ZAP, implement security headers with helmet.js equivalent, and use dependency scanning for vulnerabilities.",
+        typing: true
+      }
+    ]
+  },
+  {
+    title: "Machine Learning Model Deployment",
+    language: "Python",
+    filename: "model_inference.py",
+    problem: "// ML model serving with latency and scaling issues",
+    code: `import pickle
+import numpy as np
+from flask import Flask, request
+
+app = Flask(__name__)
+
+# Loading model on every request - inefficient
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Load model every time
+    with open('model.pkl', 'rb') as f:
+        model = pickle.load(f)
+
+    data = request.json['features']
+    prediction = model.predict(np.array(data).reshape(1, -1))
+    return {'prediction': prediction.tolist()}
+
+if __name__ == '__main__':
+    app.run(debug=True)  # Debug mode in production`,
+    responses: [
+      {
+        model: "Claude Opus 4",
+        avatar: "https://models.dev/logos/anthropic.svg",
+        text: "Multiple performance and production issues: load the model once at startup, not per request. Use gunicorn with multiple workers for better concurrency, implement request validation and error handling, add logging and monitoring, use environment-based configuration, implement caching for repeated predictions, and add health check endpoints. Consider using TensorFlow Serving or TorchServe for better ML model serving.",
+        typing: true
+      },
+      {
+        model: "GPT-5",
+        avatar: "https://models.dev/logos/openai.svg",
+        text: "Implement production-grade ML serving: use FastAPI with async/await for better performance, load model at startup with proper error handling, implement model versioning and A/B testing capabilities, add request batching for throughput optimization, use Redis for caching frequent predictions, implement proper data validation with Pydantic, and add comprehensive monitoring with MLflow or Weights & Biases.",
+        typing: true
+      },
+      {
+        model: "Gemini 2.5 Pro",
+        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+        text: "Build a scalable ML infrastructure: containerize with Docker and deploy on Kubernetes with auto-scaling, implement model registry with MLflow, use feature stores for consistent data pipeline, add model monitoring for drift detection, implement CI/CD for model updates, use GPU acceleration with CUDA/TensorRT, implement canary deployments for safe model rollouts, and add comprehensive observability with Prometheus/Grafana.",
+        typing: true
+      }
+    ]
+  },
+  {
+    title: "Real-time Chat Application",
+    language: "Node.js",
+    filename: "chat_server.js",
+    problem: "// WebSocket chat with scaling and reliability issues",
+    code: `const WebSocket = require('ws');
+const wss = new WebSocket.Server({ port: 8080 });
+
+let clients = [];
+let messageHistory = [];
+
+wss.on('connection', (ws) => {
+  clients.push(ws);
+
+  // Send message history - potential memory issue
+  ws.send(JSON.stringify({ type: 'history', messages: messageHistory }));
+
+  ws.on('message', (data) => {
+    const message = JSON.parse(data);
+    messageHistory.push(message); // Growing infinitely
+
+    // Broadcasting to all clients - no error handling
+    clients.forEach(client => {
+      client.send(JSON.stringify(message));
+    });
+  });
+
+  ws.on('close', () => {
+    // Bug: not removing closed connections
+    console.log('Client disconnected');
+  });
+});`,
+    responses: [
+      {
+        model: "Claude Opus 4",
+        avatar: "https://models.dev/logos/anthropic.svg",
+        text: "Critical issues with memory leaks and no error handling: Remove disconnected clients from the array, implement message history pagination instead of loading all messages, add proper error handling for send() operations, implement rate limiting to prevent spam, use Redis for shared state across multiple server instances, add authentication and authorization, and implement proper logging with structured data.",
+        typing: true
+      },
+      {
+        model: "GPT-5",
+        avatar: "https://models.dev/logos/openai.svg",
+        text: "Implement a production-ready chat system: use Socket.io for better browser compatibility and reconnection handling, implement horizontal scaling with Redis adapter, add message persistence with database storage, implement user authentication with JWT, add typing indicators and presence status, implement message encryption for privacy, use clustering for multiple CPU cores, and add comprehensive monitoring.",
+        typing: true
+      },
+      {
+        model: "Gemini 2.5 Pro",
+        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+        text: "Build enterprise-grade real-time infrastructure: implement microservices architecture with message queues (Kafka/RabbitMQ), use WebRTC for peer-to-peer video calls, add content moderation with AI, implement message search with Elasticsearch, add file sharing with proper virus scanning, use CDN for static assets, implement proper backup and disaster recovery, and add analytics for user engagement tracking.",
         typing: true
       }
     ]
@@ -371,21 +625,397 @@ export default function Home() {
       <section className="py-16 bg-gradient-to-r from-orange-50 to-violet-50">
         <div className="mx-auto max-w-7xl px-6">
           <p className="text-center text-lg text-slate-600 mb-12">Works with the tools you already use</p>
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-            {SUPPORTED_EDITORS.map((editor) => (
-              <div key={editor.name} className="group flex flex-col items-center p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-white/50 hover:border-orange-200 hover:bg-white/90 transition-all duration-300 hover:scale-105 hover:shadow-lg">
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">
+            {SUPPORTED_EDITORS.map((editor, index) => (
+              <div key={index} className="group flex flex-col items-center p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-white/50 hover:border-orange-200 hover:bg-white/90 transition-all duration-300 hover:scale-105 hover:shadow-lg">
                 <div className="relative h-12 w-12 mb-3 transition-transform group-hover:scale-110">
-                  <Image src={editor.logo} alt={`${editor.name} logo`} fill className="object-contain" />
+                  <Image src={editor.logo} alt="Editor logo" fill className="object-contain" />
                 </div>
-                <span className="text-sm font-medium text-slate-700 group-hover:text-orange-600 transition-colors">{editor.name}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* Free CLI Usage Section */}
+      <section className="py-24 bg-white">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="max-w-4xl mx-auto text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
+              Get perspectives <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">without spending anything</span>
+            </h2>
+            <p className="text-xl text-slate-600 leading-relaxed">
+              Already using Claude Code, Cursor, or other AI tools? You can get multi-model perspectives completely free using your existing CLI tools.
+              No need to add multiple API keys or pay for each provider separately.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left side - Benefits */}
+            <div className="space-y-8">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">Use Your Existing CLI Tools</h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    If you're already authenticated with Claude Code, Cursor, Cline, or other CLI tools, Polydev can route requests through them automatically.
+                    Get multiple perspectives using the credits and authentication you already have.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">No API Keys Required</h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    Stop juggling multiple API keys from OpenAI, Anthropic, Google, and others. Polydev consolidates everything into one simple interface.
+                    Use your existing subscriptions or just pay for what you use with Polydev credits.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-orange-500 to-violet-500 rounded-xl flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-3">Simple Credit System</h3>
+                  <p className="text-slate-600 leading-relaxed mb-4">
+                    When you want access to all 340+ models, just use Polydev credits. One unified billing, no subscriptions to manage,
+                    and you only pay for what you actually use. Start with 100 free requests.
+                  </p>
+                  <div className="bg-gradient-to-r from-orange-50 to-violet-50 border border-orange-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm font-semibold text-orange-700">💡 Pro Tip:</span>
+                    </div>
+                    <p className="text-sm text-slate-700">
+                      Most developers save 60-80% on AI costs by using Polydev credits instead of maintaining separate subscriptions to each provider.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right side - CLI Example */}
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+              <div className="bg-slate-900 px-6 py-4 border-b">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="ml-3 text-slate-300 text-sm font-mono">Terminal</span>
+                </div>
+              </div>
+              <div className="p-6 bg-slate-900 font-mono text-sm">
+                <div className="text-green-400 mb-2">$ polydev perspectives "optimize this query"</div>
+                <div className="text-slate-400 mb-4">✓ Using Claude Code CLI (authenticated)</div>
+                <div className="text-slate-400 mb-4">✓ Using Cursor API (authenticated)</div>
+                <div className="text-slate-400 mb-4">✓ Fallback to Polydev credits for additional models</div>
+                <div className="text-slate-300 mb-2">📊 Getting perspectives from:</div>
+                <div className="text-slate-300 ml-4 mb-1">• Claude Opus 4 (via Claude Code)</div>
+                <div className="text-slate-300 ml-4 mb-1">• GPT-5 (via Cursor)</div>
+                <div className="text-slate-300 ml-4 mb-1">• Gemini 2.5 Pro (via Polydev)</div>
+                <div className="text-slate-300 ml-4 mb-4">• DeepSeek V3 (via Polydev)</div>
+                <div className="text-blue-400">💸 Cost: $0.00 (using existing CLI authentication)</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Start Options */}
+          <div className="mt-16 grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 text-center">
+              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Already have CLI tools?</h3>
+              <p className="text-sm text-slate-600 mb-4">Start getting perspectives immediately with your existing authentication</p>
+              <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+                Quick Setup Guide
+              </button>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-6 text-center">
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">New to AI coding?</h3>
+              <p className="text-sm text-slate-600 mb-4">Get 100 free requests to try all models without any API setup</p>
+              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                Start Free Trial
+              </button>
+            </div>
+
+            <div className="bg-gradient-to-br from-orange-50 to-violet-50 border border-orange-200 rounded-xl p-6 text-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-violet-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">Need all models?</h3>
+              <p className="text-sm text-slate-600 mb-4">Access 340+ models with simple credit-based pricing</p>
+              <button className="bg-gradient-to-r from-orange-500 to-violet-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all text-sm font-medium">
+                View All Models
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Technology Deep Dive */}
+      <section className="py-24 bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
+              Built for <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">modern development workflows</span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Polydev leverages cutting-edge technologies to deliver seamless multi-model AI experiences directly in your development environment.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8 mb-16">
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-slate-200 hover:shadow-xl transition-shadow">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-slate-900 mb-4">MCP-Native Architecture</h3>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                Built on the Model Context Protocol (MCP), Polydev seamlessly integrates with your existing CLI tools and development workflows.
+                No complex setup or API key management required.
+              </p>
+              <ul className="text-sm text-slate-500 space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+                  Native Claude Code integration
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+                  Cursor API compatibility
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+                  Zero-config editor plugins
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-slate-200 hover:shadow-xl transition-shadow">
+              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.586-3.414A2 2 0 0015.586 6H4a2 2 0 00-2 2v6a2 2 0 002 2h11.586a2 2 0 001.414-.586l3-3a2 2 0 000-2.828l-3-3z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-slate-900 mb-4">Zero-Knowledge Memory</h3>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                Your code and conversations stay private with end-to-end encryption. Polydev remembers context across sessions
+                without ever seeing your sensitive data in plaintext.
+              </p>
+              <ul className="text-sm text-slate-500 space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                  Client-side encryption
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                  Context-aware responses
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                  SOC 2 Type II compliant
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-white rounded-2xl p-8 shadow-lg border border-slate-200 hover:shadow-xl transition-shadow">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mb-6">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-semibold text-slate-900 mb-4">Sub-Second Response Times</h3>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                Intelligent request routing and caching deliver multiple AI perspectives faster than single-model queries.
+                Average response time of 1.7 seconds across all providers.
+              </p>
+              <ul className="text-sm text-slate-500 space-y-2">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
+                  Global edge deployment
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
+                  Predictive request routing
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
+                  Intelligent response caching
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Use Cases */}
+          <div className="bg-white rounded-3xl p-12 shadow-2xl border border-slate-200">
+            <h3 className="text-3xl font-bold text-slate-900 text-center mb-12">
+              Perfect for every development scenario
+            </h3>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-slate-900 mb-2">Code Reviews</h4>
+                <p className="text-sm text-slate-600">Get multiple perspectives on code quality, security, and performance optimizations</p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-slate-900 mb-2">Debugging</h4>
+                <p className="text-sm text-slate-600">Compare different debugging approaches and catch edge cases faster</p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-slate-900 mb-2">Architecture</h4>
+                <p className="text-sm text-slate-600">Design better systems with consensus from multiple AI models</p>
+              </div>
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-slate-900 mb-2">Learning</h4>
+                <p className="text-sm text-slate-600">Understand concepts faster with explanations from different AI perspectives</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Developer Benefits */}
+      <section className="py-24 bg-white">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
+              Why developers choose Polydev
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Join thousands of developers who have eliminated single-model bias and improved their code quality.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="space-y-8">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Catch More Edge Cases</h3>
+                    <p className="text-slate-600 leading-relaxed">
+                      Different AI models excel at different types of analysis. Get comprehensive coverage by combining their strengths -
+                      Claude for reasoning, GPT for creativity, Gemini for code understanding.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Reduce Development Time</h3>
+                    <p className="text-slate-600 leading-relaxed">
+                      Stop switching between different AI tools and platforms. Get all perspectives in one place,
+                      reducing context switching and improving your development velocity by up to 40%.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Stay in Flow State</h3>
+                    <p className="text-slate-600 leading-relaxed">
+                      Native editor integrations mean no browser tabs, no copy-pasting, and no workflow interruptions.
+                      Get AI perspectives directly in your IDE where you're already working.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-8 text-white relative overflow-hidden">
+              <div className="absolute -top-4 -right-4 w-24 h-24 bg-orange-500/20 rounded-full blur-xl"></div>
+              <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-violet-500/20 rounded-full blur-xl"></div>
+              <div className="relative">
+                <h3 className="text-2xl font-bold mb-6">Success Stories</h3>
+                <div className="space-y-6">
+                  <blockquote className="border-l-4 border-orange-500 pl-4">
+                    <p className="text-slate-300 mb-2">
+                      "Polydev helped us catch 3 critical security vulnerabilities that our single AI assistant missed.
+                      The different perspectives are invaluable for code reviews."
+                    </p>
+                    <cite className="text-orange-400 text-sm">- Senior Engineer at YC Startup</cite>
+                  </blockquote>
+                  <blockquote className="border-l-4 border-violet-500 pl-4">
+                    <p className="text-slate-300 mb-2">
+                      "We reduced debugging time by 60% after switching to multi-model analysis.
+                      Different AIs catch different types of issues."
+                    </p>
+                    <cite className="text-violet-400 text-sm">- Tech Lead at Fortune 500</cite>
+                  </blockquote>
+                  <blockquote className="border-l-4 border-emerald-500 pl-4">
+                    <p className="text-slate-300 mb-2">
+                      "The MCP integration with Claude Code is seamless.
+                      I get 4 AI perspectives without leaving my terminal."
+                    </p>
+                    <cite className="text-emerald-400 text-sm">- Open Source Maintainer</cite>
+                  </blockquote>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
-      <section className="py-24 bg-white border-t border-slate-200">
+      <section className="py-24 bg-gradient-to-br from-orange-50 to-violet-50 border-t border-slate-200">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-4">Simple, transparent pricing</h2>
           <p className="text-xl text-slate-600 mb-12">
