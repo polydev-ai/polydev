@@ -170,11 +170,11 @@ export default function Documentation() {
     // Add ids to h2/h3 for anchors
     const addIds = (s: string) =>
       s
-        .replace(/<h2>([^<]+)<\\/h2>/g, (_m, t) => {
+        .replace(/<h2>([^<]+)<\/h2>/g, (_m, t) => {
           const id = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
           return `<h2 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-gray-300 hover:text-gray-500 no-underline align-middle" aria-label="Link to section">#</a></h2>`
         })
-        .replace(/<h3>([^<]+)<\\/h3>/g, (_m, t) => {
+        .replace(/<h3>([^<]+)<\/h3>/g, (_m, t) => {
           const id = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
           return `<h3 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-gray-300 hover:text-gray-500 no-underline align-middle" aria-label="Link to section">#</a></h3>`
         })
@@ -855,7 +855,7 @@ Create \`.vscode/settings.json\`:
 
 \`\`\`json
 {
-  "polydev.apiKey": "${env:POLYDEV_API_KEY}",
+  "polydev.apiKey": "\${env:POLYDEV_API_KEY}",
   "polydev.defaultModels": ["gpt-4", "claude-3-opus"],
   "polydev.costOptimization": true
 }
@@ -866,7 +866,7 @@ Create \`.vscode/settings.json\`:
 Configure in IDE settings or \`~/.polydev/jetbrains.properties\`:
 
 \`\`\`properties
-polydev.apiKey=${POLYDEV_API_KEY}
+polydev.apiKey=\${POLYDEV_API_KEY}
 polydev.defaultModels=gpt-4,claude-3-opus
 polydev.costOptimization=true
 \`\`\`
