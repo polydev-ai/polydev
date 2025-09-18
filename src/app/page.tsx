@@ -76,19 +76,37 @@ const TOP_MODELS = [
 
 const BENEFITS = [
   {
-    icon: '⚡',
-    title: 'Zero context switching',
-    description: 'Query multiple frontier models without leaving your development environment. Maintain flow state while accessing distributed intelligence.'
+    icon: (
+      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+    ),
+    title: 'Never leave your editor',
+    description: 'Get multiple AI perspectives without breaking your flow. Ask once, get answers from several top models instantly.'
   },
   {
-    icon: '🔄',
-    title: 'Parallel model consensus',
-    description: 'Cross-validate architectural decisions with GPT-5, Claude Opus 4, and Gemini 2.5 Pro simultaneously. Eliminate single-model blind spots.'
+    icon: (
+      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+    ),
+    title: 'Catch more bugs, faster',
+    description: 'Different models spot different issues. Compare responses to find edge cases, logic errors, and better solutions you might miss with just one AI.'
   },
   {
-    icon: '💰',
-    title: 'Intelligent cost routing',
-    description: 'Automatically prioritizes free CLI tools, then encrypted API keys, then fallback credits. Optimizes for both speed and cost efficiency.'
+    icon: (
+      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+        </svg>
+      </div>
+    ),
+    title: 'Smart cost optimization',
+    description: 'Uses your free CLI tools first, then your API keys, then credits as backup. Get the best answers while minimizing costs automatically.'
   }
 ]
 
@@ -187,13 +205,12 @@ export default function Home() {
                 MCP-native • Multi-model • Zero-knowledge memory
               </span>
               <h1 className="text-5xl font-bold tracking-tight text-slate-900 sm:text-6xl">
-                Distributed AI inference.<br />
-                <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">One interface.</span>
+                Get unstuck faster.<br />
+                <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">Debug smarter. Design better.</span>
               </h1>
               <p className="mt-6 text-xl leading-8 text-slate-600 max-w-3xl mx-auto">
-                Query GPT-5, Claude Opus 4, Gemini 2.5 Pro, and 340+ models simultaneously.
-                Compare outputs, cross-validate logic, eliminate single-model bias.
-                Built for production codebases that demand architectural precision.
+                When one AI model isn't enough, get answers from GPT-5, Claude Opus 4, Gemini 2.5 Pro, and 340+ others simultaneously.
+                Compare solutions, catch edge cases, and improve your code accuracy without leaving your editor.
               </p>
 
               {/* Model logos showcase */}
@@ -261,14 +278,13 @@ export default function Home() {
       {/* Supported Editors */}
       <section className="py-16 bg-gradient-to-r from-orange-50 to-violet-50">
         <div className="mx-auto max-w-7xl px-6">
-          <p className="text-center text-lg text-slate-600 mb-12">Native integrations with leading AI development environments</p>
-          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-6">
+          <p className="text-center text-lg text-slate-600 mb-12">Works with the tools you already use</p>
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
             {SUPPORTED_EDITORS.map((editor) => (
               <div key={editor.name} className="group flex flex-col items-center p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-white/50 hover:border-orange-200 hover:bg-white/90 transition-all duration-300 hover:scale-105 hover:shadow-lg">
                 <div className="relative h-12 w-12 mb-3 transition-transform group-hover:scale-110">
                   <Image src={editor.logo} alt={`${editor.name} logo`} fill className="object-contain" />
                 </div>
-                <span className="text-sm font-medium text-slate-700 group-hover:text-orange-600 transition-colors">{editor.name}</span>
               </div>
             ))}
           </div>
@@ -291,7 +307,7 @@ export default function Home() {
           <div className="grid gap-12 lg:grid-cols-3">
             {BENEFITS.map((benefit, index) => (
               <div key={benefit.title} className="group text-center p-8 rounded-2xl bg-gradient-to-br from-white to-orange-50/30 border border-orange-100/50 hover:border-orange-200 transition-all duration-300 hover:scale-105 hover:shadow-xl">
-                <div className="text-5xl mb-6 group-hover:scale-110 transition-transform duration-300">{benefit.icon}</div>
+                <div className="flex justify-center mb-6 group-hover:scale-110 transition-transform duration-300">{benefit.icon}</div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-4 group-hover:text-orange-700 transition-colors">{benefit.title}</h3>
                 <p className="text-lg text-slate-600 leading-relaxed">{benefit.description}</p>
               </div>
@@ -343,23 +359,23 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">
-              Production-ready in<br />
-              <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">under 5 minutes</span>
+              Get started in<br />
+              <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">under 2 minutes</span>
             </h2>
             <p className="mt-4 text-xl text-slate-600">
-              MCP-native architecture with zero infrastructure overhead
+              No API setup required. Works with your existing editor and tools.
             </p>
           </div>
           <div className="grid gap-12 lg:grid-cols-3">
             {HOW_IT_WORKS.map((step, index) => (
-              <div key={step.step} className="group text-center">
-                <div className="mx-auto w-20 h-20 bg-gradient-to-br from-orange-500 to-violet-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl mb-8 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-orange-500/25">
+              <div key={step.step} className="group text-center relative">
+                <div className="mx-auto w-16 h-16 bg-white border-4 border-orange-200 rounded-xl flex items-center justify-center text-orange-600 font-bold text-lg mb-8 group-hover:border-orange-400 group-hover:bg-orange-50 transition-all duration-300">
                   {step.step}
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 mb-4 group-hover:text-orange-700 transition-colors">{step.title}</h3>
                 <p className="text-lg text-slate-600 leading-relaxed">{step.description}</p>
                 {index < HOW_IT_WORKS.length - 1 && (
-                  <div className="hidden lg:block absolute top-10 left-1/2 w-24 h-0.5 bg-gradient-to-r from-orange-300 to-violet-300 transform translate-x-12"></div>
+                  <div className="hidden lg:block absolute top-8 left-full w-12 h-0.5 bg-gradient-to-r from-orange-200 to-orange-300"></div>
                 )}
               </div>
             ))}

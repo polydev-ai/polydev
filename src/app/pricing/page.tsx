@@ -1,114 +1,87 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
 
 export default function Pricing() {
   const { isAuthenticated } = useAuth()
-  const [isYearly, setIsYearly] = useState(false)
 
   const plans = [
     {
-      name: 'Developer',
+      name: 'Free',
       price: '$0',
-      yearlyPrice: '$0',
-      period: '/month',
-      description: 'Perfect for individual developers and small projects',
+      period: 'forever',
+      description: 'Perfect for trying out multiple AI models',
       features: [
-        '10,000 API calls/month',
-        '3 MCP servers',
-        '2 LLM providers',
-        'Basic analytics',
-        'Community support',
-        'Standard rate limits'
+        '100 free runs to get started',
+        'Query GPT-5, Claude Opus 4, Gemini 2.5 Pro',
+        'Compare responses side-by-side',
+        'Works with Cursor, Claude Code, Continue',
+        'Basic project memory',
+        'Community support'
       ],
-      cta: 'Get Started Free',
+      cta: 'Start Free',
       highlighted: false,
-      icon: '🚀'
+      icon: (
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border-2 border-slate-300 flex items-center justify-center">
+          <svg className="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+      )
     },
     {
-      name: 'Professional',
-      price: '$29',
-      yearlyPrice: '$290',
+      name: 'Pro',
+      price: '$20',
       period: '/month',
-      yearlyPeriod: '/year',
-      description: 'For growing teams and production applications',
+      description: 'For developers who want unlimited access',
       features: [
-        '100,000 API calls/month',
-        '10 MCP servers',
-        '5 LLM providers',
-        'Advanced analytics',
+        'Unlimited runs',
+        '340+ models from 37+ providers',
+        'Advanced project memory with encryption',
+        'Priority model access (GPT-5, Claude Opus 4)',
+        'Cost optimization routing',
+        'Usage analytics and insights',
         'Priority support',
-        'Higher rate limits',
-        'Custom integrations',
-        'Team collaboration'
+        'Team collaboration features'
       ],
-      cta: 'Start Free Trial',
+      cta: 'Upgrade to Pro',
       highlighted: true,
-      icon: '⚡'
-    },
-    {
-      name: 'Enterprise',
-      price: 'Custom',
-      yearlyPrice: 'Custom',
-      period: '',
-      description: 'For large organizations with custom requirements',
-      features: [
-        'Unlimited API calls',
-        'Unlimited MCP servers',
-        'All LLM providers',
-        'Custom analytics',
-        'Dedicated support',
-        'No rate limits',
-        'On-premises deployment',
-        'Custom SLA',
-        'Advanced security',
-        'SSO integration'
-      ],
-      cta: 'Contact Sales',
-      highlighted: false,
-      icon: '🏢'
+      icon: (
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-violet-500 flex items-center justify-center shadow-lg">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+        </div>
+      )
     }
   ]
 
   const features = [
     {
-      category: 'Core Platform',
+      category: 'Usage & Access',
       items: [
-        { name: 'MCP Protocol Support', dev: true, pro: true, enterprise: true },
-        { name: 'Multi-LLM Integration', dev: true, pro: true, enterprise: true },
-        { name: 'API Explorer', dev: true, pro: true, enterprise: true },
-        { name: 'Real-time Analytics', dev: 'Basic', pro: 'Advanced', enterprise: 'Custom' },
-        { name: 'Rate Limiting', dev: 'Standard', pro: 'Higher', enterprise: 'None' }
+        { name: 'Monthly runs', free: '100 free runs', pro: 'Unlimited' },
+        { name: 'Model access', free: 'Top 3 models', pro: '340+ models from 37 providers' },
+        { name: 'Response comparison', free: true, pro: true },
+        { name: 'Priority model access', free: false, pro: true }
       ]
     },
     {
-      category: 'LLM Providers',
+      category: 'Integration & Memory',
       items: [
-        { name: 'OpenAI GPT Models', dev: true, pro: true, enterprise: true },
-        { name: 'Anthropic Claude', dev: true, pro: true, enterprise: true },
-        { name: 'Google Gemini', dev: false, pro: true, enterprise: true },
-        { name: 'Meta Llama', dev: false, pro: true, enterprise: true },
-        { name: 'Custom Models', dev: false, pro: false, enterprise: true }
+        { name: 'Editor integration', free: 'Basic', pro: 'Advanced' },
+        { name: 'Project memory', free: 'Basic', pro: 'Encrypted + advanced' },
+        { name: 'Cost optimization', free: false, pro: true },
+        { name: 'Usage analytics', free: false, pro: true }
       ]
     },
     {
-      category: 'MCP Servers',
+      category: 'Support & Collaboration',
       items: [
-        { name: 'Max Active Servers', dev: '3', pro: '10', enterprise: 'Unlimited' },
-        { name: 'Custom Servers', dev: false, pro: true, enterprise: true },
-        { name: 'Server Monitoring', dev: 'Basic', pro: 'Advanced', enterprise: 'Enterprise' },
-        { name: 'Auto-scaling', dev: false, pro: true, enterprise: true }
-      ]
-    },
-    {
-      category: 'Support & Security',
-      items: [
-        { name: 'Support Level', dev: 'Community', pro: 'Priority', enterprise: 'Dedicated' },
-        { name: 'SLA Guarantee', dev: false, pro: '99.9%', enterprise: 'Custom' },
-        { name: 'SOC 2 Compliance', dev: false, pro: true, enterprise: true },
-        { name: 'SSO Integration', dev: false, pro: false, enterprise: true }
+        { name: 'Support level', free: 'Community', pro: 'Priority' },
+        { name: 'Team features', free: false, pro: true },
+        { name: 'Custom configurations', free: false, pro: true }
       ]
     }
   ]
@@ -116,101 +89,71 @@ export default function Pricing() {
   const FeatureValue = ({ value }: { value: string | boolean }) => {
     if (typeof value === 'boolean') {
       return value ? (
-        <span className="inline-flex items-center justify-center w-6 h-6 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full text-sm font-bold">
+        <span className="inline-flex items-center justify-center w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm font-bold">
           ✓
         </span>
       ) : (
-        <span className="text-gray-400 text-lg">—</span>
+        <span className="text-slate-400 text-lg">—</span>
       )
     }
-    return <span className="text-gray-900 dark:text-white font-medium">{value}</span>
+    return <span className="text-slate-900 font-medium">{value}</span>
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
-          <div className="text-center">
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-8">
-              Simple, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Transparent</span> Pricing
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto mb-12 leading-relaxed">
-              Scale from prototype to production with flexible plans designed for every stage of your AI journey. 
-              All plans include our core MCP protocol support and multi-LLM integration.
-            </p>
+      <section className="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-violet-50">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.02)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
 
-            {/* Billing Toggle */}
-            <div className="flex items-center justify-center space-x-4 mb-12">
-              <span className={`text-sm font-medium ${!isYearly ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                Monthly
-              </span>
-              <button
-                onClick={() => setIsYearly(!isYearly)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                  isYearly ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    isYearly ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-              <span className={`text-sm font-medium ${isYearly ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                Yearly
-              </span>
-              {isYearly && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                  Save 20%
-                </span>
-              )}
-            </div>
+        <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-16">
+          <div className="text-center">
+            <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-8">
+              Simple pricing.<br />
+              <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">No surprises.</span>
+            </h1>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-12 leading-relaxed">
+              Try for free with 100 runs, then upgrade to unlimited access for just $20/month.
+              Get answers from 340+ AI models without the complexity of managing multiple APIs.
+            </p>
           </div>
         </div>
       </section>
 
       {/* Pricing Cards */}
-      <section className="py-16 bg-white dark:bg-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
+      <section className="py-16 bg-white">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-8 mb-16 max-w-4xl mx-auto">
             {plans.map((plan, index) => (
               <div
                 key={index}
-                className={`bg-gray-50 dark:bg-gray-700 rounded-2xl p-8 relative transform transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${
-                  plan.highlighted 
-                    ? 'ring-2 ring-blue-500 scale-105 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20' 
-                    : ''
+                className={`bg-white rounded-3xl p-8 relative transition-all duration-300 hover:scale-105 hover:shadow-2xl ${
+                  plan.highlighted
+                    ? 'ring-2 ring-orange-500 shadow-xl shadow-orange-500/20 bg-gradient-to-br from-orange-50 to-violet-50'
+                    : 'border-2 border-slate-200 hover:border-orange-200 shadow-lg'
                 }`}
               >
                 {plan.highlighted && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
+                    <span className="bg-gradient-to-r from-orange-500 to-violet-500 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
                       Most Popular
                     </span>
                   </div>
                 )}
-                
+
                 <div className="text-center mb-8">
-                  <div className="text-4xl mb-4">{plan.icon}</div>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                  <div className="flex justify-center mb-6">{plan.icon}</div>
+                  <h3 className="text-3xl font-bold text-slate-900 mb-4">
                     {plan.name}
                   </h3>
-                  <div className="mb-4">
-                    <span className="text-5xl font-bold text-gray-900 dark:text-white">
-                      {isYearly ? plan.yearlyPrice : plan.price}
+                  <div className="mb-6">
+                    <span className="text-5xl font-bold text-slate-900">
+                      {plan.price}
                     </span>
-                    <span className="text-lg text-gray-600 dark:text-gray-400">
-                      {isYearly ? (plan.yearlyPeriod || '') : plan.period}
+                    <span className="text-xl text-slate-600 ml-2">
+                      {plan.period}
                     </span>
-                    {isYearly && plan.name === 'Professional' && (
-                      <div className="text-sm text-green-600 dark:text-green-400 font-medium mt-1">
-                        Save $58/year
-                      </div>
-                    )}
                   </div>
-                  <p className="text-gray-600 dark:text-gray-300 text-lg">
+                  <p className="text-slate-600 text-lg">
                     {plan.description}
                   </p>
                 </div>
@@ -218,18 +161,20 @@ export default function Pricing() {
                 <ul className="space-y-4 mb-8">
                   {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-start">
-                      <span className="text-blue-500 mr-3 mt-1 flex-shrink-0">✓</span>
-                      <span className="text-gray-700 dark:text-gray-300 text-sm">{feature}</span>
+                      <svg className="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-slate-700 text-sm leading-relaxed">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
                 <Link
-                  href={isAuthenticated ? "/dashboard" : "/auth"}
-                  className={`block w-full py-4 px-6 rounded-xl font-semibold text-center transition-all duration-200 transform hover:scale-105 ${
+                  href={plan.highlighted ? "/dashboard/subscription" : (isAuthenticated ? "/dashboard" : "/auth")}
+                  className={`block w-full py-4 px-6 rounded-xl font-semibold text-center transition-all duration-300 transform hover:scale-105 ${
                     plan.highlighted
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg'
-                      : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 border-2 border-gray-200 dark:border-gray-600'
+                      ? 'bg-gradient-to-r from-orange-500 to-violet-500 text-white hover:from-orange-600 hover:to-violet-600 shadow-lg shadow-orange-500/25'
+                      : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
                   }`}
                 >
                   {plan.cta}
@@ -241,19 +186,19 @@ export default function Pricing() {
       </section>
 
       {/* Feature Comparison Table */}
-      <section className="py-16 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-gray-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 bg-gradient-to-br from-orange-50 to-violet-50">
+        <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Everything You Need to Know
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              What's included in each plan
             </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Compare features across all plans to find the perfect fit for your needs
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Compare features to see which plan fits your needs
             </p>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="px-8 py-6 bg-gradient-to-r from-blue-600 to-purple-600">
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+            <div className="px-8 py-6 bg-gradient-to-r from-orange-500 to-violet-500">
               <h3 className="text-2xl font-bold text-white">
                 Feature Comparison
               </h3>
@@ -262,45 +207,39 @@ export default function Pricing() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-700">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">
+                  <tr className="bg-slate-50">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
                       Feature
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
-                      🚀 Developer
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
+                      Free
                     </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
-                      ⚡ Professional
-                    </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
-                      🏢 Enterprise
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
+                      Pro
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-slate-200">
                   {features.map((category, categoryIndex) => (
                     <>
                       <tr key={`category-${categoryIndex}`}>
                         <td
-                          colSpan={4}
-                          className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 text-sm font-bold text-gray-900 dark:text-white"
+                          colSpan={3}
+                          className="px-6 py-4 bg-gradient-to-r from-orange-50 to-violet-50 text-sm font-bold text-slate-900"
                         >
                           {category.category}
                         </td>
                       </tr>
                       {category.items.map((item, itemIndex) => (
-                        <tr key={`${categoryIndex}-${itemIndex}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                        <tr key={`${categoryIndex}-${itemIndex}`} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium text-slate-900">
                             {item.name}
                           </td>
                           <td className="px-6 py-4 text-sm text-center">
-                            <FeatureValue value={item.dev} />
+                            <FeatureValue value={item.free} />
                           </td>
                           <td className="px-6 py-4 text-sm text-center">
                             <FeatureValue value={item.pro} />
-                          </td>
-                          <td className="px-6 py-4 text-sm text-center">
-                            <FeatureValue value={item.enterprise} />
                           </td>
                         </tr>
                       ))}
@@ -314,79 +253,75 @@ export default function Pricing() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-16 bg-white dark:bg-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-16 bg-white">
+        <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">
+            <h2 className="text-4xl font-bold text-slate-900 mb-6">
               Frequently Asked Questions
             </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              Everything you need to know about our platform and pricing
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Everything you need to know about pricing and features
             </p>
           </div>
-          
-          <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl p-8 hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                🤖 What is the Model Context Protocol (MCP)?
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                What happens after my 100 free runs?
               </h3>
-              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                MCP is a standardized protocol for connecting AI models with external tools and data sources, 
-                enabling more powerful and context-aware AI applications. It allows seamless integration 
-                with databases, APIs, and custom tools.
-              </p>
-            </div>
-            
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl p-8 hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                🔄 Can I change plans anytime?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                Yes, you can upgrade or downgrade your plan at any time. Changes will be prorated 
-                and reflected in your next billing cycle. No hidden fees or cancellation penalties.
-              </p>
-            </div>
-            
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl p-8 hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                🧠 What LLM providers do you support?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                We support OpenAI (GPT-4, GPT-3.5), Anthropic (Claude), Google (Gemini), 
-                Meta (Llama), and many others. Enterprise plans include support for custom 
-                model endpoints and on-premises deployments.
-              </p>
-            </div>
-            
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl p-8 hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                🆓 Is there a free trial?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                Yes! The Developer plan is free forever with 10K API calls per month. 
-                Professional plans include a 14-day free trial with full features and no credit card required.
+              <p className="text-slate-600 leading-relaxed">
+                You'll be prompted to upgrade to Pro for unlimited access. No credit card required to start,
+                and you can upgrade anytime to continue getting answers from multiple AI models.
               </p>
             </div>
 
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl p-8 hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                📊 How does billing work?
+            <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                Can I cancel anytime?
               </h3>
-              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                We bill monthly or yearly based on your plan. Usage is tracked in real-time, 
-                and you'll receive notifications before reaching your limits. Overage charges 
-                are clearly displayed in your dashboard.
+              <p className="text-slate-600 leading-relaxed">
+                Yes, you can cancel your Pro subscription at any time. You'll continue to have access
+                until the end of your billing period, then you'll return to the free plan.
               </p>
             </div>
 
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-2xl p-8 hover:shadow-lg transition-shadow">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-                🔒 Is my data secure?
+            <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                Which AI models are included?
               </h3>
-              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                Absolutely. We're SOC 2 compliant with end-to-end encryption, regular security audits, 
-                and enterprise-grade infrastructure. Your data is never used to train models or 
-                shared with third parties.
+              <p className="text-slate-600 leading-relaxed">
+                Free plans include GPT-5, Claude Opus 4, and Gemini 2.5 Pro. Pro includes all 340+ models
+                from 37 providers including Grok, Llama, DeepSeek, and many specialized models.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                How does the cost optimization work?
+              </h3>
+              <p className="text-slate-600 leading-relaxed">
+                We automatically use your free CLI tools first (like Claude Code), then your encrypted API keys,
+                then credits as a backup. This saves you money while ensuring you always get answers.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                Is my code and data secure?
+              </h3>
+              <p className="text-slate-600 leading-relaxed">
+                Yes. We use zero-knowledge encryption for project memory, and only minimal context
+                is shared when needed. Your code never leaves your machine without explicit permission.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                Do you offer team discounts?
+              </h3>
+              <p className="text-slate-600 leading-relaxed">
+                Pro plans include team collaboration features. For larger teams (10+ developers),
+                contact us for volume pricing and additional team management features.
               </p>
             </div>
           </div>
@@ -394,45 +329,33 @@ export default function Pricing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-gradient-to-r from-blue-600 to-purple-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="py-24 bg-gradient-to-r from-orange-500 to-violet-500">
+        <div className="max-w-5xl mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Ready to Transform Your AI Workflow?
+            Ready to get unstuck faster?
           </h2>
-          <p className="text-xl text-blue-100 max-w-3xl mx-auto mb-12">
-            Join thousands of developers and teams who are building faster, smarter, and more efficiently 
-            with Polydev AI. Start your journey today.
+          <p className="text-xl text-orange-100 max-w-3xl mx-auto mb-12">
+            Start with 100 free runs and see how multiple AI models can help you
+            debug better, design smarter, and code more efficiently.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
             <Link
               href={isAuthenticated ? "/dashboard" : "/auth"}
-              className="bg-white text-blue-600 hover:bg-gray-100 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
+              className="bg-white text-orange-600 hover:bg-orange-50 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
             >
               Start Free Today →
             </Link>
             <Link
-              href="/contact"
-              className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200"
+              href="/dashboard/subscription"
+              className="border-2 border-white text-white hover:bg-white hover:text-orange-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200"
             >
-              Contact Sales
+              Upgrade to Pro
             </Link>
           </div>
 
-          <div className="text-blue-100 text-sm">
-            ✓ Free 14-day trial  ✓ No setup fees  ✓ Cancel anytime
-          </div>
-
-          {/* Trust Indicators */}
-          <div className="mt-16 pt-12 border-t border-blue-400/20">
-            <p className="text-blue-200 mb-6">Trusted by developers at</p>
-            <div className="flex flex-wrap items-center justify-center gap-8 opacity-70">
-              <div className="text-white font-bold text-lg">TechCorp</div>
-              <div className="text-white font-bold text-lg">StartupXYZ</div>
-              <div className="text-white font-bold text-lg">InnovateLab</div>
-              <div className="text-white font-bold text-lg">DataSystems</div>
-              <div className="text-white font-bold text-lg">AIForward</div>
-            </div>
+          <div className="text-orange-100 text-sm">
+            ✓ 100 free runs  ✓ No credit card required  ✓ Cancel anytime
           </div>
         </div>
       </section>

@@ -328,45 +328,49 @@ export default function SubscriptionPage() {
       {/* Plan Comparison */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Free Plan */}
-        <Card>
+        <Card className={!isPro ? 'border-orange-300 bg-orange-50/30' : ''}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Free Plan
-              <Badge variant="secondary">Current</Badge>
+              {!isPro && <Badge className="bg-orange-500 text-white">Current</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-2xl font-bold">$0/month</div>
+            <div className="text-2xl font-bold">$0 forever</div>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                {messageUsage?.messages_limit || 200} messages per month
+                100 free runs to get started
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                100 bonus messages per referral
+                Query GPT-5, Claude Opus 4, Gemini 2.5 Pro
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Compare responses side-by-side
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Works with Cursor, Claude Code, Continue
               </li>
               <li className="flex items-center gap-2">
                 <X className="h-4 w-4 text-red-500" />
-                No CLI access
-              </li>
-              <li className="flex items-center gap-2">
-                <X className="h-4 w-4 text-red-500" />
-                No monthly credits
+                Limited to 3 models
               </li>
             </ul>
           </CardContent>
         </Card>
 
         {/* Pro Plan */}
-        <Card className={isPro ? 'border-blue-500' : ''}>
+        <Card className={isPro ? 'border-orange-500 bg-orange-50/30' : 'hover:border-orange-200'}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-yellow-500" />
+                <Crown className="h-5 w-5 text-orange-500" />
                 Pro Plan
               </div>
-              {isPro && <Badge>Current</Badge>}
+              {isPro && <Badge className="bg-orange-500 text-white">Current</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -374,23 +378,35 @@ export default function SubscriptionPage() {
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Unlimited messages
+                Unlimited runs
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                CLI model access
+                340+ models from 37+ providers
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                $5 monthly credits
+                Advanced project memory with encryption
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Priority support
+                Priority model access (GPT-5, Claude Opus 4)
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Cost optimization routing
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Priority support & team features
               </li>
             </ul>
             {!isPro && (
-              <Button className="w-full" onClick={handleUpgrade} disabled={isUpgrading}>
+              <Button
+                className="w-full bg-gradient-to-r from-orange-500 to-violet-500 hover:from-orange-600 hover:to-violet-600"
+                onClick={handleUpgrade}
+                disabled={isUpgrading}
+              >
                 <Zap className="h-4 w-4 mr-2" />
                 {isUpgrading ? 'Processing...' : 'Upgrade to Pro'}
               </Button>
