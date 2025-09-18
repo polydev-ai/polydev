@@ -88,7 +88,7 @@ const BENEFITS = [
   {
     icon: '💰',
     title: 'Smart cost optimization',
-    description: 'Uses your free CLI tools first, then API keys, then credits—saving you money automatically.'
+    description: 'Uses your free CLI tools first, then API keys, then credits - saving you money automatically.'
   }
 ]
 
@@ -110,6 +110,47 @@ const HOW_IT_WORKS = [
   }
 ]
 
+const ROUTING_ORDER = [
+  {
+    title: 'Prefer local CLIs',
+    text: 'If Codex, Claude Code, or Gemini CLI are logged in, Polydev uses them first. Fast, familiar, and zero extra spend.'
+  },
+  {
+    title: 'Then your API keys',
+    text: 'Encrypted OpenAI, Anthropic, Google, Groq, DeepSeek and more. Per-key budgets and defaults live in the dashboard.'
+  },
+  {
+    title: 'Credits as a safety net',
+    text: 'Use Polydev credits backed by our OpenRouter account when teammates are unconfigured or you are on a fresh machine.'
+  }
+]
+
+const ACCURACY_STACK = [
+  {
+    title: 'Cross-check answers',
+    text: 'Ask several models and reconcile differences. Reduce single-model blind spots.'
+  },
+  {
+    title: 'Quick tests',
+    text: 'Generate tiny assertions or unit tests to catch issues before commit time.'
+  },
+  {
+    title: 'Project memory',
+    text: 'Attach minimal, encrypted repo context so answers match your codebase and constraints.'
+  },
+  {
+    title: 'Second pass',
+    text: 'Have a different model review and tighten the final patch when it matters.'
+  }
+]
+
+const ARCHITECTURE_HELP = [
+  { title: 'Service boundaries', text: 'Sketch APIs, queues, and background jobs for new features in minutes.' },
+  { title: 'Data layer choices', text: 'Pick schema, indexes, caching, and RLS that fit your workload.' },
+  { title: 'Agent patterns', text: 'Design MCP tool flows that are predictable and easy to debug.' },
+  { title: 'Scale & observability', text: 'Plan logging, cost controls, and safe fallbacks before launch.' }
+]
+
 export default function Home() {
   const { isAuthenticated } = useAuth()
   const [modelStats, setModelStats] = useState({ totalModels: 346, totalProviders: 37 })
@@ -126,14 +167,13 @@ export default function Home() {
           <div className="text-center">
             <div className="mx-auto max-w-4xl">
               <span className="inline-flex items-center rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-800 mb-8">
-                🚀 Works inside Cursor, VS Code, Claude, and more
+                MCP server / editor native / parallel model replies
               </span>
-              <h1 className="text-5xl font-bold tracking-tight text-slate-900 sm:text-7xl">
-                Ask all the best AI models
-                <span className="text-blue-600"> at once</span>
+              <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl">
+                Get unstuck. Better answers, stronger design, same editor.
               </h1>
               <p className="mt-6 text-xl leading-8 text-slate-600 max-w-3xl mx-auto">
-                Stop switching between ChatGPT, Claude, and Gemini. Get responses from GPT-5, Claude Opus 4, Gemini 2.5 Pro, and Grok 4 High in parallel—right inside your editor.
+                Polydev sends your prompt to several top models at once (GPT-5, Claude Opus 4, Gemini 2.5 Pro, Grok 4 High and more), adds just enough project context, and streams the results into the chat you already use.
               </p>
               <div className="mt-10 flex items-center justify-center gap-6">
                 <Link
@@ -156,15 +196,15 @@ export default function Home() {
           <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-3 lg:gap-16">
             <div className="text-center">
               <div className="text-4xl font-bold text-blue-600">{modelStats.totalModels}+</div>
-              <div className="mt-2 text-lg text-slate-600">AI Models Ready</div>
+              <div className="mt-2 text-lg text-slate-600">Models available</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600">1.7s</div>
-              <div className="mt-2 text-lg text-slate-600">Average Response</div>
+              <div className="text-4xl font-bold text-blue-600">{modelStats.totalProviders}+</div>
+              <div className="mt-2 text-lg text-slate-600">Providers supported</div>
             </div>
             <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600">10k+</div>
-              <div className="mt-2 text-lg text-slate-600">Developers Using</div>
+              <div className="text-4xl font-bold text-blue-600">1.7 s</div>
+              <div className="mt-2 text-lg text-slate-600">Median response</div>
             </div>
           </div>
         </div>
@@ -272,32 +312,106 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Routing order */}
+      <section className="py-20 bg-slate-50">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">How Polydev routes a request</h2>
+            <p className="mt-4 text-xl text-slate-600">Fast first, cheap second, safety third.</p>
+          </div>
+          <div className="grid gap-8 lg:grid-cols-3">
+            {ROUTING_ORDER.map((item) => (
+              <div key={item.title} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900">{item.title}</h3>
+                <p className="mt-2 text-sm text-slate-600">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Accuracy stack */}
+      <section className="py-20 bg-white">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">Accuracy stack</h2>
+            <p className="mt-4 text-xl text-slate-600">Tools that make better answers stick.</p>
+          </div>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {ACCURACY_STACK.map((card) => (
+              <div key={card.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="text-sm font-semibold text-slate-900">{card.title}</div>
+                <p className="mt-2 text-sm text-slate-600">{card.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Architecture help */}
+      <section className="py-20 bg-slate-50">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">Architecture help when you need it</h2>
+            <p className="mt-4 text-xl text-slate-600">Ask for tradeoffs and blueprints, not vague suggestions.</p>
+          </div>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {ARCHITECTURE_HELP.map((card) => (
+              <div key={card.title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="text-sm font-semibold text-slate-900">{card.title}</div>
+                <p className="mt-2 text-sm text-slate-600">{card.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Privacy & control */}
+      <section className="py-20 bg-white">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">Privacy and control</h2>
+            <p className="mt-4 text-xl text-slate-600">Designed for teams who care about data boundaries.</p>
+          </div>
+          <div className="grid gap-8 lg:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-sm font-semibold text-slate-900">Zero-knowledge memory</div>
+              <p className="mt-2 text-sm text-slate-600">Context is encrypted client-side and only minimal snippets are attached when needed.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-sm font-semibold text-slate-900">Clear routing</div>
+              <p className="mt-2 text-sm text-slate-600">Every run shows which path answered (CLI, key, or credit) with token and cost details.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-sm font-semibold text-slate-900">Supabase security</div>
+              <p className="mt-2 text-sm text-slate-600">RLS policies protect per-user data; service-role actions are limited to backend jobs.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
-      <section className="py-24 bg-blue-600">
+      <section className="py-24 bg-white border-t border-slate-200">
         <div className="mx-auto max-w-4xl px-6 text-center">
-          <h2 className="text-4xl font-bold text-white sm:text-5xl">
-            Ready to supercharge your coding?
-          </h2>
-          <p className="mt-6 text-xl text-blue-100">
-            Join thousands of developers who are already using Polydev to get better AI responses faster.
+          <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">Give your editor a safety net</h2>
+          <p className="mt-6 text-xl text-slate-600">
+            100 free runs to start. Unlimited for 20 dollars a month when you are ready.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6">
             <Link
               href={isAuthenticated ? '/dashboard' : '/auth'}
-              className="rounded-full bg-white px-8 py-4 text-lg font-semibold text-blue-600 shadow-lg hover:bg-slate-50 transition-all duration-200 hover:scale-105"
+              className="rounded-full bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-lg hover:bg-blue-500 transition-all duration-200 hover:scale-105"
             >
-              {isAuthenticated ? 'Go to Dashboard' : 'Start Free Trial'}
+              {isAuthenticated ? 'Open dashboard' : 'Create workspace'}
             </Link>
             <Link
               href="/pricing"
-              className="rounded-full border-2 border-white px-8 py-4 text-lg font-semibold text-white hover:bg-white hover:text-blue-600 transition-all duration-200"
+              className="rounded-full border-2 border-slate-300 px-8 py-4 text-lg font-semibold text-slate-900 hover:bg-slate-50 transition-all duration-200"
             >
-              View Pricing
+              View pricing
             </Link>
           </div>
-          <p className="mt-6 text-sm text-blue-200">
-            ✨ 100 free queries to get started • No credit card required • Cancel anytime
-          </p>
+          <p className="mt-6 text-sm text-slate-500">* No credit card required • Cancel anytime</p>
         </div>
       </section>
     </div>
