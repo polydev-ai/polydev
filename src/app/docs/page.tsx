@@ -122,15 +122,15 @@ export default function Documentation() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex flex-col lg:flex-row gap-12">
           {/* Sidebar */}
           <div className="lg:w-64 lg:flex-shrink-0">
             <div className="sticky top-8">
-              <nav className="space-y-1">
+              <nav className="space-y-0.5">
                 {docSections.map((section) => (
-                  <div key={section.id} className="space-y-1">
+                  <div key={section.id} className="space-y-0.5">
                     <button
                       onClick={() => {
                         setActiveSection(section.id)
@@ -138,24 +138,24 @@ export default function Documentation() {
                           handleItemClick(section.items[0])
                         }
                       }}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      className={`w-full text-left px-3 py-2 text-sm font-medium transition-colors ${
                         activeSection === section.id
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                          : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                          ? 'text-gray-900 font-semibold'
+                          : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
                       {section.title}
                     </button>
                     {activeSection === section.id && (
-                      <div className="ml-4 space-y-1">
+                      <div className="ml-3 space-y-0.5 border-l border-gray-200">
                         {section.items.map((item) => (
                           <button
                             key={item.href}
                             onClick={() => handleItemClick(item)}
-                            className={`block w-full text-left px-3 py-1 text-sm transition-colors rounded ${
+                            className={`block w-full text-left px-3 py-1.5 text-sm transition-colors ${
                               activeItem === item.href.replace('#', '')
-                                ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/50'
-                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                                ? 'text-gray-900 font-medium border-l-2 border-gray-900 -ml-px'
+                                : 'text-gray-500 hover:text-gray-700 pl-4'
                             }`}
                           >
                             {item.title}
@@ -166,32 +166,32 @@ export default function Documentation() {
                   </div>
                 ))}
               </nav>
-              
+
               {/* Quick Links */}
-              <div className="mt-8 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Quick Links</h3>
-                <div className="space-y-2 text-xs">
-                  <Link 
+              <div className="mt-12 p-4 border border-gray-200 rounded-lg">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Quick Links</h3>
+                <div className="space-y-2 text-sm">
+                  <Link
                     href="/dashboard/models"
-                    className="block text-blue-600 dark:text-blue-400 hover:underline"
+                    className="block text-gray-600 hover:text-gray-900 transition-colors"
                   >
                     Configure API Keys
                   </Link>
-                  <Link 
+                  <Link
                     href="/dashboard/mcp-tokens"
-                    className="block text-blue-600 dark:text-blue-400 hover:underline"
+                    className="block text-gray-600 hover:text-gray-900 transition-colors"
                   >
                     Generate MCP Tokens
                   </Link>
-                  <Link 
+                  <Link
                     href="/chat"
-                    className="block text-blue-600 dark:text-blue-400 hover:underline"
+                    className="block text-gray-600 hover:text-gray-900 transition-colors"
                   >
                     Try Multi-Model Chat
                   </Link>
-                  <Link 
+                  <Link
                     href="/dashboard/preferences"
-                    className="block text-blue-600 dark:text-blue-400 hover:underline"
+                    className="block text-gray-600 hover:text-gray-900 transition-colors"
                   >
                     User Preferences
                   </Link>
@@ -202,45 +202,45 @@ export default function Documentation() {
 
           {/* Main Content */}
           <div className="flex-1 min-w-0">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="bg-white">
               {loading ? (
-                <div className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-4 text-gray-500 dark:text-gray-400">Loading documentation...</p>
+                <div className="py-12 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300 mx-auto"></div>
+                  <p className="mt-4 text-gray-500">Loading documentation...</p>
                 </div>
               ) : (
-                <div 
-                  className="prose prose-gray dark:prose-invert max-w-none p-8"
+                <div
+                  className="prose prose-gray max-w-none prose-headings:font-semibold prose-headings:text-gray-900 prose-p:text-gray-600 prose-li:text-gray-600 prose-a:text-gray-700 prose-a:no-underline hover:prose-a:underline prose-code:text-gray-900 prose-code:bg-gray-50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded"
                   dangerouslySetInnerHTML={{ __html: content }}
                 />
               )}
             </div>
-            
+
             {/* Navigation Footer */}
-            <div className="mt-8 flex justify-between items-center p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="mt-16 pt-8 border-t border-gray-200 flex justify-between items-center">
+              <div className="text-sm text-gray-500">
                 📚 Comprehensive documentation for Polydev AI
               </div>
-              <div className="flex space-x-4 text-sm">
-                <a 
-                  href="https://github.com/polydev-ai/polydev" 
-                  target="_blank" 
+              <div className="flex space-x-6 text-sm">
+                <a
+                  href="https://github.com/polydev-ai/polydev"
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   GitHub
                 </a>
-                <a 
-                  href="https://discord.gg/polydev" 
-                  target="_blank" 
+                <a
+                  href="https://discord.gg/polydev"
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   Discord
                 </a>
-                <Link 
+                <Link
                   href="/dashboard/support"
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
+                  className="text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   Support
                 </Link>

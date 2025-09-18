@@ -75,8 +75,7 @@ export default function Navigation() {
 
   const publicNavigation = [
     { name: 'Home', href: '/' },
-    { name: 'Documentation', href: '/docs' },
-    { name: 'CLI Integration', href: '/cli' },
+    { name: 'Docs', href: '/docs' },
   ]
 
   const authenticatedNavigation = [
@@ -84,8 +83,7 @@ export default function Navigation() {
     { name: 'Chat', href: '/chat' },
     { name: 'Models', href: '/dashboard/models' },
     { name: 'Activity', href: '/dashboard/activity' },
-    { name: 'Documentation', href: '/docs' },
-    { name: 'CLI Integration', href: '/cli' },
+    { name: 'Docs', href: '/docs' },
   ]
 
   const navigation = isAuthenticated ? authenticatedNavigation : publicNavigation
