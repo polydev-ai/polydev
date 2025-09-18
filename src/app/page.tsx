@@ -402,28 +402,142 @@ wss.on('connection', (ws) => {
   }
 ]
 
-function TypewriterText({ text, delay = 30, onComplete }: { text: string; delay?: number; onComplete?: () => void }) {
+function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text: string; delay?: number; onComplete?: () => void; startDelay?: number }) {
   const [displayedText, setDisplayedText] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [hasStarted, setHasStarted] = useState(false)
 
   useEffect(() => {
-    if (currentIndex < text.length) {
+    if (startDelay > 0 && !hasStarted) {
+      const startTimeout = setTimeout(() => {
+        setHasStarted(true)
+      }, startDelay)
+      return () => clearTimeout(startTimeout)
+    } else if (startDelay === 0) {
+      setHasStarted(true)
+    }
+  }, [startDelay, hasStarted])
+
+  useEffect(() => {
+    if (hasStarted && currentIndex < text.length) {
       const timeout = setTimeout(() => {
         setDisplayedText(prev => prev + text[currentIndex])
         setCurrentIndex(prev => prev + 1)
       }, delay)
       return () => clearTimeout(timeout)
-    } else if (onComplete) {
+    } else if (hasStarted && currentIndex >= text.length && onComplete) {
       onComplete()
     }
-  }, [currentIndex, text, delay, onComplete])
+  }, [currentIndex, text, delay, onComplete, hasStarted])
 
   useEffect(() => {
     setDisplayedText('')
     setCurrentIndex(0)
+    setHasStarted(false)
   }, [text])
 
-  return <span>{displayedText}<span className="animate-pulse">|</span></span>
+  return <span>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
+}
+
+function ModelSwitchingDemo() {
+  const [currentStep, setCurrentStep] = useState(0)
+  const [isTyping, setIsTyping] = useState(false)
+
+  const demoSteps = [
+    {
+      model: "Claude Opus 4",
+      avatar: "https://models.dev/logos/anthropic.svg",
+      text: "I need help optimizing this database query...",
+      status: "thinking",
+      color: "text-orange-600"
+    },
+    {
+      model: "Claude Opus 4",
+      avatar: "https://models.dev/logos/anthropic.svg",
+      text: "Hmm, this is a complex indexing problem. Let me think...",
+      status: "stuck",
+      color: "text-orange-600"
+    },
+    {
+      model: "GPT-5",
+      avatar: "https://models.dev/logos/openai.svg",
+      text: "I can help! Try creating a composite index on (user_id, created_at) and use window functions for better performance.",
+      status: "solution",
+      color: "text-blue-600"
+    },
+    {
+      model: "Gemini 2.5 Pro",
+      avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+      text: "Also consider partitioning the table by date ranges and implementing read replicas for analytics workloads.",
+      status: "additional",
+      color: "text-emerald-600"
+    }
+  ]
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentStep((prev) => {
+        if (prev >= demoSteps.length - 1) {
+          return 0
+        }
+        return prev + 1
+      })
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleTypingComplete = () => {
+    setIsTyping(false)
+  }
+
+  useEffect(() => {
+    setIsTyping(true)
+  }, [currentStep])
+
+  const currentDemo = demoSteps[currentStep]
+
+  return (
+    <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-w-2xl mx-auto">
+      <div className="bg-slate-900 px-6 py-4 border-b">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+          <span className="ml-3 text-slate-300 text-sm font-mono">Polydev Console</span>
+        </div>
+      </div>
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 p-1.5">
+            <Image src={currentDemo.avatar} alt={currentDemo.model} width={20} height={20} className="object-contain" />
+          </div>
+          <span className={`font-semibold ${currentDemo.color} transition-colors`}>{currentDemo.model}</span>
+          {currentDemo.status === "thinking" && (
+            <div className="flex gap-1">
+              <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+          )}
+          {currentDemo.status === "stuck" && (
+            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Switching models...</span>
+          )}
+          {currentDemo.status === "solution" && (
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Solution found!</span>
+          )}
+        </div>
+        <div className="bg-gradient-to-br from-orange-50/50 to-violet-50/50 rounded-xl p-4 border border-orange-100/50 min-h-[80px] flex items-center">
+          <div className="text-slate-700 leading-relaxed">
+            <TypewriterText
+              text={currentDemo.text}
+              delay={25}
+              onComplete={handleTypingComplete}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function Home() {
@@ -522,6 +636,15 @@ export default function Home() {
                 </Link>
               </div>
             </div>
+
+            {/* Dynamic Model Switching Demo */}
+            <div className="mt-16">
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">See smart model switching in action</h3>
+                <p className="text-slate-600">When one AI gets stuck, Polydev automatically tries others</p>
+              </div>
+              <ModelSwitchingDemo />
+            </div>
           </div>
 
           {/* Stats */}
@@ -608,6 +731,7 @@ export default function Home() {
                           <TypewriterText
                             text={response.text}
                             delay={25}
+                            startDelay={index * 2000}
                             onComplete={() => handleTypingComplete(index)}
                           />
                         </div>
@@ -624,15 +748,32 @@ export default function Home() {
       {/* Supported Editors */}
       <section className="py-16 bg-gradient-to-r from-orange-50 to-violet-50">
         <div className="mx-auto max-w-7xl px-6">
-          <p className="text-center text-lg text-slate-600 mb-12">Works with the tools you already use</p>
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">Native integration with your favorite tools</h2>
+            <p className="text-lg text-slate-600">Get multi-model perspectives directly in your development environment</p>
+          </div>
+
+          <div className="flex flex-wrap justify-center items-center gap-8 max-w-4xl mx-auto">
             {SUPPORTED_EDITORS.map((editor, index) => (
-              <div key={index} className="group flex flex-col items-center p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-white/50 hover:border-orange-200 hover:bg-white/90 transition-all duration-300 hover:scale-105 hover:shadow-lg">
-                <div className="relative h-12 w-12 mb-3 transition-transform group-hover:scale-110">
-                  <Image src={editor.logo} alt="Editor logo" fill className="object-contain" />
+              <div key={index} className="group">
+                <div className="relative h-16 w-16 p-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 hover:border-orange-200 hover:bg-white/95 transition-all duration-300 hover:scale-110 hover:shadow-xl shadow-lg">
+                  <Image src={editor.logo} alt="Editor logo" fill className="object-contain p-1" />
                 </div>
               </div>
             ))}
+            <div className="group">
+              <div className="relative h-16 w-16 p-3 rounded-2xl bg-white/80 backdrop-blur-sm border-2 border-dashed border-orange-300 hover:border-orange-400 transition-all duration-300 hover:scale-110 flex items-center justify-center">
+                <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-8">
+            <p className="text-sm text-slate-500">
+              And many more through our <Link href="/docs/integrations" className="text-orange-600 hover:text-orange-700 font-medium">universal MCP protocol</Link>
+            </p>
           </div>
         </div>
       </section>
@@ -675,11 +816,25 @@ export default function Home() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">No API Keys Required</h3>
-                  <p className="text-slate-600 leading-relaxed">
-                    Stop juggling multiple API keys from OpenAI, Anthropic, Google, and others. Polydev consolidates everything into one simple interface.
-                    Use your existing subscriptions or just pay for what you use with Polydev credits.
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">Flexible API Access</h3>
+                  <p className="text-slate-600 leading-relaxed mb-3">
+                    No need to juggle multiple API keys! Use your existing CLI tools for free, leverage Polydev credits for convenience,
+                    or add your own API keys for maximum control and cost optimization.
                   </p>
+                  <div className="grid grid-cols-3 gap-3 text-xs">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+                      <div className="font-semibold text-green-700">CLI Tools</div>
+                      <div className="text-green-600">Free</div>
+                    </div>
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-center">
+                      <div className="font-semibold text-orange-700">Credits</div>
+                      <div className="text-orange-600">Pay-as-go</div>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
+                      <div className="font-semibold text-blue-700">Your Keys</div>
+                      <div className="text-blue-600">Full control</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -734,41 +889,53 @@ export default function Home() {
 
           {/* Quick Start Options */}
           <div className="mt-16 grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 text-center">
-              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 text-center relative overflow-hidden">
+              <div className="absolute -top-2 -left-2 w-20 h-20 bg-green-100 rounded-full opacity-30"></div>
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3" />
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">Already have CLI tools?</h3>
               <p className="text-sm text-slate-600 mb-4">Start getting perspectives immediately with your existing authentication</p>
-              <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+              <div className="bg-white/70 rounded-lg p-2 mb-4 text-xs text-slate-600">
+                🚀 Zero config • Works instantly
+              </div>
+              <button className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all text-sm font-medium transform hover:scale-105">
                 Quick Setup Guide
               </button>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-6 text-center">
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-6 text-center relative overflow-hidden">
+              <div className="absolute -top-2 -right-2 w-16 h-16 bg-blue-100 rounded-full opacity-50"></div>
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">New to AI coding?</h3>
               <p className="text-sm text-slate-600 mb-4">Get 100 free requests to try all models without any API setup</p>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+              <div className="bg-white/70 rounded-lg p-2 mb-4 text-xs text-slate-600">
+                No credit card • Instant access • 340+ models
+              </div>
+              <button className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all text-sm font-medium transform hover:scale-105">
                 Start Free Trial
               </button>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-50 to-violet-50 border border-orange-200 rounded-xl p-6 text-center">
-              <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-violet-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-gradient-to-br from-orange-50 to-violet-50 border border-orange-200 rounded-xl p-6 text-center relative overflow-hidden">
+              <div className="absolute -bottom-2 -right-2 w-24 h-24 bg-gradient-to-br from-orange-100 to-violet-100 rounded-full opacity-40"></div>
+              <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-violet-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mb-2">Need all models?</h3>
               <p className="text-sm text-slate-600 mb-4">Access 340+ models with simple credit-based pricing</p>
-              <button className="bg-gradient-to-r from-orange-500 to-violet-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all text-sm font-medium">
+              <div className="bg-white/70 rounded-lg p-2 mb-4 text-xs text-slate-600">
+                ⚡ Ultra-fast • Pay per use • No subscriptions
+              </div>
+              <button className="bg-gradient-to-r from-orange-500 to-violet-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all text-sm font-medium transform hover:scale-105">
                 View All Models
               </button>
             </div>
@@ -988,24 +1155,24 @@ export default function Home() {
                 <div className="space-y-6">
                   <blockquote className="border-l-4 border-orange-500 pl-4">
                     <p className="text-slate-300 mb-2">
-                      "Polydev helped us catch 3 critical security vulnerabilities that our single AI assistant missed.
-                      The different perspectives are invaluable for code reviews."
+                      "Finally! I was switching between ChatGPT and Claude constantly.
+                      Polydev saves me hours and catches issues I would have missed. Game changer."
                     </p>
-                    <cite className="text-orange-400 text-sm">- Senior Engineer at YC Startup</cite>
+                    <cite className="text-orange-400 text-sm">- Alex Chen, Fullstack Developer</cite>
                   </blockquote>
                   <blockquote className="border-l-4 border-violet-500 pl-4">
                     <p className="text-slate-300 mb-2">
-                      "We reduced debugging time by 60% after switching to multi-model analysis.
-                      Different AIs catch different types of issues."
+                      "Used it to debug a memory leak that had me stuck for days.
+                      Three different models gave me three different approaches - one finally worked!"
                     </p>
-                    <cite className="text-violet-400 text-sm">- Tech Lead at Fortune 500</cite>
+                    <cite className="text-violet-400 text-sm">- Sarah Martinez, Backend Engineer</cite>
                   </blockquote>
                   <blockquote className="border-l-4 border-emerald-500 pl-4">
                     <p className="text-slate-300 mb-2">
-                      "The MCP integration with Claude Code is seamless.
-                      I get 4 AI perspectives without leaving my terminal."
+                      "The Claude Code integration is incredible. I get multiple perspectives
+                      without leaving VS Code. My code reviews are so much better now."
                     </p>
-                    <cite className="text-emerald-400 text-sm">- Open Source Maintainer</cite>
+                    <cite className="text-emerald-400 text-sm">- Jamie Park, Senior Developer</cite>
                   </blockquote>
                 </div>
               </div>
