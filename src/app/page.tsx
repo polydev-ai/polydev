@@ -77,36 +77,36 @@ const TOP_MODELS = [
 const BENEFITS = [
   {
     icon: '⚡',
-    title: 'Never switch contexts',
-    description: 'Get answers from multiple AI models without leaving your editor or breaking your flow.'
+    title: 'Zero context switching',
+    description: 'Query multiple frontier models without leaving your development environment. Maintain flow state while accessing distributed intelligence.'
   },
   {
     icon: '🔄',
-    title: 'Compare responses instantly',
-    description: 'See GPT-5, Claude, Gemini, and others respond side-by-side to pick the best solution.'
+    title: 'Parallel model consensus',
+    description: 'Cross-validate architectural decisions with GPT-5, Claude Opus 4, and Gemini 2.5 Pro simultaneously. Eliminate single-model blind spots.'
   },
   {
     icon: '💰',
-    title: 'Smart cost optimization',
-    description: 'Uses your free CLI tools first, then API keys, then credits - saving you money automatically.'
+    title: 'Intelligent cost routing',
+    description: 'Automatically prioritizes free CLI tools, then encrypted API keys, then fallback credits. Optimizes for both speed and cost efficiency.'
   }
 ]
 
 const HOW_IT_WORKS = [
   {
     step: '01',
-    title: 'Connect your editor',
-    description: 'Install Polydev in Cursor, VS Code, or your favorite AI coding assistant in under 2 minutes.'
+    title: 'Initialize MCP connection',
+    description: 'Install Polydev MCP server in Cursor, Claude Code, or Continue. Automatic discovery of local CLI credentials and API keys.'
   },
   {
     step: '02',
-    title: 'Ask your question',
-    description: 'Type normally in your editor. When you need multiple perspectives, just mention @polydev.'
+    title: 'Query distributed models',
+    description: 'Submit prompts through your editor. Polydev routes to multiple models simultaneously, aggregating encrypted project context when needed.'
   },
   {
     step: '03',
-    title: 'Get all the answers',
-    description: 'Multiple AI models respond in parallel. Compare, choose, and keep coding without missing a beat.'
+    title: 'Compare and synthesize',
+    description: 'Review parallel responses from frontier models. Cross-validate architecture decisions and eliminate single-point cognitive failures.'
   }
 ]
 
@@ -162,31 +162,79 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32">
+      <section className="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-violet-50">
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.02)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+
+        {/* Floating model logos */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-10 w-12 h-12 opacity-10">
+            <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" fill className="object-contain" />
+          </div>
+          <div className="absolute top-32 right-20 w-10 h-10 opacity-10">
+            <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" fill className="object-contain" />
+          </div>
+          <div className="absolute bottom-40 left-20 w-14 h-14 opacity-10">
+            <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" fill className="object-contain" />
+          </div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-6 py-24 sm:py-32">
           <div className="text-center">
             <div className="mx-auto max-w-4xl">
-              <span className="inline-flex items-center rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-800 mb-8">
-                MCP server / editor native / parallel model replies
+              <span className="inline-flex items-center rounded-full bg-orange-100 border border-orange-200 px-4 py-1.5 text-sm font-mono text-orange-700 mb-8">
+                <span className="w-2 h-2 bg-orange-500 rounded-full mr-2 animate-pulse"></span>
+                MCP-native • Multi-model • Zero-knowledge memory
               </span>
-              <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl">
-                Get unstuck. Better answers, stronger design, same editor.
+              <h1 className="text-5xl font-bold tracking-tight text-slate-900 sm:text-6xl">
+                Distributed AI inference.<br />
+                <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">One interface.</span>
               </h1>
               <p className="mt-6 text-xl leading-8 text-slate-600 max-w-3xl mx-auto">
-                Polydev sends your prompt to several top models at once (GPT-5, Claude Opus 4, Gemini 2.5 Pro, Grok 4 High and more), adds just enough project context, and streams the results into the chat you already use.
+                Query GPT-5, Claude Opus 4, Gemini 2.5 Pro, and 340+ models simultaneously.
+                Compare outputs, cross-validate logic, eliminate single-model bias.
+                Built for production codebases that demand architectural precision.
               </p>
+
+              {/* Model logos showcase */}
+              <div className="mt-8 flex items-center justify-center gap-6">
+                <div className="flex items-center gap-3 text-sm text-slate-500">
+                  <span>Powered by:</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 relative">
+                      <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" fill className="object-contain" />
+                    </div>
+                    <div className="w-6 h-6 relative">
+                      <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" fill className="object-contain" />
+                    </div>
+                    <div className="w-6 h-6 relative">
+                      <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" fill className="object-contain" />
+                    </div>
+                    <div className="w-6 h-6 relative">
+                      <Image src="https://models.dev/logos/xai.svg" alt="xAI" fill className="object-contain" />
+                    </div>
+                    <span className="text-orange-600 font-medium">+37 providers</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-10 flex items-center justify-center gap-6">
                 <Link
                   href={isAuthenticated ? '/dashboard' : '/auth'}
-                  className="rounded-full bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-lg hover:bg-blue-500 transition-all duration-200 hover:scale-105"
+                  className="group relative overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-violet-500 px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-orange-500/25 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-105"
                 >
-                  {isAuthenticated ? 'Open Dashboard' : 'Start Free Trial'}
+                  {isAuthenticated ? 'Launch Console' : 'Initialize Workspace'}
                 </Link>
                 <Link
                   href="/docs"
-                  className="rounded-full border-2 border-slate-300 px-8 py-4 text-lg font-semibold text-slate-900 hover:bg-slate-50 transition-all duration-200"
+                  className="group rounded-full border-2 border-slate-200 bg-white/80 backdrop-blur-sm px-8 py-4 text-lg font-semibold text-slate-700 transition-all duration-300 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
                 >
-                  Watch Demo
+                  <span className="flex items-center gap-2">
+                    Architecture Docs
+                    <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
                 </Link>
               </div>
             </div>
@@ -194,33 +242,33 @@ export default function Home() {
 
           {/* Stats */}
           <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-3 lg:gap-16">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600">{modelStats.totalModels}+</div>
-              <div className="mt-2 text-lg text-slate-600">Models available</div>
+            <div className="text-center group">
+              <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">{modelStats.totalModels}+</div>
+              <div className="mt-2 text-lg text-slate-600 group-hover:text-orange-600 transition-colors">Models available</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600">{modelStats.totalProviders}+</div>
-              <div className="mt-2 text-lg text-slate-600">Providers supported</div>
+            <div className="text-center group">
+              <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">{modelStats.totalProviders}+</div>
+              <div className="mt-2 text-lg text-slate-600 group-hover:text-orange-600 transition-colors">Providers supported</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-blue-600">1.7 s</div>
-              <div className="mt-2 text-lg text-slate-600">Median response</div>
+            <div className="text-center group">
+              <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">1.7 s</div>
+              <div className="mt-2 text-lg text-slate-600 group-hover:text-orange-600 transition-colors">Median response</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Supported Editors */}
-      <section className="py-16 bg-slate-50">
+      <section className="py-16 bg-gradient-to-r from-orange-50 to-violet-50">
         <div className="mx-auto max-w-7xl px-6">
-          <p className="text-center text-lg text-slate-600 mb-12">Works seamlessly with your favorite coding tools</p>
+          <p className="text-center text-lg text-slate-600 mb-12">Native integrations with leading AI development environments</p>
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-6">
             {SUPPORTED_EDITORS.map((editor) => (
-              <div key={editor.name} className="flex flex-col items-center">
-                <div className="relative h-12 w-12 mb-3">
+              <div key={editor.name} className="group flex flex-col items-center p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-white/50 hover:border-orange-200 hover:bg-white/90 transition-all duration-300 hover:scale-105 hover:shadow-lg">
+                <div className="relative h-12 w-12 mb-3 transition-transform group-hover:scale-110">
                   <Image src={editor.logo} alt={`${editor.name} logo`} fill className="object-contain" />
                 </div>
-                <span className="text-sm font-medium text-slate-700">{editor.name}</span>
+                <span className="text-sm font-medium text-slate-700 group-hover:text-orange-600 transition-colors">{editor.name}</span>
               </div>
             ))}
           </div>
@@ -228,22 +276,24 @@ export default function Home() {
       </section>
 
       {/* Benefits */}
-      <section className="py-24 bg-white">
-        <div className="mx-auto max-w-7xl px-6">
+      <section className="py-24 bg-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.03),transparent)]"></div>
+        <div className="relative mx-auto max-w-7xl px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">
-              Why developers choose Polydev
+              Enterprise-grade AI infrastructure,<br />
+              <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">developer-first experience</span>
             </h2>
             <p className="mt-4 text-xl text-slate-600">
-              The fastest way to get multiple AI perspectives without the context switching
+              Built for teams who need reliable, auditable, and cost-effective AI integration
             </p>
           </div>
           <div className="grid gap-12 lg:grid-cols-3">
-            {BENEFITS.map((benefit) => (
-              <div key={benefit.title} className="text-center">
-                <div className="text-4xl mb-4">{benefit.icon}</div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{benefit.title}</h3>
-                <p className="text-lg text-slate-600">{benefit.description}</p>
+            {BENEFITS.map((benefit, index) => (
+              <div key={benefit.title} className="group text-center p-8 rounded-2xl bg-gradient-to-br from-white to-orange-50/30 border border-orange-100/50 hover:border-orange-200 transition-all duration-300 hover:scale-105 hover:shadow-xl">
+                <div className="text-5xl mb-6 group-hover:scale-110 transition-transform duration-300">{benefit.icon}</div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4 group-hover:text-orange-700 transition-colors">{benefit.title}</h3>
+                <p className="text-lg text-slate-600 leading-relaxed">{benefit.description}</p>
               </div>
             ))}
           </div>
@@ -251,35 +301,36 @@ export default function Home() {
       </section>
 
       {/* Top Models */}
-      <section className="py-24 bg-slate-50">
+      <section className="py-24 bg-gradient-to-br from-violet-50 via-white to-orange-50">
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">
-              Latest AI models, instantly available
+              State-of-the-art models,<br />
+              <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">zero configuration</span>
             </h2>
             <p className="mt-4 text-xl text-slate-600">
-              Access the newest and most powerful models as soon as they're released
+              Access frontier models the moment they're released. No API setup, no rate limits.
             </p>
           </div>
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {TOP_MODELS.map((model) => (
-              <div key={model.name} className="relative bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-lg transition-shadow">
+              <div key={model.name} className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/60 hover:border-orange-200 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/10">
                 {model.badge && (
-                  <span className={`absolute -top-2 -right-2 px-2 py-1 text-xs font-bold rounded-full ${
-                    model.badge === 'NEW' ? 'bg-green-100 text-green-800' :
-                    model.badge === 'POPULAR' ? 'bg-blue-100 text-blue-800' :
-                    'bg-orange-100 text-orange-800'
+                  <span className={`absolute -top-2 -right-2 px-3 py-1 text-xs font-bold rounded-full ${
+                    model.badge === 'NEW' ? 'bg-gradient-to-r from-emerald-400 to-emerald-500 text-white shadow-lg' :
+                    model.badge === 'POPULAR' ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-white shadow-lg' :
+                    'bg-gradient-to-r from-violet-400 to-violet-500 text-white shadow-lg'
                   }`}>
                     {model.badge}
                   </span>
                 )}
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="relative h-10 w-10">
+                  <div className="relative h-12 w-12 p-2 rounded-xl bg-white shadow-sm group-hover:shadow-md transition-shadow">
                     <Image src={model.logo} alt={`${model.provider} logo`} fill className="object-contain" />
                   </div>
-                  <span className="text-sm text-slate-600">{model.provider}</span>
+                  <span className="text-sm font-medium text-slate-500 group-hover:text-orange-600 transition-colors">{model.provider}</span>
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{model.name}</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-orange-700 transition-colors">{model.name}</h3>
                 <p className="text-slate-600">{model.description}</p>
               </div>
             ))}
@@ -288,24 +339,28 @@ export default function Home() {
       </section>
 
       {/* How it Works */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-gradient-to-br from-orange-50 via-white to-violet-50">
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">
-              How Polydev works
+              Production-ready in<br />
+              <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">under 5 minutes</span>
             </h2>
             <p className="mt-4 text-xl text-slate-600">
-              Get started in minutes, not hours
+              MCP-native architecture with zero infrastructure overhead
             </p>
           </div>
           <div className="grid gap-12 lg:grid-cols-3">
-            {HOW_IT_WORKS.map((step) => (
-              <div key={step.step} className="text-center">
-                <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl mb-6">
+            {HOW_IT_WORKS.map((step, index) => (
+              <div key={step.step} className="group text-center">
+                <div className="mx-auto w-20 h-20 bg-gradient-to-br from-orange-500 to-violet-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl mb-8 group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-orange-500/25">
                   {step.step}
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-4">{step.title}</h3>
-                <p className="text-lg text-slate-600">{step.description}</p>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4 group-hover:text-orange-700 transition-colors">{step.title}</h3>
+                <p className="text-lg text-slate-600 leading-relaxed">{step.description}</p>
+                {index < HOW_IT_WORKS.length - 1 && (
+                  <div className="hidden lg:block absolute top-10 left-1/2 w-24 h-0.5 bg-gradient-to-r from-orange-300 to-violet-300 transform translate-x-12"></div>
+                )}
               </div>
             ))}
           </div>
