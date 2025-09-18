@@ -34,61 +34,80 @@ const fetchModelsDevStats = async () => {
   }
 }
 
-const CLIENT_LOGOS = [
-  { name: 'Cursor', src: 'https://cdn.freelogovectors.net/wp-content/uploads/2025/06/cursor-logo-freelogovectors.net_.png' },
-  { name: 'Claude Code', src: 'https://sajalsharma.com/_astro/claude_code.GbHphWWe_Z29KFWg.webp.jpg' },
-  { name: 'Codex CLI', src: 'https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/openai-icon.png' },
-  { name: 'Continue', src: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIHtPAJsmkLkem2H02zTflsqpNC-V6kwIcEQ&s' },
-  { name: 'Cline', src: 'https://cline.bot/assets/branding/logos/cline-wordmark-black.svg' },
-  { name: 'Kilocode', src: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSZjLYpi_nnWwjHtQ9xoAzk1KVHXoqehPRE3Q&s' },
-  { name: 'Roo Code', src: 'https://pirago.vn/wp-content/uploads/2025/07/roo-code.webp' },
-  { name: 'Zed', src: 'https://zed.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_icon.d67dc948.webp&w=750&q=100' },
-  { name: 'OpenCode', src: 'https://pbs.twimg.com/profile_images/1965545550855720960/Jl7BzTSD_400x400.jpg' },
-  { name: 'Gemini CLI', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png' }
+const SUPPORTED_EDITORS = [
+  { name: 'Cursor', logo: 'https://cdn.freelogovectors.net/wp-content/uploads/2025/06/cursor-logo-freelogovectors.net_.png' },
+  { name: 'Claude Code', logo: 'https://sajalsharma.com/_astro/claude_code.GbHphWWe_Z29KFWg.webp.jpg' },
+  { name: 'Continue', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIHtPAJsmkLkem2H02zTflsqpNC-V6kwIcEQ&s' },
+  { name: 'Cline', logo: 'https://cline.bot/assets/branding/logos/cline-wordmark-black.svg' },
+  { name: 'Zed', logo: 'https://zed.dev/_next/image?url=%2F_next%2Fstatic%2Fmedia%2Flogo_icon.d67dc948.webp&w=750&q=100' },
+  { name: 'VS Code', logo: 'https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vscode/vscode-original.svg' }
 ]
 
-const LATEST_MODELS = [
-  { name: 'GPT-5', provider: 'OpenAI', src: 'https://models.dev/logos/openai.svg' },
-  { name: 'Claude Opus 4', provider: 'Anthropic', src: 'https://models.dev/logos/anthropic.svg' },
-  { name: 'Gemini 2.5 Pro', provider: 'Google', src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png' },
-  { name: 'Grok 4 High', provider: 'xAI', src: 'https://models.dev/logos/xai.svg' }
-]
-
-const WHY_POLYDEV = [
+const TOP_MODELS = [
   {
-    title: 'Stay in one window',
-    copy: 'Trigger Polydev from the same Cursor or Cline chat. No browser tab. No context paste.'
+    name: 'GPT-5',
+    provider: 'OpenAI',
+    logo: 'https://models.dev/logos/openai.svg',
+    description: 'Advanced reasoning and coding',
+    badge: 'NEW'
   },
   {
-    title: 'Hear every model',
-    copy: 'Polydev fires GPT-5, Opus 4, Gemini 2.5 Pro, Grok 4 High and your other picks at once. Responses stream raw.'
+    name: 'Claude Opus 4',
+    provider: 'Anthropic',
+    logo: 'https://models.dev/logos/anthropic.svg',
+    description: 'Best-in-class for complex tasks',
+    badge: 'POPULAR'
   },
   {
-    title: 'Spend on your terms',
-    copy: 'We try local CLIs first, then your API keys, then Polydev credits. Every run shows who paid.'
+    name: 'Gemini 2.5 Pro',
+    provider: 'Google',
+    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png',
+    description: '2M token context window',
+    badge: null
+  },
+  {
+    name: 'Grok 4 High',
+    provider: 'xAI',
+    logo: 'https://models.dev/logos/xai.svg',
+    description: 'High reasoning capabilities',
+    badge: 'HOT'
   }
 ]
 
-const ROUTING = [
+const BENEFITS = [
   {
-    title: '1. Prefer your CLIs',
-    copy: 'If Codex, Claude Code, or Gemini CLI are logged in, Polydev uses them instantly and for free.'
+    icon: '⚡',
+    title: 'Never switch contexts',
+    description: 'Get answers from multiple AI models without leaving your editor or breaking your flow.'
   },
   {
-    title: '2. Fall back to your keys',
-    copy: 'Encrypted OpenAI, Anthropic, Google, Groq, DeepSeek and more. Budgets and defaults live in the dashboard.'
+    icon: '🔄',
+    title: 'Compare responses instantly',
+    description: 'See GPT-5, Claude, Gemini, and others respond side-by-side to pick the best solution.'
   },
   {
-    title: '3. Safety net credits',
-    copy: 'Flip on Polydev credits when teammates have nothing set up or you are on a fresh machine.'
+    icon: '💰',
+    title: 'Smart cost optimization',
+    description: 'Uses your free CLI tools first, then API keys, then credits—saving you money automatically.'
   }
 ]
 
-const FLOW = [
-  { title: 'Ping Polydev mid chat', copy: 'One slash command from the editor. Same thread.' },
-  { title: 'We attach context', copy: 'Pick the folders once. Everything travels out encrypted when needed.' },
-  { title: 'Parallel replies land', copy: 'GPT-5, Opus 4, Gemini 2.5 Pro, Grok 4 High respond together with token + cost stats.' },
-  { title: 'You pick the winner', copy: 'Drop in the answer, ask follow-ups, or hand it to another model. Momentum stays high.' }
+const HOW_IT_WORKS = [
+  {
+    step: '01',
+    title: 'Connect your editor',
+    description: 'Install Polydev in Cursor, VS Code, or your favorite AI coding assistant in under 2 minutes.'
+  },
+  {
+    step: '02',
+    title: 'Ask your question',
+    description: 'Type normally in your editor. When you need multiple perspectives, just mention @polydev.'
+  },
+  {
+    step: '03',
+    title: 'Get all the answers',
+    description: 'Multiple AI models respond in parallel. Compare, choose, and keep coding without missing a beat.'
+  }
 ]
 
 export default function Home() {
@@ -102,129 +121,151 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-slate-200 bg-[radial-gradient(circle_at_top,_#e8f0ff,_#ffffff_55%)]">
-        <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-10 px-6 pb-24 pt-28">
-          <div className="space-y-5">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              MCP native / stays inside your editor / no tab juggling
-            </span>
-            <h1 className="text-4xl font-semibold leading-snug tracking-tight sm:text-5xl">
-              Stuck in Cursor or Claude? Polydev sends GPT-5, Claude Opus 4, Gemini 2.5 Pro, and Grok 4 High back into the same thread.
-            </h1>
-            <p className="text-lg text-slate-600">
-              One slash command fans out to the newest models and streams every response where you already work. No new UI, no copy/paste.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-4">
-            <Link
-              href={isAuthenticated ? '/dashboard' : '/auth'}
-              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-7 py-3 text-base font-semibold text-white shadow-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              {isAuthenticated ? 'Open dashboard' : 'Add Polydev to my editor'}
-            </Link>
-            <Link
-              href="/docs"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-7 py-3 text-base font-semibold text-slate-800 transition duration-200 hover:bg-slate-100"
-            >
-              See how it works
-            </Link>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="text-3xl font-semibold text-slate-900">{modelStats.totalModels}+</div>
-              <div className="mt-1 text-sm text-slate-500">Models plugged in</div>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="text-3xl font-semibold text-slate-900">{modelStats.totalProviders}+</div>
-              <div className="mt-1 text-sm text-slate-500">Providers supported</div>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="text-3xl font-semibold text-slate-900">1.7 s</div>
-              <div className="mt-1 text-sm text-slate-500">Median response time</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* MCP Logos */}
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto grid w-full max-w-[1080px] grid-cols-2 gap-4 px-6 py-12 sm:grid-cols-3 lg:grid-cols-5">
-          {CLIENT_LOGOS.map((client) => (
-            <div key={client.name} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
-              <div className="relative h-8 w-8 overflow-hidden rounded-lg">
-                <Image src={client.src} alt={`${client.name} logo`} fill sizes="32px" className="object-contain" />
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32">
+          <div className="text-center">
+            <div className="mx-auto max-w-4xl">
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-800 mb-8">
+                🚀 Works inside Cursor, VS Code, Claude, and more
+              </span>
+              <h1 className="text-5xl font-bold tracking-tight text-slate-900 sm:text-7xl">
+                Ask all the best AI models
+                <span className="text-blue-600"> at once</span>
+              </h1>
+              <p className="mt-6 text-xl leading-8 text-slate-600 max-w-3xl mx-auto">
+                Stop switching between ChatGPT, Claude, and Gemini. Get responses from GPT-5, Claude Opus 4, Gemini 2.5 Pro, and Grok 4 High in parallel—right inside your editor.
+              </p>
+              <div className="mt-10 flex items-center justify-center gap-6">
+                <Link
+                  href={isAuthenticated ? '/dashboard' : '/auth'}
+                  className="rounded-full bg-blue-600 px-8 py-4 text-lg font-semibold text-white shadow-lg hover:bg-blue-500 transition-all duration-200 hover:scale-105"
+                >
+                  {isAuthenticated ? 'Open Dashboard' : 'Start Free Trial'}
+                </Link>
+                <Link
+                  href="/docs"
+                  className="rounded-full border-2 border-slate-300 px-8 py-4 text-lg font-semibold text-slate-900 hover:bg-slate-50 transition-all duration-200"
+                >
+                  Watch Demo
+                </Link>
               </div>
-              <span className="text-sm font-medium text-slate-700">{client.name}</span>
             </div>
-          ))}
+          </div>
+
+          {/* Stats */}
+          <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-3 lg:gap-16">
+            <div className="text-center">
+              <div className="text-4xl font-bold text-blue-600">{modelStats.totalModels}+</div>
+              <div className="mt-2 text-lg text-slate-600">AI Models Ready</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-blue-600">1.7s</div>
+              <div className="mt-2 text-lg text-slate-600">Average Response</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-blue-600">10k+</div>
+              <div className="mt-2 text-lg text-slate-600">Developers Using</div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Why Polydev */}
-      <section className="bg-white py-18">
-        <div className="mx-auto w-full max-w-[1080px] px-6">
-          <h2 className="text-3xl font-semibold sm:text-4xl">Why teams plug in Polydev</h2>
-          <p className="mt-3 text-lg text-slate-600">Three simple reasons from day-one users.</p>
-          <div className="mt-10 grid gap-6 sm:grid-cols-3">
-            {WHY_POLYDEV.map((item) => (
-              <div key={item.title} className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900">{item.title}</h3>
-                <p className="mt-3 text-sm text-slate-600">{item.copy}</p>
+      {/* Supported Editors */}
+      <section className="py-16 bg-slate-50">
+        <div className="mx-auto max-w-7xl px-6">
+          <p className="text-center text-lg text-slate-600 mb-12">Works seamlessly with your favorite coding tools</p>
+          <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-6">
+            {SUPPORTED_EDITORS.map((editor) => (
+              <div key={editor.name} className="flex flex-col items-center">
+                <div className="relative h-12 w-12 mb-3">
+                  <Image src={editor.logo} alt={`${editor.name} logo`} fill className="object-contain" />
+                </div>
+                <span className="text-sm font-medium text-slate-700">{editor.name}</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Latest models */}
-      <section className="border-y border-slate-200 bg-[#f7f9ff] py-18">
-        <div className="mx-auto w-full max-w-[1080px] px-6">
-          <h2 className="text-3xl font-semibold sm:text-4xl">Latest models on tap</h2>
-          <p className="mt-3 text-lg text-slate-600">We keep the flagship releases ready so you do not chase docs.</p>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {LATEST_MODELS.map((model) => (
-              <div key={model.name} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="relative h-8 w-8">
-                    <Image src={model.src} alt={`${model.provider} logo`} fill sizes="32px" className="object-contain" />
+      {/* Benefits */}
+      <section className="py-24 bg-white">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">
+              Why developers choose Polydev
+            </h2>
+            <p className="mt-4 text-xl text-slate-600">
+              The fastest way to get multiple AI perspectives without the context switching
+            </p>
+          </div>
+          <div className="grid gap-12 lg:grid-cols-3">
+            {BENEFITS.map((benefit) => (
+              <div key={benefit.title} className="text-center">
+                <div className="text-4xl mb-4">{benefit.icon}</div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">{benefit.title}</h3>
+                <p className="text-lg text-slate-600">{benefit.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Top Models */}
+      <section className="py-24 bg-slate-50">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">
+              Latest AI models, instantly available
+            </h2>
+            <p className="mt-4 text-xl text-slate-600">
+              Access the newest and most powerful models as soon as they're released
+            </p>
+          </div>
+          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {TOP_MODELS.map((model) => (
+              <div key={model.name} className="relative bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-lg transition-shadow">
+                {model.badge && (
+                  <span className={`absolute -top-2 -right-2 px-2 py-1 text-xs font-bold rounded-full ${
+                    model.badge === 'NEW' ? 'bg-green-100 text-green-800' :
+                    model.badge === 'POPULAR' ? 'bg-blue-100 text-blue-800' :
+                    'bg-orange-100 text-orange-800'
+                  }`}>
+                    {model.badge}
+                  </span>
+                )}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="relative h-10 w-10">
+                    <Image src={model.logo} alt={`${model.provider} logo`} fill className="object-contain" />
                   </div>
                   <span className="text-sm text-slate-600">{model.provider}</span>
                 </div>
-                <div className="mt-4 text-lg font-semibold text-slate-900">{model.name}</div>
-                <p className="mt-2 text-sm text-slate-600">Streams side by side with the rest of your lineup.</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{model.name}</h3>
+                <p className="text-slate-600">{model.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Routing */}
-      <section className="bg-white py-18">
-        <div className="mx-auto w-full max-w-[1080px] px-6">
-          <h2 className="text-3xl font-semibold sm:text-4xl">How Polydev routes a request</h2>
-          <p className="mt-3 text-lg text-slate-600">Fast first, cheap second, safety third.</p>
-          <div className="mt-10 grid gap-6 lg:grid-cols-3">
-            {ROUTING.map((item) => (
-              <div key={item.title} className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900">{item.title}</h3>
-                <p className="mt-3 text-sm text-slate-600">{item.copy}</p>
-              </div>
-            ))}
+      {/* How it Works */}
+      <section className="py-24 bg-white">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">
+              How Polydev works
+            </h2>
+            <p className="mt-4 text-xl text-slate-600">
+              Get started in minutes, not hours
+            </p>
           </div>
-        </div>
-      </section>
-
-      {/* Flow */}
-      <section className="border-t border-slate-200 bg-[#f7f9ff] py-18">
-        <div className="mx-auto w-full max-w-[1080px] px-6">
-          <h2 className="text-3xl font-semibold sm:text-4xl">How it feels in the editor</h2>
-          <div className="mt-10 grid gap-6 lg:grid-cols-4">
-            {FLOW.map((step) => (
-              <div key={step.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-900">{step.title}</h3>
-                <p className="mt-3 text-sm text-slate-600">{step.copy}</p>
+          <div className="grid gap-12 lg:grid-cols-3">
+            {HOW_IT_WORKS.map((step) => (
+              <div key={step.step} className="text-center">
+                <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl mb-6">
+                  {step.step}
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-4">{step.title}</h3>
+                <p className="text-lg text-slate-600">{step.description}</p>
               </div>
             ))}
           </div>
@@ -232,24 +273,31 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="border-t border-slate-200 bg-white py-24">
-        <div className="mx-auto flex w-full max-w-[580px] flex-col items-center gap-6 px-6 text-center">
-          <h2 className="text-3xl font-semibold sm:text-4xl">Give your editor a safety net.</h2>
-          <p className="text-lg text-slate-600">100 free runs on day one. Unlimited for 20 dollars a month when you are ready. Hosted MCP, local bridge, and dashboards included.</p>
-          <div className="flex flex-col gap-4 sm:flex-row">
+      <section className="py-24 bg-blue-600">
+        <div className="mx-auto max-w-4xl px-6 text-center">
+          <h2 className="text-4xl font-bold text-white sm:text-5xl">
+            Ready to supercharge your coding?
+          </h2>
+          <p className="mt-6 text-xl text-blue-100">
+            Join thousands of developers who are already using Polydev to get better AI responses faster.
+          </p>
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6">
             <Link
               href={isAuthenticated ? '/dashboard' : '/auth'}
-              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-8 py-3 text-base font-semibold text-white shadow-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-xl"
+              className="rounded-full bg-white px-8 py-4 text-lg font-semibold text-blue-600 shadow-lg hover:bg-slate-50 transition-all duration-200 hover:scale-105"
             >
-              {isAuthenticated ? 'Back to dashboard' : 'Create workspace'}
+              {isAuthenticated ? 'Go to Dashboard' : 'Start Free Trial'}
             </Link>
             <Link
               href="/pricing"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-8 py-3 text-base font-semibold text-slate-800 transition duration-200 hover:bg-slate-100"
+              className="rounded-full border-2 border-white px-8 py-4 text-lg font-semibold text-white hover:bg-white hover:text-blue-600 transition-all duration-200"
             >
-              View pricing
+              View Pricing
             </Link>
           </div>
+          <p className="mt-6 text-sm text-blue-200">
+            ✨ 100 free queries to get started • No credit card required • Cancel anytime
+          </p>
         </div>
       </section>
     </div>
