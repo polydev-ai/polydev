@@ -100,78 +100,78 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#04060d] text-white">
+    <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-white/10 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.35),rgba(4,6,13,0.95))]">
-        <div className="mx-auto flex max-w-[1100px] flex-col gap-10 px-6 pb-24 pt-28">
-          <div className="space-y-6">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-wide text-white/80">
-              No context switching · MCP native · Lives in your editor
+      <section className="relative overflow-hidden border-b border-slate-200 bg-[radial-gradient(circle_at_top,_#e8f0ff,_#ffffff_55%)]">
+        <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-10 px-6 pb-24 pt-28">
+          <div className="space-y-5">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              MCP native / stays inside your editor / no tab juggling
             </span>
-            <h1 className="text-4xl font-semibold leading-tight sm:text-5xl">
-              Cursor stalled? Claude wandered? Polydev blasts GPT-5, Opus 4, Gemini 2.5 Pro, Grok 4 High back into the same chat.
+            <h1 className="text-4xl font-semibold leading-snug tracking-tight sm:text-5xl">
+              Stuck in Cursor or Claude? Polydev sends GPT-5, Claude Opus 4, Gemini 2.5 Pro, and Grok 4 High back into the same thread.
             </h1>
-            <p className="text-lg text-white/75">
-              One command fans out to every model you trust and streams the raw answers right where you are typing.
+            <p className="text-lg text-slate-600">
+              One slash command fans out to the newest models and streams every response where you already work. No new UI, no copy/paste.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-4 text-sm text-white/70">
+          <div className="flex flex-wrap gap-4">
             <Link
               href={isAuthenticated ? '/dashboard' : '/auth'}
-              className="inline-flex items-center justify-center rounded-full bg-white px-7 py-3 text-base font-semibold text-slate-900 shadow-lg shadow-slate-900/30 transition duration-200 hover:-translate-y-0.5 hover:shadow-xl"
+              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-7 py-3 text-base font-semibold text-white shadow-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-xl"
             >
-              {isAuthenticated ? 'Open dashboard' : 'Plug Polydev into my editor'}
+              {isAuthenticated ? 'Open dashboard' : 'Add Polydev to my editor'}
             </Link>
             <Link
               href="/docs"
-              className="inline-flex items-center justify-center rounded-full border border-white/25 px-7 py-3 text-base font-semibold text-white transition duration-200 hover:bg-white/10"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-7 py-3 text-base font-semibold text-slate-800 transition duration-200 hover:bg-slate-100"
             >
-              Watch the quick tour
+              See how it works
             </Link>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-3xl border border-white/15 bg-white/10 p-5">
-              <div className="text-3xl font-semibold text-white">{modelStats.totalModels}+</div>
-              <div className="mt-1 text-sm text-white/70">Models wired in</div>
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-3xl font-semibold text-slate-900">{modelStats.totalModels}+</div>
+              <div className="mt-1 text-sm text-slate-500">Models plugged in</div>
             </div>
-            <div className="rounded-3xl border border-white/15 bg-white/10 p-5">
-              <div className="text-3xl font-semibold text-white">{modelStats.totalProviders}+</div>
-              <div className="mt-1 text-sm text-white/70">Providers ready</div>
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-3xl font-semibold text-slate-900">{modelStats.totalProviders}+</div>
+              <div className="mt-1 text-sm text-slate-500">Providers supported</div>
             </div>
-            <div className="rounded-3xl border border-white/15 bg-white/10 p-5">
-              <div className="text-3xl font-semibold text-white">1.7 s</div>
-              <div className="mt-1 text-sm text-white/70">Median response</div>
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-3xl font-semibold text-slate-900">1.7 s</div>
+              <div className="mt-1 text-sm text-slate-500">Median response time</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* MCP Logos */}
-      <section className="border-b border-white/10 bg-[#090c16]">
-        <div className="mx-auto grid max-w-[1100px] grid-cols-2 gap-4 px-6 py-12 sm:grid-cols-3 lg:grid-cols-5">
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto grid w-full max-w-[1080px] grid-cols-2 gap-4 px-6 py-12 sm:grid-cols-3 lg:grid-cols-5">
           {CLIENT_LOGOS.map((client) => (
-            <div key={client.name} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur">
+            <div key={client.name} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
               <div className="relative h-8 w-8 overflow-hidden rounded-lg">
                 <Image src={client.src} alt={`${client.name} logo`} fill sizes="32px" className="object-contain" />
               </div>
-              <span className="text-sm font-medium text-white/80">{client.name}</span>
+              <span className="text-sm font-medium text-slate-700">{client.name}</span>
             </div>
           ))}
         </div>
       </section>
 
       {/* Why Polydev */}
-      <section className="bg-[#04060d] py-18">
-        <div className="mx-auto max-w-[1100px] px-6">
-          <h2 className="text-3xl font-semibold sm:text-4xl">Why Polydev</h2>
-          <p className="mt-3 text-lg text-white/70">Short reasons from actual builders.</p>
+      <section className="bg-white py-18">
+        <div className="mx-auto w-full max-w-[1080px] px-6">
+          <h2 className="text-3xl font-semibold sm:text-4xl">Why teams plug in Polydev</h2>
+          <p className="mt-3 text-lg text-slate-600">Three simple reasons from day-one users.</p>
           <div className="mt-10 grid gap-6 sm:grid-cols-3">
             {WHY_POLYDEV.map((item) => (
-              <div key={item.title} className="rounded-3xl border border-white/10 bg-white/8 p-7 backdrop-blur">
-                <h3 className="text-lg font-semibold text-white">{item.title}</h3>
-                <p className="mt-3 text-sm text-white/70">{item.copy}</p>
+              <div key={item.title} className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900">{item.title}</h3>
+                <p className="mt-3 text-sm text-slate-600">{item.copy}</p>
               </div>
             ))}
           </div>
@@ -179,21 +179,21 @@ export default function Home() {
       </section>
 
       {/* Latest models */}
-      <section className="border-y border-white/10 bg-[#090c16] py-18">
-        <div className="mx-auto max-w-[1100px] px-6">
-          <h2 className="text-3xl font-semibold sm:text-4xl">The new releases are already inside.</h2>
-          <p className="mt-3 text-lg text-white/70">No more chasing docs. Just pick the model and send.</p>
+      <section className="border-y border-slate-200 bg-[#f7f9ff] py-18">
+        <div className="mx-auto w-full max-w-[1080px] px-6">
+          <h2 className="text-3xl font-semibold sm:text-4xl">Latest models on tap</h2>
+          <p className="mt-3 text-lg text-slate-600">We keep the flagship releases ready so you do not chase docs.</p>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {LATEST_MODELS.map((model) => (
-              <div key={model.name} className="rounded-3xl border border-white/10 bg-white/8 p-6 backdrop-blur">
+              <div key={model.name} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="relative h-8 w-8">
                     <Image src={model.src} alt={`${model.provider} logo`} fill sizes="32px" className="object-contain" />
                   </div>
-                  <span className="text-sm text-white/75">{model.provider}</span>
+                  <span className="text-sm text-slate-600">{model.provider}</span>
                 </div>
-                <div className="mt-4 text-lg font-semibold text-white">{model.name}</div>
-                <p className="mt-2 text-sm text-white/65">Streams side by side with your other picks.</p>
+                <div className="mt-4 text-lg font-semibold text-slate-900">{model.name}</div>
+                <p className="mt-2 text-sm text-slate-600">Streams side by side with the rest of your lineup.</p>
               </div>
             ))}
           </div>
@@ -201,14 +201,15 @@ export default function Home() {
       </section>
 
       {/* Routing */}
-      <section className="bg-[#04060d] py-18">
-        <div className="mx-auto max-w-[1100px] px-6">
-          <h2 className="text-3xl font-semibold sm:text-4xl">Routing order that keeps spend sane.</h2>
+      <section className="bg-white py-18">
+        <div className="mx-auto w-full max-w-[1080px] px-6">
+          <h2 className="text-3xl font-semibold sm:text-4xl">How Polydev routes a request</h2>
+          <p className="mt-3 text-lg text-slate-600">Fast first, cheap second, safety third.</p>
           <div className="mt-10 grid gap-6 lg:grid-cols-3">
             {ROUTING.map((item) => (
-              <div key={item.title} className="rounded-3xl border border-white/10 bg-white/8 p-7 backdrop-blur">
-                <h3 className="text-lg font-semibold text-white">{item.title}</h3>
-                <p className="mt-3 text-sm text-white/70">{item.copy}</p>
+              <div key={item.title} className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900">{item.title}</h3>
+                <p className="mt-3 text-sm text-slate-600">{item.copy}</p>
               </div>
             ))}
           </div>
@@ -216,14 +217,14 @@ export default function Home() {
       </section>
 
       {/* Flow */}
-      <section className="border-t border-white/10 bg-[#090c16] py-18">
-        <div className="mx-auto max-w-[1100px] px-6">
-          <h2 className="text-3xl font-semibold sm:text-4xl">Four beats from stuck to shipped.</h2>
+      <section className="border-t border-slate-200 bg-[#f7f9ff] py-18">
+        <div className="mx-auto w-full max-w-[1080px] px-6">
+          <h2 className="text-3xl font-semibold sm:text-4xl">How it feels in the editor</h2>
           <div className="mt-10 grid gap-6 lg:grid-cols-4">
             {FLOW.map((step) => (
-              <div key={step.title} className="rounded-3xl border border-white/10 bg-white/8 p-6 backdrop-blur">
-                <h3 className="text-base font-semibold text-white">{step.title}</h3>
-                <p className="mt-3 text-sm text-white/70">{step.copy}</p>
+              <div key={step.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-base font-semibold text-slate-900">{step.title}</h3>
+                <p className="mt-3 text-sm text-slate-600">{step.copy}</p>
               </div>
             ))}
           </div>
@@ -231,20 +232,20 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="border-t border-white/10 bg-[#04060d] py-24">
-        <div className="mx-auto max-w-[600px] px-6 text-center">
-          <h2 className="text-3xl font-semibold sm:text-4xl">Give your editor a panic button.</h2>
-          <p className="mt-4 text-lg text-white/75">100 free runs on day one. Unlimited for 20 dollars a month when you are ready. Hosted MCP, local bridge, and dashboards included.</p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+      <section className="border-t border-slate-200 bg-white py-24">
+        <div className="mx-auto flex w-full max-w-[580px] flex-col items-center gap-6 px-6 text-center">
+          <h2 className="text-3xl font-semibold sm:text-4xl">Give your editor a safety net.</h2>
+          <p className="text-lg text-slate-600">100 free runs on day one. Unlimited for 20 dollars a month when you are ready. Hosted MCP, local bridge, and dashboards included.</p>
+          <div className="flex flex-col gap-4 sm:flex-row">
             <Link
               href={isAuthenticated ? '/dashboard' : '/auth'}
-              className="inline-flex items-center justify-center rounded-full bg-white px-8 py-3 text-base font-semibold text-slate-900 shadow-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-xl"
+              className="inline-flex items-center justify-center rounded-full bg-slate-900 px-8 py-3 text-base font-semibold text-white shadow-lg transition duration-200 hover:-translate-y-0.5 hover:shadow-xl"
             >
               {isAuthenticated ? 'Back to dashboard' : 'Create workspace'}
             </Link>
             <Link
               href="/pricing"
-              className="inline-flex items-center justify-center rounded-full border border-white/25 px-8 py-3 text-base font-semibold text-white transition duration-200 hover:bg-white/10"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-8 py-3 text-base font-semibold text-slate-800 transition duration-200 hover:bg-slate-100"
             >
               View pricing
             </Link>
