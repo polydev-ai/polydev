@@ -1,11 +1,26 @@
-# Cursor
+# **Cursor**
 
-Use the hosted MCP endpoint with a user token or run the local bridge and point Cursor at it.
+Add Polydev to Cursor.
 
-- Generate a token in the dashboard
-- Set Authorization: Bearer poly_...
-- Call JSON-RPC tools/call with get_perspectives
+## **Setup**
 
-## Gotchas
-- Cursor updates config on restart; fully quit/reopen if changes don't apply.
-- Large outputs can be truncated in the panel; prefer streaming and copy logs.
+**1. Open Cursor settings** → MCP Servers
+
+**2. Add configuration:**
+
+```json
+{
+  "polydev": {
+    "command": "node",
+    "args": ["/path/to/polydev-ai/mcp/server.js"]
+  }
+}
+```
+
+**3. Restart Cursor**
+
+## **Test**
+
+Ask Cursor: *"Get multiple AI perspectives on this architecture"*
+
+Done.
