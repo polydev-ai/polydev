@@ -799,15 +799,15 @@ export default function Home() {
                     <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-200/30 mb-4">
                       <span className="text-sm font-medium text-blue-600">Step 1</span>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-3">Ask once, get multiple answers</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">MCP auto-detects when you're stuck</h3>
                     <p className="text-gray-600 leading-relaxed">
-                      Type your question in Claude Code, Cursor, or Cline. Instead of one model's opinion, you get perspectives from GPT-4, Claude, Gemini, and more—all at once.
+                      When you're debugging or need help in Claude Code, Cursor, or Cline, your MCP client automatically sends context to Polydev. No manual requests—it just works when you need it.
                     </p>
                   </div>
                 </div>
                 <div className="flex-shrink-0">
                   <div className="relative w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-2xl text-white shadow-lg">
-                    💬
+                    🔮
                     <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 animate-pulse"></div>
                   </div>
                 </div>
@@ -823,7 +823,7 @@ export default function Home() {
                 </div>
                 <div className="flex-shrink-0">
                   <div className="relative w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center text-2xl text-white shadow-lg">
-                    🔍
+                    🧩
                     <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 animate-pulse"></div>
                   </div>
                 </div>
@@ -853,7 +853,7 @@ export default function Home() {
                 </div>
                 <div className="flex-shrink-0">
                   <div className="relative w-16 h-16 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-2xl text-white shadow-lg">
-                    ⚖️
+                    🎯
                     <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-500/20 animate-pulse"></div>
                   </div>
                 </div>
@@ -867,17 +867,17 @@ export default function Home() {
           {/* Key Benefits - Modern Horizontal Layout */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             <div className="group p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100/50 hover:shadow-lg transition-all duration-300">
-              <div className="text-3xl mb-4">🎯</div>
+              <div className="text-3xl mb-4">🚀</div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Better solutions</h3>
               <p className="text-gray-600 text-sm">Different models excel at different things. Get the best of each without the hassle.</p>
             </div>
             <div className="group p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100/50 hover:shadow-lg transition-all duration-300">
-              <div className="text-3xl mb-4">⚡</div>
+              <div className="text-3xl mb-4">🌊</div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Stay in flow</h3>
               <p className="text-gray-600 text-sm">No tab switching, no copy-pasting. Everything happens right in your editor.</p>
             </div>
             <div className="group p-6 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100/50 hover:shadow-lg transition-all duration-300">
-              <div className="text-3xl mb-4">🧠</div>
+              <div className="text-3xl mb-4">🧬</div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Remembers context</h3>
               <p className="text-gray-600 text-sm">Picks up where you left off, even across sessions. No more explaining your project every time.</p>
             </div>
@@ -930,7 +930,7 @@ export default function Home() {
               <span className="text-sm font-medium text-slate-600">Live Examples</span>
             </div>
             <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight stagger-fade-in">
-              See multiple models{' '}
+              See polydev{' '}
               <span className="bg-gradient-to-r from-slate-700 via-orange-600 to-violet-600 bg-clip-text text-transparent animate-gradient">
                 in action
               </span>
@@ -1633,50 +1633,51 @@ export default function Home() {
             <div className="absolute inset-0 bg-gradient-to-br from-slate-50/30 via-white/50 to-orange-50/30 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
             <div className="relative">
-              <h3 className="text-3xl font-bold text-slate-900 text-center mb-10 group-hover:text-slate-800 transition-colors">
-                Perfect for every{' '}
+              <h3 className="text-3xl font-bold text-slate-900 text-center mb-12 group-hover:text-slate-800 transition-colors">
+                When coding gets{' '}
                 <span className="bg-gradient-to-r from-slate-700 to-orange-600 bg-clip-text text-transparent">
-                  development scenario
+                  complicated
                 </span>
               </h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                  </svg>
+
+              {/* Modern Hexagonal Layout */}
+              <div className="relative max-w-4xl mx-auto">
+                {/* Central connector */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-orange-100/30 to-violet-100/30 backdrop-blur-sm"></div>
                 </div>
-                <h4 className="text-lg font-semibold text-slate-900 mb-2">Code Reviews</h4>
-                <p className="text-sm text-slate-600">Get multiple perspectives on code quality, security, and performance optimizations</p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+
+                {/* Hexagonal arrangement */}
+                <div className="grid grid-cols-2 gap-12 lg:gap-16">
+                  {/* Bug Hunts */}
+                  <div className="relative group p-6 rounded-2xl bg-gradient-to-br from-red-50/80 to-pink-50/80 border border-red-100/50 hover:border-red-200/70 transition-all duration-300 hover:scale-105">
+                    <div className="text-4xl mb-4">🕵️</div>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Bug Hunts</h4>
+                    <p className="text-sm text-slate-600">When your code works on your machine but fails in production—get different debugging strategies from multiple angles</p>
+                  </div>
+
+                  {/* Code Surgery */}
+                  <div className="relative group p-6 rounded-2xl bg-gradient-to-br from-blue-50/80 to-cyan-50/80 border border-blue-100/50 hover:border-blue-200/70 transition-all duration-300 hover:scale-105">
+                    <div className="text-4xl mb-4">🔧</div>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Code Surgery</h4>
+                    <p className="text-sm text-slate-600">Legacy refactoring and critical fixes—see how different models approach the same gnarly codebase</p>
+                  </div>
+
+                  {/* System Design */}
+                  <div className="relative group p-6 rounded-2xl bg-gradient-to-br from-purple-50/80 to-indigo-50/80 border border-purple-100/50 hover:border-purple-200/70 transition-all duration-300 hover:scale-105">
+                    <div className="text-4xl mb-4">🏗️</div>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">System Design</h4>
+                    <p className="text-sm text-slate-600">Scaling challenges and architecture decisions—compare trade-offs from models with different strengths</p>
+                  </div>
+
+                  {/* Learning Curves */}
+                  <div className="relative group p-6 rounded-2xl bg-gradient-to-br from-green-50/80 to-emerald-50/80 border border-green-100/50 hover:border-green-200/70 transition-all duration-300 hover:scale-105">
+                    <div className="text-4xl mb-4">📈</div>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Learning Curves</h4>
+                    <p className="text-sm text-slate-600">New frameworks, unfamiliar patterns—get explanations tailored to your experience level from different perspectives</p>
+                  </div>
                 </div>
-                <h4 className="text-lg font-semibold text-slate-900 mb-2">Debugging</h4>
-                <p className="text-sm text-slate-600">Compare different debugging approaches and catch edge cases faster</p>
               </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                </div>
-                <h4 className="text-lg font-semibold text-slate-900 mb-2">Architecture</h4>
-                <p className="text-sm text-slate-600">Design better systems with consensus from multiple models</p>
-              </div>
-              <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <h4 className="text-lg font-semibold text-slate-900 mb-2">Learning</h4>
-                <p className="text-sm text-slate-600">Understand concepts faster with explanations from different model perspectives</p>
-              </div>
-            </div>
           </div>
         </div>
         </div>
