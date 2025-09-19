@@ -529,7 +529,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
+      <section className="relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
         {/* Sophisticated background patterns */}
         <div className="absolute inset-0">
           {/* Main gradient mesh */}
@@ -563,7 +563,7 @@ export default function Home() {
           <div className="absolute top-2/3 right-1/4 w-1 h-1 bg-violet-400/40 rounded-full animate-ping hidden sm:block" style={{animationDelay: '1s'}}></div>
         </div>
 
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-4">
           <div className="text-center">
             <div className="mx-auto max-w-5xl">
               {/* Sophisticated status indicator */}
@@ -640,21 +640,35 @@ export default function Home() {
 
               {/* Sophisticated action buttons */}
               <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-6 px-4">
-                <Link
-                  href={isMounted && isAuthenticated ? '/dashboard' : '/auth'}
-                  className="group relative w-full sm:w-auto"
-                >
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500"></div>
-                  <div className="relative px-8 py-4 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl text-white font-semibold text-lg transition-all duration-300 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                    <span className="relative flex items-center justify-center gap-2">
-                      {isMounted && isAuthenticated ? 'Launch Console' : 'Start Building'}
-                      <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </span>
+                {isMounted ? (
+                  <Link
+                    href={isAuthenticated ? '/dashboard' : '/auth'}
+                    className="group relative w-full sm:w-auto"
+                  >
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500"></div>
+                    <div className="relative px-8 py-4 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl text-white font-semibold text-lg transition-all duration-300 overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                      <span className="relative flex items-center justify-center gap-2">
+                        {isAuthenticated ? 'Launch Console' : 'Start Building'}
+                        <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </span>
+                    </div>
+                  </Link>
+                ) : (
+                  <div className="group relative w-full sm:w-auto">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl blur opacity-30"></div>
+                    <div className="relative px-8 py-4 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl text-white font-semibold text-lg">
+                      <span className="relative flex items-center justify-center gap-2">
+                        Start Building
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </span>
+                    </div>
                   </div>
-                </Link>
+                )}
 
                 <Link
                   href="/docs"
@@ -702,7 +716,7 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="relative py-8 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
+      <section className="relative py-4 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
           <div className="absolute top-20 right-1/4 w-80 h-80 bg-gradient-to-br from-orange-100/30 to-violet-100/30 rounded-full blur-3xl animate-float-delayed"></div>
@@ -849,7 +863,7 @@ export default function Home() {
       </section>
 
       {/* Dynamic Code Examples */}
-      <section className="py-8 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
+      <section className="py-4 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
         {/* Enhanced background elements */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.04),transparent_60%)]"></div>
@@ -1127,7 +1141,7 @@ export default function Home() {
       </section>
 
       {/* Free CLI Usage Section */}
-      <section className="relative py-8 bg-gradient-to-br from-white via-slate-50/20 to-white overflow-hidden">
+      <section className="relative py-4 bg-gradient-to-br from-white via-slate-50/20 to-white overflow-hidden">
         {/* Enhanced background elements with more sophistication */}
         <div className="absolute inset-0">
           <div className="absolute top-16 left-1/4 w-80 h-80 bg-gradient-to-br from-green-100/25 to-blue-100/25 rounded-full blur-3xl animate-sophisticated-float"></div>
@@ -1618,7 +1632,7 @@ export default function Home() {
       </section>
 
       {/* Developer Benefits */}
-      <section className="py-8 bg-white">
+      <section className="py-4 bg-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
@@ -1714,7 +1728,7 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section className="py-8 sm:py-10 bg-gradient-to-br from-orange-50 to-violet-50 border-t border-slate-200">
+      <section className="py-4 sm:py-10 bg-gradient-to-br from-orange-50 to-violet-50 border-t border-slate-200">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 text-center">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 mb-4">Simple, transparent pricing</h2>
           <p className="text-lg sm:text-xl text-slate-600 mb-8 sm:mb-12 px-4">
@@ -1796,19 +1810,25 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="py-8 bg-gradient-to-br from-orange-50 via-white to-violet-50">
+      <section className="py-4 bg-gradient-to-br from-orange-50 via-white to-violet-50">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">Give your editor a safety net</h2>
           <p className="mt-6 text-xl text-slate-600">
             Never get blocked by single model limitations again.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6">
-            <Link
-              href={isMounted && isAuthenticated ? '/dashboard' : '/auth'}
-              className="group relative overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-violet-500 px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-orange-500/25 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-105"
-            >
-              {isMounted && isAuthenticated ? 'Open Dashboard' : 'Create Workspace'}
-            </Link>
+            {isMounted ? (
+              <Link
+                href={isAuthenticated ? '/dashboard' : '/auth'}
+                className="group relative overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-violet-500 px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-orange-500/25 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-105"
+              >
+                {isAuthenticated ? 'Open Dashboard' : 'Create Workspace'}
+              </Link>
+            ) : (
+              <div className="rounded-full bg-gradient-to-r from-orange-500 to-violet-500 px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-orange-500/25">
+                Create Workspace
+              </div>
+            )}
             <Link
               href="/pricing"
               className="group rounded-full border-2 border-slate-200 bg-white/80 backdrop-blur-sm px-8 py-4 text-lg font-semibold text-slate-700 transition-all duration-300 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
