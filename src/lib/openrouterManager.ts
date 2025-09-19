@@ -106,7 +106,7 @@ export class OpenRouterManager {
       const supabase = await createClient()
       const { data: userCredits, error } = await supabase
         .from('user_credits')
-        .select('balance')
+        .select('balance, promotional_balance')
         .eq('user_id', userId)
         .single()
 
@@ -120,15 +120,17 @@ export class OpenRouterManager {
         }
       }
 
-      const balance = parseFloat(userCredits.balance.toString())
-      const hasCredits = balance > 0
-      const canAfford = balance >= estimatedCost
+      const regularBalance = parseFloat(userCredits.balance?.toString() || '0')
+      const promotionalBalance = parseFloat(userCredits.promotional_balance?.toString() || '0')
+      const totalBalance = regularBalance + promotionalBalance
+      const hasCredits = totalBalance > 0
+      const canAfford = totalBalance >= estimatedCost
 
-      console.log(`[OpenRouter Manager] Credit check result - Balance: $${balance}, Can afford: ${canAfford}`)
+      console.log(`[OpenRouter Manager] Credit check result - Regular: $${regularBalance}, Promotional: $${promotionalBalance}, Total: $${totalBalance}, Can afford: ${canAfford}`)
 
       return {
         hasCredits,
-        balance,
+        balance: totalBalance,
         canAfford,
         estimatedCost
       }
@@ -437,7 +439,7 @@ export class OpenRouterManager {
       // Get current balance
       const { data: userCredits } = await supabase
         .from('user_credits')
-        .select('balance, total_spent')
+        .select('balance, promotional_balance, total_spent')
         .eq('user_id', userId)
         .single()
 
@@ -445,14 +447,30 @@ export class OpenRouterManager {
         throw new Error('User credits record not found')
       }
 
-      const newBalance = Math.max(0, userCredits.balance - actualCost)
+      const regularBalance = parseFloat(userCredits.balance?.toString() || '0')
+      const promotionalBalance = parseFloat(userCredits.promotional_balance?.toString() || '0')
       const newTotalSpent = (userCredits.total_spent || 0) + actualCost
 
-      // Update balance and total spent
+      // Deduct from promotional balance first, then regular balance
+      let newPromotionalBalance = promotionalBalance
+      let newRegularBalance = regularBalance
+
+      if (actualCost <= promotionalBalance) {
+        // Cost covered entirely by promotional balance
+        newPromotionalBalance = promotionalBalance - actualCost
+      } else {
+        // Use all promotional balance, then deduct remainder from regular balance
+        const remainingCost = actualCost - promotionalBalance
+        newPromotionalBalance = 0
+        newRegularBalance = Math.max(0, regularBalance - remainingCost)
+      }
+
+      // Update balances and total spent
       const { error: updateError } = await supabase
         .from('user_credits')
         .update({
-          balance: newBalance,
+          balance: newRegularBalance,
+          promotional_balance: newPromotionalBalance,
           total_spent: newTotalSpent,
           updated_at: new Date().toISOString()
         })
@@ -463,7 +481,7 @@ export class OpenRouterManager {
         throw new Error('Failed to update credit balance')
       }
 
-      console.log(`[OpenRouter Manager] Deducted $${actualCost} from user ${userId}. New balance: $${newBalance}`)
+      console.log(`[OpenRouter Manager] Deducted $${actualCost} from user ${userId}. New balances - Regular: $${newRegularBalance}, Promotional: $${newPromotionalBalance}`)
 
     } catch (error) {
       console.error('[OpenRouter Manager] Error deducting credits:', error)

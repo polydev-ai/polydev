@@ -78,7 +78,42 @@ async function callLLMAPI(
   }
   
   const data = await response.json()
-  
+
+  // CRITICAL FIX: Check if this is a GPT-5 response from /responses endpoint
+  // The /responses endpoint returns a different format than /chat/completions
+  if (model?.includes('gpt-5') || requestConfig.url?.includes('/responses')) {
+    console.log(`[MCP] GPT-5 /responses endpoint detected, extracting content properly`)
+    console.log(`[MCP DEBUG] GPT-5 response data structure:`, {
+      hasChoices: !!data.choices,
+      hasMessage: !!data.choices?.[0]?.message,
+      hasContent: !!data.choices?.[0]?.message?.content
+    })
+
+    // Check if it's the standard chat completion format (which GPT-5 now uses)
+    if (data.choices?.[0]?.message?.content) {
+      console.log(`[MCP] Extracting content from GPT-5 standard format`)
+      return {
+        content: data.choices[0].message.content,
+        tokens_used: data.usage?.total_tokens || 0
+      }
+    }
+
+    // Fallback: handle legacy GPT-5 /responses format
+    if (data.output_text) {
+      return {
+        content: data.output_text,
+        tokens_used: data.usage?.total_tokens || 0
+      }
+    }
+
+    // ERROR: This is where the bug was! We were returning stringified JSON as content
+    console.error(`[MCP] ERROR: GPT-5 response format not recognized, data:`, data)
+    return {
+      content: 'Error: Unable to parse GPT-5 response',
+      tokens_used: data.usage?.total_tokens || 0
+    }
+  }
+
   // Parse response based on provider format (use actualModel if available)
   const modelForParsing = requestConfig.actualModel || model
   return parseResponse(providerConfig.provider_name, data, modelForParsing)
@@ -249,13 +284,22 @@ function buildRequestConfig(
 // Extract text content from GPT-5 Responses API object structure
 function extractGPT5Text(data: any): string {
   if (!data) return '';
-  
-  // 1) Use convenience field if present
+
+  // 1) Check standard OpenAI format first (GPT-5 now uses this)
+  if (data.choices?.[0]?.message?.content) {
+    const content = data.choices[0].message.content;
+    // Ensure we don't return the whole JSON object as string
+    if (typeof content === 'string') {
+      return content;
+    }
+  }
+
+  // 2) Use convenience field if present (legacy GPT-5 format)
   if (typeof data.output_text === 'string' && data.output_text.length > 0) {
     return data.output_text;
   }
-  
-  // 2) Collect text from output[].content[].text
+
+  // 3) Collect text from output[].content[].text (legacy format)
   const texts: string[] = [];
   const outputs = Array.isArray(data.output) ? data.output : [];
   for (const out of outputs) {
@@ -271,11 +315,12 @@ function extractGPT5Text(data: any): string {
       }
     }
   }
-  
+
   if (texts.length > 0) return texts.join('');
-  
-  // 3) Last resort: stringify for debugging
-  return JSON.stringify(data);
+
+  // 4) Last resort: return error message instead of raw JSON
+  console.error('[MCP] Unexpected GPT-5 response format:', JSON.stringify(data, null, 2));
+  return 'Error: Unable to parse GPT-5 response';
 }
 
 // Parse response based on provider format
@@ -285,15 +330,71 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
     case 'openai-native':
       // Handle GPT-5 Responses API format
       if (model?.startsWith('gpt-5')) {
-        console.log(`[MCP] Parsing GPT-5 Responses API response`)
-        console.log(`[MCP] Raw GPT-5 response structure:`, JSON.stringify(data, null, 2))
-        const content = extractGPT5Text(data) || 'No response'
-        const tokens_used = data?.usage?.total_tokens ?? 
-          ((data?.usage?.input_tokens || 0) + (data?.usage?.output_tokens || 0))
-        return {
-          content,
-          tokens_used
+        console.log(`[MCP] Parsing GPT-5 Responses API response for model: ${model}`)
+        console.log(`[MCP DEBUG] GPT-5 Raw data type:`, typeof data, 'Is string:', typeof data === 'string')
+        console.log(`[MCP DEBUG] GPT-5 Data preview:`, JSON.stringify(data).substring(0, 200))
+
+        // Check if data is a string (which would be wrong)
+        if (typeof data === 'string') {
+          console.error('[MCP] ERROR: GPT-5 data is a string instead of object!')
+          try {
+            data = JSON.parse(data)
+            console.log('[MCP] Successfully parsed string data to object')
+          } catch (e) {
+            console.error('[MCP] Failed to parse string data:', e)
+            return { content: 'Error: Invalid GPT-5 response format', tokens_used: 0 }
+          }
         }
+
+        // First check standard OpenAI format (GPT-5 now uses this primarily)
+        if (data.choices?.[0]?.message?.content) {
+          const content = data.choices[0].message.content
+          const tokens_used = data?.usage?.total_tokens || 0
+
+          console.log(`[MCP DEBUG] GPT-5 extracted content:`, JSON.stringify(content).substring(0, 100))
+
+          // Validate content is not JSON and is a proper string response
+          if (typeof content === 'string' && !content.trim().startsWith('{') &&
+              !content.includes('"choices"') && !content.includes('"object":"chat.completion"')) {
+            console.log('[MCP] GPT-5 content validation passed')
+            return { content, tokens_used }
+          }
+
+          console.error('[MCP] GPT-5 content validation failed - appears to be JSON:', content?.substring(0, 100))
+        }
+
+        // Fallback to legacy GPT-5 format extraction
+        const content = extractGPT5Text(data) || 'No response'
+        const tokens_used = data?.usage?.total_tokens ??
+          ((data?.usage?.input_tokens || 0) + (data?.usage?.output_tokens || 0))
+
+        // Strict validation: try to extract text from JSON if detected
+        if (content.includes('"choices"') || content.includes('"message"') ||
+            (content.trim().startsWith('{') && content.includes('"id"'))) {
+          console.error('[MCP] ERROR: GPT-5 returned raw JSON instead of text content, attempting extraction...')
+
+          try {
+            // Try to parse the JSON and extract the actual message content
+            const parsed = JSON.parse(content)
+            if (parsed.choices?.[0]?.message?.content) {
+              const extractedContent = parsed.choices[0].message.content
+              console.log('[MCP] Successfully extracted content from JSON:', extractedContent)
+              return {
+                content: extractedContent,
+                tokens_used: parsed.usage?.total_tokens || tokens_used
+              }
+            }
+          } catch (e) {
+            console.error('[MCP] Failed to parse JSON content:', e)
+          }
+
+          return {
+            content: 'Error: GPT-5 returned malformed JSON response',
+            tokens_used
+          }
+        }
+
+        return { content, tokens_used }
       }
       console.log(`[MCP] Parsing standard OpenAI response for model: ${model}`)
       // Fall through to standard OpenAI format
@@ -393,6 +494,10 @@ async function callGoogle(model: string, prompt: string, apiKey: string, tempera
 
 // MCP Server Implementation with Bearer Token Authentication
 export async function POST(request: NextRequest) {
+  console.log('=============================================')
+  console.log('[MCP] POST HANDLER CALLED at', new Date().toISOString())
+  console.log('=============================================')
+
   try {
     // Get the raw text first to debug parsing issues
     const rawText = await request.text()
@@ -984,6 +1089,10 @@ async function authenticateRequest(request: NextRequest): Promise<{ success: boo
 }
 
 async function callPerspectivesAPI(args: any, user: any, request?: NextRequest): Promise<string> {
+  console.log(`[MCP] ========== callPerspectivesAPI CALLED ==========`)
+  console.log(`[MCP] Prompt: "${args.prompt}"`)
+  console.log(`[MCP] User ID: ${user?.id}`)
+
   // Validate required arguments
   if (!args.prompt || typeof args.prompt !== 'string') {
     throw new Error('prompt is required and must be a string')
@@ -1090,26 +1199,23 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     })
 
     // Enhance prompt with context if available
-    if (relevantContext.relevantContext && relevantContext.relevantContext.trim()) {
-      contextualPrompt = `${relevantContext.relevantContext}\n\n# Current Request\n${args.prompt}`
-      console.log(`[MCP] Enhanced prompt with context (${relevantContext.relevantContext.length} chars)`)
-    }
+    // DISABLED: Context contamination causes models to mimic MCP response format
+    // if (relevantContext.relevantContext && relevantContext.relevantContext.trim()) {
+    //   contextualPrompt = `${relevantContext.relevantContext}\n\n# Current Request\n${args.prompt}`
+    //   console.log(`[MCP] Enhanced prompt with context (${relevantContext.relevantContext.length} chars)`)
+    // }
   }
   
-  // Add client context from context bridge (higher priority than stored context)
-  if (clientContext) {
-    contextualPrompt = `${clientContext}${contextualPrompt}`
-    console.log(`[MCP] Added client context from bridge (${clientContext.length} chars)`)
-  }
+  // IMPORTANT: For MCP, we don't include context to avoid contamination
+  // The context often contains previous MCP responses which cause models to
+  // mimic the format instead of just answering the question
+  // Comment out context inclusion for now:
+  // if (clientContext) {
+  //   contextualPrompt = `${clientContext}${contextualPrompt}`
+  //   console.log(`[MCP] Added client context from bridge (${clientContext.length} chars)`)
+  // }
   
-  // Get user preferences with comprehensive settings using service role (kept for temperature/max_tokens settings)
-  const { data: preferences } = await serviceRoleSupabase
-    .from('user_preferences')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
-
-  console.log(`[MCP] User preferences:`, preferences)
+  // No user_preferences dependency - MCP uses simple defaults
 
   // Get user API keys from database - SAME AS CHAT API
   console.log(`[MCP] Authenticated user: ${user.id}`)
@@ -1141,32 +1247,75 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     models = args.models
     console.log(`[MCP] Using explicitly specified models:`, models)
   } else if (apiKeys && apiKeys.length > 0) {
-    // Use models from API keys directly (same as chat API)
+    // Use models from API keys directly, respecting display_order
     // Take up to 3 models for performance (configurable)
     const maxModels = 3
-    models = apiKeys
-      .filter(key => key.default_model) // Only include keys with models set
-      .slice(0, maxModels) // Limit to first N models
-      .map(key => key.default_model)
-    console.log(`[MCP] Using models from API keys (top ${maxModels}):`, models)
+
+    // Sort by display_order to ensure proper priority
+    console.log(`[MCP DEBUG] Before filtering - all keys:`, apiKeys?.map(k => ({
+      provider: k.provider,
+      model: k.default_model,
+      order: k.display_order,
+      hasKey: !!k.encrypted_key
+    })))
+
+    const filteredKeys = apiKeys.filter(key => {
+      const hasModel = !!key.default_model
+      console.log(`[MCP DEBUG] Filter check for ${key.provider}: hasModel=${hasModel}, model=${key.default_model}`)
+      return hasModel
+    })
+
+    console.log(`[MCP DEBUG] After filter, before sort:`, filteredKeys.map(k => ({
+      provider: k.provider,
+      model: k.default_model,
+      order: k.display_order
+    })))
+
+    const afterSort = filteredKeys.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999))
+
+    console.log(`[MCP DEBUG] After sort:`, afterSort.map(k => ({
+      provider: k.provider,
+      model: k.default_model,
+      order: k.display_order
+    })))
+
+    const sortedKeys = afterSort.slice(0, maxModels)
+
+    console.log(`[MCP DEBUG] After slice(0, ${maxModels}):`, sortedKeys.map(k => ({
+      provider: k.provider,
+      model: k.default_model,
+      order: k.display_order
+    })))
+
+    models = sortedKeys.map(key => key.default_model)
+
+    console.log(`[MCP] Using models from API keys (top ${maxModels}, ordered by display_order):`, models)
+    console.log(`[MCP] API key display orders:`, sortedKeys.map(k => ({
+      model: k.default_model,
+      provider: k.provider,
+      order: k.display_order
+    })))
   } else {
     // Fallback if no API keys configured
     models = ['gpt-5-2025-08-07']
     console.log(`[MCP] No API keys found, using fallback model:`, models)
   }
 
-  // Use temperature and max_tokens from args, or user preferences, or defaults
-  const temperature = args.temperature ?? preferences?.default_temperature ?? 0.7
-  const maxTokens = args.max_tokens ?? preferences?.default_max_tokens ?? 1000
+  // Use temperature and max_tokens from args or simple defaults
+  const temperature = args.temperature ?? 0.7
+  const maxTokens = args.max_tokens ?? 1000
 
   console.log(`[MCP] Using temperature: ${temperature}, maxTokens: ${maxTokens}`)
   console.log(`[MCP] Getting perspectives for user ${user.id}: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`)
   console.log(`[MCP] Final selected models: ${models.join(', ')}`)
+  console.log(`[MCP] CRITICAL DEBUG - Models array:`, JSON.stringify(models))
+  console.log(`[MCP] CRITICAL DEBUG - First model check: "${models[0]}", includes gpt-5: ${models[0]?.includes('gpt-5')}`)
 
   // Call actual LLM APIs using apiManager (like chat API does)
   const responses = await Promise.all(
     models.map(async (model: string) => {
       const startTime = Date.now()
+      console.log(`[MCP] PROCESSING MODEL: "${model}" (type: ${typeof model})`)
       
       // Clean model name by removing provider prefixes that cause API errors
       let cleanModel = model
@@ -1210,13 +1359,22 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                                  apiKeyForModel?.max_tokens ??
                                  maxTokens
         // Handle Credits Only mode (when encrypted_key is empty)
+        console.log(`[MCP] CRITICAL - Checking credits-only for model "${model}":`, {
+          hasEncryptedKey: !!apiKeyForModel.encrypted_key,
+          keyPreview: apiKeyForModel.key_preview,
+          provider: providerName
+        })
         if (!apiKeyForModel.encrypted_key || apiKeyForModel.key_preview === 'Credits Only') {
           console.log(`[MCP] Credits-only configuration for ${providerName}, using OpenRouter credits...`)
 
           try {
             // Resolve model ID for OpenRouter
+            console.log(`[MCP] Resolving model ${model} for OpenRouter...`)
             const openrouterModelId = await resolveProviderModelId(model, 'openrouter')
+            console.log(`[MCP] Resolved ${model} → ${openrouterModelId}`)
+
             if (openrouterModelId === model) {
+              console.error(`[MCP] No OpenRouter mapping found for ${model}`)
               return {
                 model,
                 error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
@@ -1550,26 +1708,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         let sessionType = 'credits'
         
         const hasValidApiKey = apiKeyForModel && decryptedKey && decryptedKey !== 'demo_key'
-        const userUsagePreference = preferences?.usage_preference || 'auto'
-        
+        const userUsagePreference = 'auto' // Default usage preference
+
         // Apply usage preference logic
         switch (userUsagePreference) {
-          case 'api_keys':
-            if (hasValidApiKey) {
-              usagePath = 'api_key'
-              sessionType = 'api_key'
-            } else {
-              // User prefers API keys but doesn't have valid ones - fall back to credits
-              console.warn(`[MCP] User prefers API keys but no valid key found for ${provider.display_name}, using credits`)
-              usagePath = 'credits'
-              sessionType = 'credits'
-            }
-            break
-          case 'credits':
-            usagePath = 'credits'
-            sessionType = 'credits'
-            break
-          case 'cli':
+          case 'auto':
             // CLI preference - CLI integration handled by separate CLI handlers (codex-cli, claude-code, gemini-cli)
             // For MCP route, fall back to API keys → credits as per user's preference order
             if (hasValidApiKey) {
@@ -1793,11 +1936,82 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           const contentType = apiResponse.headers.get('content-type') || ''
           if (contentType.includes('application/json')) {
             const result = await apiResponse.json()
+            console.log(`[MCP DEBUG] API Response for ${resolvedModelId}:`, {
+              provider: provider.provider_name,
+              hasChoices: !!result.choices,
+              hasError: !!result.error,
+              contentPreview: result.choices?.[0]?.message?.content?.substring(0, 100)
+            })
+
             if (result.error) {
               throw new Error(result.error.message || 'API error')
             }
-            // Use the existing parseResponse function that handles all provider formats
-            response = parseResponse(provider.provider_name, result, resolvedModelId)
+
+            // CRITICAL FIX: For GPT-5, extract content directly like chat API does
+            // Check both the resolved model ID and the original model name
+            const isGPT5 = resolvedModelId?.includes('gpt-5') ||
+                           model?.includes('gpt-5') ||
+                           cleanModel?.includes('gpt-5') ||
+                           provider.provider_name === 'openai' && model === 'gpt-5'
+
+            console.log(`[MCP JSON DEBUG] Pre-extraction check:`, {
+              isGPT5,
+              model,
+              resolvedModelId,
+              cleanModel,
+              providerName: provider.provider_name,
+              resultType: typeof result,
+              hasChoices: !!result.choices,
+              contentPreview: result.choices?.[0]?.message?.content?.substring(0, 50)
+            })
+
+            if (isGPT5) {
+              console.log(`[MCP] GPT-5 detected (model: ${model}, resolved: ${resolvedModelId}), extracting content directly`)
+
+              // Extract content directly from the standard OpenAI response format
+              if (result.choices?.[0]?.message?.content !== undefined) {
+                const extractedContent = result.choices[0].message.content
+                response = {
+                  content: extractedContent,
+                  tokens_used: result.usage?.total_tokens || 0
+                }
+                console.log(`[MCP] EXTRACTION SUCCESS - GPT-5 content: "${extractedContent}"`)
+                console.log(`[MCP] Response object created:`, { content: response.content, tokens: response.tokens_used })
+              } else {
+                console.error(`[MCP] GPT-5 response missing expected structure:`, result)
+                response = {
+                  content: 'Error: Unable to extract GPT-5 response',
+                  tokens_used: result.usage?.total_tokens || 0
+                }
+              }
+            } else {
+              // Use the existing parseResponse function for other providers
+              response = parseResponse(provider.provider_name, result, resolvedModelId)
+              console.log(`[MCP] Used parseResponse, got:`, { content: response.content?.substring(0, 50), tokens: response.tokens_used })
+            }
+
+            // Additional safety check: if content is still JSON, extract it
+            if (response.content && typeof response.content === 'string') {
+              const trimmed = response.content.trim()
+              if (trimmed.startsWith('{') && trimmed.includes('"choices"')) {
+                console.error(`[MCP] WARNING: response.content still contains JSON, extracting...`)
+                try {
+                  const parsed = JSON.parse(response.content)
+                  if (parsed.choices?.[0]?.message?.content) {
+                    response.content = parsed.choices[0].message.content
+                    console.log(`[MCP] Extracted actual content: "${response.content}"`)
+                  }
+                } catch (e) {
+                  console.error(`[MCP] Failed to extract content from JSON:`, e)
+                }
+              }
+            }
+
+            console.log(`[MCP DEBUG] Parsed response for ${resolvedModelId}:`, {
+              contentPreview: response.content?.substring(0, 100),
+              tokens: response.tokens_used,
+              isJsonContent: response.content?.includes('"choices"')
+            })
           } else if (contentType.includes('text/event-stream')) {
             // Handle streaming responses if needed
             const text = await apiResponse.text()
@@ -1914,14 +2128,79 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         }
 
         const latency = Date.now() - startTime
-        return {
+
+        // Debug: Log if response content looks like it contains formatted output
+        if (response.content && typeof response.content === 'string') {
+          if (response.content.includes('# Multiple AI Perspectives') ||
+              response.content.includes('Got ') && response.content.includes('perspectives in')) {
+            console.error(`[MCP] WARNING: ${cleanModel} response contains MCP-formatted content!`)
+            console.error(`[MCP] Response preview: ${response.content.substring(0, 200)}...`)
+          }
+          if (response.content.includes('"id"') && response.content.includes('"object"') &&
+              response.content.includes('"chat.completion"')) {
+            console.error(`[MCP] WARNING: ${cleanModel} response contains raw JSON API response!`)
+            console.error(`[MCP] Response preview: ${response.content.substring(0, 200)}...`)
+          }
+        }
+
+        // Check if response.content is raw JSON and extract the actual content
+        let finalContent = response.content
+        console.log(`[MCP FINAL CHECK] Model: ${cleanModel}, Content type: ${typeof finalContent}, Length: ${finalContent?.length || 0}`)
+        console.log(`[MCP FINAL CHECK] Content preview:`, finalContent?.substring(0, 100))
+
+        if (finalContent && typeof finalContent === 'string') {
+          const trimmed = finalContent.trim()
+          if (trimmed.startsWith('{') && trimmed.includes('"choices"')) {
+            console.log(`[MCP CRITICAL] JSON DETECTED in finalContent for ${cleanModel}! Extracting...`)
+            console.log(`[MCP CRITICAL] Full JSON:`, trimmed.substring(0, 300))
+            try {
+              const parsed = JSON.parse(finalContent)
+              if (parsed.choices?.[0]?.message?.content !== undefined) {
+                finalContent = parsed.choices[0].message.content
+                console.log(`[MCP CRITICAL] EXTRACTION SUCCESS: "${finalContent}"`)
+              } else {
+                console.error(`[MCP CRITICAL] No content field in parsed JSON`)
+              }
+            } catch (e) {
+              console.error(`[MCP CRITICAL] Failed to parse JSON:`, e)
+            }
+          }
+        }
+
+        // Final JSON check before returning
+        if (finalContent && typeof finalContent === 'string') {
+          const trimCheck = finalContent.trim()
+          if (trimCheck.startsWith('{') && trimCheck.includes('"choices"')) {
+            console.error(`[MCP RETURN ERROR] STILL JSON at return point for ${cleanModel}!`)
+            try {
+              const parsed = JSON.parse(finalContent)
+              if (parsed.choices?.[0]?.message?.content !== undefined) {
+                finalContent = parsed.choices[0].message.content
+                console.log(`[MCP RETURN FIX] Extracted at return: "${finalContent}"`)
+              }
+            } catch (e) {
+              console.error(`[MCP RETURN ERROR] Failed to parse:`, e)
+            }
+          }
+        }
+
+        const returnValue = {
           model: cleanModel, // Use clean model name in response
           originalModel: model, // Keep original for debugging
           provider: provider.display_name,
-          content: response.content,
+          content: finalContent,
           tokens_used: response.tokens_used,
           latency_ms: latency
         }
+
+        console.log(`[MCP RETURN] Returning response for ${cleanModel}:`, {
+          hasContent: !!returnValue.content,
+          contentLength: returnValue.content?.length || 0,
+          contentPreview: returnValue.content?.substring(0, 50),
+          isJson: returnValue.content?.includes('"choices"') || false
+        })
+
+        return returnValue
       } catch (error) {
         const latency = Date.now() - startTime
         return {
@@ -1936,7 +2215,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
   const totalTokens = responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0)
   const totalLatency = Math.max(...responses.map(r => r.latency_ms || 0))
-  const successCount = responses.filter(r => !r.error).length
+  const successCount = responses.filter(r => !r.content.error).length
 
   // Log MCP tool call to mcp_usage_logs for dashboard statistics
   // Get the access token for this request from the auth header
@@ -1971,7 +2250,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     // Create models used object with response details
     const modelsUsed: Record<string, any> = {}
     responses.forEach(response => {
-      if (!response.error) {
+      if (!response.content?.error) {
         modelsUsed[response.model] = {
           provider: response.provider,
           tokens: response.tokens_used,
@@ -2029,7 +2308,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       const pricing = pricingMap.get(pricingKey)
       
       let cost = 0
-      if (pricing && response.tokens_used && !response.error) {
+      if (pricing && response.tokens_used && !response.content?.error) {
         // Estimate input/output split (typically 1:3 ratio for responses)
         const estimatedInputTokens = Math.floor(response.tokens_used * 0.25)
         const estimatedOutputTokens = response.tokens_used - estimatedInputTokens
@@ -2051,7 +2330,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         temperature: temperature
       }
 
-      if (!response.error && response.content) {
+      if (!response.content?.error && response.content) {
         providerResponses[`${provider}:${response.model}`] = {
           content: response.content.substring(0, 2000), // Limit content size
           tokens_used: response.tokens_used,
@@ -2076,7 +2355,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         models_requested: models,
         provider_requests: providerRequests,
         total_completion_tokens: responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0),
-        total_prompt_tokens: Math.floor(args.prompt.length / 4) * responses.filter(r => !r.error).length,
+        total_prompt_tokens: Math.floor(args.prompt.length / 4) * responses.filter(r => !r.content.error).length,
         total_tokens: totalTokens,
         provider_costs: providerCosts,
         total_cost: totalAccurateCost,
@@ -2085,7 +2364,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         provider_latencies: providerLatencies,
         status: successCount === responses.length ? 'success' : 
                 successCount > 0 ? 'partial_success' : 'error',
-        error_message: responses.filter(r => r.error).map(r => r.error).join('; ') || null,
+        error_message: responses.filter(r => r.content?.error).map(r => r.content?.error).join('; ') || null,
         successful_providers: successCount,
         failed_providers: responses.length - successCount,
         store_responses: true,
@@ -2107,65 +2386,95 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     
     // Determine which usage method was primarily used for this request
     // Since we already tracked the usage paths during processing, we can derive this from successful responses
-    const successfulResponses = responses.filter(r => !r.error)
+    const successfulResponses = responses.filter(r => !r.content?.error)
     let primaryUsageMethod = 'api_keys'
     
     // Simple heuristic: if we have successful responses, assume API keys were primarily used
     // unless user preference was explicitly set to credits
-    const userUsagePreference = preferences?.usage_preference || 'auto'
-    if (userUsagePreference === 'credits') {
-      primaryUsageMethod = 'credits'
-    } else if (successfulResponses.length > 0) {
-      primaryUsageMethod = 'api_keys'
-    } else {
-      primaryUsageMethod = 'credits'
-    }
+    //   const userUsagePreference = 'auto' // Default usage preference
+    // //if (userUsagePreference === 'credits') {
+    //  // primaryUsageMethod = 'credits'
+    // //} else if (successfulResponses.length > 0) {
+    //  // primaryUsageMethod = 'api_keys'
+    // //} else {
+    //  // primaryUsageMethod = 'credits'
+    // //}
+    //     const hasValidApiKey = apiKeyForModel && decryptedKey && decryptedKey !== 'demo_key'
+    //     const userUsagePreference = 'auto' // Default usage preference
+
+    //     // Apply usage preference logic
+    //     switch (userUsagePreference) {
+    //       case 'auto':
+    //         // CLI preference - CLI integration handled by separate CLI handlers (codex-cli, claude-code, gemini-cli)
+    //         // For MCP route, fall back to API keys → credits as per user's preference order
+    //         if (hasValidApiKey) {
+    //           usagePath = 'api_key'
+    //           sessionType = 'api_key'
+    //         } else {
+    //           usagePath = 'credits'
+    //           sessionType = 'credits'
+    //         }
+    //         break
+    //       case 'auto':
+    //       default:
+    //         // Auto mode: prefer CLI → API keys → Credits (as user specified)
+    //         // For now CLI integration is handled by separate CLI handlers
+    //         // So we check: API keys first, then credits as fallback
+    //         if (hasValidApiKey) {
+    //           usagePath = 'api_key'
+    //           sessionType = 'api_key'
+    //         } else {
+    //           usagePath = 'credits'
+    //           sessionType = 'credits'
+    //         }
+    //         break
+    //     }
     
-    // Display usage method clearly
-    if (primaryUsageMethod === 'api_keys') {
-      statusDisplay += `\n🔑 **Usage Method**: Own API Keys`
-      if (successfulResponses.length > 0) {
-        statusDisplay += ` (${successfulResponses.length} model${successfulResponses.length > 1 ? 's' : ''})`
-      }
-    } else {
-      // Get credit balance for credits usage
-      const { data: currentCredits } = await serviceRoleSupabase
-        .from('user_credits')
-        .select('balance, promotional_balance, total_purchased, total_spent')
-        .eq('user_id', user.id)
-        .single()
+    // // Display usage method clearly
+    // if (primaryUsageMethod === 'api_keys') {
+    //   statusDisplay += `\n🔑 **Usage Method**: Own API Keys`
+    //   if (successfulResponses.length > 0) {
+    //     statusDisplay += ` (${successfulResponses.length} model${successfulResponses.length > 1 ? 's' : ''})`
+    //   }
+    // } else {
+    //   // Get credit balance for credits usage
+    //   const { data: currentCredits } = await serviceRoleSupabase
+    //     .from('user_credits')
+    //     .select('balance, promotional_balance, total_purchased, total_spent')
+    //     .eq('user_id', user.id)
+    //     .single()
       
-      if (currentCredits) {
-        const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
-        const lifetimeSpent = currentCredits.total_spent || 0
+    //   if (currentCredits) {
+    //     const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
+    //     const lifetimeSpent = currentCredits.total_spent || 0
         
-        statusDisplay += `\n💰 **Usage Method**: Credits - ${totalBalance.toFixed(3)} remaining (${currentCredits.balance?.toFixed(3) || 0} purchased + ${currentCredits.promotional_balance?.toFixed(3) || 0} promotional)`
-        statusDisplay += ` | Lifetime spent: ${lifetimeSpent.toFixed(3)} credits`
+    //     statusDisplay += `\n💰 **Usage Method**: Credits - ${totalBalance.toFixed(3)} remaining (${currentCredits.balance?.toFixed(3) || 0} purchased + ${currentCredits.promotional_balance?.toFixed(3) || 0} promotional)`
+    //     statusDisplay += ` | Lifetime spent: ${lifetimeSpent.toFixed(3)} credits`
         
-        // Calculate cost for this specific request with 10% markup
-        const requestCosts = responses
-          .filter(r => !r.error && r.tokens_used)
-          .map(r => {
-            const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
-            const estimatedOutputTokens = r.tokens_used || 0
-            let baseCost = 0.05 // Conservative fallback
+    //     // Calculate cost for this specific request with 10% markup
+    //     const requestCosts = responses
+    //       .filter(r => !r.error && r.tokens_used)
+    //       .map(r => {
+    //         const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
+    //         const estimatedOutputTokens = r.tokens_used || 0
+    //         let baseCost = 0.05 // Conservative fallback
             
-            if (r.model.includes('gpt-4') || r.model.includes('claude-3')) {
-              baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10
-            } else if (r.model.includes('gpt-3.5') || r.model.includes('claude-haiku')) {
-              baseCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
-            }
+    //         if (r.model.includes('gpt-4') || r.model.includes('claude-3')) {
+    //           baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10
+    //         } else if (r.model.includes('gpt-3.5') || r.model.includes('claude-haiku')) {
+    //           baseCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
+    //         }
             
-            return subscriptionManager.applyMarkup(baseCost) // Apply 10% markup
-          })
+    //         return subscriptionManager.applyMarkup(baseCost) // Apply 10% markup
+    //       })
         
-        const totalRequestCost = requestCosts.reduce((sum, cost) => sum + cost, 0)
+    //     const totalRequestCost = requestCosts.reduce((sum, cost) => sum + cost, 0)
         
-        if (totalRequestCost > 0) {
-          statusDisplay += ` | Request cost: ~${totalRequestCost.toFixed(4)} credits (includes 10% markup)`
-        }
-      }
-    }
+    //     if (totalRequestCost > 0) {
+    //       statusDisplay += ` | Request cost: ~${totalRequestCost.toFixed(4)} credits (includes 10% markup)`
+    //     }
+    //   }
+    // }
     
     // Add subscription status
     const planTier = subscription?.tier
@@ -2254,19 +2563,50 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   responses.forEach((response, index) => {
     const modelName = response.model.toUpperCase()
     const providerName = response.provider ? ` (${response.provider})` : ''
-    
-    if (response.error) {
+
+    if (response.content.error) {
       formatted += `## ${modelName}${providerName} - ERROR\n`
-      formatted += `❌ ${response.error}\n\n`
+      formatted += `❌ ${response.content.error}\n\n`
     } else {
       formatted += `## ${modelName}${providerName}\n`
-      formatted += `${response.content}\n\n`
+
+      // Extract actual content from response
+      let content = response.content || ''
+
+      // For GPT-5, extract from JSON if needed
+      if (response.model.toLowerCase().includes('gpt-5') && content) {
+        try {
+          // Try to parse as JSON if it looks like JSON
+          if (typeof content === 'string' && content.trim().startsWith('{')) {
+            const parsed = JSON.parse(content)
+
+            // Extract from OpenAI response format
+            if (parsed.choices && parsed.choices[0]) {
+              if (parsed.choices[0].message?.content) {
+                content = parsed.choices[0].message.content
+              } else if (parsed.choices[0].text) {
+                content = parsed.choices[0].text
+              }
+            }
+            // Also handle if content is nested
+            else if (parsed.content) {
+              content = parsed.content
+            }
+          }
+        } catch (e) {
+          // If parsing fails, use content as is
+          console.log('[MCP] GPT-5 JSON parse failed, using raw content')
+        }
+      }
+
+      formatted += `${content}\n\n`
+
       if (response.tokens_used) {
         const costStr = perResponseCost[index] != null ? `, Cost: $${perResponseCost[index].toFixed(6)}` : ''
         formatted += `*Tokens: ${response.tokens_used}, Latency: ${response.latency_ms}ms${costStr}*\n\n`
       }
     }
-    
+
     if (index < responses.length - 1) {
       formatted += '---\n\n'
     }
@@ -2298,7 +2638,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   if (memoryPreferences.enable_conversation_memory) {
     try {
       const totalTokensUsed = responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0)
-      const primaryModel = responses.find(r => !r.error)?.model || models[0] || 'unknown'
+      const primaryModel = responses.find(r => !r.content?.error)?.model || models[0] || 'unknown'
       
       console.log(`[MCP] Memory - About to store conversation:`, {
         user_id: user.id,
@@ -2743,15 +3083,23 @@ function determineProvider_DEPRECATED(model: string, configMap: Map<string, Prov
     return configMap.get('openrouter') || configMap.get('groq') || null
   }
 
-  // Kimi models should use OpenRouter (or Groq if configured for it)
+  // Kimi models should use OpenRouter or other compatible providers
   if (modelLower.includes('kimi')) {
-    // Check if user has Groq configured (since Kimi K2 is on Groq)
+    // Kimi models are available on OpenRouter, not OpenAI
+    // Check OpenRouter first, then Groq as a fallback
+    const openrouterConfig = configMap.get('openrouter')
+    if (openrouterConfig) {
+      return openrouterConfig
+    }
+
+    // Check if user has Groq configured as a fallback
     const groqConfig = configMap.get('groq')
     if (groqConfig) {
       return groqConfig
     }
-    // Otherwise try OpenRouter as fallback
-    return configMap.get('openrouter') || null
+
+    // Don't return OpenAI for Kimi models as they're not available there
+    return null
   }
 
   if (modelLower.includes('deepseek')) {
@@ -2846,6 +3194,7 @@ async function searchDocumentation(args: any): Promise<string> {
 
 // Handle OAuth discovery (GET requests)
 export async function GET(request: NextRequest) {
+  console.log('[MCP GET] GET handler called!')
   // Return OAuth server configuration like Vercel MCP does
   return NextResponse.json({
     issuer: 'https://www.polydev.ai',
