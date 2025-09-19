@@ -527,72 +527,144 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-violet-50 will-change-scroll">
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.02)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
+        {/* Sophisticated background patterns */}
+        <div className="absolute inset-0">
+          {/* Main gradient mesh */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.08),transparent_50%)] opacity-60"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,69,19,0.05),transparent_50%)]"></div>
 
-        {/* Floating model logos with animations */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-12 h-12 opacity-10 animate-float will-change-transform">
-            <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" fill className="object-contain" />
-          </div>
-          <div className="absolute top-32 right-20 w-10 h-10 opacity-10 animate-float-delayed will-change-transform">
-            <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" fill className="object-contain" />
-          </div>
-          <div className="absolute bottom-40 left-20 w-14 h-14 opacity-10 animate-float-slow will-change-transform">
-            <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" fill className="object-contain" />
-          </div>
-          {/* Modern geometric floating elements */}
-          <div className="absolute top-20 left-1/4 w-4 h-4 bg-orange-200/20 rounded-full animate-pulse hidden sm:block will-change-transform"></div>
-          <div className="absolute bottom-32 right-1/4 w-6 h-6 bg-violet-200/20 rotate-45 animate-bounce-slow hidden sm:block will-change-transform"></div>
-          <div className="absolute top-1/2 right-16 w-3 h-3 bg-orange-300/30 rounded-full animate-ping hidden sm:block will-change-transform"></div>
+          {/* Sophisticated grid */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.02)_1px,transparent_1px)] bg-[size:60px_60px] opacity-40"></div>
+
+          {/* Animated gradient orbs */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-orange-200/20 to-violet-200/20 rounded-full blur-3xl animate-float-slow"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gradient-to-r from-violet-200/15 to-orange-200/15 rounded-full blur-3xl animate-float-reverse"></div>
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 lg:py-32">
-          <div className="text-center">
-            <div className="mx-auto max-w-4xl">
-              <span className="inline-flex items-center rounded-full bg-orange-100 border border-orange-200 px-4 py-1.5 text-sm font-mono text-orange-700 mb-8">
-                <span className="w-2 h-2 bg-orange-500 rounded-full mr-2 animate-pulse"></span>
-                Multi-model inference • Zero context switching • Native editor integration
-              </span>
-              <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-                Code faster. Architect better.<br />
-                <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">Ship with confidence.</span>
-              </h1>
-              <p className="mt-6 text-lg sm:text-xl leading-7 sm:leading-8 text-slate-600 max-w-3xl mx-auto px-4 sm:px-0">
-                Query multiple AI models simultaneously within your existing development workflow. Compare architectural approaches, catch edge cases, and optimize code quality—all without context switching or copy-pasting between tools.
-              </p>
+        {/* Floating model logos with sophisticated positioning */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-[10%] w-10 h-10 opacity-[0.08] animate-float will-change-transform">
+            <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" fill className="object-contain" />
+          </div>
+          <div className="absolute top-32 right-[15%] w-8 h-8 opacity-[0.06] animate-float-delayed will-change-transform">
+            <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" fill className="object-contain" />
+          </div>
+          <div className="absolute bottom-40 left-[20%] w-12 h-12 opacity-[0.07] animate-float-slow will-change-transform">
+            <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" fill className="object-contain" />
+          </div>
 
-              {/* Model logos showcase */}
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 px-4">
-                <div className="flex flex-col sm:flex-row items-center gap-3 text-sm text-slate-500">
-                  <span className="font-medium">Powered by:</span>
-                  <div className="flex items-center gap-2 flex-wrap justify-center">
-                    {MODEL_PROVIDERS.map((provider) => (
-                      <div key={provider.name} className="w-6 h-6 relative">
-                        <Image src={provider.logo} alt={provider.name} fill className="object-contain" />
+          {/* Sophisticated geometric elements */}
+          <div className="absolute top-1/3 right-1/3 w-2 h-16 bg-gradient-to-b from-orange-300/20 to-transparent rounded-full hidden lg:block animate-float-delayed"></div>
+          <div className="absolute bottom-1/3 left-1/3 w-16 h-2 bg-gradient-to-r from-violet-300/20 to-transparent rounded-full hidden lg:block animate-float"></div>
+          <div className="absolute top-1/2 left-1/4 w-1 h-1 bg-orange-400/40 rounded-full animate-ping hidden sm:block"></div>
+          <div className="absolute top-2/3 right-1/4 w-1 h-1 bg-violet-400/40 rounded-full animate-ping hidden sm:block" style={{animationDelay: '1s'}}></div>
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-32">
+          <div className="text-center">
+            <div className="mx-auto max-w-5xl">
+              {/* Sophisticated status indicator */}
+              <div className="inline-flex items-center gap-3 mb-12 group">
+                <div className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-orange-200/50 shadow-lg shadow-orange-100/20 hover:shadow-orange-100/40 transition-all duration-500 hover:scale-105">
+                  <div className="relative">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                    <div className="absolute inset-0 w-2 h-2 bg-orange-400 rounded-full animate-ping opacity-20"></div>
+                  </div>
+                  <span className="text-sm font-medium text-slate-700 tracking-wide">Production Ready</span>
+                </div>
+                <div className="hidden sm:flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-violet-500/10 to-orange-500/10 backdrop-blur-xl border border-violet-200/30 hover:border-violet-300/50 transition-all duration-500">
+                  <span className="text-sm font-medium text-slate-600">MCP Protocol</span>
+                </div>
+              </div>
+
+              {/* Hero headline with sophisticated typography */}
+              <h1 className="relative">
+                <div className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight text-slate-900 leading-[0.9] mb-6">
+                  <div className="inline-block">
+                    <span className="relative inline-block">
+                      Multi-model
+                      <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-violet-500 rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700"></div>
+                    </span>
+                  </div>
+                  <br />
+                  <div className="inline-block">
+                    <span className="relative inline-block bg-gradient-to-r from-orange-600 via-orange-500 to-violet-600 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+                      intelligence
+                    </span>
+                  </div>
+                  <br />
+                  <div className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-normal text-slate-600 mt-4">
+                    in your workflow
+                  </div>
+                </div>
+              </h1>
+
+              {/* Sophisticated description */}
+              <div className="mt-8 max-w-4xl mx-auto">
+                <p className="text-xl sm:text-2xl leading-relaxed text-slate-600 font-light tracking-wide">
+                  Query <span className="font-medium text-slate-800">multiple AI models simultaneously</span> within your existing development environment.
+                  <br className="hidden sm:block" />
+                  Compare approaches, catch edge cases, optimize quality—
+                  <span className="relative inline-block">
+                    <span className="font-medium text-slate-800">zero context switching</span>
+                    <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-orange-400 to-violet-400 rounded-full"></div>
+                  </span>.
+                </p>
+              </div>
+
+              {/* Sophisticated model showcase */}
+              <div className="mt-12 flex flex-col items-center gap-8">
+                <div className="flex flex-wrap items-center justify-center gap-6">
+                  {MODEL_PROVIDERS.map((provider, index) => (
+                    <div key={provider.name} className="group relative">
+                      <div className="w-10 h-10 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/40 p-2 hover:bg-white/80 hover:border-orange-200/60 transition-all duration-500 hover:scale-110 shadow-lg hover:shadow-xl">
+                        <Image src={provider.logo} alt={provider.name} fill className="object-contain p-0.5" />
                       </div>
-                    ))}
-                    <span className="text-orange-600 font-medium">+37 providers</span>
+                      <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <span className="text-xs font-medium text-slate-600 whitespace-nowrap bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm">
+                          {provider.name}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-100/60 to-violet-100/60 backdrop-blur-sm border border-orange-200/40">
+                    <span className="text-sm font-semibold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">
+                      +{modelStats.totalProviders} providers
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 px-4">
+              {/* Sophisticated action buttons */}
+              <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-6 px-4">
                 <Link
                   href={isAuthenticated ? '/dashboard' : '/auth'}
-                  className="w-full sm:w-auto group relative overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-violet-500 px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-orange-500/25 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-105 text-center"
+                  className="group relative w-full sm:w-auto"
                 >
-                  {isAuthenticated ? 'Launch Console' : 'Initialize Workspace'}
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500"></div>
+                  <div className="relative px-8 py-4 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl text-white font-semibold text-lg transition-all duration-300 hover:scale-105 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                    <span className="relative flex items-center justify-center gap-2">
+                      {isAuthenticated ? 'Launch Console' : 'Start Building'}
+                      <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </span>
+                  </div>
                 </Link>
+
                 <Link
                   href="/docs"
-                  className="w-full sm:w-auto group rounded-full border-2 border-slate-200 bg-white/80 backdrop-blur-sm px-8 py-4 text-lg font-semibold text-slate-700 transition-all duration-300 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 text-center"
+                  className="group w-full sm:w-auto px-8 py-4 rounded-2xl border-2 border-slate-200/60 bg-white/60 backdrop-blur-xl text-slate-700 font-semibold text-lg transition-all duration-500 hover:border-orange-300/60 hover:bg-white/80 hover:text-slate-900 hover:scale-105 shadow-lg hover:shadow-xl"
                 >
                   <span className="flex items-center justify-center gap-2">
-                    Architecture Docs
-                    <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <svg className="w-5 h-5 text-slate-400 group-hover:text-orange-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Documentation
+                    <svg className="w-4 h-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
                   </span>
                 </Link>
@@ -627,38 +699,226 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Dynamic Code Examples */}
-      <section className="py-24 bg-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.03),transparent)]"></div>
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">
-              See multi-model AI in action
+      {/* Features Section */}
+      <section className="relative py-32 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-1/4 w-80 h-80 bg-gradient-to-br from-orange-100/30 to-violet-100/30 rounded-full blur-3xl animate-float-delayed"></div>
+          <div className="absolute bottom-20 left-1/4 w-96 h-96 bg-gradient-to-br from-blue-100/20 to-orange-100/20 rounded-full blur-3xl animate-float-reverse"></div>
+          {/* Sophisticated grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.01)_1px,transparent_1px)] bg-[size:80px_80px] opacity-30"></div>
+        </div>
+
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="text-center mb-20 observe">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-orange-600">Advanced AI Integration</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight stagger-fade-in">
+              AI-powered development workflow{' '}
+              <span className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 bg-clip-text text-transparent animate-gradient-advanced">
+                reimagined
+              </span>
             </h2>
-            <p className="mt-4 text-xl text-slate-600">
-              Real debugging scenarios, multiple perspectives, better solutions
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
+              Multiple AI models working together, providing diverse perspectives on your code without breaking your flow.
             </p>
           </div>
 
-          <div className="relative mx-auto max-w-6xl">
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl overflow-hidden shadow-2xl border border-orange-100/50">
-              {/* Editor header */}
-              <div className="flex items-center gap-2 px-6 py-4 bg-slate-50 border-b border-slate-200/50">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <div className="ml-4 text-sm text-slate-600 font-mono flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 bg-orange-400 rounded-full"></span>
-                  {CODE_EXAMPLES[currentExample].filename}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+            {[
+              {
+                icon: "🧠",
+                title: "Multi-Model Intelligence",
+                description: "Get diverse perspectives from GPT-5, Claude Opus 4, and Gemini 2.5 Pro simultaneously",
+                features: ["Parallel reasoning", "Diverse approaches", "Better solutions"],
+                gradient: "from-purple-500/10 to-blue-500/10",
+                iconGradient: "from-purple-500 to-blue-500"
+              },
+              {
+                icon: "⚡",
+                title: "Zero Context Switching",
+                description: "Work seamlessly within your editor - no copy-pasting, no tab switching, no workflow interruption",
+                features: ["Native integration", "Instant responses", "Seamless workflow"],
+                gradient: "from-orange-500/10 to-yellow-500/10",
+                iconGradient: "from-orange-500 to-yellow-500"
+              },
+              {
+                icon: "🔒",
+                title: "Memory & Privacy",
+                description: "Your conversations and context are encrypted and stored securely across sessions",
+                features: ["End-to-end encryption", "Persistent memory", "Cross-session continuity"],
+                gradient: "from-green-500/10 to-emerald-500/10",
+                iconGradient: "from-green-500 to-emerald-500"
+              },
+              {
+                icon: "🎯",
+                title: "Contextual Understanding",
+                description: "AI that understands your entire codebase, git history, and project dependencies",
+                features: ["Full project awareness", "Dependency tracking", "Historical context"],
+                gradient: "from-red-500/10 to-pink-500/10",
+                iconGradient: "from-red-500 to-pink-500"
+              },
+              {
+                icon: "🚀",
+                title: "Production Ready",
+                description: "Built for real-world development with error handling, retries, and observability",
+                features: ["Robust error handling", "Automatic retries", "Built-in monitoring"],
+                gradient: "from-indigo-500/10 to-purple-500/10",
+                iconGradient: "from-indigo-500 to-purple-500"
+              },
+              {
+                icon: "🔧",
+                title: "MCP Native",
+                description: "Built on Model Context Protocol for extensibility and future-proof architecture",
+                features: ["Protocol compliance", "Extensible design", "Future-proof"],
+                gradient: "from-cyan-500/10 to-blue-500/10",
+                iconGradient: "from-cyan-500 to-blue-500"
+              }
+            ].map((feature, index) => (
+              <div
+                key={index}
+                className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-orange-100/50 observe sophisticated-hover magnetic-hover overflow-hidden"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                {/* Animated gradient background */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700`}></div>
+
+                {/* Sophisticated border glow */}
+                <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500">
+                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-r ${feature.iconGradient} blur-lg`}></div>
                 </div>
-                <div className="ml-auto flex items-center gap-3">
-                  <span className="text-xs text-slate-500 font-mono">{CODE_EXAMPLES[currentExample].language}</span>
-                  <div className="flex gap-1">
+
+                <div className="relative z-10">
+                  {/* Floating icon with gradient background */}
+                  <div className="relative mb-6">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${feature.iconGradient} rounded-2xl opacity-10 group-hover:opacity-20 transition-opacity duration-500`}></div>
+                    <div className="relative text-4xl p-3 rounded-2xl animate-sophisticated-float">{feature.icon}</div>
+                  </div>
+
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4 group-hover:text-gray-800 transition-colors duration-300">{feature.title}</h3>
+                  <p className="text-gray-600 mb-6 leading-relaxed group-hover:text-gray-700 transition-colors duration-300">{feature.description}</p>
+                  <ul className="space-y-3">
+                    {feature.features.map((item, itemIndex) => (
+                      <li key={itemIndex} className="flex items-center text-sm text-gray-500 group-hover:text-gray-600 transition-colors duration-300">
+                        <div className={`w-2 h-2 bg-gradient-to-r ${feature.iconGradient} rounded-full mr-3 group-hover:scale-110 transition-transform duration-300`}></div>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Shimmer effect on hover */}
+                <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                  <div className="absolute inset-0 rounded-3xl animate-shimmer"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Call to action */}
+          <div className="text-center observe">
+            <div className="inline-flex flex-col sm:flex-row items-center gap-6">
+              <Link
+                href="/docs"
+                className="group relative btn-enhanced px-8 py-4 rounded-2xl bg-gradient-to-r from-orange-500 to-violet-500 text-white font-semibold text-lg hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+              >
+                <span className="relative flex items-center gap-2">
+                  Explore Documentation
+                  <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
+              </Link>
+              <Link
+                href="/dashboard"
+                className="group px-8 py-4 rounded-2xl border-2 border-slate-200 bg-white/60 backdrop-blur-xl text-slate-700 font-semibold text-lg transition-all duration-500 hover:border-orange-300 hover:bg-white/80 hover:scale-105 shadow-lg hover:shadow-xl sophisticated-hover"
+              >
+                <span className="flex items-center gap-2">
+                  Start Building
+                  <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dynamic Code Examples */}
+      <section className="py-32 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
+        {/* Enhanced background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.04),transparent_60%)]"></div>
+          <div className="absolute top-40 left-1/3 w-72 h-72 bg-gradient-to-br from-violet-100/20 to-orange-100/20 rounded-full blur-3xl animate-float-slow"></div>
+          <div className="absolute bottom-40 right-1/3 w-80 h-80 bg-gradient-to-br from-orange-100/15 to-blue-100/15 rounded-full blur-3xl animate-float-reverse"></div>
+          {/* Code-themed grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.015)_1px,transparent_1px)] bg-[size:40px_40px] opacity-50"></div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-20 observe">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-slate-600">Live Examples</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight stagger-fade-in">
+              See multi-model AI{' '}
+              <span className="bg-gradient-to-r from-slate-700 via-orange-600 to-violet-600 bg-clip-text text-transparent animate-gradient">
+                in action
+              </span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
+              Real debugging scenarios, multiple perspectives, better solutions—watch how different AI models approach the same problem
+            </p>
+          </div>
+
+          <div className="relative mx-auto max-w-6xl observe">
+            {/* Sophisticated glow effect behind the editor */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-orange-500/10 via-violet-500/10 to-orange-500/10 rounded-3xl blur-2xl opacity-0 hover:opacity-100 transition-opacity duration-1000"></div>
+
+            <div className="relative glass-ultra rounded-3xl overflow-hidden shadow-2xl border border-orange-100/30 hover:border-orange-200/50 transition-all duration-700 sophisticated-hover">
+              {/* Enhanced editor header */}
+              <div className="relative flex items-center gap-2 px-6 py-5 bg-gradient-to-r from-slate-50/80 via-white/60 to-slate-50/80 backdrop-blur-xl border-b border-slate-200/30">
+                {/* Traffic lights with glow effect */}
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-red-500 rounded-full shadow-lg"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-red-400 rounded-full animate-ping opacity-20"></div>
+                  </div>
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full shadow-lg"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-yellow-400 rounded-full animate-pulse opacity-30"></div>
+                  </div>
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-pulse opacity-30"></div>
+                  </div>
+                </div>
+
+                {/* Enhanced file info */}
+                <div className="ml-6 flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-100/50 to-violet-100/50 border border-orange-200/30">
+                    <span className="inline-block w-2 h-2 bg-gradient-to-r from-orange-400 to-red-400 rounded-full animate-pulse"></span>
+                    <span className="text-sm text-slate-700 font-mono font-medium">{CODE_EXAMPLES[currentExample].filename}</span>
+                  </div>
+                </div>
+
+                {/* Enhanced controls */}
+                <div className="ml-auto flex items-center gap-4">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-slate-100/60 to-slate-50/60 border border-slate-200/40">
+                    <span className="text-xs text-slate-600 font-mono font-medium">{CODE_EXAMPLES[currentExample].language}</span>
+                  </div>
+
+                  {/* Sophisticated progress indicators */}
+                  <div className="flex gap-1.5">
                     {CODE_EXAMPLES.map((_, index) => (
                       <div
                         key={index}
-                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                          index === currentExample ? 'bg-orange-500 w-6' : 'bg-slate-300'
+                        className={`rounded-full transition-all duration-500 ${
+                          index === currentExample
+                            ? 'w-8 h-2 bg-gradient-to-r from-orange-500 to-violet-500 shadow-lg'
+                            : 'w-2 h-2 bg-slate-300 hover:bg-slate-400'
                         }`}
                       />
                     ))}
@@ -667,35 +927,93 @@ export default function Home() {
               </div>
 
               <div className="p-8">
-                {/* Code block */}
-                <div className="mb-8">
-                  <div className="text-sm text-slate-500 mb-3 font-mono">{CODE_EXAMPLES[currentExample].problem}</div>
-                  <div className="bg-slate-900 rounded-xl p-6 font-mono text-sm overflow-x-auto">
-                    <pre className="text-slate-100">
-                      <code>{CODE_EXAMPLES[currentExample].code}</code>
-                    </pre>
+                {/* Enhanced code block */}
+                <div className="mb-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg">
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-sm text-slate-600 font-mono bg-gradient-to-r from-red-100/60 to-orange-100/60 px-3 py-1.5 rounded-lg border border-red-200/30">
+                      {CODE_EXAMPLES[currentExample].problem}
+                    </span>
+                  </div>
+
+                  <div className="relative group">
+                    {/* Code editor with enhanced styling */}
+                    <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 font-mono text-sm overflow-x-auto border border-slate-700/50 shadow-2xl">
+                      {/* Code syntax highlighting effect */}
+                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 rounded-t-2xl opacity-60"></div>
+
+                      <pre className="text-slate-100 leading-relaxed syntax-highlight">
+                        <code>{CODE_EXAMPLES[currentExample].code}</code>
+                      </pre>
+
+                      {/* Floating copy button */}
+                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                        <button className="p-2 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-200">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* AI Responses */}
-                <div className="space-y-4">
+                {/* Enhanced AI Responses */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-orange-500 to-violet-500 flex items-center justify-center shadow-lg">
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <span className="text-lg font-semibold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">
+                      Multi-Model Analysis
+                    </span>
+                    <div className="flex-1 h-px bg-gradient-to-r from-orange-200 via-violet-200 to-transparent"></div>
+                  </div>
+
                   {CODE_EXAMPLES[currentExample].responses.map((response, index) => (
-                    <div key={index} className="group">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 p-1.5 group-hover:shadow-lg transition-shadow">
-                          <Image src={response.avatar} alt={response.model} width={20} height={20} className="object-contain" />
+                    <div key={index} className="group relative observe" style={{ animationDelay: `${index * 0.2}s` }}>
+                      {/* Model header with sophisticated design */}
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="relative">
+                          <div className="w-10 h-10 rounded-2xl bg-white shadow-lg border border-slate-200/60 p-2 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                            <Image src={response.avatar} alt={response.model} width={24} height={24} className="object-contain" />
+                          </div>
+                          {/* Subtle glow around avatar */}
+                          <div className="absolute inset-0 w-10 h-10 bg-gradient-to-r from-orange-400/20 to-violet-400/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                         </div>
-                        <span className="font-semibold text-slate-900 group-hover:text-orange-600 transition-colors">{response.model}</span>
-                        <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent"></div>
+                        <div className="flex-1">
+                          <span className="font-semibold text-slate-900 group-hover:text-orange-600 transition-colors duration-300 text-lg">
+                            {response.model}
+                          </span>
+                          <div className="w-full h-px bg-gradient-to-r from-slate-200 via-orange-200/50 to-transparent mt-2"></div>
+                        </div>
                       </div>
-                      <div className="bg-gradient-to-br from-orange-50/50 to-violet-50/50 rounded-xl p-4 border border-orange-100/50 group-hover:border-orange-200/50 transition-all">
-                        <div className="text-slate-700 leading-relaxed">
-                          <TypewriterText
-                            text={response.text}
-                            delay={25}
-                            startDelay={index * 2000}
-                            onComplete={() => handleTypingComplete(index)}
-                          />
+
+                      {/* Response content with enhanced styling */}
+                      <div className="relative">
+                        <div className="glass-enhanced rounded-2xl p-6 border border-orange-100/40 group-hover:border-orange-200/60 transition-all duration-500 sophisticated-hover">
+                          {/* Subtle background gradient */}
+                          <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 via-white/50 to-violet-50/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+                          <div className="relative text-slate-700 leading-relaxed text-[15px]">
+                            <TypewriterText
+                              text={response.text}
+                              delay={25}
+                              startDelay={index * 2000}
+                              onComplete={() => handleTypingComplete(index)}
+                            />
+                          </div>
+
+                          {/* Shimmer effect overlay */}
+                          <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                            <div className="absolute inset-0 rounded-2xl animate-shimmer"></div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -708,34 +1026,99 @@ export default function Home() {
       </section>
 
       {/* Supported Editors */}
-      <section className="py-16 bg-gradient-to-r from-orange-50 to-violet-50">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center mb-12 px-4">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">Zero-friction development workflow</h2>
-            <p className="text-base sm:text-lg text-slate-600">Execute multi-model queries directly within your IDE via MCP protocol integration</p>
+      <section className="relative py-24 bg-gradient-to-br from-orange-50/60 via-white/80 to-violet-50/60 overflow-hidden">
+        {/* Sophisticated background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-10 right-1/4 w-64 h-64 bg-gradient-to-br from-orange-200/20 to-violet-200/20 rounded-full blur-3xl animate-float-delayed"></div>
+          <div className="absolute bottom-10 left-1/4 w-72 h-72 bg-gradient-to-br from-violet-200/15 to-blue-200/15 rounded-full blur-3xl animate-float-reverse"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.008)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.008)_1px,transparent_1px)] bg-[size:60px_60px] opacity-40"></div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-16 px-4 observe">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-blue-500/10 to-orange-500/10 border border-blue-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-blue-600">Native Integration</span>
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6 leading-tight stagger-fade-in">
+              Zero-friction development{' '}
+              <span className="bg-gradient-to-r from-blue-600 via-orange-600 to-violet-600 bg-clip-text text-transparent animate-gradient">
+                workflow
+              </span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
+              Execute multi-model queries directly within your IDE via MCP protocol integration—no context switching required
+            </p>
           </div>
 
-          <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 lg:gap-8 max-w-4xl mx-auto px-4">
-            {SUPPORTED_EDITORS.map((editor, index) => (
-              <div key={index} className="group">
-                <div className="relative h-16 w-16 p-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 hover:border-orange-200 hover:bg-white/95 transition-all duration-300 hover:scale-110 hover:shadow-xl shadow-lg">
-                  <Image src={editor.logo} alt="Editor logo" fill className="object-contain p-1" />
+          {/* Enhanced editor grid */}
+          <div className="relative max-w-5xl mx-auto px-4">
+            <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-8 lg:gap-10">
+              {SUPPORTED_EDITORS.map((editor, index) => (
+                <div key={index} className="group observe" style={{ animationDelay: `${index * 0.1}s` }}>
+                  <div className="relative">
+                    {/* Sophisticated glow effect */}
+                    <div className="absolute -inset-2 bg-gradient-to-r from-orange-500/20 via-violet-500/20 to-blue-500/20 rounded-3xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                    <div className="relative h-20 w-20 p-4 rounded-3xl glass-enhanced border border-white/40 hover:border-orange-200/60 transition-all duration-500 hover:scale-110 hover:shadow-2xl shadow-lg sophisticated-hover magnetic-hover">
+                      <Image src={editor.logo} alt="Editor logo" fill className="object-contain p-1 transition-transform duration-300 group-hover:scale-110" />
+
+                      {/* Subtle inner glow */}
+                      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    </div>
+
+                    {/* Floating tooltip */}
+                    <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+                      <div className="bg-slate-900/90 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-lg shadow-lg">
+                        Supported
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
-            <div className="group">
-              <div className="relative h-16 w-16 p-3 rounded-2xl bg-white/80 backdrop-blur-sm border-2 border-dashed border-orange-300 hover:border-orange-400 transition-all duration-300 hover:scale-110 flex items-center justify-center">
-                <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
+              ))}
+
+              {/* Enhanced "more" indicator */}
+              <div className="group observe" style={{ animationDelay: `${SUPPORTED_EDITORS.length * 0.1}s` }}>
+                <div className="relative">
+                  <div className="absolute -inset-2 bg-gradient-to-r from-orange-500/20 to-violet-500/20 rounded-3xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                  <div className="relative h-20 w-20 p-4 rounded-3xl glass-enhanced border-2 border-dashed border-orange-300/60 hover:border-orange-400/80 transition-all duration-500 hover:scale-110 flex items-center justify-center sophisticated-hover">
+                    <div className="relative">
+                      <svg className="w-8 h-8 text-orange-500 group-hover:text-orange-600 transition-colors animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+
+                      {/* Rotating glow */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-orange-400/30 to-violet-400/30 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-spin-slow"></div>
+                    </div>
+                  </div>
+
+                  <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+                    <div className="bg-slate-900/90 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-lg shadow-lg">
+                      More coming
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="text-center mt-8">
-            <p className="text-sm text-slate-500">
-              And many more through our <Link href="/docs/integrations" className="text-orange-600 hover:text-orange-700 font-medium">universal MCP protocol</Link>
-            </p>
+          {/* Enhanced protocol info */}
+          <div className="text-center mt-12 observe">
+            <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl glass-enhanced border border-orange-200/30 hover:border-orange-300/50 transition-all duration-500 hover:scale-105">
+              <div className="w-2 h-2 bg-gradient-to-r from-orange-500 to-violet-500 rounded-full animate-pulse"></div>
+              <span className="text-slate-600">
+                And many more through our{' '}
+                <Link
+                  href="/docs/integrations"
+                  className="font-semibold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent hover:from-orange-700 hover:to-violet-700 transition-all duration-300"
+                >
+                  universal MCP protocol
+                </Link>
+              </span>
+              <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </div>
           </div>
         </div>
       </section>

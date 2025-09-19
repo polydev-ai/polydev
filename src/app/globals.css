@@ -297,6 +297,205 @@ code:not(pre code) {
   animation: bounce-slow 3s ease-in-out infinite;
 }
 
+/* Advanced Webflow-style animations */
+@keyframes sophisticated-float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+    opacity: 0.6;
+  }
+  25% {
+    transform: translateY(-10px) translateX(5px) rotate(1deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-5px) translateX(-3px) rotate(-0.5deg);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-15px) translateX(2px) rotate(0.5deg);
+    opacity: 0.7;
+  }
+}
+
+.animate-sophisticated-float {
+  animation: sophisticated-float 8s ease-in-out infinite;
+}
+
+/* Gradient background animation */
+@keyframes gradient-shift-advanced {
+  0% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+  25% {
+    background-position: 100% 50%;
+    filter: hue-rotate(90deg);
+  }
+  50% {
+    background-position: 100% 100%;
+    filter: hue-rotate(180deg);
+  }
+  75% {
+    background-position: 0% 100%;
+    filter: hue-rotate(270deg);
+  }
+  100% {
+    background-position: 0% 50%;
+    filter: hue-rotate(360deg);
+  }
+}
+
+.animate-gradient-advanced {
+  background-size: 400% 400%;
+  animation: gradient-shift-advanced 15s ease infinite;
+}
+
+/* Sophisticated text reveal */
+@keyframes text-reveal {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0%);
+    opacity: 1;
+  }
+}
+
+.animate-text-reveal {
+  animation: text-reveal 0.8s cubic-bezier(0.77, 0, 0.175, 1) forwards;
+}
+
+/* Magnetic hover effect */
+.magnetic-hover {
+  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.magnetic-hover:hover {
+  transform: perspective(1000px) rotateX(5deg) rotateY(5deg) scale3d(1.05, 1.05, 1.05);
+}
+
+/* Advanced glassmorphism */
+.glass-ultra {
+  backdrop-filter: blur(40px) saturate(180%) brightness(120%);
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px rgba(31, 38, 135, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Sophisticated hover states */
+.sophisticated-hover {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sophisticated-hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  transition: left 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.sophisticated-hover:hover::before {
+  left: 100%;
+}
+
+.sophisticated-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Advanced pulse animation */
+@keyframes pulse-sophisticated {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(249, 115, 22, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
+  }
+}
+
+.animate-pulse-sophisticated {
+  animation: pulse-sophisticated 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Staggered fade-in animation */
+.stagger-fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fade-in-up 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.stagger-fade-in:nth-child(1) { animation-delay: 0.1s; }
+.stagger-fade-in:nth-child(2) { animation-delay: 0.2s; }
+.stagger-fade-in:nth-child(3) { animation-delay: 0.3s; }
+.stagger-fade-in:nth-child(4) { animation-delay: 0.4s; }
+.stagger-fade-in:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes fade-in-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Sophisticated glow effect */
+.glow-sophisticated {
+  position: relative;
+}
+
+.glow-sophisticated::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: conic-gradient(
+    from 0deg,
+    #ff6b35,
+    #f7931e,
+    #ffd23f,
+    #06ffa5,
+    #147df5,
+    #8b5cf6,
+    #ff6b35
+  );
+  border-radius: inherit;
+  filter: blur(10px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.glow-sophisticated:hover::before {
+  opacity: 0.3;
+  animation: rotation 3s linear infinite;
+}
+
+@keyframes rotation {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Pulse ring animation */
 @keyframes pulse-ring {
   0% {
