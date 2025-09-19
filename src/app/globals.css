@@ -22,9 +22,31 @@ body {
   line-height: 1.6;
 }
 
-/* Smooth animations */
+/* Smooth animations with performance optimizations */
 * {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Performance optimizations for mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Improved scrolling on mobile */
+html {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Better focus outlines */
@@ -254,6 +276,25 @@ code:not(pre code) {
 
 .animate-float-reverse {
   animation: float-reverse 5s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float 5s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+.animate-float-slow {
+  animation: float 6s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0px) rotate(45deg); }
+  50% { transform: translateY(-5px) rotate(45deg); }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 3s ease-in-out infinite;
 }
 
 /* Pulse ring animation */

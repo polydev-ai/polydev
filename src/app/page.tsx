@@ -439,62 +439,38 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text
   return <span>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
 }
 
-function ModelSwitchingDemo() {
-  const [currentStep, setCurrentStep] = useState(0)
-  const [isTyping, setIsTyping] = useState(false)
+function MCPIntegrationDemo() {
+  const [currentClient, setCurrentClient] = useState(0)
 
-  const demoSteps = [
+  const mcpClients = [
     {
-      model: "Claude Opus 4",
-      avatar: "https://models.dev/logos/anthropic.svg",
-      text: "I need help optimizing this database query...",
-      status: "thinking",
-      color: "text-orange-600"
+      name: "Claude Code",
+      logo: "https://sajalsharma.com/_astro/claude_code.GbHphWWe_Z29KFWg.webp.jpg",
+      command: "claude perspectives \"help me debug this memory leak\"",
+      description: "Get multiple AI perspectives directly in your terminal"
     },
     {
-      model: "Claude Opus 4",
-      avatar: "https://models.dev/logos/anthropic.svg",
-      text: "Hmm, this is a complex indexing problem. Let me think...",
-      status: "stuck",
-      color: "text-orange-600"
+      name: "Cursor",
+      logo: "https://cdn.freelogovectors.net/wp-content/uploads/2025/06/cursor-logo-freelogovectors.net_.png",
+      command: "# Cursor Composer with Polydev MCP",
+      description: "Access multiple models through Cursor's AI interface"
     },
     {
-      model: "GPT-5",
-      avatar: "https://models.dev/logos/openai.svg",
-      text: "I can help! Try creating a composite index on (user_id, created_at) and use window functions for better performance.",
-      status: "solution",
-      color: "text-blue-600"
-    },
-    {
-      model: "Gemini 2.5 Pro",
-      avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-      text: "Also consider partitioning the table by date ranges and implementing read replicas for analytics workloads.",
-      status: "additional",
-      color: "text-emerald-600"
+      name: "Cline",
+      logo: "https://cline.bot/assets/branding/logos/cline-wordmark-black.svg",
+      command: "// Ask Cline to use Polydev for perspectives",
+      description: "Get diverse viewpoints on your VS Code problems"
     }
   ]
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentStep((prev) => {
-        if (prev >= demoSteps.length - 1) {
-          return 0
-        }
-        return prev + 1
-      })
+      setCurrentClient((prev) => (prev + 1) % mcpClients.length)
     }, 4000)
     return () => clearInterval(interval)
   }, [])
 
-  const handleTypingComplete = () => {
-    setIsTyping(false)
-  }
-
-  useEffect(() => {
-    setIsTyping(true)
-  }, [currentStep])
-
-  const currentDemo = demoSteps[currentStep]
+  const currentDemo = mcpClients[currentClient]
 
   return (
     <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-w-2xl mx-auto">
@@ -503,38 +479,21 @@ function ModelSwitchingDemo() {
           <div className="w-3 h-3 bg-red-500 rounded-full"></div>
           <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          <span className="ml-3 text-slate-300 text-sm font-mono">Polydev Console</span>
+          <div className="ml-3 flex items-center gap-2">
+            <div className="w-6 h-6 relative">
+              <Image src={currentDemo.logo} alt={currentDemo.name} fill className="object-contain" />
+            </div>
+            <span className="text-slate-300 text-sm font-mono">{currentDemo.name}</span>
+          </div>
         </div>
       </div>
       <div className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-8 h-8 rounded-full bg-white shadow-md border border-slate-200 p-1.5">
-            <Image src={currentDemo.avatar} alt={currentDemo.model} width={20} height={20} className="object-contain" />
-          </div>
-          <span className={`font-semibold ${currentDemo.color} transition-colors`}>{currentDemo.model}</span>
-          {currentDemo.status === "thinking" && (
-            <div className="flex gap-1">
-              <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-              <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-            </div>
-          )}
-          {currentDemo.status === "stuck" && (
-            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Switching models...</span>
-          )}
-          {currentDemo.status === "solution" && (
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Solution found!</span>
-          )}
+        <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm mb-4">
+          <div className="text-green-400 mb-2">$ {currentDemo.command}</div>
+          <div className="text-slate-400">🔗 Connected to Polydev MCP server</div>
+          <div className="text-slate-400">📡 Getting perspectives from multiple AI models...</div>
         </div>
-        <div className="bg-gradient-to-br from-orange-50/50 to-violet-50/50 rounded-xl p-4 border border-orange-100/50 min-h-[80px] flex items-center">
-          <div className="text-slate-700 leading-relaxed">
-            <TypewriterText
-              text={currentDemo.text}
-              delay={25}
-              onComplete={handleTypingComplete}
-            />
-          </div>
-        </div>
+        <p className="text-slate-600 text-center">{currentDemo.description}</p>
       </div>
     </div>
   )
@@ -568,44 +527,47 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-violet-50">
+      <section className="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-violet-50 will-change-scroll">
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.02)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
 
-        {/* Floating model logos */}
+        {/* Floating model logos with animations */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 left-10 w-12 h-12 opacity-10">
+          <div className="absolute top-20 left-10 w-12 h-12 opacity-10 animate-float will-change-transform">
             <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" fill className="object-contain" />
           </div>
-          <div className="absolute top-32 right-20 w-10 h-10 opacity-10">
+          <div className="absolute top-32 right-20 w-10 h-10 opacity-10 animate-float-delayed will-change-transform">
             <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" fill className="object-contain" />
           </div>
-          <div className="absolute bottom-40 left-20 w-14 h-14 opacity-10">
+          <div className="absolute bottom-40 left-20 w-14 h-14 opacity-10 animate-float-slow will-change-transform">
             <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" fill className="object-contain" />
           </div>
+          {/* Modern geometric floating elements */}
+          <div className="absolute top-20 left-1/4 w-4 h-4 bg-orange-200/20 rounded-full animate-pulse hidden sm:block will-change-transform"></div>
+          <div className="absolute bottom-32 right-1/4 w-6 h-6 bg-violet-200/20 rotate-45 animate-bounce-slow hidden sm:block will-change-transform"></div>
+          <div className="absolute top-1/2 right-16 w-3 h-3 bg-orange-300/30 rounded-full animate-ping hidden sm:block will-change-transform"></div>
         </div>
 
-        <div className="relative mx-auto max-w-7xl px-6 py-24 sm:py-32">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-24 lg:py-32">
           <div className="text-center">
             <div className="mx-auto max-w-4xl">
               <span className="inline-flex items-center rounded-full bg-orange-100 border border-orange-200 px-4 py-1.5 text-sm font-mono text-orange-700 mb-8">
                 <span className="w-2 h-2 bg-orange-500 rounded-full mr-2 animate-pulse"></span>
-                MCP-native • Multi-model • Zero-knowledge memory
+                Multi-model inference • Zero context switching • Native editor integration
               </span>
-              <h1 className="text-5xl font-bold tracking-tight text-slate-900 sm:text-6xl">
-                Get unstuck faster.<br />
-                <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">Debug smarter. Design better.</span>
+              <h1 className="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+                Code faster. Architect better.<br />
+                <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">Ship with confidence.</span>
               </h1>
-              <p className="mt-6 text-xl leading-8 text-slate-600 max-w-3xl mx-auto">
-                When one AI model isn't enough, get answers from GPT-5, Claude Opus 4, Gemini 2.5 Pro, and 340+ others simultaneously.
-                Compare solutions, catch edge cases, and improve your code accuracy without leaving your editor.
+              <p className="mt-6 text-lg sm:text-xl leading-7 sm:leading-8 text-slate-600 max-w-3xl mx-auto px-4 sm:px-0">
+                Query multiple AI models simultaneously within your existing development workflow. Compare architectural approaches, catch edge cases, and optimize code quality—all without context switching or copy-pasting between tools.
               </p>
 
               {/* Model logos showcase */}
-              <div className="mt-8 flex items-center justify-center gap-6">
-                <div className="flex items-center gap-3 text-sm text-slate-500">
-                  <span>Powered by:</span>
-                  <div className="flex items-center gap-2">
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 px-4">
+                <div className="flex flex-col sm:flex-row items-center gap-3 text-sm text-slate-500">
+                  <span className="font-medium">Powered by:</span>
+                  <div className="flex items-center gap-2 flex-wrap justify-center">
                     {MODEL_PROVIDERS.map((provider) => (
                       <div key={provider.name} className="w-6 h-6 relative">
                         <Image src={provider.logo} alt={provider.name} fill className="object-contain" />
@@ -616,18 +578,18 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="mt-10 flex items-center justify-center gap-6">
+              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 px-4">
                 <Link
                   href={isAuthenticated ? '/dashboard' : '/auth'}
-                  className="group relative overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-violet-500 px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-orange-500/25 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-105"
+                  className="w-full sm:w-auto group relative overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-violet-500 px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-orange-500/25 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-105 text-center"
                 >
                   {isAuthenticated ? 'Launch Console' : 'Initialize Workspace'}
                 </Link>
                 <Link
                   href="/docs"
-                  className="group rounded-full border-2 border-slate-200 bg-white/80 backdrop-blur-sm px-8 py-4 text-lg font-semibold text-slate-700 transition-all duration-300 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600"
+                  className="w-full sm:w-auto group rounded-full border-2 border-slate-200 bg-white/80 backdrop-blur-sm px-8 py-4 text-lg font-semibold text-slate-700 transition-all duration-300 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 text-center"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center justify-center gap-2">
                     Architecture Docs
                     <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -640,15 +602,15 @@ export default function Home() {
             {/* Dynamic Model Switching Demo */}
             <div className="mt-16">
               <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">See smart model switching in action</h3>
-                <p className="text-slate-600">When one AI gets stuck, Polydev automatically tries others</p>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Production-ready MCP integration</h3>
+                <p className="text-slate-600">Seamless multi-model inference through standardized protocol—no workflow disruption</p>
               </div>
-              <ModelSwitchingDemo />
+              <MCPIntegrationDemo />
             </div>
           </div>
 
           {/* Stats */}
-          <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-3 lg:gap-16">
+          <div className="mt-12 sm:mt-20 grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-8 lg:gap-16 px-4">
             <div className="text-center group">
               <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">{modelStats.totalModels}+</div>
               <div className="mt-2 text-lg text-slate-600 group-hover:text-orange-600 transition-colors">Models available</div>
@@ -668,7 +630,7 @@ export default function Home() {
       {/* Dynamic Code Examples */}
       <section className="py-24 bg-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.03),transparent)]"></div>
-        <div className="relative mx-auto max-w-7xl px-6">
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">
               See multi-model AI in action
@@ -747,13 +709,13 @@ export default function Home() {
 
       {/* Supported Editors */}
       <section className="py-16 bg-gradient-to-r from-orange-50 to-violet-50">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900 mb-3">Native integration with your favorite tools</h2>
-            <p className="text-lg text-slate-600">Get multi-model perspectives directly in your development environment</p>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-12 px-4">
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">Zero-friction development workflow</h2>
+            <p className="text-base sm:text-lg text-slate-600">Execute multi-model queries directly within your IDE via MCP protocol integration</p>
           </div>
 
-          <div className="flex flex-wrap justify-center items-center gap-8 max-w-4xl mx-auto">
+          <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 lg:gap-8 max-w-4xl mx-auto px-4">
             {SUPPORTED_EDITORS.map((editor, index) => (
               <div key={index} className="group">
                 <div className="relative h-16 w-16 p-3 rounded-2xl bg-white/80 backdrop-blur-sm border border-white/60 hover:border-orange-200 hover:bg-white/95 transition-all duration-300 hover:scale-110 hover:shadow-xl shadow-lg">
@@ -780,7 +742,7 @@ export default function Home() {
 
       {/* Free CLI Usage Section */}
       <section className="py-24 bg-white">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="max-w-4xl mx-auto text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
               Get perspectives <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">without spending anything</span>
@@ -945,7 +907,7 @@ export default function Home() {
 
       {/* Technology Deep Dive */}
       <section className="py-24 bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
               Built for <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">modern development workflows</span>
@@ -1087,7 +1049,7 @@ export default function Home() {
 
       {/* Developer Benefits */}
       <section className="py-24 bg-white">
-        <div className="mx-auto max-w-7xl px-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
               Why developers choose Polydev
@@ -1182,18 +1144,18 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section className="py-24 bg-gradient-to-br from-orange-50 to-violet-50 border-t border-slate-200">
-        <div className="mx-auto max-w-4xl px-6 text-center">
-          <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-4">Simple, transparent pricing</h2>
-          <p className="text-xl text-slate-600 mb-12">
+      <section className="py-16 sm:py-24 bg-gradient-to-br from-orange-50 to-violet-50 border-t border-slate-200">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 text-center">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 mb-4">Simple, transparent pricing</h2>
+          <p className="text-lg sm:text-xl text-slate-600 mb-8 sm:mb-12 px-4">
             100 free runs to start. Unlimited for $20 a month when you are ready.
           </p>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-            <div className="bg-white p-8 rounded-2xl shadow-lg border-2 border-slate-200 hover:border-orange-200 transition-colors">
+          <div className="grid sm:grid-cols-2 gap-6 sm:gap-8 max-w-3xl mx-auto">
+            <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border-2 border-slate-200 hover:border-orange-200 transition-colors">
               <h3 className="text-2xl font-bold text-slate-900 mb-2">Free</h3>
               <div className="text-4xl font-bold text-slate-900 mb-4">$0</div>
-              <p className="text-slate-600 mb-6">Perfect for trying out Polydev</p>
+              <p className="text-slate-600 mb-6">Evaluate multi-model inference capabilities</p>
               <ul className="space-y-3 mb-8 text-left">
                 <li className="flex items-center gap-2">
                   <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1205,7 +1167,7 @@ export default function Home() {
                   <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">3 models access</span>
+                  <span className="text-slate-700">3 model endpoints</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1219,13 +1181,13 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-500 to-violet-500 p-8 rounded-2xl shadow-xl text-white relative overflow-hidden">
+            <div className="bg-gradient-to-br from-orange-500 to-violet-500 p-6 sm:p-8 rounded-2xl shadow-xl text-white relative overflow-hidden">
               <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
               <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-white/10 rounded-full"></div>
               <div className="relative">
                 <h3 className="text-2xl font-bold mb-2">Pro</h3>
                 <div className="text-4xl font-bold mb-4">$20</div>
-                <p className="text-orange-100 mb-6">For professional developers</p>
+                <p className="text-orange-100 mb-6">Production-scale multi-model inference</p>
                 <ul className="space-y-3 mb-8 text-left">
                   <li className="flex items-center gap-2">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1237,7 +1199,7 @@ export default function Home() {
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    <span>All {modelStats.totalModels}+ models</span>
+                    <span>All {modelStats.totalModels}+ model endpoints</span>
                   </li>
                   <li className="flex items-center gap-2">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
