@@ -24,12 +24,18 @@ export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const { user, loading, signOut, isAuthenticated } = useAuth()
   const { balance, formatCurrency, getCreditStatus } = useCredits()
   
   const supabase = createClient()
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Load user profile
   useEffect(() => {
@@ -86,7 +92,7 @@ export default function Navigation() {
     { name: 'Docs', href: '/docs' },
   ]
 
-  const navigation = isAuthenticated ? authenticatedNavigation : publicNavigation
+  const navigation = isMounted && isAuthenticated ? authenticatedNavigation : publicNavigation
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -128,7 +134,7 @@ export default function Navigation() {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            {loading ? (
+            {!isMounted || loading ? (
               <div className="w-16 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
             ) : isAuthenticated ? (
               <>
@@ -318,7 +324,7 @@ export default function Navigation() {
                 </Link>
               ))}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-1">
-                {loading ? (
+                {!isMounted || loading ? (
                   <div className="px-3 py-2">
                     <div className="w-24 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
                   </div>
