@@ -5,6 +5,40 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '../hooks/useAuth'
 
+// Personality themes for dynamic overlays
+const PERSONALITIES = [
+  {
+    id: 'explorer',
+    name: '🔮 The Explorer',
+    theme: {
+      gradient: 'from-purple-600 via-blue-500 to-cyan-500',
+      bg: 'from-purple-50 via-blue-50 to-cyan-50/30',
+      cta: 'Discover Possibilities',
+      subtitle: 'Venture into uncharted solutions with multiple AI perspectives guiding your path.'
+    }
+  },
+  {
+    id: 'pragmatist',
+    name: '🎯 The Pragmatist',
+    theme: {
+      gradient: 'from-orange-600 via-orange-500 to-violet-600',
+      bg: 'from-slate-50 via-white to-orange-50/30',
+      cta: 'Get It Done',
+      subtitle: 'Query multiple language models simultaneously within your existing development environment.'
+    }
+  },
+  {
+    id: 'visionary',
+    name: '🚀 The Visionary',
+    theme: {
+      gradient: 'from-emerald-600 via-teal-500 to-cyan-600',
+      bg: 'from-emerald-50 via-teal-50 to-cyan-50/30',
+      cta: 'Shape the Future',
+      subtitle: 'Transform your development workflow with revolutionary multi-model intelligence.'
+    }
+  }
+]
+
 const fetchModelsDevStats = async () => {
   try {
     const response = await fetch('/api/models-dev/providers')
@@ -525,10 +559,26 @@ export default function Home() {
   const [currentExample, setCurrentExample] = useState(0)
   const [typingStates, setTypingStates] = useState<{ [key: number]: boolean }>({})
   const [isMounted, setIsMounted] = useState(false)
+  const [currentPersonality, setCurrentPersonality] = useState(PERSONALITIES[1]) // Default to Pragmatist
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
 
   useEffect(() => {
     setIsMounted(true)
     fetchModelsDevStats().then(setModelStats)
+
+    // Command palette keyboard shortcut
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowCommandPalette(true)
+      }
+      if (e.key === 'Escape') {
+        setShowCommandPalette(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   useEffect(() => {
@@ -573,7 +623,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
+      <section className={`relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-gradient-to-br ${currentPersonality.theme.bg} transition-all duration-1000`}>
         {/* Sophisticated background patterns */}
         <div className="absolute inset-0">
           {/* Main gradient mesh */}
@@ -610,6 +660,25 @@ export default function Home() {
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-4">
           <div className="text-center">
             <div className="mx-auto max-w-5xl">
+              {/* Personality Selector */}
+              <div className="flex justify-center mb-8">
+                <div className="flex items-center gap-2 p-2 rounded-full bg-white/90 backdrop-blur-xl border border-white/40 shadow-lg">
+                  {PERSONALITIES.map((personality) => (
+                    <button
+                      key={personality.id}
+                      onClick={() => setCurrentPersonality(personality)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                        currentPersonality.id === personality.id
+                          ? 'bg-gradient-to-r from-slate-800 to-slate-700 text-white shadow-lg'
+                          : 'text-slate-600 hover:text-slate-800 hover:bg-white/60'
+                      }`}
+                    >
+                      {personality.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Sophisticated status indicator */}
               <div className="inline-flex items-center gap-3 mb-6 group">
                 <div className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-orange-200/50 shadow-lg shadow-orange-100/20 hover:shadow-orange-100/40 transition-all duration-300">
@@ -635,7 +704,7 @@ export default function Home() {
                   </div>
                   <br />
                   <div className="inline-block">
-                    <span className="relative inline-block bg-gradient-to-r from-orange-600 via-orange-500 to-violet-600 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+                    <span className={`relative inline-block bg-gradient-to-r ${currentPersonality.theme.gradient} bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] transition-all duration-1000`}>
                       intelligence
                     </span>
                   </div>
@@ -649,12 +718,12 @@ export default function Home() {
               {/* Sophisticated description */}
               <div className="mt-8 max-w-4xl mx-auto">
                 <p className="text-xl sm:text-2xl leading-relaxed text-slate-600 font-light tracking-wide">
-                  Query <span className="font-medium text-slate-800">multiple language models simultaneously</span> within your existing development environment.
+                  {currentPersonality.theme.subtitle}
                   <br className="hidden sm:block" />
                   Compare solutions, validate approaches, improve quality—
                   <span className="relative inline-block">
                     <span className="font-medium text-slate-800">zero context switching</span>
-                    <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-orange-400 to-violet-400 rounded-full"></div>
+                    <div className={`absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r ${currentPersonality.theme.gradient} rounded-full transition-all duration-1000`}></div>
                   </span>.
                 </p>
               </div>
@@ -693,7 +762,7 @@ export default function Home() {
                     <div className="relative px-8 py-4 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl text-white font-semibold text-lg transition-all duration-300 overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                       <span className="relative flex items-center justify-center gap-2">
-                        {isAuthenticated ? 'Launch Console' : 'Start Building'}
+{isAuthenticated ? 'Launch Console' : currentPersonality.theme.cta}
                         <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
@@ -754,6 +823,117 @@ export default function Home() {
             <div className="text-center group">
               <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">1.7 s</div>
               <div className="mt-2 text-lg text-slate-600 group-hover:text-orange-600 transition-colors">Median response</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Prism of Perspectives */}
+      <section className="relative py-20 bg-gradient-to-br from-slate-50 via-white to-slate-100/50 overflow-hidden">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              One Question, Multiple <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">Perspectives</span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Watch how a single prompt transforms into diverse insights from different AI models
+            </p>
+          </div>
+
+          <div className="relative">
+            {/* The Prism */}
+            <div className="flex justify-center mb-12">
+              <div className="relative">
+                <svg width="600" height="300" viewBox="0 0 600 300" className="w-full max-w-2xl">
+                  {/* Prism shape */}
+                  <defs>
+                    <linearGradient id="prismGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="rgba(147, 197, 253, 0.8)" />
+                      <stop offset="50%" stopColor="rgba(196, 181, 253, 0.8)" />
+                      <stop offset="100%" stopColor="rgba(167, 243, 208, 0.8)" />
+                    </linearGradient>
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                  </defs>
+
+                  {/* Input beam */}
+                  <line x1="50" y1="150" x2="200" y2="150" stroke="url(#prismGradient)" strokeWidth="3" className="animate-pulse" />
+                  <circle cx="30" cy="150" r="15" fill="rgba(59, 130, 246, 0.2)" className="animate-ping" />
+
+                  {/* Prism */}
+                  <polygon points="200,100 250,150 200,200" fill="url(#prismGradient)" filter="url(#glow)" className="drop-shadow-lg" />
+
+                  {/* Output beams with different colors */}
+                  <line x1="250" y1="120" x2="400" y2="90" stroke="#ef4444" strokeWidth="2" className="animate-pulse" style={{animationDelay: '0.5s'}} />
+                  <line x1="250" y1="140" x2="400" y2="130" stroke="#f59e0b" strokeWidth="2" className="animate-pulse" style={{animationDelay: '1s'}} />
+                  <line x1="250" y1="160" x2="400" y2="170" stroke="#10b981" strokeWidth="2" className="animate-pulse" style={{animationDelay: '1.5s'}} />
+                  <line x1="250" y1="180" x2="400" y2="210" stroke="#3b82f6" strokeWidth="2" className="animate-pulse" style={{animationDelay: '2s'}} />
+
+                  {/* Model dots */}
+                  <circle cx="420" cy="90" r="6" fill="#ef4444" className="animate-bounce" style={{animationDelay: '0.5s'}} />
+                  <circle cx="420" cy="130" r="6" fill="#f59e0b" className="animate-bounce" style={{animationDelay: '1s'}} />
+                  <circle cx="420" cy="170" r="6" fill="#10b981" className="animate-bounce" style={{animationDelay: '1.5s'}} />
+                  <circle cx="420" cy="210" r="6" fill="#3b82f6" className="animate-bounce" style={{animationDelay: '2s'}} />
+                </svg>
+              </div>
+            </div>
+
+            {/* Input and Output Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              {/* Input */}
+              <div className="bg-white rounded-2xl p-8 shadow-lg border border-slate-200">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold">?</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900">Your Question</h3>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-slate-700 font-mono text-sm">
+                    "How should I optimize this React component for better performance?"
+                  </p>
+                </div>
+              </div>
+
+              {/* Outputs */}
+              <div className="space-y-4">
+                <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-xl p-4 border border-red-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                    <span className="font-medium text-red-900">GPT-4</span>
+                  </div>
+                  <p className="text-red-800 text-sm">Focus on memoization and useMemo for expensive calculations</p>
+                </div>
+
+                <div className="bg-gradient-to-r from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-4 h-4 bg-amber-500 rounded-full"></div>
+                    <span className="font-medium text-amber-900">Claude</span>
+                  </div>
+                  <p className="text-amber-800 text-sm">Consider component splitting and lazy loading patterns</p>
+                </div>
+
+                <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-4 border border-emerald-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-4 h-4 bg-emerald-500 rounded-full"></div>
+                    <span className="font-medium text-emerald-900">Gemini</span>
+                  </div>
+                  <p className="text-emerald-800 text-sm">Implement virtual scrolling for large lists</p>
+                </div>
+
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                    <span className="font-medium text-blue-900">Llama</span>
+                  </div>
+                  <p className="text-blue-800 text-sm">Profile with React DevTools to identify bottlenecks</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1988,6 +2168,92 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Command Palette Modal */}
+      {showCommandPalette && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-black bg-opacity-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-3 p-4 border-b border-slate-200">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">⌘K</span>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900">Polydev Command Palette</h3>
+              <button
+                onClick={() => setShowCommandPalette(false)}
+                className="ml-auto w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="p-4 border-b border-slate-100">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Type a command or ask a question..."
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-slate-900 placeholder-slate-500"
+                  autoFocus
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="p-4">
+              <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Quick Actions</div>
+              <div className="space-y-2">
+                {[
+                  { icon: '🔍', title: 'Code Review', desc: 'Get multiple perspectives on code quality' },
+                  { icon: '🐛', title: 'Debug Issue', desc: 'Find and fix bugs with AI assistance' },
+                  { icon: '⚡', title: 'Optimize Performance', desc: 'Improve code speed and efficiency' },
+                  { icon: '📚', title: 'Explain Code', desc: 'Understand complex code patterns' },
+                  { icon: '🧪', title: 'Generate Tests', desc: 'Create comprehensive test suites' },
+                  { icon: '🔄', title: 'Refactor Code', desc: 'Improve code structure and readability' }
+                ].map((action, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                  >
+                    <span className="text-xl">{action.icon}</span>
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-900 group-hover:text-purple-700">{action.title}</div>
+                      <div className="text-sm text-slate-500">{action.desc}</div>
+                    </div>
+                    <div className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">Enter</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>Press <kbd className="px-2 py-1 bg-white border rounded">Esc</kbd> to close</span>
+                <span>Press <kbd className="px-2 py-1 bg-white border rounded">↑↓</kbd> to navigate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Command Palette Hint */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 max-w-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">⌘K</span>
+            </div>
+            <div>
+              <div className="font-medium text-slate-900 text-sm">Try the Command Palette</div>
+              <div className="text-xs text-slate-500">Press ⌘K to get started</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
