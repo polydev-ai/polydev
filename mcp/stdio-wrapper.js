@@ -294,8 +294,8 @@ class StdioMCPWrapper {
         console.error(`[Stdio Wrapper] Auto-selected provider: ${provider_id}`);
       }
 
-      // Use shorter timeout for faster fallback (5 seconds instead of 30)
-      const gracefulTimeout = Math.min(timeout_ms, 5000);
+      // Use reasonable timeout for CLI responses (15 seconds instead of 5)
+      const gracefulTimeout = Math.min(timeout_ms, 15000);
       
       // Start both operations concurrently for better performance
       const [localResult, perspectivesResult] = await Promise.allSettled([
