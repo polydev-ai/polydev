@@ -12,7 +12,7 @@ Add your API keys to use AI models.
 ## **Setup**
 
 1. **Get API keys** from provider websites
-2. **Add to Polydev** → Dashboard → Settings → API Keys
+2. **Add to Polydev** → https://polydev.ai/dashboard → Settings → API Keys
 3. **Done** - Polydev routes automatically
 
 That's it.

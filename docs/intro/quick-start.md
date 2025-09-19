@@ -1,16 +1,8 @@
-# Quick Start
+# **Quick Start**
 
 Get Polydev running in 2 minutes.
 
-## Install
-
-```bash
-git clone https://github.com/polydev-ai/polydev.git
-cd polydev
-npm install
-```
-
-## Setup
+## **Setup**
 
 **Option 1: Use existing CLI tools (recommended)**
 
@@ -18,16 +10,11 @@ If you have Claude Desktop, Cline, or Cursor installed, you're done. Polydev wil
 
 **Option 2: Add your API keys**
 
-```bash
-# Start dashboard
-npm run dev
+1. **Visit Dashboard** → https://polydev.ai/dashboard
+2. **Go to Settings** → API Keys
+3. **Add your keys** → OpenAI, Anthropic, Google AI, or Groq
 
-# Open http://localhost:3000
-# Go to Settings → API Keys
-# Add your OpenAI, Anthropic, or other API keys
-```
-
-## Configure your agent
+## **Configure your agent**
 
 Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
@@ -42,16 +29,14 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 }
 ```
 
-## Test it
+## **Test it**
 
 Ask your agent:
 
-```
-"I'm having trouble with React re-renders. Can you get multiple perspectives on debugging this?"
-```
+*"I'm having trouble with React re-renders. Can you get multiple perspectives on debugging this?"*
 
 Your agent will use Polydev to query multiple AI models and give you diverse solutions.
 
-## That's it
+## **That's it**
 
 Polydev now handles multi-model requests automatically when your agent gets stuck.

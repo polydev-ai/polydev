@@ -17,7 +17,7 @@ Common issues and quick fixes.
 
 ## **No API responses**
 
-**Check API keys** → Dashboard → Settings → API Keys
+**Check API keys** → https://polydev.ai/dashboard → Settings → API Keys
 
 **Test connection:**
 ```bash
