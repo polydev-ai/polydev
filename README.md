@@ -1,6 +1,6 @@
 # Polydev AI Website
 
-Advanced Model Context Protocol platform with comprehensive multi-LLM integration, subscription-based CLI access, OAuth bridges, and advanced tooling for AI development.
+Advanced Model Context Protocol platform with comprehensive multi-LLM integrations, subscription-based CLI access, OAuth bridges, and advanced tooling for AI development.
 
 ## Features
 

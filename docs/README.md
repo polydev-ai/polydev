@@ -1,43 +1,43 @@
-# Polydev Docs
+# **Polydev Docs**
 
-Clean, quick, and practical guides for using Polydev. Start with the Quickstart, then dive into features and APIs.
+Get multiple AI perspectives when your agent gets stuck.
 
-## Quickstart
-- [What is Polydev?](intro/what-is-polydev.md)
-- [Installation](intro/installation.md)
-- [Quick Start](intro/quick-start.md)
-- [Architecture Overview](intro/architecture.md)
-- [Choosing Models](intro/choosing-models.md)
+## **Getting Started**
 
-## Features
-- [Perspectives (multi‑model)](features/perspectives/)
-- [Memory (project context)](features/memory/)
-- [Fallback & Cost Controls](features/fallback/)
-- [Security](features/security/)
+- [**What is Polydev?**](intro/what-is-polydev.md) - 2 min read
+- [**Quick Start**](intro/quick-start.md) - Install and test in 2 minutes
 
-## Providers
-- [Overview](providers/index.md)
-- [API providers](providers/api-providers/)
-- [CLI providers](providers/cli-providers/)
-- [Custom providers](providers/custom-providers.md)
+## **API Reference**
 
-## API Reference
-- [API index](api-reference/index.md)
-- [Chat](api-reference/chat/)
-- [Perspectives](api-reference/perspectives/)
-- [Models](api-reference/models/)
-- [Webhooks](api-reference/webhooks/)
+- [**API Overview**](api-reference/) - Complete API documentation
+- [**Perspectives API**](api-reference/perspectives/) - Query multiple models
 
-## MCP
-- [Overview](mcp/overview.md)
-- [Server setup](mcp/server-setup.md)
-- [Tools](mcp/tools/)
-- [Agents](mcp/agents/)
+## **Features**
 
-## Troubleshooting
-- [Environment](config/environment.md)
-- [Authentication](config/authentication.md)
-- [Preferences](config/preferences.md)
-- [Common issues](config/troubleshooting.md)
+- [**Features Overview**](features/) - Core capabilities
+- [**Multi-Model Perspectives**](features/) - Claude 4.1 Opus, GPT-5, Gemini 2.5 Pro, Grok 4
+- [**Intelligent Fallback**](features/) - CLI tools → API keys → Credits
+- [**Project Memory**](features/) - Smart context selection
 
-Need help? Join our [Discord](https://discord.gg/polydev) or open an issue.
+## **Providers**
+
+- [**Anthropic**](providers/api-providers/anthropic.md) - Claude 4.1 Opus, Claude 4 Sonnet
+- [**OpenAI**](providers/api-providers/openai.md) - GPT-5, GPT-4
+- [**Google AI**](providers/api-providers/google-ai.md) - Gemini 2.5 Pro
+- [**Groq**](providers/api-providers/groq.md) - Grok 4
+
+## **MCP Integration**
+
+- [**Claude Desktop**](mcp/clients/claude-desktop.md)
+- [**Cline**](mcp/clients/cline.md)
+- [**Cursor**](mcp/clients/cursor.md)
+
+## **Configuration**
+
+- [**Environment**](config/environment.md) - Setup and deployment
+- [**Authentication**](config/authentication.md) - API keys and security
+- [**Troubleshooting**](config/troubleshooting.md) - Common fixes
+
+## **Help**
+
+Need help? Check [**troubleshooting**](config/troubleshooting.md) or join our [**Discord**](https://discord.gg/polydev).

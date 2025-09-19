@@ -259,241 +259,98 @@ export default function Documentation() {
       'what-is-polydev': `
 # What is Polydev?
 
-**Polydev** is the unified AI platform that connects developers to 340+ AI models from 37+ providers through a single, powerful interface. Stop juggling multiple API keys, wrestling with different SDKs, and dealing with inconsistent responses.
+Get multiple AI perspectives when you're stuck. Simple as that.
 
-## Why Polydev?
+When your agent hits a roadblock, Polydev queries several AI models simultaneously and gives you diverse solutions.
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-8 not-prose">
-  <div class="p-6 bg-blue-50 rounded-xl border border-blue-200">
-    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-      ⚡
-    </div>
-    <h3 class="font-semibold text-gray-900 mb-2">Unified Access</h3>
-    <p class="text-gray-600 text-sm">One API, 340+ models. From GPT-5 to Claude Opus 4, access everything through a single interface.</p>
-  </div>
-  <div class="p-6 bg-green-50 rounded-xl border border-green-200">
-    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-      🛡️
-    </div>
-    <h3 class="font-semibold text-gray-900 mb-2">Intelligent Fallback</h3>
-    <p class="text-gray-600 text-sm">Automatic failover between providers ensures your applications never go down.</p>
-  </div>
-  <div class="p-6 bg-purple-50 rounded-xl border border-purple-200">
-    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-      💰
-    </div>
-    <h3 class="font-semibold text-gray-900 mb-2">Cost Optimization</h3>
-    <p class="text-gray-600 text-sm">Smart routing minimizes costs while maximizing quality and reliability.</p>
-  </div>
-</div>
+## How it works
 
-## Supported Providers
+1. **Connect** - Works with Claude Desktop, Cline, Cursor, and other MCP clients
+2. **Ask** - Send your question through your agent
+3. **Get perspectives** - Receive responses from multiple AI models
+4. **Choose** - Pick the best solution
 
-Polydev works with all major AI providers and many specialized ones:
+## Example
 
 \`\`\`javascript
-const availableProviders = {
-  "Leading Models": [
-    "OpenAI GPT-4, GPT-5",
-    "Anthropic Claude Opus 4, Sonnet, Haiku",
-    "Google Gemini 2.5 Pro, Ultra",
-    "xAI Grok-2, Grok-3"
-  ],
-  "Open Source": [
-    "Meta Llama 3.3, 4.0",
-    "Mistral Large, Codestral",
-    "DeepSeek V3, Coder V2",
-    "Qwen 2.5, QwQ"
-  ],
-  "Specialized": [
-    "Perplexity Online Models",
-    "Cohere Command R+",
-    "Together AI Models",
-    "Replicate Models"
-  ]
-}
-\`\`\`
-
-## Developer Integration
-
-Polydev seamlessly integrates with your existing development workflow:
-
-- **🔧 CLI Tools**: Works with Claude Code, Continue.dev, Cursor, Cline, and Aider
-- **🚀 Zero Config**: Get started in under 2 minutes
-- **📦 Any Framework**: Compatible with any language or framework
-- **🔒 Secure**: Zero-knowledge encryption for sensitive data
-
-## Quick Example
-
-\`\`\`typescript
-import { polydev } from '@polydev/sdk'
-
-// Get perspectives from multiple models
-const response = await polydev.perspectives({
-  prompt: "How should I structure my React app?",
-  models: ["gpt-4", "claude-3-opus", "gemini-pro"],
-  options: {
-    temperature: 0.7,
-    maxTokens: 1000
+await callTool({
+  name: "get_perspectives",
+  arguments: {
+    prompt: "My React component re-renders excessively. Help debug this.",
+    project_memory: "full"
   }
-})
-
-// Automatic fallback and cost optimization included
-console.log(response.results)
+});
 \`\`\`
 
-Ready to revolutionize your AI workflow? [Get started in 2 minutes →](#quick-start)
+Returns perspectives from Claude, GPT, Gemini, and others.
+
+## Features
+
+- **Multiple models** - Query Claude, GPT, Gemini simultaneously
+- **Smart fallback** - Uses your CLI tools first, then API keys, then credits
+- **Project context** - Includes relevant files from your codebase
+- **Zero setup** - Works with existing Claude Desktop/Cline installations
+
+Ready to get started? [Quick Start →](#quick-start)
 `,
       'quick-start': `
-# Quick Start Guide
+# Quick Start
 
-Get up and running with Polydev in under 2 minutes. No complex setup, no lengthy configuration.
+Get Polydev running in 2 minutes.
 
-## Step 1: Create Your Account
-
-<div class="bg-blue-50 border border-blue-200 rounded-xl p-6 my-6">
-  <div class="flex items-start space-x-3">
-    <div class="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-      <span class="text-blue-600 font-bold text-sm">1</span>
-    </div>
-    <div>
-      <h3 class="font-semibold text-blue-900 mb-2">Sign up for free</h3>
-      <p class="text-blue-700 mb-4">Visit <a href="https://polydev.ai" class="underline">polydev.ai</a> and create your account. No credit card required.</p>
-      <p class="text-blue-600 text-sm">✨ Get 100 free requests to start exploring</p>
-    </div>
-  </div>
-</div>
-
-## Step 2: Install the CLI
-
-Choose your preferred method:
+## Install
 
 \`\`\`bash
-# Using npm (recommended)
-npm install -g @polydev/cli
-
-# Using yarn
-yarn global add @polydev/cli
-
-# Using pnpm
-pnpm add -g @polydev/cli
+git clone https://github.com/polydev-ai/polydev.git
+cd polydev
+npm install
 \`\`\`
 
-Verify installation:
+## Setup
+
+**Option 1: Use existing CLI tools (recommended)**
+
+If you have Claude Desktop, Cline, or Cursor installed, you're done. Polydev will use these automatically.
+
+**Option 2: Add your API keys**
 
 \`\`\`bash
-polydev --version
-# Output: @polydev/cli v2.1.0
+# Start dashboard
+npm run dev
+
+# Open http://localhost:3000
+# Go to Settings → API Keys
+# Add your OpenAI, Anthropic, or other API keys
 \`\`\`
 
-## Step 3: Authenticate
+## Configure your agent
 
-\`\`\`bash
-# Login to your account
-polydev auth login
-
-# Or use API key directly
-polydev auth set-key YOUR_API_KEY
-\`\`\`
-
-## Step 4: Your First Query
-
-\`\`\`bash
-# Single model query
-polydev ask "Explain React hooks" --model gpt-4
-
-# Multi-model perspectives (recommended)
-polydev perspectives "Best practices for API design" \\
-  --models gpt-4,claude-3-opus,gemini-pro
-\`\`\`
-
-## Step 5: Integrate with Your Editor
-
-### Claude Code CLI
-
-\`\`\`bash
-# Already compatible! Just use Polydev as your provider
-claude config set provider polydev
-\`\`\`
-
-### VS Code with Continue.dev
+Add to your Claude Desktop config (\`~/Library/Application Support/Claude/claude_desktop_config.json\`):
 
 \`\`\`json
-// .continue/config.json
 {
-  "models": [
-    {
-      "title": "Polydev Multi-Model",
-      "provider": "polydev",
-      "model": "polydev-perspectives",
-      "apiKey": "YOUR_POLYDEV_KEY"
+  "mcpServers": {
+    "polydev": {
+      "command": "node",
+      "args": ["/path/to/polydev/mcp/server.js"]
     }
-  ]
-}
-\`\`\`
-
-### Cursor
-
-\`\`\`bash
-# Set Polydev as your AI provider
-cursor-settings set ai.provider polydev
-cursor-settings set ai.apiKey YOUR_POLYDEV_KEY
-\`\`\`
-
-## Step 6: Advanced Configuration
-
-Create a \`polydev.config.js\` file for advanced settings:
-
-\`\`\`javascript
-module.exports = {
-  // Default models for perspectives
-  defaultModels: ["gpt-4", "claude-3-opus", "gemini-pro"],
-
-  // Fallback chain
-  fallbackChain: [
-    "gpt-4",
-    "claude-3-sonnet",
-    "gemini-pro",
-    "llama-3.3-70b"
-  ],
-
-  // Cost optimization
-  costOptimization: {
-    enabled: true,
-    maxCostPerRequest: 0.10, // $0.10 max per request
-    preferredProviders: ["openai", "anthropic"]
-  },
-
-  // Caching
-  cache: {
-    enabled: true,
-    ttl: 3600 // 1 hour
   }
 }
 \`\`\`
 
-## What's Next?
+## Test it
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-8 not-prose">
-  <a href="#environment" class="block p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-    <h3 class="font-semibold text-gray-900 mb-2">🔧 Environment Setup</h3>
-    <p class="text-gray-600 text-sm">Configure API keys and advanced settings</p>
-  </a>
-  <a href="#providers-overview" class="block p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-    <h3 class="font-semibold text-gray-900 mb-2">🤖 Explore Providers</h3>
-    <p class="text-gray-600 text-sm">Learn about 340+ available AI models</p>
-  </a>
-  <a href="#perspectives" class="block p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-    <h3 class="font-semibold text-gray-900 mb-2">🎯 Multi-Model Perspectives</h3>
-    <p class="text-gray-600 text-sm">Get diverse AI viewpoints on complex problems</p>
-  </a>
-  <a href="#api-overview" class="block p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-    <h3 class="font-semibold text-gray-900 mb-2">📚 API Reference</h3>
-    <p class="text-gray-600 text-sm">Detailed documentation for developers</p>
-  </a>
-</div>
+Ask your agent:
 
-> **💡 Pro Tip**: Start with perspectives mode to get diverse viewpoints from multiple models. It's often more valuable than single-model responses!
+\`\`\`
+"I'm having trouble with React re-renders. Can you get multiple perspectives on debugging this?"
+\`\`\`
+
+Your agent will use Polydev to query multiple AI models and give you diverse solutions.
+
+## That's it
+
+Polydev now handles multi-model requests automatically when your agent gets stuck.
 `,
       'installation': `
 # Installation Guide

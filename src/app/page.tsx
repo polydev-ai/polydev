@@ -5,6 +5,40 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '../hooks/useAuth'
 
+// Personality themes for dynamic overlays
+const PERSONALITIES = [
+  {
+    id: 'explorer',
+    name: '🔮 The Explorer',
+    theme: {
+      gradient: 'from-purple-600 via-blue-500 to-cyan-500',
+      bg: 'from-purple-50 via-blue-50 to-cyan-50/30',
+      cta: 'Discover Possibilities',
+      subtitle: 'Venture into uncharted solutions with multiple AI perspectives guiding your path.'
+    }
+  },
+  {
+    id: 'pragmatist',
+    name: '🎯 The Pragmatist',
+    theme: {
+      gradient: 'from-orange-600 via-orange-500 to-violet-600',
+      bg: 'from-slate-50 via-white to-orange-50/30',
+      cta: 'Get It Done',
+      subtitle: 'Query multiple language models simultaneously within your existing development environment.'
+    }
+  },
+  {
+    id: 'visionary',
+    name: '🚀 The Visionary',
+    theme: {
+      gradient: 'from-emerald-600 via-teal-500 to-cyan-600',
+      bg: 'from-emerald-50 via-teal-50 to-cyan-50/30',
+      cta: 'Shape the Future',
+      subtitle: 'Transform your development workflow with revolutionary multi-model intelligence.'
+    }
+  }
+]
+
 const fetchModelsDevStats = async () => {
   try {
     const response = await fetch('/api/models-dev/providers')
@@ -402,7 +436,7 @@ wss.on('connection', (ws) => {
   }
 ]
 
-function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text: string; delay?: number; onComplete?: () => void; startDelay?: number }) {
+function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, className = '' }: { text: string; delay?: number; onComplete?: () => void; startDelay?: number; className?: string }) {
   const [displayedText, setDisplayedText] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hasStarted, setHasStarted] = useState(false)
@@ -449,7 +483,7 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text
     return <span></span>
   }
 
-  return <span>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
+  return <span className={className}>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
 }
 
 function MCPIntegrationDemo() {
@@ -525,10 +559,26 @@ export default function Home() {
   const [currentExample, setCurrentExample] = useState(0)
   const [typingStates, setTypingStates] = useState<{ [key: number]: boolean }>({})
   const [isMounted, setIsMounted] = useState(false)
+  const [currentPersonality, setCurrentPersonality] = useState(PERSONALITIES[1]) // Default to Pragmatist
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
 
   useEffect(() => {
     setIsMounted(true)
     fetchModelsDevStats().then(setModelStats)
+
+    // Command palette keyboard shortcut
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowCommandPalette(true)
+      }
+      if (e.key === 'Escape') {
+        setShowCommandPalette(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   useEffect(() => {
@@ -573,7 +623,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
+      <section className={`relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-gradient-to-br ${currentPersonality.theme.bg} transition-all duration-1000`}>
         {/* Sophisticated background patterns */}
         <div className="absolute inset-0">
           {/* Main gradient mesh */}
@@ -610,6 +660,25 @@ export default function Home() {
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-4">
           <div className="text-center">
             <div className="mx-auto max-w-5xl">
+              {/* Personality Selector */}
+              <div className="flex justify-center mb-8">
+                <div className="flex items-center gap-2 p-2 rounded-full bg-white/90 backdrop-blur-xl border border-white/40 shadow-lg">
+                  {PERSONALITIES.map((personality) => (
+                    <button
+                      key={personality.id}
+                      onClick={() => setCurrentPersonality(personality)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                        currentPersonality.id === personality.id
+                          ? 'bg-gradient-to-r from-slate-800 to-slate-700 text-white shadow-lg'
+                          : 'text-slate-600 hover:text-slate-800 hover:bg-white/60'
+                      }`}
+                    >
+                      {personality.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Sophisticated status indicator */}
               <div className="inline-flex items-center gap-3 mb-6 group">
                 <div className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-orange-200/50 shadow-lg shadow-orange-100/20 hover:shadow-orange-100/40 transition-all duration-300">
@@ -635,7 +704,7 @@ export default function Home() {
                   </div>
                   <br />
                   <div className="inline-block">
-                    <span className="relative inline-block bg-gradient-to-r from-orange-600 via-orange-500 to-violet-600 bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
+                    <span className={`relative inline-block bg-gradient-to-r ${currentPersonality.theme.gradient} bg-clip-text text-transparent animate-gradient bg-[length:200%_auto] transition-all duration-1000`}>
                       intelligence
                     </span>
                   </div>
@@ -649,12 +718,12 @@ export default function Home() {
               {/* Sophisticated description */}
               <div className="mt-8 max-w-4xl mx-auto">
                 <p className="text-xl sm:text-2xl leading-relaxed text-slate-600 font-light tracking-wide">
-                  Query <span className="font-medium text-slate-800">multiple language models simultaneously</span> within your existing development environment.
+                  {currentPersonality.theme.subtitle}
                   <br className="hidden sm:block" />
                   Compare solutions, validate approaches, improve quality—
                   <span className="relative inline-block">
                     <span className="font-medium text-slate-800">zero context switching</span>
-                    <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-orange-400 to-violet-400 rounded-full"></div>
+                    <div className={`absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r ${currentPersonality.theme.gradient} rounded-full transition-all duration-1000`}></div>
                   </span>.
                 </p>
               </div>
@@ -693,7 +762,7 @@ export default function Home() {
                     <div className="relative px-8 py-4 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl text-white font-semibold text-lg transition-all duration-300 overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                       <span className="relative flex items-center justify-center gap-2">
-                        {isAuthenticated ? 'Launch Console' : 'Start Building'}
+{isAuthenticated ? 'Launch Console' : currentPersonality.theme.cta}
                         <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
@@ -759,7 +828,491 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Live Multi-Model IDE */}
+      <section className="relative py-20 bg-gradient-to-br from-slate-50 via-white to-slate-100/50 overflow-hidden">
+        {/* Floating background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-purple-400/20 to-cyan-400/20 rounded-full blur-xl animate-float"></div>
+          <div className="absolute bottom-20 right-10 w-24 h-24 bg-gradient-to-r from-orange-400/20 to-violet-400/20 rounded-full blur-xl animate-float-reverse"></div>
+        </div>
+
+        <div className="mx-auto max-w-7xl px-6 relative">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              One Problem, <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">Multiple Perspectives</span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              Watch different AI models approach the same challenge with unique solutions
+            </p>
+          </div>
+
+          {/* Three-Panel Layout with Arrow Flow */}
+          <div className="relative flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-6">
+
+            {/* Left: IDE Interface (Tilted) */}
+            <div className="transform lg:-rotate-2 hover:rotate-0 transition-transform duration-500 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden w-full lg:w-96 hover:shadow-3xl hover:scale-105">
+              <div className="bg-slate-900 text-slate-100">
+                {/* IDE Header */}
+                <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
+                    <span className="text-sm text-slate-300 ml-2">polydev-ide</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">main</span>
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+
+                {/* File Tab */}
+                <div className="flex bg-slate-800 border-b border-slate-700">
+                  <div className="px-4 py-2 bg-slate-900 border-r border-slate-700 text-sm flex items-center gap-2">
+                    <span className="text-blue-400">⚛</span>
+                    useEffect-bug.tsx
+                  </div>
+                </div>
+
+                {/* Code with highlighted problem */}
+                <div className="p-4 font-mono text-sm h-80 overflow-auto">
+                  <div className="space-y-1">
+                    <div className="flex">
+                      <span className="text-slate-500 w-8 text-right mr-4">7</span>
+                      <span className="text-yellow-400">useEffect</span><span className="text-slate-100">(() =&gt; {'{'}</span>
+                    </div>
+                    <div className="flex bg-red-900/20 border-l-2 border-red-500">
+                      <span className="text-slate-500 w-8 text-right mr-4">8</span>
+                      <span className="ml-4 text-yellow-400">fetch</span><span className="text-slate-100">(</span><span className="text-green-400">`/api/users/${'{'}{'{user?.id}'}</span><span className="text-green-400">`</span><span className="text-slate-100">)</span>
+                    </div>
+                    <div className="flex bg-red-900/20">
+                      <span className="text-slate-500 w-8 text-right mr-4">9</span>
+                      <span className="ml-6 text-slate-100">.</span><span className="text-yellow-400">then</span><span className="text-slate-100">(</span><span className="text-blue-400">setUser</span><span className="text-slate-100">)</span>
+                    </div>
+                    <div className="flex">
+                      <span className="text-slate-500 w-8 text-right mr-4">10</span>
+                      <span className="text-slate-100">{'}'}) // ❌ Missing dependency</span>
+                    </div>
+
+                    {/* Error highlight */}
+                    <div className="mt-4 p-3 bg-red-900/20 border border-red-500/30 rounded">
+                      <div className="flex items-center gap-2 text-red-400 text-xs">
+                        <span>⚠</span>
+                        <span>Infinite re-render detected</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Center: Animated Arrow with Bouncing Balls */}
+            <div className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6 py-8">
+              {/* Question indicator */}
+              <div className="text-center lg:text-left">
+                <div className="bg-gradient-to-r from-purple-100 to-cyan-100 rounded-full px-4 py-2 mb-2">
+                  <span className="text-sm font-medium text-slate-700">How to fix this?</span>
+                </div>
+              </div>
+
+              {/* Bouncing Arrow */}
+              <div className="relative flex items-center gap-2">
+                {/* Animated balls */}
+                <div className="flex gap-1">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                  <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                  <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                </div>
+
+                {/* Arrow */}
+                <svg className="w-8 h-8 text-slate-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+
+                {/* More animated balls */}
+                <div className="flex gap-1">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '450ms'}}></div>
+                  <div className="w-3 h-3 bg-violet-500 rounded-full animate-bounce" style={{animationDelay: '600ms'}}></div>
+                  <div className="w-3 h-3 bg-rose-500 rounded-full animate-bounce" style={{animationDelay: '750ms'}}></div>
+                </div>
+              </div>
+
+              {/* Multiple models indicator */}
+              <div className="text-center lg:text-right">
+                <div className="bg-gradient-to-r from-cyan-100 to-purple-100 rounded-full px-4 py-2">
+                  <span className="text-sm font-medium text-slate-700">3 AI perspectives</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Model Responses (Tilted) */}
+            <div className="transform lg:rotate-2 hover:rotate-0 transition-transform duration-500 w-full lg:w-96">
+              <div className="space-y-4">
+
+                {/* Claude Response */}
+                <div className="bg-white rounded-lg shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">C</span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-slate-900">Claude</div>
+                      <div className="text-xs text-slate-500">Anthropic</div>
+                    </div>
+                    <div className="ml-auto">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-slate-400">typing</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-700 font-mono">
+                    <TypewriterText
+                      text="Add dependency array: useEffect(() => {...}, [user?.id])"
+                      delay={30}
+                      startDelay={500}
+                      onComplete={() => handleTypingComplete(0)}
+                    />
+                  </div>
+                </div>
+
+                {/* GPT-4 Response */}
+                <div className="bg-white rounded-lg shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">GP</span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-slate-900">GPT-4</div>
+                      <div className="text-xs text-slate-500">OpenAI</div>
+                    </div>
+                    <div className="ml-auto">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-slate-400">typing</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-700 font-mono">
+                    <TypewriterText
+                      text="Use AbortController + cleanup: useEffect(() => {controller.signal}, [userId])"
+                      delay={35}
+                      startDelay={1500}
+                      onComplete={() => handleTypingComplete(1)}
+                    />
+                  </div>
+                </div>
+
+                {/* Gemini Response */}
+                <div className="bg-white rounded-lg shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">G</span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-slate-900">Gemini</div>
+                      <div className="text-xs text-slate-500">Google</div>
+                    </div>
+                    <div className="ml-auto">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-slate-400">typing</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-700 font-mono">
+                    <TypewriterText
+                      text="Consider useMemo + useCallback: const user = useMemo(() => fetchUser(id), [id])"
+                      delay={28}
+                      startDelay={2500}
+                      onComplete={() => handleTypingComplete(2)}
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom CTA */}
+          <div className="text-center mt-16">
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-xl hover:from-purple-700 hover:to-cyan-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+              <span>Try with your code</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Interactive Cost Workbench */}
+      <section className="relative py-20 bg-white overflow-hidden">
+        {/* Floating elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-r from-orange-400/20 to-violet-400/20 rounded-full blur-xl animate-float"></div>
+          <div className="absolute bottom-20 right-20 w-16 h-16 bg-gradient-to-r from-purple-400/20 to-cyan-400/20 rounded-full blur-xl animate-float-reverse"></div>
+        </div>
+
+        <div className="mx-auto max-w-7xl px-6 relative">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              True <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">Cost Transparency</span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              No vendor lock-in. No hidden fees. Only pay for what you use across hundreds of models.
+            </p>
+          </div>
+
+          {/* Interactive Workbench */}
+          <div className="bg-gradient-to-br from-slate-50 to-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+
+            {/* Workbench Header */}
+            <div className="bg-white border-b border-slate-200 px-8 py-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900">Cost Calculator</h3>
+                  <p className="text-slate-600 mt-1">Compare real costs across providers</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-700 mb-1">$0</div>
+                    <div className="text-sm text-slate-600">CLI Tools</div>
+                    <div className="text-xs text-green-600 mt-1">Your existing auth</div>
+                  </div>
+                  <div className="w-px bg-slate-300 mx-4"></div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-700 mb-1">$12.50</div>
+                    <div className="text-sm text-slate-600">Per query</div>
+                    <div className="text-xs text-slate-500 mt-1">5 models, 2k tokens</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Interactive Controls */}
+            <div className="p-8 border-t border-slate-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left Column: Models */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Select Models</h3>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                      <input type="checkbox" defaultChecked className="text-orange-500" />
+                      <div className="flex items-center gap-3 flex-1">
+                        <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={20} height={20} />
+                        <span className="font-medium">GPT-4o</span>
+                        <span className="text-sm text-slate-500 ml-auto">$0.60/1K</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                      <input type="checkbox" defaultChecked className="text-orange-500" />
+                      <div className="flex items-center gap-3 flex-1">
+                        <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" width={20} height={20} />
+                        <span className="font-medium">Claude 3.5</span>
+                        <span className="text-sm text-slate-500 ml-auto">$1.50/1K</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                      <input type="checkbox" className="text-orange-500" />
+                      <div className="flex items-center gap-3 flex-1">
+                        <Image src="https://models.dev/logos/google.svg" alt="Google" width={20} height={20} />
+                        <span className="font-medium">Gemini Pro</span>
+                        <span className="text-sm text-slate-500 ml-auto">$0.25/1K</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Right Column: Settings */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Query Settings</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Max Tokens</label>
+                      <input type="range" min="500" max="4000" defaultValue="2000" className="w-full" />
+                      <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>500</span>
+                        <span>2000</span>
+                        <span>4000</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Temperature</label>
+                      <input type="range" min="0" max="1" step="0.1" defaultValue="0.3" className="w-full" />
+                      <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>0.0</span>
+                        <span>0.3</span>
+                        <span>1.0</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-slate-200">
+                <button className="w-full bg-gradient-to-r from-orange-500 to-violet-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-orange-600 hover:to-violet-600 transition-all duration-200">
+                  Calculate Cost
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dynamic Code Examples */}
+      <section className="py-4 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
+        {/* Enhanced background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.04),transparent_60%)]"></div>
+          <div className="absolute top-40 left-1/3 w-72 h-72 bg-gradient-to-br from-violet-100/20 to-orange-100/20 rounded-full blur-3xl animate-float-slow"></div>
+          <div className="absolute bottom-40 right-1/3 w-80 h-80 bg-gradient-to-br from-orange-100/15 to-blue-100/15 rounded-full blur-3xl animate-float-reverse"></div>
+          {/* Code-themed grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.015)_1px,transparent_1px)] bg-[size:40px_40px] opacity-50"></div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-8 observe">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-4 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-slate-600">Live Examples</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight stagger-fade-in">
+              See polydev{' '}
+              <span className="bg-gradient-to-r from-slate-700 via-orange-600 to-violet-600 bg-clip-text text-transparent animate-gradient">
+                in action
+              </span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
+              Real debugging scenarios, multiple perspectives, better solutions—watch how different models approach the same problem
+            </p>
+          </div>
+
+          <div className="relative mx-auto max-w-6xl observe">
+            {/* Sophisticated glow effect behind the editor */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-orange-500/10 via-violet-500/10 to-orange-500/10 rounded-3xl blur-2xl opacity-0 hover:opacity-100 transition-opacity duration-1000"></div>
+
+            <div className="relative glass-ultra rounded-3xl overflow-hidden shadow-2xl border border-orange-100/30 hover:border-orange-200/50 transition-all duration-700 sophisticated-hover">
+              {/* Enhanced editor header */}
+              <div className="relative flex items-center gap-2 px-6 py-5 bg-gradient-to-r from-slate-50/80 via-white/60 to-slate-50/80 backdrop-blur-xl border-b border-slate-200/30">
+                {/* Traffic lights with glow effect */}
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-red-500 rounded-full shadow-lg"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-red-400 rounded-full animate-ping opacity-20"></div>
+                  </div>
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full shadow-lg"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-yellow-400 rounded-full animate-pulse opacity-30"></div>
+                  </div>
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-pulse opacity-30"></div>
+                  </div>
+                </div>
+
+                {/* Enhanced file info */}
+                <div className="ml-6 flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-100/50 to-violet-100/50 border border-orange-200/30">
+                    <span className="inline-block w-2 h-2 bg-gradient-to-r from-orange-400 to-red-400 rounded-full animate-pulse"></span>
+                    <span className="text-sm text-slate-700 font-mono font-medium">{CODE_EXAMPLES[currentExample].filename}</span>
+                  </div>
+                </div>
+
+                {/* Enhanced controls */}
+                <div className="ml-auto flex items-center gap-4">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-slate-100/60 to-slate-50/60 border border-slate-200/40">
+                    <span className="text-xs text-slate-600 font-mono font-medium">{CODE_EXAMPLES[currentExample].language}</span>
+                  </div>
+
+                  {/* Sophisticated progress indicators */}
+                  <div className="flex gap-1.5">
+                    {CODE_EXAMPLES.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`rounded-full transition-all duration-500 ${
+                          index === currentExample
+                            ? 'w-8 h-2 bg-gradient-to-r from-orange-500 to-violet-500 shadow-lg'
+                            : 'w-2 h-2 bg-slate-300 hover:bg-slate-400'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced code content */}
+              <div className="p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-[400px] font-mono text-sm relative overflow-hidden">
+                {/* Sophisticated background effects */}
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+                <div className="relative z-10">
+                  <TypewriterText
+                    text={CODE_EXAMPLES[currentExample].code}
+                    className="text-slate-300 leading-relaxed whitespace-pre-wrap"
+                    delay={30}
+                  />
+                </div>
+              </div>
+
+              {/* Enhanced footer with call-to-action */}
+              <div className="relative bg-gradient-to-r from-slate-50/80 via-white/60 to-slate-50/80 backdrop-blur-xl border-t border-slate-200/30 p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-green-100/60 to-emerald-100/60 border border-green-200/40">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-green-700 font-medium">Live Demo</span>
+                    </div>
+                    <span className="text-sm text-slate-600">Real-time multi-model analysis</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setCurrentExample((prev) => (prev + 1) % CODE_EXAMPLES.length)}
+                      className="px-4 py-2 bg-gradient-to-r from-orange-500/10 to-violet-500/10 border border-orange-200/50 rounded-lg text-sm font-medium text-slate-700 hover:from-orange-500/20 hover:to-violet-500/20 transition-all duration-300 hover:scale-105"
+                    >
+                      Next Example
+                    </button>
+                    <Link
+                      href="/docs"
+                      className="px-4 py-2 bg-gradient-to-r from-orange-500 to-violet-500 text-white rounded-lg text-sm font-medium hover:from-orange-600 hover:to-violet-600 transition-all duration-300 hover:scale-105 shadow-lg"
+                    >
+                      Try Now
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
+      <section className="relative py-4 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-1/4 w-80 h-80 bg-gradient-to-br from-orange-100/30 to-violet-100/30 rounded-full blur-3xl animate-float-delayed"></div>
+          <div className="absolute bottom-20 left-1/4 w-96 h-96 bg-gradient-to-br from-blue-100/20 to-orange-100/20 rounded-full blur-3xl animate-float-reverse"></div>
+          {/* Sophisticated grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.01)_1px,transparent_1px)] bg-[size:80px_80px] opacity-30"></div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-orange-500/10 to-violet-500/10 border border-orange-200/30 mb-6 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-orange-600">Features</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+              Everything you need to{' '}
+              <span className="bg-gradient-to-r from-orange-600 via-violet-600 to-orange-600 bg-clip-text text-transparent animate-gradient">
+                code better
+              </span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+              Polydev brings multiple AI perspectives directly into your development workflow
+            </p>
+          </div>
+        </div>
+      </section>
       <section className="relative py-4 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
@@ -807,7 +1360,9 @@ export default function Home() {
                 </div>
                 <div className="flex-shrink-0">
                   <div className="relative w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-2xl text-white shadow-lg">
-                    🔮
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2L13.09 8.26L19 9L13.09 9.74L12 16L10.91 9.74L5 9L10.91 8.26L12 2Z"/>
+                    </svg>
                     <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 animate-pulse"></div>
                   </div>
                 </div>
@@ -823,7 +1378,9 @@ export default function Home() {
                 </div>
                 <div className="flex-shrink-0">
                   <div className="relative w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center text-2xl text-white shadow-lg">
-                    🧩
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M3 3H9V9H3V3ZM15 3H21V9H15V3ZM3 15H9V21H3V15ZM13 15H14V16H13V15ZM15 15H16V16H15V15ZM13 17H14V18H13V17ZM15 17H16V18H15V17ZM17 13H18V14H17V13ZM19 13H20V14H19V13ZM17 15H18V16H17V15ZM19 15H20V16H19V15ZM21 15H22V21H16V20H21V15Z"/>
+                    </svg>
                     <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 animate-pulse"></div>
                   </div>
                 </div>
@@ -853,7 +1410,9 @@ export default function Home() {
                 </div>
                 <div className="flex-shrink-0">
                   <div className="relative w-16 h-16 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-2xl text-white shadow-lg">
-                    🎯
+                    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C12.8 2 13.5 2.7 13.5 3.5S12.8 5 12 5 10.5 4.3 10.5 3.5 11.2 2 12 2M21 9V7L19 8L21 9M15 4L16 2L14.5 1L13.5 3L15 4M13.5 21L14.5 23L16 22L15 20L13.5 21M21 15L19 16L21 17V15M9 4L10.5 3L9.5 1L8 2L9 4M3 9L5 8L3 7V9M3 15V17L5 16L3 15M8 20L9.5 21L10.5 23L9 22L8 20Z"/>
+                    </svg>
                     <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-500/20 animate-pulse"></div>
                   </div>
                 </div>
@@ -1305,10 +1864,27 @@ export default function Home() {
                     </p>
                     <div className="bg-gradient-to-r from-orange-50 to-violet-50 border border-orange-200/60 rounded-xl p-4 hover:border-orange-300/80 transition-all duration-300 group-hover:shadow-lg">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-sm font-semibold text-orange-700">💡 Pro Tip:</span>
+                        <svg className="w-4 h-4 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-sm font-semibold text-orange-700">Cost Calculator:</span>
                       </div>
-                      <p className="text-sm text-slate-700 leading-relaxed">
-                        Most developers save 60-80% on model costs by using Polydev credits instead of maintaining separate subscriptions to each provider.
+                      <div className="bg-white/60 border border-orange-200 rounded-lg p-3 mb-3">
+                        <div className="text-xs text-slate-600 mb-2">Compare subscription vs. pay-per-use:</div>
+                        <div className="flex justify-between text-xs">
+                          <span>5 providers @ $20/mo:</span>
+                          <span className="font-mono text-red-600">$100/mo</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span>Polydev credits (same usage):</span>
+                          <span className="font-mono text-green-600">$35/mo</span>
+                        </div>
+                        <div className="mt-2 h-1 bg-slate-200 rounded-full overflow-hidden">
+                          <div className="h-full w-2/3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"></div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        Live calculation based on 10k tokens/day across multiple models
                       </p>
                     </div>
                   </div>
@@ -1468,29 +2044,42 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="w-1/3 text-center opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="text-4xl mb-2">🎯</div>
-                  <div className="text-sm text-slate-500 font-medium">Best for experienced devs</div>
+                  <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    </svg>
+                  </div>
+                  <div className="text-sm text-slate-500 font-medium">Expert Path</div>
                 </div>
               </div>
 
               {/* Path 2: Curious Explorer */}
               <div className="flex items-center group justify-end">
                 <div className="w-1/3 text-center opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="text-4xl mb-2">🌟</div>
-                  <div className="text-sm text-slate-500 font-medium">Perfect for trying out</div>
+                  <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div className="text-sm text-slate-500 font-medium">Discovery Mode</div>
                 </div>
                 <div className="w-2/3 pl-8">
                   <div className="relative p-8 rounded-2xl bg-gradient-to-r from-blue-50/80 to-cyan-50/80 border border-blue-200/50 hover:border-blue-300/70 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl backdrop-blur-sm">
                     {/* Animated badge */}
-                    <div className="absolute -top-3 right-6 px-4 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg">
-                      💝 FREE
+                    <div className="absolute -top-3 right-6 px-4 py-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-xs font-semibold rounded-full shadow-lg flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      FREE
                     </div>
                     {/* Floating accent */}
                     <div className="absolute -left-4 -top-4 w-16 h-16 bg-blue-100 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-300"></div>
 
                     <div className="flex items-start gap-4">
                       <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform duration-300">
-                        <span className="text-2xl">🚀</span>
+                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
                       </div>
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-slate-900 mb-2">I want to explore first</h3>
@@ -1523,15 +2112,20 @@ export default function Home() {
                 <div className="w-2/3 pr-8">
                   <div className="relative p-8 rounded-2xl bg-gradient-to-r from-orange-50/80 to-violet-50/80 border border-orange-200/50 hover:border-orange-300/70 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl backdrop-blur-sm">
                     {/* Animated badge */}
-                    <div className="absolute -top-3 left-6 px-4 py-1 bg-gradient-to-r from-orange-500 to-violet-500 text-white text-xs font-semibold rounded-full shadow-lg">
-                      ⚡ UNLIMITED
+                    <div className="absolute -top-3 left-6 px-4 py-1 bg-gradient-to-r from-orange-500 to-violet-500 text-white text-xs font-semibold rounded-full shadow-lg flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                      </svg>
+                      UNLIMITED
                     </div>
                     {/* Floating accent */}
                     <div className="absolute -right-4 -top-4 w-16 h-16 bg-gradient-to-r from-orange-100 to-violet-100 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-300"></div>
 
                     <div className="flex items-start gap-4">
                       <div className="w-14 h-14 bg-gradient-to-r from-orange-500 to-violet-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform duration-300">
-                        <span className="text-2xl">🏆</span>
+                        <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
                       </div>
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-slate-900 mb-2">I need all the models</h3>
@@ -1558,8 +2152,12 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="w-1/3 text-center opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="text-4xl mb-2">⚡</div>
-                  <div className="text-sm text-slate-500 font-medium">For power users</div>
+                  <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-r from-orange-500 to-violet-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="text-sm text-slate-500 font-medium">Power Mode</div>
                 </div>
               </div>
             </div>
@@ -1629,7 +2227,9 @@ export default function Home() {
                   <div className="w-64 bg-gradient-to-r from-purple-50/90 to-indigo-50/90 backdrop-blur-sm rounded-2xl p-6 border border-purple-200/50 hover:border-purple-300/70 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-md">
-                        <span className="text-white text-xl">🔗</span>
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-900 text-sm">MCP Integration</h4>
@@ -1653,7 +2253,9 @@ export default function Home() {
                   <div className="w-64 bg-gradient-to-r from-emerald-50/90 to-teal-50/90 backdrop-blur-sm rounded-2xl p-6 border border-emerald-200/50 hover:border-emerald-300/70 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-md">
-                        <span className="text-white text-xl">🧬</span>
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-900 text-sm">Smart Memory</h4>
@@ -1747,32 +2349,87 @@ export default function Home() {
 
                 {/* Hexagonal arrangement */}
                 <div className="grid grid-cols-2 gap-12 lg:gap-16">
-                  {/* Bug Hunts */}
+                  {/* Live Bug Hunt Workflow */}
                   <div className="relative group p-6 rounded-2xl bg-gradient-to-br from-red-50/80 to-pink-50/80 border border-red-100/50 hover:border-red-200/70 transition-all duration-300 hover:scale-105">
-                    <div className="text-4xl mb-4">🕵️</div>
-                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Bug Hunts</h4>
-                    <p className="text-sm text-slate-600">When your code works on your machine but fails in production—get different debugging strategies from multiple angles</p>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                      </div>
+                      <div className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-mono">LIVE DEMO</div>
+                    </div>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Bug Hunt Workflow</h4>
+                    <div className="text-xs text-slate-500 mb-2 font-mono">Step 1: Analyze stack trace</div>
+                    <div className="bg-slate-900 text-slate-100 p-3 rounded-lg text-xs mb-3 font-mono">
+                      <span className="text-red-400">Error:</span> Cannot read property 'id' of undefined
+                    </div>
+                    <p className="text-xs text-slate-600">Three debugging strategies running simultaneously</p>
                   </div>
 
-                  {/* Code Surgery */}
+                  {/* Code Surgery Demo */}
                   <div className="relative group p-6 rounded-2xl bg-gradient-to-br from-blue-50/80 to-cyan-50/80 border border-blue-100/50 hover:border-blue-200/70 transition-all duration-300 hover:scale-105">
-                    <div className="text-4xl mb-4">🔧</div>
-                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Code Surgery</h4>
-                    <p className="text-sm text-slate-600">Legacy refactoring and critical fixes—see how different models approach the same gnarly codebase</p>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                      <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-mono">REFACTOR</div>
+                    </div>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Legacy Refactor</h4>
+                    <div className="text-xs text-slate-500 mb-2 font-mono">Target: 2000-line component</div>
+                    <div className="grid grid-cols-3 gap-1 mb-3">
+                      <div className="h-2 bg-yellow-200 rounded"></div>
+                      <div className="h-2 bg-orange-200 rounded"></div>
+                      <div className="h-2 bg-red-200 rounded"></div>
+                    </div>
+                    <p className="text-xs text-slate-600">Compare decomposition approaches</p>
                   </div>
 
-                  {/* System Design */}
+                  {/* Architecture Lab */}
                   <div className="relative group p-6 rounded-2xl bg-gradient-to-br from-purple-50/80 to-indigo-50/80 border border-purple-100/50 hover:border-purple-200/70 transition-all duration-300 hover:scale-105">
-                    <div className="text-4xl mb-4">🏗️</div>
-                    <h4 className="text-lg font-semibold text-slate-900 mb-2">System Design</h4>
-                    <p className="text-sm text-slate-600">Scaling challenges and architecture decisions—compare trade-offs from models with different strengths</p>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                      </div>
+                      <div className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-mono">SCALING</div>
+                    </div>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Architecture Lab</h4>
+                    <div className="text-xs text-slate-500 mb-2 font-mono">Challenge: 100k RPS → 1M RPS</div>
+                    <div className="flex gap-1 mb-3">
+                      <div className="flex-1 h-4 bg-gradient-to-r from-purple-200 to-indigo-200 rounded flex items-center justify-center text-xs">DB</div>
+                      <div className="flex-1 h-4 bg-gradient-to-r from-indigo-200 to-purple-200 rounded flex items-center justify-center text-xs">Cache</div>
+                    </div>
+                    <p className="text-xs text-slate-600">Trade-off analysis across patterns</p>
                   </div>
 
-                  {/* Learning Curves */}
+                  {/* Learning Simulator */}
                   <div className="relative group p-6 rounded-2xl bg-gradient-to-br from-green-50/80 to-emerald-50/80 border border-green-100/50 hover:border-green-200/70 transition-all duration-300 hover:scale-105">
-                    <div className="text-4xl mb-4">📈</div>
-                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Learning Curves</h4>
-                    <p className="text-sm text-slate-600">New frameworks, unfamiliar patterns—get explanations tailored to your experience level from different perspectives</p>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                      </div>
+                      <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-mono">LEARN</div>
+                    </div>
+                    <h4 className="text-lg font-semibold text-slate-900 mb-2">Learning Path</h4>
+                    <div className="text-xs text-slate-500 mb-2 font-mono">Topic: React Server Components</div>
+                    <div className="space-y-1 mb-3">
+                      <div className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Beginner explanation
+                      </div>
+                      <div className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded flex items-center gap-1">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                        Practical examples
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600">Adaptive explanations by skill level</p>
                   </div>
                 </div>
               </div>
@@ -1877,85 +2534,184 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Cost Workbench */}
       <section className="py-4 sm:py-10 bg-gradient-to-br from-orange-50 to-violet-50 border-t border-slate-200">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 text-center">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 mb-4">Simple, transparent pricing</h2>
-          <p className="text-lg sm:text-xl text-slate-600 mb-8 sm:mb-12 px-4">
-            100 free runs to start. Unlimited for $20 a month when you are ready.
-          </p>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-6">
+              <svg className="w-4 h-4 text-orange-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm1 2a1 1 0 000 2h6a1 1 0 100-2H7zM6 7a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm font-medium text-slate-600">Cost Calculator</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 mb-4">
+              Calculate your actual costs
+            </h2>
+            <p className="text-lg sm:text-xl text-slate-600 mb-8 px-4">
+              Interactive workbench to estimate costs across different usage patterns
+            </p>
+          </div>
 
-          <div className="grid sm:grid-cols-2 gap-6 sm:gap-8 max-w-3xl mx-auto">
-            <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg border-2 border-slate-200 hover:border-orange-200 transition-colors">
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">Free</h3>
-              <div className="text-4xl font-bold text-slate-900 mb-4">$0</div>
-              <p className="text-slate-600 mb-6">Evaluate multi-model inference capabilities</p>
-              <ul className="space-y-3 mb-8 text-left">
-                <li className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Configuration Panel */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
                   </svg>
-                  <span className="text-slate-700">100 requests/month</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  Usage Profile
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Requests per day</label>
+                    <div className="relative">
+                      <input type="range" min="10" max="1000" defaultValue="100" className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider" />
+                      <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>10</span>
+                        <span className="font-mono bg-orange-100 text-orange-700 px-2 py-1 rounded">100</span>
+                        <span>1000</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Models per request</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[1, 2, 3, 4].map(num => (
+                        <button key={num} className={`p-2 rounded-lg text-sm font-medium transition-all ${num === 3 ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Model tier preference</label>
+                    <select className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                      <option>Mixed (GPT-4, Claude, Gemini)</option>
+                      <option>Premium only (GPT-4, Claude Opus)</option>
+                      <option>Fast only (GPT-3.5, Claude Haiku)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-slate-50 to-orange-50 rounded-2xl p-6 border border-orange-200/50">
+                <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-slate-700">3 model endpoints</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-slate-700">Community support</span>
-                </li>
-              </ul>
-              <button className="w-full border-2 border-slate-300 text-slate-700 py-3 px-4 rounded-xl hover:border-orange-300 hover:bg-orange-50 transition-all font-semibold">
-                Get Started Free
-              </button>
+                  Free Options
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-slate-700">100 free requests/month</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-slate-700">Use your existing CLI tools</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <span className="text-slate-700">Your own API keys</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-500 to-violet-500 p-6 sm:p-8 rounded-2xl shadow-xl text-white relative overflow-hidden">
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full"></div>
-              <div className="absolute -bottom-4 -left-4 w-32 h-32 bg-white/10 rounded-full"></div>
-              <div className="relative">
-                <h3 className="text-2xl font-bold mb-2">Pro</h3>
-                <div className="text-4xl font-bold mb-4">$20</div>
-                <p className="text-orange-100 mb-6">Production-scale multi-model inference</p>
-                <ul className="space-y-3 mb-8 text-left">
-                  <li className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Unlimited requests</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>All {modelStats.totalModels}+ model endpoints</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Priority support</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Project memory</span>
-                  </li>
-                </ul>
-                <button className="w-full bg-white text-orange-600 py-3 px-4 rounded-xl hover:bg-orange-50 transition-colors font-semibold shadow-lg">
-                  Start Pro Trial
-                </button>
+            {/* Results Dashboard */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Cost Breakdown */}
+              <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Monthly Cost Breakdown
+                </h3>
+
+                <div className="grid md:grid-cols-3 gap-6 mb-6">
+                  <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50">
+                    <div className="text-2xl font-bold text-green-700 mb-1">$0</div>
+                    <div className="text-sm text-slate-600">CLI Tools</div>
+                    <div className="text-xs text-green-600 mt-1">Your existing auth</div>
+                  </div>
+                  <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50">
+                    <div className="text-2xl font-bold text-orange-700 mb-1">$47</div>
+                    <div className="text-sm text-slate-600">Polydev Credits</div>
+                    <div className="text-xs text-orange-600 mt-1">Pay per use</div>
+                  </div>
+                  <div className="text-center p-4 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl border border-red-200/50">
+                    <div className="text-2xl font-bold text-red-700 mb-1">$100</div>
+                    <div className="text-sm text-slate-600">Direct Subscriptions</div>
+                    <div className="text-xs text-red-600 mt-1">5 separate plans</div>
+                  </div>
+                </div>
+
+                {/* Usage Visualization */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-slate-900">Daily usage pattern</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600">API Requests</span>
+                      <span className="font-mono text-slate-900">100/day × 3 models</span>
+                    </div>
+                    <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-green-500 via-orange-500 to-violet-500 rounded-full" style={{width: '75%'}}></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500">
+                      <span>Light usage</span>
+                      <span>Heavy usage</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Savings Calculator */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white">
+                <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                  </svg>
+                  Smart Savings Analysis
+                </h3>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="text-3xl font-bold text-emerald-400 mb-2">53%</div>
+                    <div className="text-emerald-100 text-sm mb-4">Monthly savings with Polydev</div>
+                    <div className="text-xs text-slate-300 space-y-1">
+                      <div>• No unused subscription fees</div>
+                      <div>• Bulk model pricing</div>
+                      <div>• CLI tools = $0 extra cost</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-orange-400 mb-2">$636</div>
+                    <div className="text-orange-100 text-sm mb-4">Annual savings</div>
+                    <div className="text-xs text-slate-300 space-y-1">
+                      <div>• Traditional: $1,200/year</div>
+                      <div>• Polydev: $564/year</div>
+                      <div>• More models included</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <p className="mt-8 text-sm text-slate-500">* No credit card required • Cancel anytime</p>
+          <div className="text-center mt-12">
+            <div className="inline-flex items-center gap-4 bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
+              <div className="text-sm text-slate-500">Start with 100 free requests</div>
+              <div className="w-px h-8 bg-slate-200"></div>
+              <button className="bg-gradient-to-r from-orange-500 to-violet-500 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all">
+                Try the Calculator →
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1988,6 +2744,94 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Command Palette Modal */}
+      {showCommandPalette && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-black bg-opacity-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-3 p-4 border-b border-slate-200">
+              <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">⌘K</span>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900">Polydev Command Palette</h3>
+              <button
+                onClick={() => setShowCommandPalette(false)}
+                className="ml-auto w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="p-4 border-b border-slate-100">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Type a command or ask a question..."
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-slate-900 placeholder-slate-500"
+                  autoFocus
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="p-4">
+              <div className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Quick Actions</div>
+              <div className="space-y-2">
+                {[
+                  { icon: '🔍', title: 'Code Review', desc: 'Get multiple perspectives on code quality' },
+                  { icon: '🐛', title: 'Debug Issue', desc: 'Find and fix bugs with AI assistance' },
+                  { icon: '⚡', title: 'Optimize Performance', desc: 'Improve code speed and efficiency' },
+                  { icon: '📚', title: 'Explain Code', desc: 'Understand complex code patterns' },
+                  { icon: '🧪', title: 'Generate Tests', desc: 'Create comprehensive test suites' },
+                  { icon: '🔄', title: 'Refactor Code', desc: 'Improve code structure and readability' }
+                ].map((action, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group"
+                  >
+                    <span className="text-xl">{action.icon}</span>
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-900 group-hover:text-purple-700">{action.title}</div>
+                      <div className="text-sm text-slate-500">{action.desc}</div>
+                    </div>
+                    <div className="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded">Enter</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span>Press <kbd className="px-2 py-1 bg-white border rounded">Esc</kbd> to close</span>
+                <span>Press <kbd className="px-2 py-1 bg-white border rounded">↑↓</kbd> to navigate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Command Palette Hint */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 max-w-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">⌘K</span>
+            </div>
+            <div>
+              <div className="font-medium text-slate-900 text-sm">Try the Command Palette</div>
+              <div className="text-xs text-slate-500">Press ⌘K to get started</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
