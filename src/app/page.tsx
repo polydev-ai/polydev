@@ -436,7 +436,7 @@ wss.on('connection', (ws) => {
   }
 ]
 
-function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text: string; delay?: number; onComplete?: () => void; startDelay?: number }) {
+function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, className = '' }: { text: string; delay?: number; onComplete?: () => void; startDelay?: number; className?: string }) {
   const [displayedText, setDisplayedText] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hasStarted, setHasStarted] = useState(false)
@@ -483,7 +483,7 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text
     return <span></span>
   }
 
-  return <span>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
+  return <span className={className}>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
 }
 
 function MCPIntegrationDemo() {
@@ -830,22 +830,28 @@ export default function Home() {
 
       {/* Live Multi-Model IDE */}
       <section className="relative py-20 bg-gradient-to-br from-slate-50 via-white to-slate-100/50 overflow-hidden">
-        <div className="mx-auto max-w-7xl px-6">
+        {/* Floating background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-r from-purple-400/20 to-cyan-400/20 rounded-full blur-xl animate-float"></div>
+          <div className="absolute bottom-20 right-10 w-24 h-24 bg-gradient-to-r from-orange-400/20 to-violet-400/20 rounded-full blur-xl animate-float-reverse"></div>
+        </div>
+
+        <div className="mx-auto max-w-7xl px-6 relative">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              Parallel Solutions <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">in Real-Time</span>
+              One Problem, <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">Multiple Perspectives</span>
             </h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Watch multiple AI models solve the same problem with different approaches
+              Watch different AI models approach the same challenge with unique solutions
             </p>
           </div>
 
-          {/* Split-Screen IDE Layout */}
-          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden relative">
-            <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
+          {/* Three-Panel Layout with Arrow Flow */}
+          <div className="relative flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-6">
 
-              {/* Left: IDE Interface */}
-              <div className="bg-slate-900 text-slate-100 flex flex-col">
+            {/* Left: IDE Interface (Tilted) */}
+            <div className="transform lg:-rotate-2 hover:rotate-0 transition-transform duration-500 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden w-full lg:w-96 hover:shadow-3xl hover:scale-105">
+              <div className="bg-slate-900 text-slate-100">
                 {/* IDE Header */}
                 <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
                   <div className="flex items-center gap-2">
@@ -854,197 +860,459 @@ export default function Home() {
                       <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                     </div>
-                    <span className="text-sm text-slate-300 ml-2">polydev-editor</span>
+                    <span className="text-sm text-slate-300 ml-2">polydev-ide</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400">main</span>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   </div>
                 </div>
 
-                {/* File Tabs */}
+                {/* File Tab */}
                 <div className="flex bg-slate-800 border-b border-slate-700">
                   <div className="px-4 py-2 bg-slate-900 border-r border-slate-700 text-sm flex items-center gap-2">
                     <span className="text-blue-400">⚛</span>
                     useEffect-bug.tsx
                   </div>
-                  <div className="px-4 py-2 text-slate-400 text-sm">server.js</div>
-                  <div className="px-4 py-2 text-slate-400 text-sm">package.json</div>
                 </div>
 
-                {/* Code Editor */}
-                <div className="flex-1 p-4 font-mono text-sm overflow-auto">
+                {/* Code with highlighted problem */}
+                <div className="p-4 font-mono text-sm h-80 overflow-auto">
                   <div className="space-y-1">
                     <div className="flex">
-                      <span className="text-slate-500 w-8 text-right mr-4">1</span>
-                      <span className="text-purple-400">import</span> <span className="text-slate-100">React, {'{'}</span> <span className="text-blue-400">useEffect</span><span className="text-slate-100">, </span><span className="text-blue-400">useState</span> <span className="text-slate-100">{'}'} </span><span className="text-purple-400">from</span> <span className="text-green-400">'react'</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-slate-500 w-8 text-right mr-4">2</span>
-                      <span></span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-slate-500 w-8 text-right mr-4">3</span>
-                      <span className="text-purple-400">function</span> <span className="text-yellow-400">UserProfile</span><span className="text-slate-100">() {'{'}</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-slate-500 w-8 text-right mr-4">4</span>
-                      <span className="ml-4 text-purple-400">const</span> <span className="text-slate-100">[</span><span className="text-blue-400">user</span><span className="text-slate-100">, </span><span className="text-blue-400">setUser</span><span className="text-slate-100">] = </span><span className="text-yellow-400">useState</span><span className="text-slate-100">(</span><span className="text-orange-400">null</span><span className="text-slate-100">)</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-slate-500 w-8 text-right mr-4">5</span>
-                      <span className="ml-4 text-purple-400">const</span> <span className="text-slate-100">[</span><span className="text-blue-400">loading</span><span className="text-slate-100">, </span><span className="text-blue-400">setLoading</span><span className="text-slate-100">] = </span><span className="text-yellow-400">useState</span><span className="text-slate-100">(</span><span className="text-orange-400">true</span><span className="text-slate-100">)</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-slate-500 w-8 text-right mr-4">6</span>
-                      <span></span>
+                      <span className="text-slate-500 w-8 text-right mr-4">7</span>
+                      <span className="text-yellow-400">useEffect</span><span className="text-slate-100">(() =&gt; {'{'}</span>
                     </div>
                     <div className="flex bg-red-900/20 border-l-2 border-red-500">
-                      <span className="text-slate-500 w-8 text-right mr-4">7</span>
-                      <span className="ml-4 text-yellow-400">useEffect</span><span className="text-slate-100">(() =&gt; {'{'}</span>
-                    </div>
-                    <div className="flex bg-red-900/20">
                       <span className="text-slate-500 w-8 text-right mr-4">8</span>
-                      <span className="ml-8 text-yellow-400">fetch</span><span className="text-slate-100">(</span><span className="text-green-400">`/api/users/</span><span className="text-orange-400">${'{user?.id}'}</span><span className="text-green-400">`</span><span className="text-slate-100">)</span>
+                      <span className="ml-4 text-yellow-400">fetch</span><span className="text-slate-100">(</span><span className="text-green-400">`/api/users/${'{'}{'{user?.id}'}</span><span className="text-green-400">`</span><span className="text-slate-100">)</span>
                     </div>
                     <div className="flex bg-red-900/20">
                       <span className="text-slate-500 w-8 text-right mr-4">9</span>
-                      <span className="ml-12 text-slate-100">.</span><span className="text-yellow-400">then</span><span className="text-slate-100">(</span><span className="text-blue-400">res</span> <span className="text-purple-400">=&gt;</span> <span className="text-blue-400">res</span><span className="text-slate-100">.</span><span className="text-yellow-400">json</span><span className="text-slate-100">())</span>
-                    </div>
-                    <div className="flex bg-red-900/20">
-                      <span className="text-slate-500 w-8 text-right mr-4">10</span>
-                      <span className="ml-12 text-slate-100">.</span><span className="text-yellow-400">then</span><span className="text-slate-100">(</span><span className="text-blue-400">setUser</span><span className="text-slate-100">)</span>
-                    </div>
-                    <div className="flex bg-red-900/20">
-                      <span className="text-slate-500 w-8 text-right mr-4">11</span>
-                      <span className="ml-8 text-yellow-400">setLoading</span><span className="text-slate-100">(</span><span className="text-orange-400">false</span><span className="text-slate-100">)</span>
-                    </div>
-                    <div className="flex bg-red-900/20 border-l-2 border-red-500">
-                      <span className="text-slate-500 w-8 text-right mr-4">12</span>
-                      <span className="ml-4 text-slate-100">{'})'})</span>
+                      <span className="ml-6 text-slate-100">.</span><span className="text-yellow-400">then</span><span className="text-slate-100">(</span><span className="text-blue-400">setUser</span><span className="text-slate-100">)</span>
                     </div>
                     <div className="flex">
-                      <span className="text-slate-500 w-8 text-right mr-4">13</span>
-                      <span className="ml-4 text-slate-100">{'}'}</span>
+                      <span className="text-slate-500 w-8 text-right mr-4">10</span>
+                      <span className="text-slate-100">{'}'}) // ❌ Missing dependency</span>
                     </div>
-                  </div>
-                </div>
 
-                {/* Status Bar */}
-                <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-t border-slate-700 text-xs">
-                  <div className="flex items-center gap-4">
-                    <span className="text-red-400">⚠ 1 error</span>
-                    <span className="text-yellow-400">⚠ 2 warnings</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400">TypeScript React</span>
-                    <button className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">
-                      Ask Polydev
-                    </button>
+                    {/* Error highlight */}
+                    <div className="mt-4 p-3 bg-red-900/20 border border-red-500/30 rounded">
+                      <div className="flex items-center gap-2 text-red-400 text-xs">
+                        <span>⚠</span>
+                        <span>Infinite re-render detected</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Right: Model Responses */}
-              <div className="bg-slate-50 flex flex-col">
-                {/* Models Header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200">
-                  <h3 className="font-semibold text-slate-900">Multiple Perspectives</h3>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm text-slate-600">Streaming responses...</span>
-                  </div>
-                </div>
-
-                {/* Model Responses */}
-                <div className="flex-1 p-4 space-y-4 overflow-auto">
-
-                  {/* OpenAI Response */}
-                  <div className="bg-white rounded-lg border border-slate-200 p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={20} height={20} />
-                      <span className="font-medium text-slate-900">GPT-4o</span>
-                      <span className="text-xs text-slate-500">1.2s</span>
-                    </div>
-                    <div className="text-sm text-slate-700 space-y-2">
-                      <p>The issue is an infinite loop in your useEffect. You're fetching user data but the effect depends on `user?.id`, which changes when you call `setUser`.</p>
-                      <div className="bg-slate-100 rounded p-2 font-mono text-xs">
-                        <span className="text-green-600">// Add dependency array:</span><br/>
-                        <span className="text-blue-600">useEffect</span>(() =&gt; {"{...}"}, <span className="text-orange-600">[userId]</span>)
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Anthropic Response */}
-                  <div className="bg-white rounded-lg border border-slate-200 p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" width={20} height={20} />
-                      <span className="font-medium text-slate-900">Claude 3.5 Sonnet</span>
-                      <span className="text-xs text-slate-500">1.8s</span>
-                    </div>
-                    <div className="text-sm text-slate-700 space-y-2">
-                      <p>Two problems: dependency array missing and race condition. Consider using AbortController for cleanup:</p>
-                      <div className="bg-slate-100 rounded p-2 font-mono text-xs">
-                        <span className="text-green-600">// Add cleanup and proper deps</span><br/>
-                        <span className="text-blue-600">useEffect</span>(() =&gt; {"{controller.signal}"}, <span className="text-orange-600">[userId]</span>)
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Google Response */}
-                  <div className="bg-white rounded-lg border border-slate-200 p-4">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" width={20} height={20} />
-                      <span className="font-medium text-slate-900">Gemini 2.0 Flash</span>
-                      <span className="text-xs text-slate-500">0.9s</span>
-                    </div>
-                    <div className="text-sm text-slate-700 space-y-2">
-                      <p>Use a custom hook for data fetching. This separates concerns and handles loading states properly:</p>
-                      <div className="bg-slate-100 rounded p-2 font-mono text-xs">
-                        <span className="text-green-600">// Extract to useUser(userId)</span><br/>
-                        <span className="text-purple-600">const</span> {"{user, loading}"} = <span className="text-blue-600">useUser</span>(userId)
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Action Bar */}
-                <div className="px-4 py-3 bg-white border-t border-slate-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
-                      <button className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
-                        Apply Fix
-                      </button>
-                      <button className="px-3 py-1 border border-slate-300 text-slate-700 rounded text-sm hover:bg-slate-50">
-                        Show Diff
-                      </button>
-                    </div>
-                    <span className="text-xs text-slate-500">3 models • $0.023</span>
-                  </div>
-                </div>
-              </div>
-
             </div>
 
-            {/* Flow Arrow */}
-            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none hidden lg:block">
-              <svg width="100" height="40" viewBox="0 0 100 40" className="text-purple-500">
-                <defs>
-                  <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="currentColor" stopOpacity="0.2" />
-                    <stop offset="50%" stopColor="currentColor" stopOpacity="0.8" />
-                    <stop offset="100%" stopColor="currentColor" stopOpacity="0.2" />
-                  </linearGradient>
-                </defs>
-                <path d="M10 20 L70 20 M60 10 L70 20 L60 30" stroke="url(#arrowGradient)" strokeWidth="2" fill="none" className="animate-pulse" />
+            {/* Center: Animated Arrow with Bouncing Balls */}
+            <div className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6 py-8">
+              {/* Question indicator */}
+              <div className="text-center lg:text-left">
+                <div className="bg-gradient-to-r from-purple-100 to-cyan-100 rounded-full px-4 py-2 mb-2">
+                  <span className="text-sm font-medium text-slate-700">How to fix this?</span>
+                </div>
+              </div>
+
+              {/* Bouncing Arrow */}
+              <div className="relative flex items-center gap-2">
+                {/* Animated balls */}
+                <div className="flex gap-1">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                  <div className="w-3 h-3 bg-cyan-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                  <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                </div>
+
+                {/* Arrow */}
+                <svg className="w-8 h-8 text-slate-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+
+                {/* More animated balls */}
+                <div className="flex gap-1">
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-bounce" style={{animationDelay: '450ms'}}></div>
+                  <div className="w-3 h-3 bg-violet-500 rounded-full animate-bounce" style={{animationDelay: '600ms'}}></div>
+                  <div className="w-3 h-3 bg-rose-500 rounded-full animate-bounce" style={{animationDelay: '750ms'}}></div>
+                </div>
+              </div>
+
+              {/* Multiple models indicator */}
+              <div className="text-center lg:text-right">
+                <div className="bg-gradient-to-r from-cyan-100 to-purple-100 rounded-full px-4 py-2">
+                  <span className="text-sm font-medium text-slate-700">3 AI perspectives</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Model Responses (Tilted) */}
+            <div className="transform lg:rotate-2 hover:rotate-0 transition-transform duration-500 w-full lg:w-96">
+              <div className="space-y-4">
+
+                {/* Claude Response */}
+                <div className="bg-white rounded-lg shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">C</span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-slate-900">Claude</div>
+                      <div className="text-xs text-slate-500">Anthropic</div>
+                    </div>
+                    <div className="ml-auto">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-slate-400">typing</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-700 font-mono">
+                    <TypewriterText
+                      text="Add dependency array: useEffect(() => {...}, [user?.id])"
+                      delay={30}
+                      startDelay={500}
+                      onComplete={() => handleTypingComplete(0)}
+                    />
+                  </div>
+                </div>
+
+                {/* GPT-4 Response */}
+                <div className="bg-white rounded-lg shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">GP</span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-slate-900">GPT-4</div>
+                      <div className="text-xs text-slate-500">OpenAI</div>
+                    </div>
+                    <div className="ml-auto">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-slate-400">typing</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-700 font-mono">
+                    <TypewriterText
+                      text="Use AbortController + cleanup: useEffect(() => {controller.signal}, [userId])"
+                      delay={35}
+                      startDelay={1500}
+                      onComplete={() => handleTypingComplete(1)}
+                    />
+                  </div>
+                </div>
+
+                {/* Gemini Response */}
+                <div className="bg-white rounded-lg shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">G</span>
+                    </div>
+                    <div>
+                      <div className="font-medium text-slate-900">Gemini</div>
+                      <div className="text-xs text-slate-500">Google</div>
+                    </div>
+                    <div className="ml-auto">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-slate-400">typing</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-slate-700 font-mono">
+                    <TypewriterText
+                      text="Consider useMemo + useCallback: const user = useMemo(() => fetchUser(id), [id])"
+                      delay={28}
+                      startDelay={2500}
+                      onComplete={() => handleTypingComplete(2)}
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom CTA */}
+          <div className="text-center mt-16">
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 text-white rounded-xl hover:from-purple-700 hover:to-cyan-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+              <span>Try with your code</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Interactive Cost Workbench */}
+      <section className="relative py-20 bg-white overflow-hidden">
+        {/* Floating elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-r from-orange-400/20 to-violet-400/20 rounded-full blur-xl animate-float"></div>
+          <div className="absolute bottom-20 right-20 w-16 h-16 bg-gradient-to-r from-purple-400/20 to-cyan-400/20 rounded-full blur-xl animate-float-reverse"></div>
+        </div>
+
+        <div className="mx-auto max-w-7xl px-6 relative">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+              True <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">Cost Transparency</span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+              No vendor lock-in. No hidden fees. Only pay for what you use across hundreds of models.
+            </p>
+          </div>
+
+          {/* Interactive Workbench */}
+          <div className="bg-gradient-to-br from-slate-50 to-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+
+            {/* Workbench Header */}
+            <div className="bg-white border-b border-slate-200 px-8 py-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900">Cost Calculator</h3>
+                  <p className="text-slate-600 mt-1">Compare real costs across providers</p>
+                </div>
+                <div className="flex gap-3">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-700 mb-1">$0</div>
+                    <div className="text-sm text-slate-600">CLI Tools</div>
+                    <div className="text-xs text-green-600 mt-1">Your existing auth</div>
+                  </div>
+                  <div className="w-px bg-slate-300 mx-4"></div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-700 mb-1">$12.50</div>
+                    <div className="text-sm text-slate-600">Per query</div>
+                    <div className="text-xs text-slate-500 mt-1">5 models, 2k tokens</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Interactive Controls */}
+            <div className="p-8 border-t border-slate-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left Column: Models */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Select Models</h3>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                      <input type="checkbox" defaultChecked className="text-orange-500" />
+                      <div className="flex items-center gap-3 flex-1">
+                        <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={20} height={20} />
+                        <span className="font-medium">GPT-4o</span>
+                        <span className="text-sm text-slate-500 ml-auto">$0.60/1K</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                      <input type="checkbox" defaultChecked className="text-orange-500" />
+                      <div className="flex items-center gap-3 flex-1">
+                        <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" width={20} height={20} />
+                        <span className="font-medium">Claude 3.5</span>
+                        <span className="text-sm text-slate-500 ml-auto">$1.50/1K</span>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
+                      <input type="checkbox" className="text-orange-500" />
+                      <div className="flex items-center gap-3 flex-1">
+                        <Image src="https://models.dev/logos/google.svg" alt="Google" width={20} height={20} />
+                        <span className="font-medium">Gemini Pro</span>
+                        <span className="text-sm text-slate-500 ml-auto">$0.25/1K</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Right Column: Settings */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Query Settings</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Max Tokens</label>
+                      <input type="range" min="500" max="4000" defaultValue="2000" className="w-full" />
+                      <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>500</span>
+                        <span>2000</span>
+                        <span>4000</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Temperature</label>
+                      <input type="range" min="0" max="1" step="0.1" defaultValue="0.3" className="w-full" />
+                      <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>0.0</span>
+                        <span>0.3</span>
+                        <span>1.0</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-6 border-t border-slate-200">
+                <button className="w-full bg-gradient-to-r from-orange-500 to-violet-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-orange-600 hover:to-violet-600 transition-all duration-200">
+                  Calculate Cost
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Dynamic Code Examples */}
+      <section className="py-4 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
+        {/* Enhanced background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.04),transparent_60%)]"></div>
+          <div className="absolute top-40 left-1/3 w-72 h-72 bg-gradient-to-br from-violet-100/20 to-orange-100/20 rounded-full blur-3xl animate-float-slow"></div>
+          <div className="absolute bottom-40 right-1/3 w-80 h-80 bg-gradient-to-br from-orange-100/15 to-blue-100/15 rounded-full blur-3xl animate-float-reverse"></div>
+          {/* Code-themed grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.015)_1px,transparent_1px)] bg-[size:40px_40px] opacity-50"></div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-8 observe">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-4 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-slate-600">Live Examples</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight stagger-fade-in">
+              See polydev{' '}
+              <span className="bg-gradient-to-r from-slate-700 via-orange-600 to-violet-600 bg-clip-text text-transparent animate-gradient">
+                in action
+              </span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
+              Real debugging scenarios, multiple perspectives, better solutions—watch how different models approach the same problem
+            </p>
+          </div>
+
+          <div className="relative mx-auto max-w-6xl observe">
+            {/* Sophisticated glow effect behind the editor */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-orange-500/10 via-violet-500/10 to-orange-500/10 rounded-3xl blur-2xl opacity-0 hover:opacity-100 transition-opacity duration-1000"></div>
+
+            <div className="relative glass-ultra rounded-3xl overflow-hidden shadow-2xl border border-orange-100/30 hover:border-orange-200/50 transition-all duration-700 sophisticated-hover">
+              {/* Enhanced editor header */}
+              <div className="relative flex items-center gap-2 px-6 py-5 bg-gradient-to-r from-slate-50/80 via-white/60 to-slate-50/80 backdrop-blur-xl border-b border-slate-200/30">
+                {/* Traffic lights with glow effect */}
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-red-500 rounded-full shadow-lg"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-red-400 rounded-full animate-ping opacity-20"></div>
+                  </div>
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full shadow-lg"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-yellow-400 rounded-full animate-pulse opacity-30"></div>
+                  </div>
+                  <div className="relative">
+                    <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
+                    <div className="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-pulse opacity-30"></div>
+                  </div>
+                </div>
+
+                {/* Enhanced file info */}
+                <div className="ml-6 flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-100/50 to-violet-100/50 border border-orange-200/30">
+                    <span className="inline-block w-2 h-2 bg-gradient-to-r from-orange-400 to-red-400 rounded-full animate-pulse"></span>
+                    <span className="text-sm text-slate-700 font-mono font-medium">{CODE_EXAMPLES[currentExample].filename}</span>
+                  </div>
+                </div>
+
+                {/* Enhanced controls */}
+                <div className="ml-auto flex items-center gap-4">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-slate-100/60 to-slate-50/60 border border-slate-200/40">
+                    <span className="text-xs text-slate-600 font-mono font-medium">{CODE_EXAMPLES[currentExample].language}</span>
+                  </div>
+
+                  {/* Sophisticated progress indicators */}
+                  <div className="flex gap-1.5">
+                    {CODE_EXAMPLES.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`rounded-full transition-all duration-500 ${
+                          index === currentExample
+                            ? 'w-8 h-2 bg-gradient-to-r from-orange-500 to-violet-500 shadow-lg'
+                            : 'w-2 h-2 bg-slate-300 hover:bg-slate-400'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Enhanced code content */}
+              <div className="p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-[400px] font-mono text-sm relative overflow-hidden">
+                {/* Sophisticated background effects */}
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+                <div className="relative z-10">
+                  <TypewriterText
+                    text={CODE_EXAMPLES[currentExample].code}
+                    className="text-slate-300 leading-relaxed whitespace-pre-wrap"
+                    delay={30}
+                  />
+                </div>
+              </div>
+
+              {/* Enhanced footer with call-to-action */}
+              <div className="relative bg-gradient-to-r from-slate-50/80 via-white/60 to-slate-50/80 backdrop-blur-xl border-t border-slate-200/30 p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-green-100/60 to-emerald-100/60 border border-green-200/40">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-green-700 font-medium">Live Demo</span>
+                    </div>
+                    <span className="text-sm text-slate-600">Real-time multi-model analysis</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setCurrentExample((prev) => (prev + 1) % CODE_EXAMPLES.length)}
+                      className="px-4 py-2 bg-gradient-to-r from-orange-500/10 to-violet-500/10 border border-orange-200/50 rounded-lg text-sm font-medium text-slate-700 hover:from-orange-500/20 hover:to-violet-500/20 transition-all duration-300 hover:scale-105"
+                    >
+                      Next Example
+                    </button>
+                    <Link
+                      href="/docs"
+                      className="px-4 py-2 bg-gradient-to-r from-orange-500 to-violet-500 text-white rounded-lg text-sm font-medium hover:from-orange-600 hover:to-violet-600 transition-all duration-300 hover:scale-105 shadow-lg"
+                    >
+                      Try Now
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
+      <section className="relative py-4 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-1/4 w-80 h-80 bg-gradient-to-br from-orange-100/30 to-violet-100/30 rounded-full blur-3xl animate-float-delayed"></div>
+          <div className="absolute bottom-20 left-1/4 w-96 h-96 bg-gradient-to-br from-blue-100/20 to-orange-100/20 rounded-full blur-3xl animate-float-reverse"></div>
+          {/* Sophisticated grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.01)_1px,transparent_1px)] bg-[size:80px_80px] opacity-30"></div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-orange-500/10 to-violet-500/10 border border-orange-200/30 mb-6 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-orange-600">Features</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight">
+              Everything you need to{' '}
+              <span className="bg-gradient-to-r from-orange-600 via-violet-600 to-orange-600 bg-clip-text text-transparent animate-gradient">
+                code better
+              </span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+              Polydev brings multiple AI perspectives directly into your development workflow
+            </p>
+          </div>
+        </div>
+      </section>
       <section className="relative py-4 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
