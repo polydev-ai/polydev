@@ -770,112 +770,117 @@ export default function Home() {
         </div>
 
         <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center mb-16 observe">
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
-              <span className="text-sm font-medium text-purple-600">Why settle for one brain?</span>
+          <div className="text-center mb-20 observe">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-indigo-600">How it actually works</span>
             </div>
             <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight stagger-fade-in">
-              When coding gets{' '}
-              <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent animate-gradient-advanced">
-                weird
+              Stop debugging{' '}
+              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent animate-gradient-advanced">
+                alone
               </span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
-              That moment when your code breaks in production but works on your machine? Yeah, we get multiple models to argue about it.
+              Get multiple perspectives on your code, right where you're already working. No context switching, no copy-pasting, no browser juggling.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-            {[
-              {
-                emoji: "🎭",
-                title: "The Committee Approach",
-                description: "Like having a code review with your future self, your past self, and that one colleague who actually knows what they're doing",
-                features: ["3+ models debate your bug", "Someone always disagrees", "Usually someone's right"],
-                gradient: "from-purple-500/10 to-pink-500/10",
-                iconGradient: "from-purple-500 to-pink-500"
-              },
-              {
-                emoji: "🚫",
-                title: "No More Tab Switching",
-                description: "Your browser has 47 tabs open and none of them are helping. We live in your editor instead",
-                features: ["Works where you work", "No browser gymnastics", "Actually convenient"],
-                gradient: "from-blue-500/10 to-cyan-500/10",
-                iconGradient: "from-blue-500 to-cyan-500"
-              },
-              {
-                emoji: "🧠",
-                title: "Memory That Actually Works",
-                description: "Remembers your conversation from last week when you were debugging that thing that shouldn't have been broken",
-                features: ["Never starts from scratch", "Knows your project", "Connects the dots"],
-                gradient: "from-green-500/10 to-emerald-500/10",
-                iconGradient: "from-green-500 to-emerald-500"
-              },
-              {
-                emoji: "🔍",
-                title: "Reads Your Entire Codebase",
-                description: "Yeah, even that legacy code you pretend doesn't exist. Especially that code.",
-                features: ["Knows your spaghetti code", "Understands dependencies", "Judges you silently"],
-                gradient: "from-orange-500/10 to-red-500/10",
-                iconGradient: "from-orange-500 to-red-500"
-              },
-              {
-                emoji: "⚡",
-                title: "Actually Production Ready",
-                description: "We don't just slap 'enterprise grade' on things. This actually works when it matters",
-                features: ["Won't die under pressure", "Handles your mistakes", "Scales with your chaos"],
-                gradient: "from-yellow-500/10 to-orange-500/10",
-                iconGradient: "from-yellow-500 to-orange-500"
-              },
-              {
-                emoji: "🔌",
-                title: "Future-Proof Protocol",
-                description: "Built on standards that won't be deprecated next week (probably)",
-                features: ["MCP compatible", "Plays nice with tools", "Won't become legacy code"],
-                gradient: "from-indigo-500/10 to-purple-500/10",
-                iconGradient: "from-indigo-500 to-purple-500"
-              }
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-purple-100/50 observe sophisticated-hover magnetic-hover overflow-hidden border border-purple-100/30"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                {/* Animated gradient background */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700`}></div>
+          {/* Modern Flow Layout */}
+          <div className="relative max-w-5xl mx-auto mb-20">
+            {/* Connecting Line */}
+            <div className="absolute left-8 md:left-1/2 top-16 bottom-16 w-0.5 bg-gradient-to-b from-indigo-500/20 via-purple-500/40 to-pink-500/20 transform md:-translate-x-0.5"></div>
 
-                {/* Sophisticated border glow */}
-                <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500">
-                  <div className={`absolute inset-0 rounded-3xl bg-gradient-to-r ${feature.iconGradient} blur-lg`}></div>
-                </div>
-
-                <div className="relative z-10">
-                  {/* Floating emoji with playful background */}
-                  <div className="relative mb-6">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${feature.iconGradient} rounded-full opacity-10 group-hover:opacity-20 transition-opacity duration-500 blur-md`}></div>
-                    <div className="relative text-6xl animate-sophisticated-float transform group-hover:scale-110 transition-transform duration-300">
-                      {feature.emoji}
+            {/* Flow Steps */}
+            <div className="space-y-16">
+              {/* Step 1 */}
+              <div className="relative flex flex-col md:flex-row items-center">
+                <div className="flex-1 md:pr-12 mb-8 md:mb-0">
+                  <div className="md:text-right">
+                    <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-200/30 mb-4">
+                      <span className="text-sm font-medium text-blue-600">Step 1</span>
                     </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">Ask once, get multiple answers</h3>
+                    <p className="text-gray-600 leading-relaxed">
+                      Type your question in Claude Code, Cursor, or Cline. Instead of one model's opinion, you get perspectives from GPT-4, Claude, Gemini, and more—all at once.
+                    </p>
                   </div>
-
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4 group-hover:text-gray-800 transition-colors duration-300">{feature.title}</h3>
-                  <p className="text-gray-600 mb-6 leading-relaxed group-hover:text-gray-700 transition-colors duration-300">{feature.description}</p>
-                  <ul className="space-y-3">
-                    {feature.features.map((item, itemIndex) => (
-                      <li key={itemIndex} className="flex items-center text-sm text-gray-500 group-hover:text-gray-600 transition-colors duration-300">
-                        <div className={`w-2 h-2 bg-gradient-to-r ${feature.iconGradient} rounded-full mr-3 group-hover:scale-110 transition-transform duration-300`}></div>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
                 </div>
-
-                {/* Shimmer effect on hover */}
-                <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
-                  <div className="absolute inset-0 rounded-3xl animate-shimmer"></div>
+                <div className="flex-shrink-0">
+                  <div className="relative w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center text-2xl text-white shadow-lg">
+                    💬
+                    <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 animate-pulse"></div>
+                  </div>
+                </div>
+                <div className="flex-1 md:pl-12 mt-8 md:mt-0">
+                  <div className="md:opacity-0">&nbsp;</div>
                 </div>
               </div>
-            ))}
+
+              {/* Step 2 */}
+              <div className="relative flex flex-col md:flex-row items-center">
+                <div className="flex-1 md:pr-12 mb-8 md:mb-0">
+                  <div className="md:opacity-0">&nbsp;</div>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="relative w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center text-2xl text-white shadow-lg">
+                    🔍
+                    <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 animate-pulse"></div>
+                  </div>
+                </div>
+                <div className="flex-1 md:pl-12 mt-8 md:mt-0">
+                  <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-200/30 mb-4">
+                    <span className="text-sm font-medium text-purple-600">Step 2</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">Models analyze your actual code</h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    Each model sees your entire project context—your files, dependencies, recent changes. They understand what you're actually working on, not just your question.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="relative flex flex-col md:flex-row items-center">
+                <div className="flex-1 md:pr-12 mb-8 md:mb-0">
+                  <div className="md:text-right">
+                    <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-200/30 mb-4">
+                      <span className="text-sm font-medium text-green-600">Step 3</span>
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-3">Compare and choose the best approach</h3>
+                    <p className="text-gray-600 leading-relaxed">
+                      See different solutions side by side. One model might catch an edge case another missed. Pick the approach that makes the most sense for your situation.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="relative w-16 h-16 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center text-2xl text-white shadow-lg">
+                    ⚖️
+                    <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-500/20 animate-pulse"></div>
+                  </div>
+                </div>
+                <div className="flex-1 md:pl-12 mt-8 md:mt-0">
+                  <div className="md:opacity-0">&nbsp;</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Key Benefits - Modern Horizontal Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+            <div className="group p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100/50 hover:shadow-lg transition-all duration-300">
+              <div className="text-3xl mb-4">🎯</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Better solutions</h3>
+              <p className="text-gray-600 text-sm">Different models excel at different things. Get the best of each without the hassle.</p>
+            </div>
+            <div className="group p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-100/50 hover:shadow-lg transition-all duration-300">
+              <div className="text-3xl mb-4">⚡</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Stay in flow</h3>
+              <p className="text-gray-600 text-sm">No tab switching, no copy-pasting. Everything happens right in your editor.</p>
+            </div>
+            <div className="group p-6 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100/50 hover:shadow-lg transition-all duration-300">
+              <div className="text-3xl mb-4">🧠</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Remembers context</h3>
+              <p className="text-gray-600 text-sm">Picks up where you left off, even across sessions. No more explaining your project every time.</p>
+            </div>
           </div>
 
           {/* Call to action */}
