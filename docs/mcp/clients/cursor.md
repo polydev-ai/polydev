@@ -1,18 +1,18 @@
 # **Cursor**
 
-Add Polydev to Cursor.
+Connect Cursor to Polydev MCP server.
 
 ## **Setup**
 
-**1. Open Cursor settings** → MCP Servers
+**1. Open Cursor Settings** → MCP Servers
 
-**2. Add configuration:**
+**2. Add Configuration:**
 
 ```json
 {
   "polydev": {
-    "command": "node",
-    "args": ["/path/to/polydev-ai/mcp/server.js"]
+    "command": "npx",
+    "args": ["-y", "@polydev-ai/mcp-server"]
   }
 }
 ```
@@ -21,6 +21,8 @@ Add Polydev to Cursor.
 
 ## **Test**
 
-Ask Cursor: *"Get multiple AI perspectives on this architecture"*
+Ask Cursor:
 
-Done.
+*"Get multiple AI perspectives on this architecture"*
+
+**Done!** Cursor now has access to multiple AI models through Polydev.

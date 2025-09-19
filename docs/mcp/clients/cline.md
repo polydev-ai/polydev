@@ -1,19 +1,19 @@
 # **Cline**
 
-Add Polydev to Cline (VS Code extension).
+Connect Cline (VS Code extension) to Polydev MCP server.
 
 ## **Setup**
 
-**1. Open VS Code settings** → Extensions → Cline → MCP Servers
+**1. Open VS Code Settings** → Extensions → Cline → MCP Servers
 
-**2. Add server:**
+**2. Add Server Configuration:**
 
 ```json
 {
   "cline.mcpServers": {
     "polydev": {
-      "command": "node",
-      "args": ["/path/to/polydev-ai/mcp/server.js"]
+      "command": "npx",
+      "args": ["-y", "@polydev-ai/mcp-server"]
     }
   }
 }
@@ -23,6 +23,8 @@ Add Polydev to Cline (VS Code extension).
 
 ## **Test**
 
-Ask Cline: *"Use polydev to get multiple perspectives on this code"*
+Ask Cline:
 
-Done.
+*"Use polydev to get multiple perspectives on this code"*
+
+**Done!** Cline now has access to multiple AI models through Polydev.

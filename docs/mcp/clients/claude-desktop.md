@@ -1,17 +1,17 @@
 # **Claude Desktop**
 
-Add Polydev to Claude Desktop in 2 steps.
+Connect Claude Desktop to Polydev MCP server.
 
 ## **Setup**
 
-**1. Add to config** → `~/Library/Application Support/Claude/claude_desktop_config.json`
+**1. Add MCP Server** → Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "polydev": {
-      "command": "node",
-      "args": ["/path/to/polydev-ai/mcp/server.js"]
+      "command": "npx",
+      "args": ["-y", "@polydev-ai/mcp-server"]
     }
   }
 }
@@ -21,6 +21,8 @@ Add Polydev to Claude Desktop in 2 steps.
 
 ## **Test**
 
-Ask Claude: *"Get multiple perspectives on React performance optimization"*
+Ask Claude:
 
-Done.
+*"Get multiple perspectives on React performance optimization"*
+
+**Done!** Claude now has access to multiple AI models through Polydev.

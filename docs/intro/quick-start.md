@@ -22,8 +22,8 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 {
   "mcpServers": {
     "polydev": {
-      "command": "node",
-      "args": ["/path/to/polydev/mcp/server.js"]
+      "command": "npx",
+      "args": ["-y", "@polydev-ai/mcp-server"]
     }
   }
 }
