@@ -877,7 +877,7 @@ export default function Home() {
                   <div className="space-y-1">
                     <div className="flex">
                       <span className="text-slate-500 w-8 text-right mr-4">1</span>
-                      <span className="text-purple-400">import</span> <span className="text-slate-100">React, {</span> <span className="text-blue-400">useEffect</span><span className="text-slate-100">, </span><span className="text-blue-400">useState</span> <span className="text-slate-100">} </span><span className="text-purple-400">from</span> <span className="text-green-400">'react'</span>
+                      <span className="text-purple-400">import</span> <span className="text-slate-100">React, {'{'}</span> <span className="text-blue-400">useEffect</span><span className="text-slate-100">, </span><span className="text-blue-400">useState</span> <span className="text-slate-100">{'}'} </span><span className="text-purple-400">from</span> <span className="text-green-400">'react'</span>
                     </div>
                     <div className="flex">
                       <span className="text-slate-500 w-8 text-right mr-4">2</span>
@@ -885,7 +885,7 @@ export default function Home() {
                     </div>
                     <div className="flex">
                       <span className="text-slate-500 w-8 text-right mr-4">3</span>
-                      <span className="text-purple-400">function</span> <span className="text-yellow-400">UserProfile</span><span className="text-slate-100">() {</span>
+                      <span className="text-purple-400">function</span> <span className="text-yellow-400">UserProfile</span><span className="text-slate-100">() {'{'}</span>
                     </div>
                     <div className="flex">
                       <span className="text-slate-500 w-8 text-right mr-4">4</span>
@@ -901,15 +901,15 @@ export default function Home() {
                     </div>
                     <div className="flex bg-red-900/20 border-l-2 border-red-500">
                       <span className="text-slate-500 w-8 text-right mr-4">7</span>
-                      <span className="ml-4 text-yellow-400">useEffect</span><span className="text-slate-100">(() => {</span>
+                      <span className="ml-4 text-yellow-400">useEffect</span><span className="text-slate-100">(() =&gt; {'{'}</span>
                     </div>
                     <div className="flex bg-red-900/20">
                       <span className="text-slate-500 w-8 text-right mr-4">8</span>
-                      <span className="ml-8 text-yellow-400">fetch</span><span className="text-slate-100">(</span><span className="text-green-400">`/api/users/</span><span className="text-orange-400">${user?.id}</span><span className="text-green-400">`</span><span className="text-slate-100">)</span>
+                      <span className="ml-8 text-yellow-400">fetch</span><span className="text-slate-100">(</span><span className="text-green-400">`/api/users/</span><span className="text-orange-400">${'{user?.id}'}</span><span className="text-green-400">`</span><span className="text-slate-100">)</span>
                     </div>
                     <div className="flex bg-red-900/20">
                       <span className="text-slate-500 w-8 text-right mr-4">9</span>
-                      <span className="ml-12 text-slate-100">.</span><span className="text-yellow-400">then</span><span className="text-slate-100">(</span><span className="text-blue-400">res</span> <span className="text-purple-400">=></span> <span className="text-blue-400">res</span><span className="text-slate-100">.</span><span className="text-yellow-400">json</span><span className="text-slate-100">())</span>
+                      <span className="ml-12 text-slate-100">.</span><span className="text-yellow-400">then</span><span className="text-slate-100">(</span><span className="text-blue-400">res</span> <span className="text-purple-400">=&gt;</span> <span className="text-blue-400">res</span><span className="text-slate-100">.</span><span className="text-yellow-400">json</span><span className="text-slate-100">())</span>
                     </div>
                     <div className="flex bg-red-900/20">
                       <span className="text-slate-500 w-8 text-right mr-4">10</span>
@@ -921,11 +921,11 @@ export default function Home() {
                     </div>
                     <div className="flex bg-red-900/20 border-l-2 border-red-500">
                       <span className="text-slate-500 w-8 text-right mr-4">12</span>
-                      <span className="ml-4 text-slate-100">})</span>
+                      <span className="ml-4 text-slate-100">{'})'})</span>
                     </div>
                     <div className="flex">
                       <span className="text-slate-500 w-8 text-right mr-4">13</span>
-                      <span className="ml-4 text-slate-100">}</span>
+                      <span className="ml-4 text-slate-100">{'}'}</span>
                     </div>
                   </div>
                 </div>
@@ -970,7 +970,7 @@ export default function Home() {
                       <p>The issue is an infinite loop in your useEffect. You're fetching user data but the effect depends on `user?.id`, which changes when you call `setUser`.</p>
                       <div className="bg-slate-100 rounded p-2 font-mono text-xs">
                         <span className="text-green-600">// Add dependency array:</span><br/>
-                        <span className="text-blue-600">useEffect</span>(() => {"{...}"}, <span className="text-orange-600">[userId]</span>)
+                        <span className="text-blue-600">useEffect</span>(() =&gt; {"{...}"}, <span className="text-orange-600">[userId]</span>)
                       </div>
                     </div>
                   </div>
@@ -986,7 +986,7 @@ export default function Home() {
                       <p>Two problems: dependency array missing and race condition. Consider using AbortController for cleanup:</p>
                       <div className="bg-slate-100 rounded p-2 font-mono text-xs">
                         <span className="text-green-600">// Add cleanup and proper deps</span><br/>
-                        <span className="text-blue-600">useEffect</span>(() => {"{controller.signal}"}, <span className="text-orange-600">[userId]</span>)
+                        <span className="text-blue-600">useEffect</span>(() =&gt; {"{controller.signal}"}, <span className="text-orange-600">[userId]</span>)
                       </div>
                     </div>
                   </div>
