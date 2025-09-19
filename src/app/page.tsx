@@ -1404,57 +1404,164 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Quick Start Options */}
-          <div className="mt-12 grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 text-center relative overflow-hidden">
-              <div className="absolute -top-2 -left-2 w-20 h-20 bg-green-100 rounded-full opacity-30"></div>
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">Already have CLI tools?</h3>
-              <p className="text-sm text-slate-600 mb-4">Start getting perspectives immediately with your existing authentication</p>
-              <div className="bg-white/70 rounded-lg p-2 mb-4 text-xs text-slate-600">
-                🚀 Zero config • Works instantly
-              </div>
-              <button className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all text-sm font-medium transform hover:scale-105">
-                Quick Setup Guide
-              </button>
+          {/* Interactive Path Layout - Choose Your Adventure */}
+          <div className="mt-16 max-w-6xl mx-auto relative">
+            {/* Dynamic connecting paths */}
+            <div className="absolute inset-0 pointer-events-none">
+              <svg className="w-full h-full" viewBox="0 0 800 400" fill="none">
+                <path d="M150 200 Q400 100 650 200" stroke="url(#pathGradient)" strokeWidth="2" strokeDasharray="5,5" opacity="0.3"/>
+                <path d="M150 200 Q400 300 650 200" stroke="url(#pathGradient2)" strokeWidth="2" strokeDasharray="5,5" opacity="0.3"/>
+                <defs>
+                  <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#10b981"/>
+                    <stop offset="50%" stopColor="#3b82f6"/>
+                    <stop offset="100%" stopColor="#f97316"/>
+                  </linearGradient>
+                  <linearGradient id="pathGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#8b5cf6"/>
+                    <stop offset="50%" stopColor="#ec4899"/>
+                    <stop offset="100%" stopColor="#f59e0b"/>
+                  </linearGradient>
+                </defs>
+              </svg>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-6 text-center relative overflow-hidden">
-              <div className="absolute -top-2 -right-2 w-16 h-16 bg-blue-100 rounded-full opacity-50"></div>
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">New to model-assisted coding?</h3>
-              <p className="text-sm text-slate-600 mb-4">Get 100 free requests to try all models without any API setup</p>
-              <div className="bg-white/70 rounded-lg p-2 mb-4 text-xs text-slate-600">
-                No credit card • Instant access • 340+ models
-              </div>
-              <button className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all text-sm font-medium transform hover:scale-105">
-                Start Free Trial
-              </button>
-            </div>
+            {/* Staggered Interactive Cards */}
+            <div className="relative z-10 space-y-8">
+              {/* Path 1: Expert Developer */}
+              <div className="flex items-center group">
+                <div className="w-2/3 pr-8">
+                  <div className="relative p-8 rounded-2xl bg-gradient-to-r from-emerald-50/80 to-green-50/80 border border-emerald-200/50 hover:border-emerald-300/70 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl backdrop-blur-sm">
+                    {/* Animated badge */}
+                    <div className="absolute -top-3 left-6 px-4 py-1 bg-emerald-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                      ⚡ INSTANT
+                    </div>
+                    {/* Floating accent */}
+                    <div className="absolute -right-4 -top-4 w-16 h-16 bg-emerald-100 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-300"></div>
 
-            <div className="bg-gradient-to-br from-orange-50 to-violet-50 border border-orange-200 rounded-xl p-6 text-center relative overflow-hidden">
-              <div className="absolute -bottom-2 -right-2 w-24 h-24 bg-gradient-to-br from-orange-100 to-violet-100 rounded-full opacity-40"></div>
-              <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-violet-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform duration-300">
+                        <span className="text-2xl">🛠️</span>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">I have Claude Code / Cursor / Cline</h3>
+                        <p className="text-slate-600 mb-4">Zero setup. Start getting multiple model perspectives immediately using your existing CLI authentication.</p>
+                        <div className="flex items-center gap-2 text-sm text-emerald-700 mb-4">
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            </svg>
+                            Works in 30 seconds
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            </svg>
+                            $0 cost
+                          </span>
+                        </div>
+                        <button className="bg-gradient-to-r from-emerald-500 to-green-500 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all font-semibold group-hover:scale-105">
+                          Quick MCP Setup →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="w-1/3 text-center opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="text-4xl mb-2">🎯</div>
+                  <div className="text-sm text-slate-500 font-medium">Best for experienced devs</div>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">Need all models?</h3>
-              <p className="text-sm text-slate-600 mb-4">Access 340+ models with simple credit-based pricing</p>
-              <div className="bg-white/70 rounded-lg p-2 mb-4 text-xs text-slate-600">
-                ⚡ Ultra-fast • Pay per use • No subscriptions
+
+              {/* Path 2: Curious Explorer */}
+              <div className="flex items-center group justify-end">
+                <div className="w-1/3 text-center opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="text-4xl mb-2">🌟</div>
+                  <div className="text-sm text-slate-500 font-medium">Perfect for trying out</div>
+                </div>
+                <div className="w-2/3 pl-8">
+                  <div className="relative p-8 rounded-2xl bg-gradient-to-r from-blue-50/80 to-cyan-50/80 border border-blue-200/50 hover:border-blue-300/70 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl backdrop-blur-sm">
+                    {/* Animated badge */}
+                    <div className="absolute -top-3 right-6 px-4 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                      💝 FREE
+                    </div>
+                    {/* Floating accent */}
+                    <div className="absolute -left-4 -top-4 w-16 h-16 bg-blue-100 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-300"></div>
+
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform duration-300">
+                        <span className="text-2xl">🚀</span>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">I want to explore first</h3>
+                        <p className="text-slate-600 mb-4">Get 100 free requests across all 340+ models. No credit card, no commitments, just pure experimentation.</p>
+                        <div className="flex items-center gap-2 text-sm text-blue-700 mb-4">
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            </svg>
+                            100 free comparisons
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            </svg>
+                            All models included
+                          </span>
+                        </div>
+                        <button className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all font-semibold group-hover:scale-105">
+                          Start Free Trial →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <button className="bg-gradient-to-r from-orange-500 to-violet-500 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all text-sm font-medium transform hover:scale-105">
-                View All Models
-              </button>
+
+              {/* Path 3: Power User */}
+              <div className="flex items-center group">
+                <div className="w-2/3 pr-8">
+                  <div className="relative p-8 rounded-2xl bg-gradient-to-r from-orange-50/80 to-violet-50/80 border border-orange-200/50 hover:border-orange-300/70 transition-all duration-500 hover:scale-[1.02] hover:shadow-xl backdrop-blur-sm">
+                    {/* Animated badge */}
+                    <div className="absolute -top-3 left-6 px-4 py-1 bg-gradient-to-r from-orange-500 to-violet-500 text-white text-xs font-semibold rounded-full shadow-lg">
+                      ⚡ UNLIMITED
+                    </div>
+                    {/* Floating accent */}
+                    <div className="absolute -right-4 -top-4 w-16 h-16 bg-gradient-to-r from-orange-100 to-violet-100 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-300"></div>
+
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 bg-gradient-to-r from-orange-500 to-violet-500 rounded-xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform duration-300">
+                        <span className="text-2xl">🏆</span>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">I need all the models</h3>
+                        <p className="text-slate-600 mb-4">Production-ready access to 340+ models with credits that work across every provider. No subscription juggling.</p>
+                        <div className="flex items-center gap-2 text-sm text-orange-700 mb-4">
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            </svg>
+                            Pay only for usage
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            </svg>
+                            Sub-second responses
+                          </span>
+                        </div>
+                        <button className="bg-gradient-to-r from-orange-500 to-violet-500 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all font-semibold group-hover:scale-105">
+                          Browse All Models →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="w-1/3 text-center opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="text-4xl mb-2">⚡</div>
+                  <div className="text-sm text-slate-500 font-medium">For power users</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1487,142 +1594,133 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8 mb-12">
-            <div className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-purple-100/50 transition-all duration-500 sophisticated-hover magnetic-hover observe border border-purple-100/40">
-              {/* Floating gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-50/30 to-indigo-50/30 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-
-              {/* Sophisticated border glow */}
-              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-purple-500 to-indigo-500 blur-lg"></div>
-              </div>
-
-              <div className="relative">
-                <div className="relative mb-6">
-                  <div className="w-18 h-18 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3" />
-                    </svg>
+          {/* Central Hub Architecture Showcase */}
+          <div className="relative max-w-6xl mx-auto">
+            {/* Central Polydev Hub */}
+            <div className="relative flex items-center justify-center mb-16">
+              <div className="relative group">
+                {/* Orbiting Connection Lines */}
+                <div className="absolute inset-0 animate-spin" style={{animationDuration: '20s'}}>
+                  <div className="absolute inset-0">
+                    <div className="absolute top-0 left-1/2 w-px h-32 bg-gradient-to-t from-purple-300/50 to-transparent transform -translate-x-0.5"></div>
+                    <div className="absolute bottom-0 left-1/2 w-px h-32 bg-gradient-to-b from-emerald-300/50 to-transparent transform -translate-x-0.5"></div>
+                    <div className="absolute left-0 top-1/2 h-px w-32 bg-gradient-to-l from-orange-300/50 to-transparent transform -translate-y-0.5"></div>
+                    <div className="absolute right-0 top-1/2 h-px w-32 bg-gradient-to-r from-blue-300/50 to-transparent transform -translate-y-0.5"></div>
                   </div>
-                  {/* Subtle glow effect */}
-                  <div className="absolute inset-0 w-18 h-18 bg-gradient-to-br from-purple-400/30 to-indigo-400/30 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                 </div>
-                <h3 className="text-2xl font-semibold text-slate-900 mb-4 group-hover:text-purple-700 transition-colors">MCP-Native Architecture</h3>
-                <p className="text-slate-600 leading-relaxed mb-6 group-hover:text-slate-700 transition-colors">
-                  Built on the Model Context Protocol (MCP), Polydev seamlessly integrates with your existing CLI tools and development workflows.
-                  No complex setup or API key management required.
-                </p>
-                <ul className="text-sm text-slate-500 space-y-3">
-                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
-                    <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full group-hover:scale-110 transition-transform"></span>
-                    Native Claude Code integration
-                  </li>
-                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
-                    <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full group-hover:scale-110 transition-transform"></span>
-                    Cursor API compatibility
-                  </li>
-                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
-                    <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full group-hover:scale-110 transition-transform"></span>
-                    Zero-config editor plugins
-                  </li>
-                </ul>
-              </div>
 
-              {/* Shimmer effect on hover */}
-              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
-                <div className="absolute inset-0 rounded-3xl animate-shimmer"></div>
+                {/* Central Hub */}
+                <div className="relative w-32 h-32 bg-gradient-to-br from-slate-900 via-purple-900 to-orange-900 rounded-full flex items-center justify-center shadow-2xl group-hover:scale-110 transition-all duration-500">
+                  <div className="absolute inset-2 bg-gradient-to-br from-white/20 to-transparent rounded-full backdrop-blur-sm"></div>
+                  <div className="relative text-white text-2xl font-bold">PD</div>
+
+                  {/* Pulsing rings */}
+                  <div className="absolute inset-0 rounded-full border-2 border-purple-400/30 animate-ping" style={{animationDuration: '3s'}}></div>
+                  <div className="absolute inset-0 rounded-full border-2 border-orange-400/20 animate-ping" style={{animationDuration: '4s', animationDelay: '1s'}}></div>
+                </div>
               </div>
             </div>
 
-            <div className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-emerald-100/50 transition-all duration-500 sophisticated-hover magnetic-hover observe border border-emerald-100/40">
-              {/* Floating gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/30 to-teal-50/30 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-
-              {/* Sophisticated border glow */}
-              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-emerald-500 to-teal-500 blur-lg"></div>
-              </div>
-
-              <div className="relative">
-                <div className="relative mb-6">
-                  <div className="w-18 h-18 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.586-3.414A2 2 0 0015.586 6H4a2 2 0 00-2 2v6a2 2 0 002 2h11.586a2 2 0 001.414-.586l3-3a2 2 0 000-2.828l-3-3z" />
-                    </svg>
+            {/* Floating Feature Satellites */}
+            <div className="relative">
+              {/* MCP Architecture - Top */}
+              <div className="absolute -top-20 left-1/2 transform -translate-x-1/2 group">
+                <div className="relative">
+                  <div className="w-64 bg-gradient-to-r from-purple-50/90 to-indigo-50/90 backdrop-blur-sm rounded-2xl p-6 border border-purple-200/50 hover:border-purple-300/70 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-md">
+                        <span className="text-white text-xl">🔗</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">MCP Integration</h4>
+                        <div className="text-xs text-purple-600">Zero-config setup</div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 mb-3">Seamlessly plugs into Claude Code, Cursor, and Cline without any API key management.</p>
+                    <div className="flex gap-1 flex-wrap">
+                      <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">Native</span>
+                      <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">Instant</span>
+                    </div>
                   </div>
-                  {/* Subtle glow effect */}
-                  <div className="absolute inset-0 w-18 h-18 bg-gradient-to-br from-emerald-400/30 to-teal-400/30 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  {/* Connection dot */}
+                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full w-3 h-3 bg-purple-400 rounded-full shadow-lg"></div>
                 </div>
-                <h3 className="text-2xl font-semibold text-slate-900 mb-4 group-hover:text-emerald-700 transition-colors">Zero-Knowledge Memory</h3>
-                <p className="text-slate-600 leading-relaxed mb-6 group-hover:text-slate-700 transition-colors">
-                  Your code and conversations stay private with end-to-end encryption. Polydev remembers context across sessions
-                  without ever seeing your sensitive data in plaintext.
-                </p>
-                <ul className="text-sm text-slate-500 space-y-3">
-                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
-                    <span className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full group-hover:scale-110 transition-transform"></span>
-                    Client-side encryption
-                  </li>
-                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
-                    <span className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full group-hover:scale-110 transition-transform"></span>
-                    Context-aware responses
-                  </li>
-                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
-                    <span className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full group-hover:scale-110 transition-transform"></span>
-                    SOC 2 Type II compliant
-                  </li>
-                </ul>
               </div>
 
-              {/* Shimmer effect on hover */}
-              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
-                <div className="absolute inset-0 rounded-3xl animate-shimmer"></div>
-              </div>
-            </div>
-
-            <div className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-orange-100/50 transition-all duration-500 sophisticated-hover magnetic-hover observe border border-orange-100/40">
-              {/* Floating gradient background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 to-red-50/30 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-
-              {/* Sophisticated border glow */}
-              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-orange-500 to-red-500 blur-lg"></div>
-              </div>
-
-              <div className="relative">
-                <div className="relative mb-6">
-                  <div className="w-18 h-18 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+              {/* Memory System - Left */}
+              <div className="absolute top-16 -left-72 group">
+                <div className="relative">
+                  <div className="w-64 bg-gradient-to-r from-emerald-50/90 to-teal-50/90 backdrop-blur-sm rounded-2xl p-6 border border-emerald-200/50 hover:border-emerald-300/70 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center shadow-md">
+                        <span className="text-white text-xl">🧬</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">Smart Memory</h4>
+                        <div className="text-xs text-emerald-600">End-to-end encrypted</div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 mb-3">Remembers your project context across sessions while keeping everything private.</p>
+                    <div className="flex gap-1 flex-wrap">
+                      <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">Private</span>
+                      <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-xs rounded-full">SOC 2</span>
+                    </div>
                   </div>
-                  {/* Subtle glow effect */}
-                  <div className="absolute inset-0 w-18 h-18 bg-gradient-to-br from-orange-400/30 to-red-400/30 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  {/* Connection dot */}
+                  <div className="absolute top-1/2 right-0 transform translate-x-full -translate-y-1/2 w-3 h-3 bg-emerald-400 rounded-full shadow-lg"></div>
                 </div>
-                <h3 className="text-2xl font-semibold text-slate-900 mb-4 group-hover:text-orange-700 transition-colors">Sub-Second Response Times</h3>
-                <p className="text-slate-600 leading-relaxed mb-6 group-hover:text-slate-700 transition-colors">
-                  Intelligent request routing and caching deliver multiple model perspectives faster than single-model queries.
-                  Average response time of 1.7 seconds across all providers.
-                </p>
-                <ul className="text-sm text-slate-500 space-y-3">
-                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
-                    <span className="w-2 h-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-full group-hover:scale-110 transition-transform"></span>
-                    Global edge deployment
-                  </li>
-                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
-                    <span className="w-2 h-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-full group-hover:scale-110 transition-transform"></span>
-                    Predictive request routing
-                  </li>
-                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
-                    <span className="w-2 h-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-full group-hover:scale-110 transition-transform"></span>
-                    Intelligent response caching
-                  </li>
-                </ul>
               </div>
 
-              {/* Shimmer effect on hover */}
-              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
-                <div className="absolute inset-0 rounded-3xl animate-shimmer"></div>
+              {/* Speed Engine - Right */}
+              <div className="absolute top-16 -right-72 group">
+                <div className="relative">
+                  <div className="w-64 bg-gradient-to-r from-orange-50/90 to-red-50/90 backdrop-blur-sm rounded-2xl p-6 border border-orange-200/50 hover:border-orange-300/70 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-md">
+                        <span className="text-white text-xl">⚡</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">Speed Engine</h4>
+                        <div className="text-xs text-orange-600">1.7s avg response</div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 mb-3">Multiple models responding faster than single queries through intelligent routing.</p>
+                    <div className="flex gap-1 flex-wrap">
+                      <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">Edge</span>
+                      <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">Cached</span>
+                    </div>
+                  </div>
+                  {/* Connection dot */}
+                  <div className="absolute top-1/2 left-0 transform -translate-x-full -translate-y-1/2 w-3 h-3 bg-orange-400 rounded-full shadow-lg"></div>
+                </div>
+              </div>
+
+              {/* Model Ecosystem - Bottom */}
+              <div className="absolute top-48 left-1/2 transform -translate-x-1/2 group">
+                <div className="relative">
+                  {/* Connection dot */}
+                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full w-3 h-3 bg-blue-400 rounded-full shadow-lg"></div>
+                  <div className="w-80 bg-gradient-to-r from-blue-50/90 to-cyan-50/90 backdrop-blur-sm rounded-2xl p-6 border border-blue-200/50 hover:border-blue-300/70 transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-md">
+                        <span className="text-white text-xl">🌐</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 text-sm">340+ Model Ecosystem</h4>
+                        <div className="text-xs text-blue-600">OpenAI • Anthropic • Google • xAI • More</div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 mb-4">Access every major model through one unified interface. No subscription juggling.</p>
+
+                    {/* Model Grid */}
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="h-8 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg flex items-center justify-center text-xs font-medium text-green-700">GPT</div>
+                      <div className="h-8 bg-gradient-to-r from-purple-100 to-indigo-100 rounded-lg flex items-center justify-center text-xs font-medium text-purple-700">Claude</div>
+                      <div className="h-8 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-lg flex items-center justify-center text-xs font-medium text-blue-700">Gemini</div>
+                      <div className="h-8 bg-gradient-to-r from-orange-100 to-red-100 rounded-lg flex items-center justify-center text-xs font-medium text-orange-700">+337</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
