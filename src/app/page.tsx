@@ -461,13 +461,13 @@ function MCPIntegrationDemo() {
       name: "Claude Code",
       logo: "https://sajalsharma.com/_astro/claude_code.GbHphWWe_Z29KFWg.webp.jpg",
       command: "claude perspectives \"help me debug this memory leak\"",
-      description: "Get multiple AI perspectives directly in your terminal"
+      description: "Get multiple model perspectives directly in your terminal"
     },
     {
       name: "Cursor",
       logo: "https://cdn.freelogovectors.net/wp-content/uploads/2025/06/cursor-logo-freelogovectors.net_.png",
       command: "# Cursor Composer with Polydev MCP",
-      description: "Access multiple models through Cursor's AI interface"
+      description: "Access multiple models through Cursor's interface"
     },
     {
       name: "Cline",
@@ -511,7 +511,7 @@ function MCPIntegrationDemo() {
         <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm mb-4">
           <div className="text-green-400 mb-2">$ {currentDemo.command}</div>
           <div className="text-slate-400">🔗 Connected to Polydev MCP server</div>
-          <div className="text-slate-400">📡 Getting perspectives from multiple AI models...</div>
+          <div className="text-slate-400">📡 Getting perspectives from multiple models...</div>
         </div>
         <p className="text-slate-600 text-center">{currentDemo.description}</p>
       </div>
@@ -649,9 +649,9 @@ export default function Home() {
               {/* Sophisticated description */}
               <div className="mt-8 max-w-4xl mx-auto">
                 <p className="text-xl sm:text-2xl leading-relaxed text-slate-600 font-light tracking-wide">
-                  Query <span className="font-medium text-slate-800">multiple AI models simultaneously</span> within your existing development environment.
+                  Query <span className="font-medium text-slate-800">multiple language models simultaneously</span> within your existing development environment.
                   <br className="hidden sm:block" />
-                  Compare approaches, catch edge cases, optimize quality—
+                  Compare solutions, validate approaches, improve quality—
                   <span className="relative inline-block">
                     <span className="font-medium text-slate-800">zero context switching</span>
                     <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-orange-400 to-violet-400 rounded-full"></div>
@@ -771,69 +771,69 @@ export default function Home() {
 
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center mb-16 observe">
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
-              <span className="text-sm font-medium text-orange-600">Advanced AI Integration</span>
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-gray-500/10 border border-slate-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-slate-600">Developer Experience Platform</span>
             </div>
             <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight stagger-fade-in">
-              AI-powered development workflow{' '}
-              <span className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 bg-clip-text text-transparent animate-gradient-advanced">
-                reimagined
+              Development workflow{' '}
+              <span className="bg-gradient-to-r from-slate-600 via-gray-700 to-slate-800 bg-clip-text text-transparent animate-gradient-advanced">
+                amplified
               </span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
-              Multiple AI models working together, providing diverse perspectives on your code without breaking your flow.
+              Multiple model perspectives, seamless integration, and intelligent context awareness for modern development teams.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             {[
               {
-                icon: "🧠",
-                title: "Multi-Model Intelligence",
-                description: "Get diverse perspectives from GPT-5, Claude Opus 4, and Gemini 2.5 Pro simultaneously",
-                features: ["Parallel reasoning", "Diverse approaches", "Better solutions"],
-                gradient: "from-purple-500/10 to-blue-500/10",
-                iconGradient: "from-purple-500 to-blue-500"
+                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>,
+                title: "Parallel Processing",
+                description: "Multiple models work simultaneously, comparing approaches and providing comprehensive analysis",
+                features: ["Concurrent evaluation", "Cross-model validation", "Enhanced accuracy"],
+                gradient: "from-slate-500/10 to-gray-500/10",
+                iconGradient: "from-slate-500 to-gray-600"
               },
               {
-                icon: "⚡",
-                title: "Zero Context Switching",
-                description: "Work seamlessly within your editor - no copy-pasting, no tab switching, no workflow interruption",
-                features: ["Native integration", "Instant responses", "Seamless workflow"],
-                gradient: "from-orange-500/10 to-yellow-500/10",
-                iconGradient: "from-orange-500 to-yellow-500"
+                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v15"/></svg>,
+                title: "Direct Integration",
+                description: "Native editor integration eliminates context switching and maintains your development flow",
+                features: ["Editor plugins", "Instant access", "Workflow preservation"],
+                gradient: "from-blue-500/10 to-indigo-500/10",
+                iconGradient: "from-blue-500 to-indigo-500"
               },
               {
-                icon: "🔒",
-                title: "Memory & Privacy",
-                description: "Your conversations and context are encrypted and stored securely across sessions",
-                features: ["End-to-end encryption", "Persistent memory", "Cross-session continuity"],
-                gradient: "from-green-500/10 to-emerald-500/10",
-                iconGradient: "from-green-500 to-emerald-500"
+                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>,
+                title: "Context Continuity",
+                description: "Secure session memory ensures conversations and context persist across development sessions",
+                features: ["Session persistence", "Secure storage", "Context awareness"],
+                gradient: "from-emerald-500/10 to-green-500/10",
+                iconGradient: "from-emerald-500 to-green-500"
               },
               {
-                icon: "🎯",
-                title: "Contextual Understanding",
-                description: "AI that understands your entire codebase, git history, and project dependencies",
-                features: ["Full project awareness", "Dependency tracking", "Historical context"],
-                gradient: "from-red-500/10 to-pink-500/10",
-                iconGradient: "from-red-500 to-pink-500"
+                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>,
+                title: "Project Intelligence",
+                description: "Deep understanding of your codebase structure, dependencies, and development history",
+                features: ["Codebase analysis", "Dependency mapping", "Historical insights"],
+                gradient: "from-amber-500/10 to-orange-500/10",
+                iconGradient: "from-amber-500 to-orange-500"
               },
               {
-                icon: "🚀",
-                title: "Production Ready",
-                description: "Built for real-world development with error handling, retries, and observability",
-                features: ["Robust error handling", "Automatic retries", "Built-in monitoring"],
-                gradient: "from-indigo-500/10 to-purple-500/10",
-                iconGradient: "from-indigo-500 to-purple-500"
+                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+                title: "Enterprise Grade",
+                description: "Production-ready architecture with comprehensive error handling and monitoring capabilities",
+                features: ["Robust architecture", "Error recovery", "Performance monitoring"],
+                gradient: "from-purple-500/10 to-violet-500/10",
+                iconGradient: "from-purple-500 to-violet-500"
               },
               {
-                icon: "🔧",
-                title: "MCP Native",
-                description: "Built on Model Context Protocol for extensibility and future-proof architecture",
-                features: ["Protocol compliance", "Extensible design", "Future-proof"],
-                gradient: "from-cyan-500/10 to-blue-500/10",
-                iconGradient: "from-cyan-500 to-blue-500"
+                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+                title: "Protocol Standards",
+                description: "Built on Model Context Protocol ensuring extensibility and compatibility with future developments",
+                features: ["MCP compliance", "Extensible design", "Future compatibility"],
+                gradient: "from-cyan-500/10 to-teal-500/10",
+                iconGradient: "from-cyan-500 to-teal-500"
               }
             ].map((feature, index) => (
               <div
@@ -853,7 +853,9 @@ export default function Home() {
                   {/* Floating icon with gradient background */}
                   <div className="relative mb-6">
                     <div className={`absolute inset-0 bg-gradient-to-br ${feature.iconGradient} rounded-2xl opacity-10 group-hover:opacity-20 transition-opacity duration-500`}></div>
-                    <div className="relative text-4xl p-3 rounded-2xl animate-sophisticated-float">{feature.icon}</div>
+                    <div className={`relative p-4 rounded-2xl animate-sophisticated-float bg-gradient-to-r ${feature.iconGradient} text-white`}>
+                      {feature.icon}
+                    </div>
                   </div>
 
                   <h3 className="text-xl font-semibold text-gray-900 mb-4 group-hover:text-gray-800 transition-colors duration-300">{feature.title}</h3>
@@ -923,13 +925,13 @@ export default function Home() {
               <span className="text-sm font-medium text-slate-600">Live Examples</span>
             </div>
             <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight stagger-fade-in">
-              See multi-model AI{' '}
+              See multiple models{' '}
               <span className="bg-gradient-to-r from-slate-700 via-orange-600 to-violet-600 bg-clip-text text-transparent animate-gradient">
                 in action
               </span>
             </h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
-              Real debugging scenarios, multiple perspectives, better solutions—watch how different AI models approach the same problem
+              Real debugging scenarios, multiple perspectives, better solutions—watch how different models approach the same problem
             </p>
           </div>
 
@@ -1022,7 +1024,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Enhanced AI Responses */}
+                {/* Enhanced Model Responses */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-orange-500 to-violet-500 flex items-center justify-center shadow-lg">
@@ -1207,7 +1209,7 @@ export default function Home() {
               </span>
             </h2>
             <p className="text-xl text-slate-600 leading-relaxed">
-              Already using Claude Code, Cursor, or other AI tools? Get multi-model perspectives completely free using your existing CLI tools—no new API keys needed.
+              Already using Claude Code, Cursor, or other development tools? Get multi-model perspectives completely free using your existing CLI tools—no new API keys needed.
             </p>
           </div>
 
@@ -1301,7 +1303,7 @@ export default function Home() {
                         <span className="text-sm font-semibold text-orange-700">💡 Pro Tip:</span>
                       </div>
                       <p className="text-sm text-slate-700 leading-relaxed">
-                        Most developers save 60-80% on AI costs by using Polydev credits instead of maintaining separate subscriptions to each provider.
+                        Most developers save 60-80% on model costs by using Polydev credits instead of maintaining separate subscriptions to each provider.
                       </p>
                     </div>
                   </div>
@@ -1423,7 +1425,7 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">New to AI coding?</h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">New to model-assisted coding?</h3>
               <p className="text-sm text-slate-600 mb-4">Get 100 free requests to try all models without any API setup</p>
               <div className="bg-white/70 rounded-lg p-2 mb-4 text-xs text-slate-600">
                 No credit card • Instant access • 340+ models
@@ -1476,7 +1478,7 @@ export default function Home() {
               </span>
             </h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
-              Polydev leverages cutting-edge technologies to deliver seamless multi-model AI experiences directly in your development environment.
+              Polydev leverages cutting-edge technologies to deliver seamless multi-model experiences directly in your development environment.
             </p>
           </div>
 
@@ -1594,7 +1596,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-2xl font-semibold text-slate-900 mb-4 group-hover:text-orange-700 transition-colors">Sub-Second Response Times</h3>
                 <p className="text-slate-600 leading-relaxed mb-6 group-hover:text-slate-700 transition-colors">
-                  Intelligent request routing and caching deliver multiple AI perspectives faster than single-model queries.
+                  Intelligent request routing and caching deliver multiple model perspectives faster than single-model queries.
                   Average response time of 1.7 seconds across all providers.
                 </p>
                 <ul className="text-sm text-slate-500 space-y-3">
@@ -1658,7 +1660,7 @@ export default function Home() {
                   </svg>
                 </div>
                 <h4 className="text-lg font-semibold text-slate-900 mb-2">Architecture</h4>
-                <p className="text-sm text-slate-600">Design better systems with consensus from multiple AI models</p>
+                <p className="text-sm text-slate-600">Design better systems with consensus from multiple models</p>
               </div>
               <div className="text-center">
                 <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1667,7 +1669,7 @@ export default function Home() {
                   </svg>
                 </div>
                 <h4 className="text-lg font-semibold text-slate-900 mb-2">Learning</h4>
-                <p className="text-sm text-slate-600">Understand concepts faster with explanations from different AI perspectives</p>
+                <p className="text-sm text-slate-600">Understand concepts faster with explanations from different model perspectives</p>
               </div>
             </div>
           </div>
@@ -1699,7 +1701,7 @@ export default function Home() {
                   <div>
                     <h3 className="text-xl font-semibold text-slate-900 mb-2">Catch More Edge Cases</h3>
                     <p className="text-slate-600 leading-relaxed">
-                      Different AI models excel at different types of analysis. Get comprehensive coverage by combining their strengths -
+                      Different models excel at different types of analysis. Get comprehensive coverage by combining their strengths -
                       Claude for reasoning, GPT for creativity, Gemini for code understanding.
                     </p>
                   </div>
@@ -1714,7 +1716,7 @@ export default function Home() {
                   <div>
                     <h3 className="text-xl font-semibold text-slate-900 mb-2">Reduce Development Time</h3>
                     <p className="text-slate-600 leading-relaxed">
-                      Stop switching between different AI tools and platforms. Get all perspectives in one place,
+                      Stop switching between different tools and platforms. Get all perspectives in one place,
                       reducing context switching and improving your development velocity by up to 40%.
                     </p>
                   </div>
@@ -1730,7 +1732,7 @@ export default function Home() {
                     <h3 className="text-xl font-semibold text-slate-900 mb-2">Stay in Flow State</h3>
                     <p className="text-slate-600 leading-relaxed">
                       Native editor integrations mean no browser tabs, no copy-pasting, and no workflow interruptions.
-                      Get AI perspectives directly in your IDE where you're already working.
+                      Get model perspectives directly in your IDE where you're already working.
                     </p>
                   </div>
                 </div>
