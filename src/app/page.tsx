@@ -406,8 +406,15 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text
   const [displayedText, setDisplayedText] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hasStarted, setHasStarted] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isMounted) return
+
     if (startDelay > 0 && !hasStarted) {
       const startTimeout = setTimeout(() => {
         setHasStarted(true)
@@ -416,9 +423,11 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text
     } else if (startDelay === 0) {
       setHasStarted(true)
     }
-  }, [startDelay, hasStarted])
+  }, [startDelay, hasStarted, isMounted])
 
   useEffect(() => {
+    if (!isMounted) return
+
     if (hasStarted && currentIndex < text.length) {
       const timeout = setTimeout(() => {
         setDisplayedText(prev => prev + text[currentIndex])
@@ -428,7 +437,7 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text
     } else if (hasStarted && currentIndex >= text.length && onComplete) {
       onComplete()
     }
-  }, [currentIndex, text, delay, onComplete, hasStarted])
+  }, [currentIndex, text, delay, onComplete, hasStarted, isMounted])
 
   useEffect(() => {
     setDisplayedText('')
@@ -436,11 +445,16 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0 }: { text
     setHasStarted(false)
   }, [text])
 
+  if (!isMounted) {
+    return <span></span>
+  }
+
   return <span>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
 }
 
 function MCPIntegrationDemo() {
   const [currentClient, setCurrentClient] = useState(0)
+  const [isMounted, setIsMounted] = useState(false)
 
   const mcpClients = [
     {
@@ -464,11 +478,17 @@ function MCPIntegrationDemo() {
   ]
 
   useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isMounted) return
+
     const interval = setInterval(() => {
       setCurrentClient((prev) => (prev + 1) % mcpClients.length)
     }, 4000)
     return () => clearInterval(interval)
-  }, [])
+  }, [isMounted])
 
   const currentDemo = mcpClients[currentClient]
 
@@ -512,6 +532,8 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
+    if (!isMounted) return
+
     const interval = setInterval(() => {
       setCurrentExample((prev) => {
         const next = (prev + 1) % CODE_EXAMPLES.length
@@ -520,7 +542,7 @@ export default function Home() {
       })
     }, 12000)
     return () => clearInterval(interval)
-  }, [])
+  }, [isMounted])
 
   const handleTypingComplete = (responseIndex: number) => {
     setTypingStates(prev => ({ ...prev, [responseIndex]: true }))
