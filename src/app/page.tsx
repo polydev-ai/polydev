@@ -527,7 +527,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
+      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
         {/* Sophisticated background patterns */}
         <div className="absolute inset-0">
           {/* Main gradient mesh */}
@@ -700,7 +700,7 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="relative py-32 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
+      <section className="relative py-20 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
           <div className="absolute top-20 right-1/4 w-80 h-80 bg-gradient-to-br from-orange-100/30 to-violet-100/30 rounded-full blur-3xl animate-float-delayed"></div>
@@ -710,7 +710,7 @@ export default function Home() {
         </div>
 
         <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center mb-20 observe">
+          <div className="text-center mb-16 observe">
             <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
               <span className="text-sm font-medium text-orange-600">Advanced AI Integration</span>
             </div>
@@ -725,7 +725,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             {[
               {
                 icon: "🧠",
@@ -847,7 +847,7 @@ export default function Home() {
       </section>
 
       {/* Dynamic Code Examples */}
-      <section className="py-32 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
+      <section className="py-20 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
         {/* Enhanced background elements */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.04),transparent_60%)]"></div>
@@ -858,7 +858,7 @@ export default function Home() {
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center mb-20 observe">
+          <div className="text-center mb-16 observe">
             <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
               <span className="text-sm font-medium text-slate-600">Live Examples</span>
             </div>
@@ -1003,9 +1003,10 @@ export default function Home() {
 
                           <div className="relative text-slate-700 leading-relaxed text-[15px]">
                             <TypewriterText
+                              key={`${currentExample}-${index}`}
                               text={response.text}
-                              delay={25}
-                              startDelay={index * 2000}
+                              delay={20}
+                              startDelay={index * 1500}
                               onComplete={() => handleTypingComplete(index)}
                             />
                           </div>
@@ -1026,7 +1027,7 @@ export default function Home() {
       </section>
 
       {/* Supported Editors */}
-      <section className="relative py-24 bg-gradient-to-br from-orange-50/60 via-white/80 to-violet-50/60 overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-br from-orange-50/60 via-white/80 to-violet-50/60 overflow-hidden">
         {/* Sophisticated background elements */}
         <div className="absolute inset-0">
           <div className="absolute top-10 right-1/4 w-64 h-64 bg-gradient-to-br from-orange-200/20 to-violet-200/20 rounded-full blur-3xl animate-float-delayed"></div>
@@ -1035,7 +1036,7 @@ export default function Home() {
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center mb-16 px-4 observe">
+          <div className="text-center mb-12 px-4 observe">
             <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-blue-500/10 to-orange-500/10 border border-blue-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
               <span className="text-sm font-medium text-blue-600">Native Integration</span>
             </div>
@@ -1124,116 +1125,220 @@ export default function Home() {
       </section>
 
       {/* Free CLI Usage Section */}
-      <section className="py-24 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="max-w-4xl mx-auto text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
-              Get perspectives <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">without spending anything</span>
+      <section className="relative py-8 bg-gradient-to-br from-white via-slate-50/20 to-white overflow-hidden">
+        {/* Enhanced background elements with more sophistication */}
+        <div className="absolute inset-0">
+          <div className="absolute top-16 left-1/4 w-80 h-80 bg-gradient-to-br from-green-100/25 to-blue-100/25 rounded-full blur-3xl animate-sophisticated-float"></div>
+          <div className="absolute bottom-16 right-1/4 w-96 h-96 bg-gradient-to-br from-orange-100/20 to-violet-100/20 rounded-full blur-3xl animate-float-reverse"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-emerald-200/10 to-cyan-200/10 rounded-full blur-2xl animate-float-delayed"></div>
+          {/* Sophisticated grid overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.008)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.008)_1px,transparent_1px)] bg-[size:120px_120px] opacity-30"></div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="max-w-4xl mx-auto text-center mb-8 observe">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-green-600">Zero Cost Integration</span>
+            </div>
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6 leading-tight">
+              Get perspectives{' '}
+              <span className="bg-gradient-to-r from-green-600 via-orange-600 to-violet-600 bg-clip-text text-transparent animate-gradient">
+                without spending anything
+              </span>
             </h2>
             <p className="text-xl text-slate-600 leading-relaxed">
-              Already using Claude Code, Cursor, or other AI tools? You can get multi-model perspectives completely free using your existing CLI tools.
-              No need to add multiple API keys or pay for each provider separately.
+              Already using Claude Code, Cursor, or other AI tools? Get multi-model perspectives completely free using your existing CLI tools—no new API keys needed.
             </p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left side - Benefits */}
             <div className="space-y-8">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">Use Your Existing CLI Tools</h3>
-                  <p className="text-slate-600 leading-relaxed">
-                    If you're already authenticated with Claude Code, Cursor, Cline, or other CLI tools, Polydev can route requests through them automatically.
-                    Get multiple perspectives using the credits and authentication you already have.
-                  </p>
+              <div className="group relative glass-enhanced rounded-2xl p-6 hover:shadow-2xl hover:shadow-green-100/50 transition-all duration-500 sophisticated-hover">
+                {/* Floating gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-green-50/30 to-emerald-50/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+                <div className="relative flex items-start gap-6">
+                  <div className="flex-shrink-0">
+                    <div className="relative w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {/* Subtle glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-green-400/30 to-emerald-400/30 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-3 group-hover:text-green-700 transition-colors">Use Your Existing CLI Tools</h3>
+                    <p className="text-slate-600 leading-relaxed group-hover:text-slate-700 transition-colors">
+                      If you're already authenticated with Claude Code, Cursor, Cline, or other CLI tools, Polydev can route requests through them automatically.
+                      Get multiple perspectives using the credits and authentication you already have.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">Flexible API Access</h3>
-                  <p className="text-slate-600 leading-relaxed mb-3">
-                    No need to juggle multiple API keys! Use your existing CLI tools for free, leverage Polydev credits for convenience,
-                    or add your own API keys for maximum control and cost optimization.
-                  </p>
-                  <div className="grid grid-cols-3 gap-3 text-xs">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
-                      <div className="font-semibold text-green-700">CLI Tools</div>
-                      <div className="text-green-600">Free</div>
+              <div className="group relative glass-enhanced rounded-2xl p-6 hover:shadow-2xl hover:shadow-blue-100/50 transition-all duration-500 sophisticated-hover">
+                {/* Floating gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-cyan-50/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+                <div className="relative flex items-start gap-6">
+                  <div className="flex-shrink-0">
+                    <div className="relative w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      {/* Subtle glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-400/30 to-cyan-400/30 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                     </div>
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-center">
-                      <div className="font-semibold text-orange-700">Credits</div>
-                      <div className="text-orange-600">Pay-as-go</div>
-                    </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
-                      <div className="font-semibold text-blue-700">Your Keys</div>
-                      <div className="text-blue-600">Full control</div>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-3 group-hover:text-blue-700 transition-colors">Flexible API Access</h3>
+                    <p className="text-slate-600 leading-relaxed mb-4 group-hover:text-slate-700 transition-colors">
+                      No need to juggle multiple API keys! Use your existing CLI tools for free, leverage Polydev credits for convenience,
+                      or add your own API keys for maximum control and cost optimization.
+                    </p>
+                    <div className="grid grid-cols-3 gap-3 text-xs">
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center hover:bg-green-100 transition-colors group-hover:scale-105 transform duration-300">
+                        <div className="font-semibold text-green-700">CLI Tools</div>
+                        <div className="text-green-600">Free</div>
+                      </div>
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center hover:bg-orange-100 transition-colors group-hover:scale-105 transform duration-300">
+                        <div className="font-semibold text-orange-700">Credits</div>
+                        <div className="text-orange-600">Pay-as-go</div>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center hover:bg-blue-100 transition-colors group-hover:scale-105 transform duration-300">
+                        <div className="font-semibold text-blue-700">Your Keys</div>
+                        <div className="text-blue-600">Full control</div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-orange-500 to-violet-500 rounded-xl flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-3">Simple Credit System</h3>
-                  <p className="text-slate-600 leading-relaxed mb-4">
-                    When you want access to all 340+ models, just use Polydev credits. One unified billing, no subscriptions to manage,
-                    and you only pay for what you actually use. Start with 100 free requests.
-                  </p>
-                  <div className="bg-gradient-to-r from-orange-50 to-violet-50 border border-orange-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-semibold text-orange-700">💡 Pro Tip:</span>
+              <div className="group relative glass-enhanced rounded-2xl p-6 hover:shadow-2xl hover:shadow-orange-100/50 transition-all duration-500 sophisticated-hover">
+                {/* Floating gradient background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 to-violet-50/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+                <div className="relative flex items-start gap-6">
+                  <div className="flex-shrink-0">
+                    <div className="relative w-14 h-14 bg-gradient-to-br from-orange-500 to-violet-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      {/* Subtle glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-orange-400/30 to-violet-400/30 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                     </div>
-                    <p className="text-sm text-slate-700">
-                      Most developers save 60-80% on AI costs by using Polydev credits instead of maintaining separate subscriptions to each provider.
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-3 group-hover:text-orange-700 transition-colors">Simple Credit System</h3>
+                    <p className="text-slate-600 leading-relaxed mb-5 group-hover:text-slate-700 transition-colors">
+                      When you want access to all 340+ models, just use Polydev credits. One unified billing, no subscriptions to manage,
+                      and you only pay for what you actually use. Start with 100 free requests.
                     </p>
+                    <div className="bg-gradient-to-r from-orange-50 to-violet-50 border border-orange-200/60 rounded-xl p-4 hover:border-orange-300/80 transition-all duration-300 group-hover:shadow-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-semibold text-orange-700">💡 Pro Tip:</span>
+                      </div>
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        Most developers save 60-80% on AI costs by using Polydev credits instead of maintaining separate subscriptions to each provider.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Right side - CLI Example */}
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-              <div className="bg-slate-900 px-6 py-4 border-b">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="ml-3 text-slate-300 text-sm font-mono">Terminal</span>
+            <div className="group relative">
+              {/* Sophisticated glow effect */}
+              <div className="absolute -inset-2 bg-gradient-to-r from-slate-500/20 via-green-500/20 to-blue-500/20 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+
+              <div className="relative bg-white rounded-3xl shadow-2xl border border-slate-200/60 overflow-hidden glass-enhanced hover:shadow-3xl transition-all duration-500">
+                {/* Enhanced terminal header */}
+                <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-6 py-5 border-b border-slate-700/50">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <div className="w-3 h-3 bg-red-500 rounded-full shadow-lg"></div>
+                        <div className="absolute inset-0 w-3 h-3 bg-red-400 rounded-full animate-ping opacity-20"></div>
+                      </div>
+                      <div className="relative">
+                        <div className="w-3 h-3 bg-yellow-500 rounded-full shadow-lg"></div>
+                        <div className="absolute inset-0 w-3 h-3 bg-yellow-400 rounded-full animate-pulse opacity-30"></div>
+                      </div>
+                      <div className="relative">
+                        <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
+                        <div className="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-pulse opacity-30"></div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 ml-4">
+                      <span className="text-slate-300 text-sm font-mono">Terminal</span>
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-slate-700/60">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-slate-400">Live</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="p-6 bg-slate-900 font-mono text-sm">
-                <div className="text-green-400 mb-2">$ polydev perspectives "optimize this query"</div>
-                <div className="text-slate-400 mb-4">✓ Using Claude Code CLI (authenticated)</div>
-                <div className="text-slate-400 mb-4">✓ Using Cursor API (authenticated)</div>
-                <div className="text-slate-400 mb-4">✓ Fallback to Polydev credits for additional models</div>
-                <div className="text-slate-300 mb-2">📊 Getting perspectives from:</div>
-                <div className="text-slate-300 ml-4 mb-1">• Claude Opus 4 (via Claude Code)</div>
-                <div className="text-slate-300 ml-4 mb-1">• GPT-5 (via Cursor)</div>
-                <div className="text-slate-300 ml-4 mb-1">• Gemini 2.5 Pro (via Polydev)</div>
-                <div className="text-slate-300 ml-4 mb-4">• DeepSeek V3 (via Polydev)</div>
-                <div className="text-blue-400">💸 Cost: $0.00 (using existing CLI authentication)</div>
+
+                {/* Enhanced terminal content */}
+                <div className="p-6 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 font-mono text-sm relative overflow-hidden">
+                  {/* Code syntax highlighting effect */}
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 opacity-60"></div>
+
+                  <div className="space-y-3 leading-relaxed">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-400 font-semibold">$</span>
+                      <span className="text-green-400">polydev perspectives "optimize this query"</span>
+                    </div>
+                    <div className="text-emerald-400 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Using Claude Code CLI (authenticated)
+                    </div>
+                    <div className="text-emerald-400 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Using Cursor API (authenticated)
+                    </div>
+                    <div className="text-emerald-400 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Fallback to Polydev credits for additional models
+                    </div>
+                    <div className="text-slate-300 flex items-center gap-2 mt-4">
+                      <span className="text-lg">📊</span>
+                      Getting perspectives from:
+                    </div>
+                    <div className="ml-6 space-y-2">
+                      <div className="text-slate-300 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse"></span>
+                        Claude Opus 4 <span className="text-green-400">(via Claude Code)</span>
+                      </div>
+                      <div className="text-slate-300 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
+                        GPT-5 <span className="text-green-400">(via Cursor)</span>
+                      </div>
+                      <div className="text-slate-300 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse"></span>
+                        Gemini 2.5 Pro <span className="text-orange-400">(via Polydev)</span>
+                      </div>
+                      <div className="text-slate-300 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></span>
+                        DeepSeek V3 <span className="text-orange-400">(via Polydev)</span>
+                      </div>
+                    </div>
+                    <div className="text-blue-400 flex items-center gap-2 mt-4 bg-blue-900/20 rounded-lg px-3 py-2">
+                      <span className="text-lg">💸</span>
+                      <span className="font-semibold">Cost: $0.00</span>
+                      <span className="text-slate-400">(using existing CLI authentication)</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Quick Start Options */}
-          <div className="mt-16 grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="mt-12 grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 text-center relative overflow-hidden">
               <div className="absolute -top-2 -left-2 w-20 h-20 bg-green-100 rounded-full opacity-30"></div>
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -1289,105 +1394,184 @@ export default function Home() {
       </section>
 
       {/* Technology Deep Dive */}
-      <section className="py-24 bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
-              Built for <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">modern development workflows</span>
+      <section className="relative py-10 bg-gradient-to-br from-slate-50/60 via-white/80 to-slate-100/60 overflow-hidden">
+        {/* Enhanced background elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 right-1/3 w-96 h-96 bg-gradient-to-br from-slate-200/20 to-orange-200/20 rounded-full blur-3xl animate-sophisticated-float"></div>
+          <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-gradient-to-br from-violet-200/15 to-blue-200/15 rounded-full blur-3xl animate-float-reverse"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-gradient-to-br from-orange-100/10 to-violet-100/10 rounded-full blur-2xl animate-float-slow"></div>
+          {/* Tech-themed grid pattern */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(51,65,85,0.008)_1px,transparent_1px),linear-gradient(90deg,rgba(51,65,85,0.008)_1px,transparent_1px)] bg-[size:100px_100px] opacity-40"></div>
+        </div>
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="text-center mb-12 observe">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-slate-600">Advanced Technology</span>
+            </div>
+            <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6 leading-tight stagger-fade-in">
+              Built for{' '}
+              <span className="bg-gradient-to-r from-slate-700 via-orange-600 to-violet-600 bg-clip-text text-transparent animate-gradient-advanced">
+                modern development workflows
+              </span>
             </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
               Polydev leverages cutting-edge technologies to deliver seamless multi-model AI experiences directly in your development environment.
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8 mb-16">
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-slate-200 hover:shadow-xl transition-shadow">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-xl flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3" />
-                </svg>
+          <div className="grid lg:grid-cols-3 gap-8 mb-12">
+            <div className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-purple-100/50 transition-all duration-500 sophisticated-hover magnetic-hover observe border border-purple-100/40">
+              {/* Floating gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-50/30 to-indigo-50/30 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+              {/* Sophisticated border glow */}
+              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-purple-500 to-indigo-500 blur-lg"></div>
               </div>
-              <h3 className="text-2xl font-semibold text-slate-900 mb-4">MCP-Native Architecture</h3>
-              <p className="text-slate-600 leading-relaxed mb-4">
-                Built on the Model Context Protocol (MCP), Polydev seamlessly integrates with your existing CLI tools and development workflows.
-                No complex setup or API key management required.
-              </p>
-              <ul className="text-sm text-slate-500 space-y-2">
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                  Native Claude Code integration
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                  Cursor API compatibility
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                  Zero-config editor plugins
-                </li>
-              </ul>
+
+              <div className="relative">
+                <div className="relative mb-6">
+                  <div className="w-18 h-18 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3" />
+                    </svg>
+                  </div>
+                  {/* Subtle glow effect */}
+                  <div className="absolute inset-0 w-18 h-18 bg-gradient-to-br from-purple-400/30 to-indigo-400/30 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                </div>
+                <h3 className="text-2xl font-semibold text-slate-900 mb-4 group-hover:text-purple-700 transition-colors">MCP-Native Architecture</h3>
+                <p className="text-slate-600 leading-relaxed mb-6 group-hover:text-slate-700 transition-colors">
+                  Built on the Model Context Protocol (MCP), Polydev seamlessly integrates with your existing CLI tools and development workflows.
+                  No complex setup or API key management required.
+                </p>
+                <ul className="text-sm text-slate-500 space-y-3">
+                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
+                    <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full group-hover:scale-110 transition-transform"></span>
+                    Native Claude Code integration
+                  </li>
+                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
+                    <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full group-hover:scale-110 transition-transform"></span>
+                    Cursor API compatibility
+                  </li>
+                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
+                    <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full group-hover:scale-110 transition-transform"></span>
+                    Zero-config editor plugins
+                  </li>
+                </ul>
+              </div>
+
+              {/* Shimmer effect on hover */}
+              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                <div className="absolute inset-0 rounded-3xl animate-shimmer"></div>
+              </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-slate-200 hover:shadow-xl transition-shadow">
-              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.586-3.414A2 2 0 0015.586 6H4a2 2 0 00-2 2v6a2 2 0 002 2h11.586a2 2 0 001.414-.586l3-3a2 2 0 000-2.828l-3-3z" />
-                </svg>
+            <div className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-emerald-100/50 transition-all duration-500 sophisticated-hover magnetic-hover observe border border-emerald-100/40">
+              {/* Floating gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-50/30 to-teal-50/30 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+              {/* Sophisticated border glow */}
+              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-emerald-500 to-teal-500 blur-lg"></div>
               </div>
-              <h3 className="text-2xl font-semibold text-slate-900 mb-4">Zero-Knowledge Memory</h3>
-              <p className="text-slate-600 leading-relaxed mb-4">
-                Your code and conversations stay private with end-to-end encryption. Polydev remembers context across sessions
-                without ever seeing your sensitive data in plaintext.
-              </p>
-              <ul className="text-sm text-slate-500 space-y-2">
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                  Client-side encryption
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                  Context-aware responses
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                  SOC 2 Type II compliant
-                </li>
-              </ul>
+
+              <div className="relative">
+                <div className="relative mb-6">
+                  <div className="w-18 h-18 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.586-3.414A2 2 0 0015.586 6H4a2 2 0 00-2 2v6a2 2 0 002 2h11.586a2 2 0 001.414-.586l3-3a2 2 0 000-2.828l-3-3z" />
+                    </svg>
+                  </div>
+                  {/* Subtle glow effect */}
+                  <div className="absolute inset-0 w-18 h-18 bg-gradient-to-br from-emerald-400/30 to-teal-400/30 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                </div>
+                <h3 className="text-2xl font-semibold text-slate-900 mb-4 group-hover:text-emerald-700 transition-colors">Zero-Knowledge Memory</h3>
+                <p className="text-slate-600 leading-relaxed mb-6 group-hover:text-slate-700 transition-colors">
+                  Your code and conversations stay private with end-to-end encryption. Polydev remembers context across sessions
+                  without ever seeing your sensitive data in plaintext.
+                </p>
+                <ul className="text-sm text-slate-500 space-y-3">
+                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
+                    <span className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full group-hover:scale-110 transition-transform"></span>
+                    Client-side encryption
+                  </li>
+                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
+                    <span className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full group-hover:scale-110 transition-transform"></span>
+                    Context-aware responses
+                  </li>
+                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
+                    <span className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full group-hover:scale-110 transition-transform"></span>
+                    SOC 2 Type II compliant
+                  </li>
+                </ul>
+              </div>
+
+              {/* Shimmer effect on hover */}
+              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                <div className="absolute inset-0 rounded-3xl animate-shimmer"></div>
+              </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-slate-200 hover:shadow-xl transition-shadow">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mb-6">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+            <div className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-orange-100/50 transition-all duration-500 sophisticated-hover magnetic-hover observe border border-orange-100/40">
+              {/* Floating gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 to-red-50/30 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+              {/* Sophisticated border glow */}
+              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500">
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-orange-500 to-red-500 blur-lg"></div>
               </div>
-              <h3 className="text-2xl font-semibold text-slate-900 mb-4">Sub-Second Response Times</h3>
-              <p className="text-slate-600 leading-relaxed mb-4">
-                Intelligent request routing and caching deliver multiple AI perspectives faster than single-model queries.
-                Average response time of 1.7 seconds across all providers.
-              </p>
-              <ul className="text-sm text-slate-500 space-y-2">
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
-                  Global edge deployment
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
-                  Predictive request routing
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
-                  Intelligent response caching
-                </li>
-              </ul>
+
+              <div className="relative">
+                <div className="relative mb-6">
+                  <div className="w-18 h-18 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  {/* Subtle glow effect */}
+                  <div className="absolute inset-0 w-18 h-18 bg-gradient-to-br from-orange-400/30 to-red-400/30 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                </div>
+                <h3 className="text-2xl font-semibold text-slate-900 mb-4 group-hover:text-orange-700 transition-colors">Sub-Second Response Times</h3>
+                <p className="text-slate-600 leading-relaxed mb-6 group-hover:text-slate-700 transition-colors">
+                  Intelligent request routing and caching deliver multiple AI perspectives faster than single-model queries.
+                  Average response time of 1.7 seconds across all providers.
+                </p>
+                <ul className="text-sm text-slate-500 space-y-3">
+                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
+                    <span className="w-2 h-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-full group-hover:scale-110 transition-transform"></span>
+                    Global edge deployment
+                  </li>
+                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
+                    <span className="w-2 h-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-full group-hover:scale-110 transition-transform"></span>
+                    Predictive request routing
+                  </li>
+                  <li className="flex items-center gap-3 group-hover:text-slate-600 transition-colors">
+                    <span className="w-2 h-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-full group-hover:scale-110 transition-transform"></span>
+                    Intelligent response caching
+                  </li>
+                </ul>
+              </div>
+
+              {/* Shimmer effect on hover */}
+              <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+                <div className="absolute inset-0 rounded-3xl animate-shimmer"></div>
+              </div>
             </div>
           </div>
 
           {/* Use Cases */}
-          <div className="bg-white rounded-3xl p-12 shadow-2xl border border-slate-200">
-            <h3 className="text-3xl font-bold text-slate-900 text-center mb-12">
-              Perfect for every development scenario
-            </h3>
+          <div className="relative group glass-ultra rounded-3xl p-10 shadow-2xl border border-slate-200/60 hover:shadow-3xl transition-all duration-700 sophisticated-hover observe">
+            {/* Sophisticated background elements */}
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-50/30 via-white/50 to-orange-50/30 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+
+            <div className="relative">
+              <h3 className="text-3xl font-bold text-slate-900 text-center mb-10 group-hover:text-slate-800 transition-colors">
+                Perfect for every{' '}
+                <span className="bg-gradient-to-r from-slate-700 to-orange-600 bg-clip-text text-transparent">
+                  development scenario
+                </span>
+              </h3>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               <div className="text-center">
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-4">
