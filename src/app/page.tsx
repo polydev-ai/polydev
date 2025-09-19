@@ -504,8 +504,10 @@ export default function Home() {
   const [modelStats, setModelStats] = useState({ totalModels: 346, totalProviders: 37 })
   const [currentExample, setCurrentExample] = useState(0)
   const [typingStates, setTypingStates] = useState<{ [key: number]: boolean }>({})
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
+    setIsMounted(true)
     fetchModelsDevStats().then(setModelStats)
   }, [])
 
@@ -527,7 +529,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
       {/* Hero */}
-      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
+      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-orange-50/30">
         {/* Sophisticated background patterns */}
         <div className="absolute inset-0">
           {/* Main gradient mesh */}
@@ -544,13 +546,13 @@ export default function Home() {
 
         {/* Floating model logos with sophisticated positioning */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-[10%] w-10 h-10 opacity-[0.08] animate-float will-change-transform">
+          <div className="absolute top-20 left-[10%] w-10 h-10 opacity-[0.08]">
             <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" fill className="object-contain" />
           </div>
-          <div className="absolute top-32 right-[15%] w-8 h-8 opacity-[0.06] animate-float-delayed will-change-transform">
+          <div className="absolute top-32 right-[15%] w-8 h-8 opacity-[0.06]">
             <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" fill className="object-contain" />
           </div>
-          <div className="absolute bottom-40 left-[20%] w-12 h-12 opacity-[0.07] animate-float-slow will-change-transform">
+          <div className="absolute bottom-40 left-[20%] w-12 h-12 opacity-[0.07]">
             <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" fill className="object-contain" />
           </div>
 
@@ -561,12 +563,12 @@ export default function Home() {
           <div className="absolute top-2/3 right-1/4 w-1 h-1 bg-violet-400/40 rounded-full animate-ping hidden sm:block" style={{animationDelay: '1s'}}></div>
         </div>
 
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-32">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
           <div className="text-center">
             <div className="mx-auto max-w-5xl">
               {/* Sophisticated status indicator */}
-              <div className="inline-flex items-center gap-3 mb-12 group">
-                <div className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-orange-200/50 shadow-lg shadow-orange-100/20 hover:shadow-orange-100/40 transition-all duration-500 hover:scale-105">
+              <div className="inline-flex items-center gap-3 mb-6 group">
+                <div className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-orange-200/50 shadow-lg shadow-orange-100/20 hover:shadow-orange-100/40 transition-all duration-300">
                   <div className="relative">
                     <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
                     <div className="absolute inset-0 w-2 h-2 bg-orange-400 rounded-full animate-ping opacity-20"></div>
@@ -639,14 +641,14 @@ export default function Home() {
               {/* Sophisticated action buttons */}
               <div className="mt-16 flex flex-col sm:flex-row items-center justify-center gap-6 px-4">
                 <Link
-                  href={isAuthenticated ? '/dashboard' : '/auth'}
+                  href={isMounted && isAuthenticated ? '/dashboard' : '/auth'}
                   className="group relative w-full sm:w-auto"
                 >
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500"></div>
-                  <div className="relative px-8 py-4 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl text-white font-semibold text-lg transition-all duration-300 hover:scale-105 overflow-hidden">
+                  <div className="relative px-8 py-4 bg-gradient-to-r from-orange-500 to-violet-500 rounded-2xl text-white font-semibold text-lg transition-all duration-300 overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 transform -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                     <span className="relative flex items-center justify-center gap-2">
-                      {isAuthenticated ? 'Launch Console' : 'Start Building'}
+                      {isMounted && isAuthenticated ? 'Launch Console' : 'Start Building'}
                       <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                       </svg>
@@ -700,7 +702,7 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="relative py-20 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
+      <section className="relative py-8 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
           <div className="absolute top-20 right-1/4 w-80 h-80 bg-gradient-to-br from-orange-100/30 to-violet-100/30 rounded-full blur-3xl animate-float-delayed"></div>
@@ -847,7 +849,7 @@ export default function Home() {
       </section>
 
       {/* Dynamic Code Examples */}
-      <section className="py-20 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
+      <section className="py-8 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
         {/* Enhanced background elements */}
         <div className="absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.04),transparent_60%)]"></div>
@@ -858,8 +860,8 @@ export default function Home() {
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center mb-16 observe">
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
+          <div className="text-center mb-8 observe">
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-4 glass-enhanced hover:scale-105 transition-all duration-500">
               <span className="text-sm font-medium text-slate-600">Live Examples</span>
             </div>
             <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight stagger-fade-in">
@@ -1616,7 +1618,7 @@ export default function Home() {
       </section>
 
       {/* Developer Benefits */}
-      <section className="py-24 bg-white">
+      <section className="py-8 bg-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl mb-6">
@@ -1712,7 +1714,7 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section className="py-16 sm:py-24 bg-gradient-to-br from-orange-50 to-violet-50 border-t border-slate-200">
+      <section className="py-8 sm:py-10 bg-gradient-to-br from-orange-50 to-violet-50 border-t border-slate-200">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 text-center">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 mb-4">Simple, transparent pricing</h2>
           <p className="text-lg sm:text-xl text-slate-600 mb-8 sm:mb-12 px-4">
@@ -1794,7 +1796,7 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 bg-gradient-to-br from-orange-50 via-white to-violet-50">
+      <section className="py-8 bg-gradient-to-br from-orange-50 via-white to-violet-50">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">Give your editor a safety net</h2>
           <p className="mt-6 text-xl text-slate-600">
@@ -1802,10 +1804,10 @@ export default function Home() {
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-6">
             <Link
-              href={isAuthenticated ? '/dashboard' : '/auth'}
+              href={isMounted && isAuthenticated ? '/dashboard' : '/auth'}
               className="group relative overflow-hidden rounded-full bg-gradient-to-r from-orange-500 to-violet-500 px-8 py-4 text-lg font-semibold text-white shadow-xl shadow-orange-500/25 transition-all duration-300 hover:shadow-orange-500/40 hover:scale-105"
             >
-              {isAuthenticated ? 'Open Dashboard' : 'Create Workspace'}
+              {isMounted && isAuthenticated ? 'Open Dashboard' : 'Create Workspace'}
             </Link>
             <Link
               href="/pricing"
