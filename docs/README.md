@@ -1,43 +1,25 @@
 # Polydev Docs
 
-Clean, quick, and practical guides for using Polydev. Start with the Quickstart, then dive into features and APIs.
+Get multiple AI perspectives when your agent gets stuck.
 
-## Quickstart
-- [What is Polydev?](intro/what-is-polydev.md)
-- [Installation](intro/installation.md)
-- [Quick Start](intro/quick-start.md)
-- [Architecture Overview](intro/architecture.md)
-- [Choosing Models](intro/choosing-models.md)
-
-## Features
-- [Perspectives (multi‑model)](features/perspectives/)
-- [Memory (project context)](features/memory/)
-- [Fallback & Cost Controls](features/fallback/)
-- [Security](features/security/)
-
-## Providers
-- [Overview](providers/index.md)
-- [API providers](providers/api-providers/)
-- [CLI providers](providers/cli-providers/)
-- [Custom providers](providers/custom-providers.md)
+## Getting Started
+- [What is Polydev?](intro/what-is-polydev.md) - 2 min read
+- [Quick Start](intro/quick-start.md) - Install and test in 2 minutes
 
 ## API Reference
-- [API index](api-reference/index.md)
-- [Chat](api-reference/chat/)
-- [Perspectives](api-reference/perspectives/)
-- [Models](api-reference/models/)
-- [Webhooks](api-reference/webhooks/)
+- [get_perspectives](api-reference/perspectives/) - Query multiple models
+- [send_cli_prompt](api-reference/cli/) - Use CLI tools directly
+- [Webhooks](api-reference/webhooks/) - Real-time notifications
 
-## MCP
-- [Overview](mcp/overview.md)
-- [Server setup](mcp/server-setup.md)
-- [Tools](mcp/tools/)
-- [Agents](mcp/agents/)
+## Providers
+- [Anthropic](providers/api-providers/anthropic.md)
+- [OpenAI](providers/api-providers/openai.md)
+- [Google](providers/api-providers/google-ai.md)
+- [Groq](providers/api-providers/groq.md)
 
-## Troubleshooting
-- [Environment](config/environment.md)
-- [Authentication](config/authentication.md)
-- [Preferences](config/preferences.md)
-- [Common issues](config/troubleshooting.md)
+## MCP Integration
+- [Claude Desktop](mcp/clients/claude-desktop.md)
+- [Cline](mcp/clients/cline.md)
+- [Cursor](mcp/clients/cursor.md)
 
-Need help? Join our [Discord](https://discord.gg/polydev) or open an issue.
+Need help? Check [troubleshooting](config/troubleshooting.md).
