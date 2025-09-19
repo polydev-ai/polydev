@@ -771,74 +771,74 @@ export default function Home() {
 
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center mb-16 observe">
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-gray-500/10 border border-slate-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
-              <span className="text-sm font-medium text-slate-600">Developer Experience Platform</span>
+            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
+              <span className="text-sm font-medium text-purple-600">Why settle for one brain?</span>
             </div>
             <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight stagger-fade-in">
-              Development workflow{' '}
-              <span className="bg-gradient-to-r from-slate-600 via-gray-700 to-slate-800 bg-clip-text text-transparent animate-gradient-advanced">
-                amplified
+              When coding gets{' '}
+              <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent animate-gradient-advanced">
+                weird
               </span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
-              Multiple model perspectives, seamless integration, and intelligent context awareness for modern development teams.
+              That moment when your code breaks in production but works on your machine? Yeah, we get multiple models to argue about it.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
             {[
               {
-                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>,
-                title: "Parallel Processing",
-                description: "Multiple models work simultaneously, comparing approaches and providing comprehensive analysis",
-                features: ["Concurrent evaluation", "Cross-model validation", "Enhanced accuracy"],
-                gradient: "from-slate-500/10 to-gray-500/10",
-                iconGradient: "from-slate-500 to-gray-600"
+                emoji: "🎭",
+                title: "The Committee Approach",
+                description: "Like having a code review with your future self, your past self, and that one colleague who actually knows what they're doing",
+                features: ["3+ models debate your bug", "Someone always disagrees", "Usually someone's right"],
+                gradient: "from-purple-500/10 to-pink-500/10",
+                iconGradient: "from-purple-500 to-pink-500"
               },
               {
-                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v15"/></svg>,
-                title: "Direct Integration",
-                description: "Native editor integration eliminates context switching and maintains your development flow",
-                features: ["Editor plugins", "Instant access", "Workflow preservation"],
-                gradient: "from-blue-500/10 to-indigo-500/10",
-                iconGradient: "from-blue-500 to-indigo-500"
+                emoji: "🚫",
+                title: "No More Tab Switching",
+                description: "Your browser has 47 tabs open and none of them are helping. We live in your editor instead",
+                features: ["Works where you work", "No browser gymnastics", "Actually convenient"],
+                gradient: "from-blue-500/10 to-cyan-500/10",
+                iconGradient: "from-blue-500 to-cyan-500"
               },
               {
-                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>,
-                title: "Context Continuity",
-                description: "Secure session memory ensures conversations and context persist across development sessions",
-                features: ["Session persistence", "Secure storage", "Context awareness"],
-                gradient: "from-emerald-500/10 to-green-500/10",
-                iconGradient: "from-emerald-500 to-green-500"
+                emoji: "🧠",
+                title: "Memory That Actually Works",
+                description: "Remembers your conversation from last week when you were debugging that thing that shouldn't have been broken",
+                features: ["Never starts from scratch", "Knows your project", "Connects the dots"],
+                gradient: "from-green-500/10 to-emerald-500/10",
+                iconGradient: "from-green-500 to-emerald-500"
               },
               {
-                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>,
-                title: "Project Intelligence",
-                description: "Deep understanding of your codebase structure, dependencies, and development history",
-                features: ["Codebase analysis", "Dependency mapping", "Historical insights"],
-                gradient: "from-amber-500/10 to-orange-500/10",
-                iconGradient: "from-amber-500 to-orange-500"
+                emoji: "🔍",
+                title: "Reads Your Entire Codebase",
+                description: "Yeah, even that legacy code you pretend doesn't exist. Especially that code.",
+                features: ["Knows your spaghetti code", "Understands dependencies", "Judges you silently"],
+                gradient: "from-orange-500/10 to-red-500/10",
+                iconGradient: "from-orange-500 to-red-500"
               },
               {
-                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
-                title: "Enterprise Grade",
-                description: "Production-ready architecture with comprehensive error handling and monitoring capabilities",
-                features: ["Robust architecture", "Error recovery", "Performance monitoring"],
-                gradient: "from-purple-500/10 to-violet-500/10",
-                iconGradient: "from-purple-500 to-violet-500"
+                emoji: "⚡",
+                title: "Actually Production Ready",
+                description: "We don't just slap 'enterprise grade' on things. This actually works when it matters",
+                features: ["Won't die under pressure", "Handles your mistakes", "Scales with your chaos"],
+                gradient: "from-yellow-500/10 to-orange-500/10",
+                iconGradient: "from-yellow-500 to-orange-500"
               },
               {
-                icon: <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27,6.96 12,12.01 20.73,6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
-                title: "Protocol Standards",
-                description: "Built on Model Context Protocol ensuring extensibility and compatibility with future developments",
-                features: ["MCP compliance", "Extensible design", "Future compatibility"],
-                gradient: "from-cyan-500/10 to-teal-500/10",
-                iconGradient: "from-cyan-500 to-teal-500"
+                emoji: "🔌",
+                title: "Future-Proof Protocol",
+                description: "Built on standards that won't be deprecated next week (probably)",
+                features: ["MCP compatible", "Plays nice with tools", "Won't become legacy code"],
+                gradient: "from-indigo-500/10 to-purple-500/10",
+                iconGradient: "from-indigo-500 to-purple-500"
               }
             ].map((feature, index) => (
               <div
                 key={index}
-                className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-orange-100/50 observe sophisticated-hover magnetic-hover overflow-hidden"
+                className="group relative glass-enhanced rounded-3xl p-8 hover:shadow-2xl hover:shadow-purple-100/50 observe sophisticated-hover magnetic-hover overflow-hidden border border-purple-100/30"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 {/* Animated gradient background */}
@@ -850,11 +850,11 @@ export default function Home() {
                 </div>
 
                 <div className="relative z-10">
-                  {/* Floating icon with gradient background */}
+                  {/* Floating emoji with playful background */}
                   <div className="relative mb-6">
-                    <div className={`absolute inset-0 bg-gradient-to-br ${feature.iconGradient} rounded-2xl opacity-10 group-hover:opacity-20 transition-opacity duration-500`}></div>
-                    <div className={`relative p-4 rounded-2xl animate-sophisticated-float bg-gradient-to-r ${feature.iconGradient} text-white`}>
-                      {feature.icon}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${feature.iconGradient} rounded-full opacity-10 group-hover:opacity-20 transition-opacity duration-500 blur-md`}></div>
+                    <div className="relative text-6xl animate-sophisticated-float transform group-hover:scale-110 transition-transform duration-300">
+                      {feature.emoji}
                     </div>
                   </div>
 
