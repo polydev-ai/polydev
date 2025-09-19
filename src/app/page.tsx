@@ -544,6 +544,28 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [isMounted])
 
+  // Reveal-on-scroll animations for elements with the `observe` class
+  useEffect(() => {
+    if (!isMounted) return
+    const elements = Array.from(document.querySelectorAll<HTMLElement>('.observe'))
+    if (elements.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-in')
+            observer.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.1 }
+    )
+
+    elements.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [isMounted])
+
   const handleTypingComplete = (responseIndex: number) => {
     setTypingStates(prev => ({ ...prev, [responseIndex]: true }))
   }
@@ -642,7 +664,7 @@ export default function Home() {
                 <div className="flex flex-wrap items-center justify-center gap-6">
                   {MODEL_PROVIDERS.map((provider, index) => (
                     <div key={provider.name} className="group relative">
-                      <div className="w-10 h-10 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/40 p-2 hover:bg-white/80 hover:border-orange-200/60 transition-all duration-500 hover:scale-110 shadow-lg hover:shadow-xl">
+                      <div className="relative w-10 h-10 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/40 p-2 hover:bg-white/80 hover:border-orange-200/60 transition-all duration-500 hover:scale-110 shadow-lg hover:shadow-xl">
                         <Image src={provider.logo} alt={provider.name} fill className="object-contain p-0.5" />
                       </div>
                       <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
