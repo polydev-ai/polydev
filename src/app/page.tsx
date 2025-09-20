@@ -629,9 +629,9 @@ app.post('/login', async (req, res) => {
   return (
     <div className="max-w-7xl mx-auto">
       {/* IDE-like Interface */}
-      <div className="bg-slate-900 rounded-xl shadow-2xl border border-slate-700 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
         {/* IDE Header */}
-        <div className="bg-slate-800 px-6 py-3 border-b border-slate-700">
+        <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex gap-2">
@@ -642,29 +642,29 @@ app.post('/login', async (req, res) => {
               <div className={`px-3 py-1 bg-${problem.color}-500 text-white text-sm rounded-md font-medium`}>
                 <TypewriterText text={problem.type} delay={40} key={`type-${currentProblem}`} />
               </div>
-              <span className="text-slate-300 text-sm">
+              <span className="text-gray-600 text-sm">
                 <TypewriterText text={problem.file} delay={30} startDelay={500} key={`file-${currentProblem}`} />
               </span>
             </div>
-            <div className="text-slate-400 text-sm">
+            <div className="text-gray-600 text-sm">
               <TypewriterText text={`Problem ${currentProblem + 1}/${problems.length}`} delay={50} key={`counter-${currentProblem}`} />
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
-          {/* Left Side - Code Editor */}
-          <div className="bg-slate-900 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[600px]">
+          {/* Left Side - Problem Display */}
+          <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-lg border border-blue-200">
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <div className={`w-2 h-2 bg-${problem.color}-500 rounded-full animate-pulse`}></div>
-                <span className="text-slate-300 font-mono text-sm">
+                <span className="text-gray-700 font-mono text-sm">
                   <TypewriterText text={problem.title} delay={30} startDelay={200} key={`title-${currentProblem}`} />
                 </span>
               </div>
 
-              <div className="bg-slate-950 rounded-lg p-4 font-mono text-sm overflow-auto max-h-96">
-                <pre className="text-slate-300 whitespace-pre-wrap">
+              <div className="bg-gray-50 rounded-lg p-4 font-mono text-sm overflow-auto max-h-80 border border-gray-200">
+                <pre className="text-gray-800 whitespace-pre-wrap">
                   <TypewriterText
                     text={problem.code}
                     delay={15}
@@ -674,8 +674,8 @@ app.post('/login', async (req, res) => {
                 </pre>
               </div>
 
-              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
-                <div className="text-red-400 text-sm font-mono">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div className="text-red-600 text-sm font-mono">
                   <TypewriterText
                     text={problem.error}
                     delay={40}
@@ -687,49 +687,56 @@ app.post('/login', async (req, res) => {
             </div>
           </div>
 
-          {/* Right Side - AI Responses */}
-          <div className="bg-slate-800 p-6 border-l border-slate-700">
-            <div className="flex items-center justify-center mb-6">
-              {/* Central Light Beam Animation */}
-              <div className="relative">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full flex items-center justify-center relative">
-                  <svg className="w-8 h-8 text-white z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-
-                  {/* Animated ring */}
-                  <div className="absolute inset-0 border-4 border-purple-400 rounded-full animate-ping opacity-20"></div>
-                  <div className="absolute inset-2 border-2 border-cyan-400 rounded-full animate-pulse opacity-30"></div>
+          {/* Center - Polydev Engine with Light Beams */}
+          <div className="flex flex-col items-center justify-center relative bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+            {/* Light Beam Animations */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="relative w-32 h-32">
+                {/* Rotating light beams */}
+                <div className="absolute inset-0 animate-spin">
+                  <div className="absolute top-0 left-1/2 w-0.5 h-16 bg-gradient-to-t from-blue-500/50 to-transparent transform -translate-x-1/2"></div>
+                  <div className="absolute bottom-0 left-1/2 w-0.5 h-16 bg-gradient-to-b from-blue-500/50 to-transparent transform -translate-x-1/2"></div>
+                  <div className="absolute left-0 top-1/2 h-0.5 w-16 bg-gradient-to-l from-purple-500/50 to-transparent transform -translate-y-1/2"></div>
+                  <div className="absolute right-0 top-1/2 h-0.5 w-16 bg-gradient-to-r from-purple-500/50 to-transparent transform -translate-y-1/2"></div>
                 </div>
 
-                {/* Light beams radiating outward */}
-                <div className="absolute inset-0 pointer-events-none">
-                  {Array.from({length: 8}).map((_, i) => (
-                    <div
-                      key={i}
-                      className="absolute w-1 h-8 bg-gradient-to-t from-purple-500 to-transparent opacity-60 animate-pulse origin-bottom"
-                      style={{
-                        top: '50%',
-                        left: '50%',
-                        transform: `translateX(-50%) translateY(-50%) rotate(${i * 45}deg)`,
-                        animationDelay: `${i * 0.2}s`,
-                        animationDuration: '2s'
-                      }}
-                    />
-                  ))}
+                {/* Pulsing rings */}
+                <div className="absolute inset-0 animate-ping">
+                  <div className="absolute inset-8 border-2 border-blue-300/30 rounded-full"></div>
+                </div>
+                <div className="absolute inset-0 animate-ping delay-300">
+                  <div className="absolute inset-12 border-2 border-purple-300/30 rounded-full"></div>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4 max-h-96 overflow-auto">
-              {problem.responses.map((response, index) => (
-                <div key={`${currentProblem}-response-${index}`} className="bg-slate-700 rounded-lg p-4 border border-slate-600">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-slate-200">
-                      <Image src={response.icon} alt={response.model} width={20} height={20} className="filter" />
+            {/* Central Engine */}
+            <div className="relative z-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full w-20 h-20 flex items-center justify-center shadow-lg">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <div className="absolute -inset-1 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full opacity-50 animate-pulse"></div>
+            </div>
+
+            <div className="mt-4 text-center z-10">
+              <h3 className="font-bold text-gray-900">Polydev Engine</h3>
+              <p className="text-sm text-gray-600">Processing perspectives...</p>
+            </div>
+          </div>
+
+          {/* Right Side - AI Responses */}
+          <div className="bg-gradient-to-br from-green-50 to-white p-6 rounded-lg border border-green-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Perspectives</h3>
+
+            <div className="space-y-3 max-h-80 overflow-auto">
+              {problem.responses.slice(0, 4).map((response, index) => (
+                <div key={`${currentProblem}-response-${index}`} className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-6 h-6 rounded flex items-center justify-center bg-gray-50 border border-gray-200">
+                      <Image src={response.icon} alt={response.model} width={16} height={16} className="filter" />
                     </div>
                     <div>
-                      <div className="font-medium text-white text-sm">
+                      <div className="font-medium text-gray-900 text-xs">
                         <TypewriterText
                           text={response.model}
                           delay={30}
@@ -737,7 +744,7 @@ app.post('/login', async (req, res) => {
                           key={`model-${currentProblem}-${index}`}
                         />
                       </div>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-gray-500">
                         <TypewriterText
                           text={response.company}
                           delay={40}
@@ -748,14 +755,14 @@ app.post('/login', async (req, res) => {
                     </div>
                     <div className="ml-auto">
                       <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        <span className="text-xs text-slate-400">typing</span>
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-gray-500">typing</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-sm text-slate-300 font-mono">
+                  <div className="text-xs text-gray-700 font-mono leading-relaxed">
                     <TypewriterText
-                      text={response.solution}
+                      text={response.solution.substring(0, 100) + "..."}
                       delay={20}
                       startDelay={3000 + index * 800}
                       key={`solution-${currentProblem}-${index}`}
