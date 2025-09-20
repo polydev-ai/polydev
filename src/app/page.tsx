@@ -486,335 +486,285 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
   return <span className={className}>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
 }
 
-function DynamicMultiProblemShowcase() {
-  const [currentProblemSet, setCurrentProblemSet] = useState(0)
+function DynamicIDEShowcase() {
+  const [currentProblem, setCurrentProblem] = useState(0)
   const [isMounted, setIsMounted] = useState(false)
 
-  const problemSets = [
+  // Individual problems with larger code samples
+  const problems = [
     {
-      problems: [
-        {
-          type: "React Hook Issue",
-          color: "red",
-          title: "useEffect Dependencies",
-          code: "useEffect(() => {\n  fetch(`/api/users/${userId}`)\n    .then(setUser)\n}, []) // Missing dependency",
-          error: "⚠ Infinite re-render detected"
-        },
-        {
-          type: "SQL Performance",
-          color: "amber",
-          title: "Slow Database Query",
-          code: "SELECT * FROM users\nWHERE created_at > '2024'\nORDER BY name;",
-          error: "⚠ Query taking 2.3s"
-        },
-        {
-          type: "Memory Leak",
-          color: "orange",
-          title: "Interval Cleanup Missing",
-          code: "setInterval(() => {\n  updateData();\n}, 1000);",
-          error: "⚠ Memory usage increasing"
-        }
-      ],
+      type: "React Hook Issue",
+      color: "red",
+      title: "useEffect Dependencies",
+      file: "UserProfile.tsx",
+      code: `import React, { useState, useEffect } from 'react';
+
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // 🐛 Missing dependency - causes infinite re-renders
+  useEffect(() => {
+    setLoading(true);
+    fetch(\`/api/users/\${userId}\`)
+      .then(res => res.json())
+      .then(userData => {
+        setUser(userData);
+        setLoading(false);
+      });
+  }, []); // userId missing from dependency array
+
+  return (
+    <div>
+      {loading ? 'Loading...' : user?.name}
+    </div>
+  );
+}`,
+      error: "⚠ Infinite re-render detected",
       responses: [
-        { model: "Claude 4.1 Opus", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Add dependency array: useEffect(() => {...}, [userId])", delay: 500 },
-        { model: "GPT-5", company: "OpenAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/openai.svg", solution: "CREATE INDEX idx_users_created ON users(created_at, name);", delay: 1200 },
-        { model: "Gemini 2.5 Pro", company: "Google AI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/google.svg", solution: "const cleanup = () => clearInterval(timer); useEffect(() => cleanup, []);", delay: 1900 },
-        { model: "Grok 4", company: "xAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/x.svg", solution: "Use custom hook: const { data, cleanup } = useAsyncData(url, deps);", delay: 2600 },
-        { model: "Claude 4 Sonnet", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Consider useCallback for expensive operations: useCallback(() => fetchUser(id), [id])", delay: 3300 },
-        { model: "Llama 3.3", company: "Meta", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/meta.svg", solution: "Implement debouncing: const debouncedFetch = useDebounce(fetchUser, 300);", delay: 4000 }
+        { model: "Claude 4.1 Opus", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Add userId to dependency array: useEffect(() => {...}, [userId])" },
+        { model: "GPT-5", company: "OpenAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/openai.svg", solution: "Use useCallback to memoize fetch function: const fetchUser = useCallback(() => {...}, [userId])" },
+        { model: "Gemini 2.5 Pro", company: "Google", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/google.svg", solution: "Consider React Query: const { data: user, isLoading } = useQuery(['user', userId], () => fetchUser(userId))" },
+        { model: "Grok 4", company: "xAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/x.svg", solution: "Custom hook with cleanup: const { user, loading } = useUser(userId) with AbortController" },
+        { model: "Claude 4 Sonnet", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Add cleanup and proper error handling with try-catch in async function" },
+        { model: "Llama 3.3", company: "Meta", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/meta.svg", solution: "Implement debouncing if userId changes frequently: const debouncedUserId = useDebounce(userId, 300)" }
       ]
     },
     {
-      problems: [
-        {
-          type: "API Design Issue",
-          color: "purple",
-          title: "REST Endpoint Structure",
-          code: "app.get('/users/:id/posts/:postId/comments', \n  (req, res) => {\n    // Nested resource complexity\n  });",
-          error: "⚠ Deep nesting anti-pattern"
-        },
-        {
-          type: "Performance Bug",
-          color: "blue",
-          title: "N+1 Query Problem",
-          code: "users.forEach(async user => {\n  const posts = await getUserPosts(user.id)\n  // N+1 queries executing\n});",
-          error: "⚠ 1000+ database queries"
-        },
-        {
-          type: "Security Vulnerability",
-          color: "red",
-          title: "SQL Injection Risk",
-          code: "const query = `SELECT * FROM users \n  WHERE email = '${userEmail}'`;\nawait db.query(query);",
-          error: "⚠ SQL injection vulnerability"
-        }
-      ],
+      type: "SQL Performance",
+      color: "blue",
+      title: "N+1 Query Problem",
+      file: "user-service.js",
+      code: `// Database queries in Node.js
+async function getUsersWithPosts() {
+  // Step 1: Get all users
+  const users = await db.query('SELECT * FROM users LIMIT 100');
+
+  // Step 2: 🐛 N+1 Problem - 100 additional queries!
+  for (const user of users) {
+    const posts = await db.query(
+      'SELECT * FROM posts WHERE user_id = ?',
+      [user.id]
+    );
+
+    const comments = await db.query(
+      'SELECT COUNT(*) as count FROM comments WHERE post_id IN (?)',
+      [posts.map(p => p.id)]
+    );
+
+    user.posts = posts;
+    user.commentCount = comments[0].count;
+  }
+
+  return users;
+}`,
+      error: "⚠ 300+ database queries executed",
       responses: [
-        { model: "Claude 4.1 Opus", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Flatten API: GET /comments?userId=123&postId=456 with proper filtering", delay: 500 },
-        { model: "GPT-5", company: "OpenAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/openai.svg", solution: "Use DataLoader pattern: const posts = await dataLoader.loadMany(userIds);", delay: 1200 },
-        { model: "Gemini 2.5 Pro", company: "Google AI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/google.svg", solution: "Parameterized queries: await db.query('SELECT * FROM users WHERE email = ?', [email])", delay: 1900 },
-        { model: "Grok 4", company: "xAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/x.svg", solution: "GraphQL resolvers with field-level caching and batch loading", delay: 2600 },
-        { model: "Claude 4 Sonnet", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "ORM with eager loading: User.findAll({ include: [{ model: Post, include: [Comment] }] })", delay: 3300 },
-        { model: "Llama 3.3", company: "Meta", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/meta.svg", solution: "Input validation middleware with sanitization and rate limiting", delay: 4000 }
+        { model: "Claude 4.1 Opus", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Use JOIN query: SELECT u.*, p.*, COUNT(c.id) FROM users u LEFT JOIN posts p ON u.id = p.user_id LEFT JOIN comments c ON p.id = c.post_id GROUP BY u.id" },
+        { model: "GPT-5", company: "OpenAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/openai.svg", solution: "Implement DataLoader pattern with batching: const userLoader = new DataLoader(batchUsers)" },
+        { model: "Gemini 2.5 Pro", company: "Google", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/google.svg", solution: "Use Prisma with include: prisma.user.findMany({ include: { posts: { include: { _count: { select: { comments: true } } } } } })" },
+        { model: "Grok 4", company: "xAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/x.svg", solution: "GraphQL with field-level resolvers and caching layer like Redis" },
+        { model: "Claude 4 Sonnet", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Batch queries with Promise.all: const [users, allPosts, allComments] = await Promise.all([...])" },
+        { model: "Llama 3.3", company: "Meta", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/meta.svg", solution: "Use database views or materialized views for complex aggregations with periodic refresh" }
       ]
     },
     {
-      problems: [
-        {
-          type: "State Management",
-          color: "green",
-          title: "Redux Complexity",
-          code: "const mapStateToProps = (state) => ({\n  user: state.auth.user,\n  loading: state.ui.loading,\n  error: state.api.errors.user\n});",
-          error: "⚠ Props drilling across 15 components"
-        },
-        {
-          type: "Build Performance",
-          color: "yellow",
-          title: "Webpack Bundle Size",
-          code: "import * as lodash from 'lodash';\nimport moment from 'moment';\n// 2MB+ bundle size",
-          error: "⚠ Bundle size: 2.1MB"
-        },
-        {
-          type: "Testing Coverage",
-          color: "indigo",
-          title: "Missing Edge Cases",
-          code: "it('should handle user login', () => {\n  expect(login('user', 'pass')).toBeTruthy();\n  // Missing error cases\n});",
-          error: "⚠ 23% test coverage"
-        }
-      ],
+      type: "Security Vulnerability",
+      color: "red",
+      title: "SQL Injection Risk",
+      file: "auth-controller.js",
+      code: `const express = require('express');
+const db = require('./database');
+
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  // 🐛 SQL Injection vulnerability!
+  const query = \`
+    SELECT id, email, role
+    FROM users
+    WHERE email = '\${email}'
+    AND password = '\${password}'
+  \`;
+
+  const user = await db.query(query);
+
+  if (user.length > 0) {
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user[0].id, email: user[0].email },
+      'secret123',  // 🐛 Hardcoded secret!
+      { expiresIn: '1h' }
+    );
+
+    res.json({ token, user: user[0] });
+  } else {
+    res.status(401).json({ error: 'Invalid credentials' });
+  }
+});`,
+      error: "⚠ SQL injection & hardcoded secrets detected",
       responses: [
-        { model: "Claude 4.1 Opus", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Zustand with slices: const useAuth = create((set) => ({ user: null, setUser: (user) => set({ user }) }))", delay: 500 },
-        { model: "GPT-5", company: "OpenAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/openai.svg", solution: "Tree shaking: import { debounce } from 'lodash/debounce'; use date-fns instead of moment", delay: 1200 },
-        { model: "Gemini 2.5 Pro", company: "Google AI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/google.svg", solution: "Property-based testing: fc.test(fc.record({email: fc.emailAddress()}), testLogin)", delay: 1900 },
-        { model: "Grok 4", company: "xAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/x.svg", solution: "Context-based state: const { state, dispatch } = useContext(AppContext) with useReducer", delay: 2600 },
-        { model: "Claude 4 Sonnet", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Dynamic imports: const Component = lazy(() => import('./HeavyComponent'))", delay: 3300 },
-        { model: "Llama 3.3", company: "Meta", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/meta.svg", solution: "Mutation testing with Stryker to find untested edge cases and improve coverage", delay: 4000 }
+        { model: "Claude 4.1 Opus", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Use parameterized queries: db.query('SELECT * FROM users WHERE email = ? AND password = ?', [email, hashedPassword])" },
+        { model: "GPT-5", company: "OpenAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/openai.svg", solution: "Implement bcrypt for password hashing and use environment variables for secrets" },
+        { model: "Gemini 2.5 Pro", company: "Google", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/google.svg", solution: "Add input validation with Joi/Yup and use ORM like Prisma for automatic SQL injection protection" },
+        { model: "Grok 4", company: "xAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/x.svg", solution: "Implement rate limiting, CSRF protection, and use secure JWT libraries with RS256 algorithm" },
+        { model: "Claude 4 Sonnet", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Use express-validator for sanitization and prepared statements with connection pooling" },
+        { model: "Llama 3.3", company: "Meta", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/meta.svg", solution: "Implement OAuth 2.0/OpenID Connect with proper session management and audit logging" }
       ]
     }
-  ]
+  ];
 
   useEffect(() => {
     setIsMounted(true)
     const interval = setInterval(() => {
-      setCurrentProblemSet((prev) => (prev + 1) % problemSets.length)
-    }, 12000) // Change problem set every 12 seconds
+      setCurrentProblem((prev) => (prev + 1) % problems.length)
+    }, 6000) // Faster transitions - 6 seconds
     return () => clearInterval(interval)
   }, [])
 
   if (!isMounted) return null
 
-  const currentSet = problemSets[currentProblemSet]
+  const problem = problems[currentProblem]
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-      {/* Left Column - Multiple Problems with Cycling */}
-      <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">
-          <TypewriterText
-            text={`Active Problems (Set ${currentProblemSet + 1}/${problemSets.length})`}
-            delay={50}
-            key={`problems-header-${currentProblemSet}`}
-          />
-        </h3>
+    <div className="max-w-7xl mx-auto">
+      {/* IDE-like Interface */}
+      <div className="bg-slate-900 rounded-xl shadow-2xl border border-slate-700 overflow-hidden">
+        {/* IDE Header */}
+        <div className="bg-slate-800 px-6 py-3 border-b border-slate-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              </div>
+              <div className={`px-3 py-1 bg-${problem.color}-500 text-white text-sm rounded-md font-medium`}>
+                <TypewriterText text={problem.type} delay={40} key={`type-${currentProblem}`} />
+              </div>
+              <span className="text-slate-300 text-sm">
+                <TypewriterText text={problem.file} delay={30} startDelay={500} key={`file-${currentProblem}`} />
+              </span>
+            </div>
+            <div className="text-slate-400 text-sm">
+              <TypewriterText text={`Problem ${currentProblem + 1}/${problems.length}`} delay={50} key={`counter-${currentProblem}`} />
+            </div>
+          </div>
+        </div>
 
-        {currentSet.problems.map((problem, index) => (
-          <div key={`${currentProblemSet}-${index}`} className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
-            <div className={`bg-${problem.color}-50 px-4 py-3 border-b border-${problem.color}-100`}>
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 bg-${problem.color}-500 rounded-full animate-pulse`}></div>
-                <span className={`text-sm font-medium text-${problem.color}-700`}>
-                  <TypewriterText
-                    text={problem.type}
-                    delay={30}
-                    startDelay={index * 200}
-                    key={`${currentProblemSet}-${index}-type`}
-                  />
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[600px]">
+          {/* Left Side - Code Editor */}
+          <div className="bg-slate-900 p-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`w-2 h-2 bg-${problem.color}-500 rounded-full animate-pulse`}></div>
+                <span className="text-slate-300 font-mono text-sm">
+                  <TypewriterText text={problem.title} delay={30} startDelay={200} key={`title-${currentProblem}`} />
                 </span>
               </div>
-            </div>
-            <div className="p-4">
-              <div className="font-mono text-sm text-slate-800 whitespace-pre-line">
-                <TypewriterText
-                  text={problem.code}
-                  delay={20}
-                  startDelay={500 + index * 300}
-                  key={`${currentProblemSet}-${index}-code`}
-                />
+
+              <div className="bg-slate-950 rounded-lg p-4 font-mono text-sm overflow-auto max-h-96">
+                <pre className="text-slate-300 whitespace-pre-wrap">
+                  <TypewriterText
+                    text={problem.code}
+                    delay={15}
+                    startDelay={800}
+                    key={`code-${currentProblem}`}
+                  />
+                </pre>
               </div>
-              <div className="mt-3 text-xs text-slate-600 bg-slate-50 rounded px-2 py-1">
-                <TypewriterText
-                  text={problem.error}
-                  delay={40}
-                  startDelay={1500 + index * 200}
-                  key={`${currentProblemSet}-${index}-error`}
-                />
+
+              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                <div className="text-red-400 text-sm font-mono">
+                  <TypewriterText
+                    text={problem.error}
+                    delay={40}
+                    startDelay={2000}
+                    key={`error-${currentProblem}`}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Center Column - Enhanced Engine with Light Beams */}
-      <div className="flex flex-col items-center justify-center space-y-6">
-        <div className="text-center">
-          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-full flex items-center justify-center relative overflow-hidden">
-            {/* Pulsing core */}
-            <div className="absolute inset-2 bg-white rounded-full opacity-20 animate-pulse"></div>
-            <svg className="w-10 h-10 text-white z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            {/* Light beam effects */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-spin"></div>
-          </div>
-          <h4 className="text-lg font-semibold text-slate-800 mb-2">
-            <TypewriterText text="Polydev Engine" delay={50} />
-          </h4>
-          <p className="text-sm text-slate-600">
-            <TypewriterText text="Analyzing & routing problems" delay={30} startDelay={800} />
-          </p>
-        </div>
+          {/* Right Side - AI Responses */}
+          <div className="bg-slate-800 p-6 border-l border-slate-700">
+            <div className="flex items-center justify-center mb-6">
+              {/* Central Light Beam Animation */}
+              <div className="relative">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full flex items-center justify-center relative">
+                  <svg className="w-8 h-8 text-white z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
 
-        {/* Enhanced Light Beam Animation */}
-        <div className="relative">
-          <svg width="150" height="300" viewBox="0 0 150 300" className="text-slate-300">
-            <defs>
-              <linearGradient id="beamGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.8" />
-                <stop offset="50%" stopColor="#06B6D4" stopOpacity="1" />
-                <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.8" />
-              </linearGradient>
-              <linearGradient id="beamGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.8" />
-                <stop offset="50%" stopColor="#EF4444" stopOpacity="1" />
-                <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.8" />
-              </linearGradient>
-            </defs>
-
-            {/* Multiple beam paths */}
-            <path d="M75 50 Q120 80 75 110" stroke="url(#beamGradient1)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDuration: '2s'}} />
-            <path d="M75 80 Q120 110 75 140" stroke="url(#beamGradient2)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '0.5s', animationDuration: '2s'}} />
-            <path d="M75 110 Q120 140 75 170" stroke="url(#beamGradient1)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '1s', animationDuration: '2s'}} />
-            <path d="M75 140 Q120 170 75 200" stroke="url(#beamGradient2)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '1.5s', animationDuration: '2s'}} />
-            <path d="M75 170 Q120 200 75 230" stroke="url(#beamGradient1)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '2s', animationDuration: '2s'}} />
-            <path d="M75 200 Q120 230 75 260" stroke="url(#beamGradient2)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '2.5s', animationDuration: '2s'}} />
-
-            {/* Data flow particles */}
-            <circle r="3" fill="#8B5CF6" className="animate-ping" style={{animationDelay: '0s'}}>
-              <animateMotion dur="3s" repeatCount="indefinite">
-                <path d="M75 50 Q120 80 75 110" />
-              </animateMotion>
-            </circle>
-            <circle r="2" fill="#06B6D4" className="animate-ping" style={{animationDelay: '1s'}}>
-              <animateMotion dur="3s" repeatCount="indefinite">
-                <path d="M75 110 Q120 140 75 170" />
-              </animateMotion>
-            </circle>
-            <circle r="2" fill="#F59E0B" className="animate-ping" style={{animationDelay: '2s'}}>
-              <animateMotion dur="3s" repeatCount="indefinite">
-                <path d="M75 170 Q120 200 75 230" />
-              </animateMotion>
-            </circle>
-          </svg>
-
-          {/* Floating energy particles */}
-          <div className="absolute inset-0 pointer-events-none">
-            {Array.from({length: 8}).map((_, i) => (
-              <div
-                key={i}
-                className={`w-1 h-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full absolute animate-bounce`}
-                style={{
-                  top: `${20 + (i * 8)}%`,
-                  left: `${30 + (i % 2 * 40)}%`,
-                  animationDelay: `${i * 0.3}s`,
-                  animationDuration: '2s'
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="text-center">
-          <div className="bg-gradient-to-r from-purple-100 to-cyan-100 rounded-full px-4 py-2">
-            <span className="text-sm font-medium text-slate-700">
-              <TypewriterText text="6 models responding" delay={40} startDelay={2000} />
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Column - Enhanced AI Model Responses (2 rows of 3) */}
-      <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-slate-800 mb-4">
-          <TypewriterText text="AI Perspectives" delay={50} />
-        </h3>
-
-        {/* First Row of Models */}
-        <div className="space-y-4">
-          {currentSet.responses.slice(0, 3).map((response, index) => (
-            <div key={`${currentProblemSet}-response-${index}`} className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-slate-200">
-                  <Image src={response.icon} alt={response.model} width={20} height={20} className="filter" />
+                  {/* Animated ring */}
+                  <div className="absolute inset-0 border-4 border-purple-400 rounded-full animate-ping opacity-20"></div>
+                  <div className="absolute inset-2 border-2 border-cyan-400 rounded-full animate-pulse opacity-30"></div>
                 </div>
-                <div>
-                  <div className="font-medium text-slate-900">
-                    <TypewriterText text={response.model} delay={30} startDelay={200 + index * 100} />
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    <TypewriterText text={response.company} delay={40} startDelay={500 + index * 100} />
-                  </div>
+
+                {/* Light beams radiating outward */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {Array.from({length: 8}).map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute w-1 h-8 bg-gradient-to-t from-purple-500 to-transparent opacity-60 animate-pulse origin-bottom"
+                      style={{
+                        top: '50%',
+                        left: '50%',
+                        transform: `translateX(-50%) translateY(-50%) rotate(${i * 45}deg)`,
+                        animationDelay: `${i * 0.2}s`,
+                        animationDuration: '2s'
+                      }}
+                    />
+                  ))}
                 </div>
-                <div className="ml-auto">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-slate-400">typing</span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-sm text-slate-700 font-mono">
-                <TypewriterText
-                  text={response.solution}
-                  delay={25}
-                  startDelay={response.delay}
-                  key={`${currentProblemSet}-solution-${index}`}
-                />
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* Second Row of Models */}
-        <div className="space-y-4">
-          {currentSet.responses.slice(3, 6).map((response, index) => (
-            <div key={`${currentProblemSet}-response-${index + 3}`} className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-slate-200">
-                  <Image src={response.icon} alt={response.model} width={20} height={20} className="filter" />
-                </div>
-                <div>
-                  <div className="font-medium text-slate-900">
-                    <TypewriterText text={response.model} delay={30} startDelay={200 + (index + 3) * 100} />
+            <div className="space-y-4 max-h-96 overflow-auto">
+              {problem.responses.map((response, index) => (
+                <div key={`${currentProblem}-response-${index}`} className="bg-slate-700 rounded-lg p-4 border border-slate-600">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-slate-200">
+                      <Image src={response.icon} alt={response.model} width={20} height={20} className="filter" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-white text-sm">
+                        <TypewriterText
+                          text={response.model}
+                          delay={30}
+                          startDelay={2500 + index * 200}
+                          key={`model-${currentProblem}-${index}`}
+                        />
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        <TypewriterText
+                          text={response.company}
+                          delay={40}
+                          startDelay={2700 + index * 200}
+                          key={`company-${currentProblem}-${index}`}
+                        />
+                      </div>
+                    </div>
+                    <div className="ml-auto">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-slate-400">typing</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500">
-                    <TypewriterText text={response.company} delay={40} startDelay={500 + (index + 3) * 100} />
+                  <div className="text-sm text-slate-300 font-mono">
+                    <TypewriterText
+                      text={response.solution}
+                      delay={20}
+                      startDelay={3000 + index * 800}
+                      key={`solution-${currentProblem}-${index}`}
+                    />
                   </div>
                 </div>
-                <div className="ml-auto">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs text-slate-400">typing</span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-sm text-slate-700 font-mono">
-                <TypewriterText
-                  text={response.solution}
-                  delay={25}
-                  startDelay={response.delay}
-                  key={`${currentProblemSet}-solution-${index + 3}`}
-                />
-              </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </div>
@@ -1108,7 +1058,7 @@ export default function Home() {
           </div>
 
           {/* Enhanced Dynamic Multi-Problem Showcase */}
-          <DynamicMultiProblemShowcase />
+          <DynamicIDEShowcase />
 
           {/* Bottom CTA */}
           <div className="text-center mt-16">
