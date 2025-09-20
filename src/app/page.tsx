@@ -1287,56 +1287,34 @@ export default function Home() {
       </section>
 
       {/* Features Section */}
-      <section className="relative py-4 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
+      <section className="relative py-16 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0">
           <div className="absolute top-20 right-1/4 w-80 h-80 bg-gradient-to-br from-orange-100/30 to-violet-100/30 rounded-full blur-3xl animate-float-delayed"></div>
           <div className="absolute bottom-20 left-1/4 w-96 h-96 bg-gradient-to-br from-blue-100/20 to-orange-100/20 rounded-full blur-3xl animate-float-reverse"></div>
-          {/* Sophisticated grid pattern */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.01)_1px,transparent_1px)] bg-[size:80px_80px] opacity-30"></div>
         </div>
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-orange-500/10 to-violet-500/10 border border-orange-200/30 mb-6 glass-enhanced hover:scale-105 transition-all duration-500">
-              <span className="text-sm font-medium text-orange-600">Features</span>
-            </div>
-            <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-              Everything you need to{' '}
-              <span className="bg-gradient-to-r from-orange-600 via-violet-600 to-orange-600 bg-clip-text text-transparent animate-gradient">
-                code better
-              </span>
-            </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-              Polydev brings multiple AI perspectives directly into your development workflow
-            </p>
-          </div>
-        </div>
-      </section>
-      <section className="relative py-4 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute top-20 right-1/4 w-80 h-80 bg-gradient-to-br from-orange-100/30 to-violet-100/30 rounded-full blur-3xl animate-float-delayed"></div>
-          <div className="absolute bottom-20 left-1/4 w-96 h-96 bg-gradient-to-br from-blue-100/20 to-orange-100/20 rounded-full blur-3xl animate-float-reverse"></div>
-          {/* Sophisticated grid pattern */}
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.01)_1px,transparent_1px)] bg-[size:80px_80px] opacity-30"></div>
-        </div>
-
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center mb-20 observe">
             <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-200/30 mb-8 glass-enhanced hover:scale-105 transition-all duration-500">
-              <span className="text-sm font-medium text-indigo-600">How it actually works</span>
+              <span className="text-sm font-medium text-indigo-600">How it works</span>
             </div>
-            <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight stagger-fade-in">
+            <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
               Stop debugging{' '}
               <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent animate-gradient-advanced">
                 alone
               </span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
-              Get multiple perspectives on your code, right where you're already working. No context switching, no copy-pasting, no browser juggling.
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              Get multiple perspectives on your code, right where you're already working
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="relative py-16 bg-white">
+        <div className="container mx-auto px-6 relative z-10">
 
           {/* Modern Flow Layout */}
           <div className="relative max-w-5xl mx-auto mb-20">
@@ -1472,185 +1450,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Dynamic Code Examples */}
-      <section className="py-4 bg-gradient-to-b from-white via-gray-50/30 to-white relative overflow-hidden">
-        {/* Enhanced background elements */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.04),transparent_60%)]"></div>
-          <div className="absolute top-40 left-1/3 w-72 h-72 bg-gradient-to-br from-violet-100/20 to-orange-100/20 rounded-full blur-3xl animate-float-slow"></div>
-          <div className="absolute bottom-40 right-1/3 w-80 h-80 bg-gradient-to-br from-orange-100/15 to-blue-100/15 rounded-full blur-3xl animate-float-reverse"></div>
-          {/* Code-themed grid pattern */}
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.015)_1px,transparent_1px)] bg-[size:40px_40px] opacity-50"></div>
-        </div>
-
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="text-center mb-8 observe">
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-4 glass-enhanced hover:scale-105 transition-all duration-500">
-              <span className="text-sm font-medium text-slate-600">Live Examples</span>
-            </div>
-            <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight stagger-fade-in">
-              See polydev{' '}
-              <span className="bg-gradient-to-r from-slate-700 via-orange-600 to-violet-600 bg-clip-text text-transparent animate-gradient">
-                in action
-              </span>
-            </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed stagger-fade-in">
-              Real debugging scenarios, multiple perspectives, better solutions—watch how different models approach the same problem
-            </p>
-          </div>
-
-          <div className="relative mx-auto max-w-6xl observe">
-            {/* Sophisticated glow effect behind the editor */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-orange-500/10 via-violet-500/10 to-orange-500/10 rounded-3xl blur-2xl opacity-0 hover:opacity-100 transition-opacity duration-1000"></div>
-
-            <div className="relative glass-ultra rounded-3xl overflow-hidden shadow-2xl border border-orange-100/30 hover:border-orange-200/50 transition-all duration-700 sophisticated-hover">
-              {/* Enhanced editor header */}
-              <div className="relative flex items-center gap-2 px-6 py-5 bg-gradient-to-r from-slate-50/80 via-white/60 to-slate-50/80 backdrop-blur-xl border-b border-slate-200/30">
-                {/* Traffic lights with glow effect */}
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <div className="w-3 h-3 bg-red-500 rounded-full shadow-lg"></div>
-                    <div className="absolute inset-0 w-3 h-3 bg-red-400 rounded-full animate-ping opacity-20"></div>
-                  </div>
-                  <div className="relative">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full shadow-lg"></div>
-                    <div className="absolute inset-0 w-3 h-3 bg-yellow-400 rounded-full animate-pulse opacity-30"></div>
-                  </div>
-                  <div className="relative">
-                    <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
-                    <div className="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-pulse opacity-30"></div>
-                  </div>
-                </div>
-
-                {/* Enhanced file info */}
-                <div className="ml-6 flex items-center gap-3">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-100/50 to-violet-100/50 border border-orange-200/30">
-                    <span className="inline-block w-2 h-2 bg-gradient-to-r from-orange-400 to-red-400 rounded-full animate-pulse"></span>
-                    <span className="text-sm text-slate-700 font-mono font-medium">{CODE_EXAMPLES[currentExample].filename}</span>
-                  </div>
-                </div>
-
-                {/* Enhanced controls */}
-                <div className="ml-auto flex items-center gap-4">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-slate-100/60 to-slate-50/60 border border-slate-200/40">
-                    <span className="text-xs text-slate-600 font-mono font-medium">{CODE_EXAMPLES[currentExample].language}</span>
-                  </div>
-
-                  {/* Sophisticated progress indicators */}
-                  <div className="flex gap-1.5">
-                    {CODE_EXAMPLES.map((_, index) => (
-                      <div
-                        key={index}
-                        className={`rounded-full transition-all duration-500 ${
-                          index === currentExample
-                            ? 'w-8 h-2 bg-gradient-to-r from-orange-500 to-violet-500 shadow-lg'
-                            : 'w-2 h-2 bg-slate-300 hover:bg-slate-400'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-8">
-                {/* Enhanced code block */}
-                <div className="mb-10">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg">
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <span className="text-sm text-slate-600 font-mono bg-gradient-to-r from-red-100/60 to-orange-100/60 px-3 py-1.5 rounded-lg border border-red-200/30">
-                      {CODE_EXAMPLES[currentExample].problem}
-                    </span>
-                  </div>
-
-                  <div className="relative group">
-                    {/* Code editor with enhanced styling */}
-                    <div className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 font-mono text-sm overflow-x-auto border border-slate-700/50 shadow-2xl">
-                      {/* Code syntax highlighting effect */}
-                      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 rounded-t-2xl opacity-60"></div>
-
-                      <pre className="text-slate-100 leading-relaxed syntax-highlight">
-                        <code>{CODE_EXAMPLES[currentExample].code}</code>
-                      </pre>
-
-                      {/* Floating copy button */}
-                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                        <button className="p-2 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 transition-all duration-200">
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Enhanced Model Responses */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-orange-500 to-violet-500 flex items-center justify-center shadow-lg">
-                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <span className="text-lg font-semibold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">
-                      Multi-Model Analysis
-                    </span>
-                    <div className="flex-1 h-px bg-gradient-to-r from-orange-200 via-violet-200 to-transparent"></div>
-                  </div>
-
-                  {CODE_EXAMPLES[currentExample].responses.map((response, index) => (
-                    <div key={index} className="group relative observe" style={{ animationDelay: `${index * 0.2}s` }}>
-                      {/* Model header with sophisticated design */}
-                      <div className="flex items-center gap-4 mb-4">
-                        <div className="relative">
-                          <div className="w-10 h-10 rounded-2xl bg-white shadow-lg border border-slate-200/60 p-2 group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
-                            <Image src={response.avatar} alt={response.model} width={24} height={24} className="object-contain" />
-                          </div>
-                          {/* Subtle glow around avatar */}
-                          <div className="absolute inset-0 w-10 h-10 bg-gradient-to-r from-orange-400/20 to-violet-400/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                        </div>
-                        <div className="flex-1">
-                          <span className="font-semibold text-slate-900 group-hover:text-orange-600 transition-colors duration-300 text-lg">
-                            {response.model}
-                          </span>
-                          <div className="w-full h-px bg-gradient-to-r from-slate-200 via-orange-200/50 to-transparent mt-2"></div>
-                        </div>
-                      </div>
-
-                      {/* Response content with enhanced styling */}
-                      <div className="relative">
-                        <div className="glass-enhanced rounded-2xl p-6 border border-orange-100/40 group-hover:border-orange-200/60 transition-all duration-500 sophisticated-hover">
-                          {/* Subtle background gradient */}
-                          <div className="absolute inset-0 bg-gradient-to-br from-orange-50/30 via-white/50 to-violet-50/30 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-
-                          <div className="relative text-slate-700 leading-relaxed text-[15px]">
-                            <TypewriterText
-                              key={`${currentExample}-${index}`}
-                              text={response.text}
-                              delay={20}
-                              startDelay={index * 1500}
-                              onComplete={() => handleTypingComplete(index)}
-                            />
-                          </div>
-
-                          {/* Shimmer effect overlay */}
-                          <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
-                            <div className="absolute inset-0 rounded-2xl animate-shimmer"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Supported Editors */}
       <section className="relative py-16 bg-gradient-to-br from-orange-50/60 via-white/80 to-violet-50/60 overflow-hidden">
@@ -1797,8 +1596,7 @@ export default function Home() {
                   <div>
                     <h3 className="text-xl font-semibold text-slate-900 mb-3 group-hover:text-green-700 transition-colors">Use Your Existing CLI Tools</h3>
                     <p className="text-slate-600 leading-relaxed group-hover:text-slate-700 transition-colors">
-                      If you're already authenticated with Claude Code, Cursor, Cline, or other CLI tools, Polydev can route requests through them automatically.
-                      Get multiple perspectives using the credits and authentication you already have.
+                      Already authenticated with Claude Code, Cursor, or Cline? Polydev routes requests through them automatically—using your existing credits.
                     </p>
                   </div>
                 </div>
@@ -1821,8 +1619,7 @@ export default function Home() {
                   <div>
                     <h3 className="text-xl font-semibold text-slate-900 mb-3 group-hover:text-blue-700 transition-colors">Flexible API Access</h3>
                     <p className="text-slate-600 leading-relaxed mb-4 group-hover:text-slate-700 transition-colors">
-                      No need to juggle multiple API keys! Use your existing CLI tools for free, leverage Polydev credits for convenience,
-                      or add your own API keys for maximum control and cost optimization.
+                      No juggling API keys. Use CLI tools for free, Polydev credits for convenience, or your own keys for control.
                     </p>
                     <div className="grid grid-cols-3 gap-3 text-xs">
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center hover:bg-green-100 transition-colors group-hover:scale-105 transform duration-300">
@@ -1858,35 +1655,9 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold text-slate-900 mb-3 group-hover:text-orange-700 transition-colors">Simple Credit System</h3>
-                    <p className="text-slate-600 leading-relaxed mb-5 group-hover:text-slate-700 transition-colors">
-                      When you want access to all 340+ models, just use Polydev credits. One unified billing, no subscriptions to manage,
-                      and you only pay for what you actually use. Start with 100 free requests.
+                    <p className="text-slate-600 leading-relaxed group-hover:text-slate-700 transition-colors">
+                      Access all 340+ models with unified billing. Pay only for what you use. Start with 100 free requests.
                     </p>
-                    <div className="bg-gradient-to-r from-orange-50 to-violet-50 border border-orange-200/60 rounded-xl p-4 hover:border-orange-300/80 transition-all duration-300 group-hover:shadow-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg className="w-4 h-4 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                        </svg>
-                        <span className="text-sm font-semibold text-orange-700">Cost Calculator:</span>
-                      </div>
-                      <div className="bg-white/60 border border-orange-200 rounded-lg p-3 mb-3">
-                        <div className="text-xs text-slate-600 mb-2">Compare subscription vs. pay-per-use:</div>
-                        <div className="flex justify-between text-xs">
-                          <span>5 providers @ $20/mo:</span>
-                          <span className="font-mono text-red-600">$100/mo</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span>Polydev credits (same usage):</span>
-                          <span className="font-mono text-green-600">$35/mo</span>
-                        </div>
-                        <div className="mt-2 h-1 bg-slate-200 rounded-full overflow-hidden">
-                          <div className="h-full w-2/3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"></div>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        Live calculation based on 10k tokens/day across multiple models
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -2534,188 +2305,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Cost Workbench */}
-      <section className="py-4 sm:py-10 bg-gradient-to-br from-orange-50 to-violet-50 border-t border-slate-200">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-slate-500/10 to-orange-500/10 border border-slate-200/50 mb-6">
-              <svg className="w-4 h-4 text-orange-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm1 2a1 1 0 000 2h6a1 1 0 100-2H7zM6 7a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-medium text-slate-600">Cost Calculator</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 mb-4">
-              Calculate your actual costs
-            </h2>
-            <p className="text-lg sm:text-xl text-slate-600 mb-8 px-4">
-              Interactive workbench to estimate costs across different usage patterns
-            </p>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Configuration Panel */}
-            <div className="lg:col-span-1 space-y-6">
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                  </svg>
-                  Usage Profile
-                </h3>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Requests per day</label>
-                    <div className="relative">
-                      <input type="range" min="10" max="1000" defaultValue="100" className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider" />
-                      <div className="flex justify-between text-xs text-slate-500 mt-1">
-                        <span>10</span>
-                        <span className="font-mono bg-orange-100 text-orange-700 px-2 py-1 rounded">100</span>
-                        <span>1000</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Models per request</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[1, 2, 3, 4].map(num => (
-                        <button key={num} className={`p-2 rounded-lg text-sm font-medium transition-all ${num === 3 ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                          {num}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Model tier preference</label>
-                    <select className="w-full p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-                      <option>Mixed (GPT-4, Claude, Gemini)</option>
-                      <option>Premium only (GPT-4, Claude Opus)</option>
-                      <option>Fast only (GPT-3.5, Claude Haiku)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-slate-50 to-orange-50 rounded-2xl p-6 border border-orange-200/50">
-                <h4 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                  </svg>
-                  Free Options
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-slate-700">100 free requests/month</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-slate-700">Use your existing CLI tools</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    <span className="text-slate-700">Your own API keys</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Results Dashboard */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Cost Breakdown */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
-                <h3 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  Monthly Cost Breakdown
-                </h3>
-
-                <div className="grid md:grid-cols-3 gap-6 mb-6">
-                  <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50">
-                    <div className="text-2xl font-bold text-green-700 mb-1">$0</div>
-                    <div className="text-sm text-slate-600">CLI Tools</div>
-                    <div className="text-xs text-green-600 mt-1">Your existing auth</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200/50">
-                    <div className="text-2xl font-bold text-orange-700 mb-1">$47</div>
-                    <div className="text-sm text-slate-600">Polydev Credits</div>
-                    <div className="text-xs text-orange-600 mt-1">Pay per use</div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl border border-red-200/50">
-                    <div className="text-2xl font-bold text-red-700 mb-1">$100</div>
-                    <div className="text-sm text-slate-600">Direct Subscriptions</div>
-                    <div className="text-xs text-red-600 mt-1">5 separate plans</div>
-                  </div>
-                </div>
-
-                {/* Usage Visualization */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-slate-900">Daily usage pattern</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-600">API Requests</span>
-                      <span className="font-mono text-slate-900">100/day × 3 models</span>
-                    </div>
-                    <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-green-500 via-orange-500 to-violet-500 rounded-full" style={{width: '75%'}}></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-500">
-                      <span>Light usage</span>
-                      <span>Heavy usage</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Savings Calculator */}
-              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 text-white">
-                <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                  Smart Savings Analysis
-                </h3>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <div className="text-3xl font-bold text-emerald-400 mb-2">53%</div>
-                    <div className="text-emerald-100 text-sm mb-4">Monthly savings with Polydev</div>
-                    <div className="text-xs text-slate-300 space-y-1">
-                      <div>• No unused subscription fees</div>
-                      <div>• Bulk model pricing</div>
-                      <div>• CLI tools = $0 extra cost</div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-3xl font-bold text-orange-400 mb-2">$636</div>
-                    <div className="text-orange-100 text-sm mb-4">Annual savings</div>
-                    <div className="text-xs text-slate-300 space-y-1">
-                      <div>• Traditional: $1,200/year</div>
-                      <div>• Polydev: $564/year</div>
-                      <div>• More models included</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center mt-12">
-            <div className="inline-flex items-center gap-4 bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
-              <div className="text-sm text-slate-500">Start with 100 free requests</div>
-              <div className="w-px h-8 bg-slate-200"></div>
-              <button className="bg-gradient-to-r from-orange-500 to-violet-500 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all">
-                Try the Calculator →
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
       <section className="py-4 bg-gradient-to-br from-orange-50 via-white to-violet-50">
         <div className="mx-auto max-w-4xl px-6 text-center">
           <h2 className="text-4xl font-bold text-slate-900 sm:text-5xl">Give your editor a safety net</h2>
