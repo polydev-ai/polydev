@@ -486,72 +486,341 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
   return <span className={className}>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
 }
 
-function MCPIntegrationDemo() {
-  const [currentClient, setCurrentClient] = useState(0)
+function DynamicMultiProblemShowcase() {
+  const [currentProblemSet, setCurrentProblemSet] = useState(0)
   const [isMounted, setIsMounted] = useState(false)
 
-  const mcpClients = [
+  const problemSets = [
     {
-      name: "Claude Code",
-      logo: "https://sajalsharma.com/_astro/claude_code.GbHphWWe_Z29KFWg.webp.jpg",
-      command: "claude perspectives \"help me debug this memory leak\"",
-      description: "Get multiple model perspectives directly in your terminal"
+      problems: [
+        {
+          type: "React Hook Issue",
+          color: "red",
+          title: "useEffect Dependencies",
+          code: "useEffect(() => {\n  fetch(`/api/users/${userId}`)\n    .then(setUser)\n}, []) // Missing dependency",
+          error: "⚠ Infinite re-render detected"
+        },
+        {
+          type: "SQL Performance",
+          color: "amber",
+          title: "Slow Database Query",
+          code: "SELECT * FROM users\nWHERE created_at > '2024'\nORDER BY name;",
+          error: "⚠ Query taking 2.3s"
+        },
+        {
+          type: "Memory Leak",
+          color: "orange",
+          title: "Interval Cleanup Missing",
+          code: "setInterval(() => {\n  updateData();\n}, 1000);",
+          error: "⚠ Memory usage increasing"
+        }
+      ],
+      responses: [
+        { model: "Claude 4.1 Opus", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Add dependency array: useEffect(() => {...}, [userId])", delay: 500 },
+        { model: "GPT-5", company: "OpenAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/openai.svg", solution: "CREATE INDEX idx_users_created ON users(created_at, name);", delay: 1200 },
+        { model: "Gemini 2.5 Pro", company: "Google AI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/google.svg", solution: "const cleanup = () => clearInterval(timer); useEffect(() => cleanup, []);", delay: 1900 },
+        { model: "Grok 4", company: "xAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/x.svg", solution: "Use custom hook: const { data, cleanup } = useAsyncData(url, deps);", delay: 2600 },
+        { model: "Claude 4 Sonnet", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Consider useCallback for expensive operations: useCallback(() => fetchUser(id), [id])", delay: 3300 },
+        { model: "Llama 3.3", company: "Meta", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/meta.svg", solution: "Implement debouncing: const debouncedFetch = useDebounce(fetchUser, 300);", delay: 4000 }
+      ]
     },
     {
-      name: "Cursor",
-      logo: "https://cdn.freelogovectors.net/wp-content/uploads/2025/06/cursor-logo-freelogovectors.net_.png",
-      command: "# Cursor Composer with Polydev MCP",
-      description: "Access multiple models through Cursor's interface"
+      problems: [
+        {
+          type: "API Design Issue",
+          color: "purple",
+          title: "REST Endpoint Structure",
+          code: "app.get('/users/:id/posts/:postId/comments', \n  (req, res) => {\n    // Nested resource complexity\n  });",
+          error: "⚠ Deep nesting anti-pattern"
+        },
+        {
+          type: "Performance Bug",
+          color: "blue",
+          title: "N+1 Query Problem",
+          code: "users.forEach(async user => {\n  const posts = await getUserPosts(user.id)\n  // N+1 queries executing\n});",
+          error: "⚠ 1000+ database queries"
+        },
+        {
+          type: "Security Vulnerability",
+          color: "red",
+          title: "SQL Injection Risk",
+          code: "const query = `SELECT * FROM users \n  WHERE email = '${userEmail}'`;\nawait db.query(query);",
+          error: "⚠ SQL injection vulnerability"
+        }
+      ],
+      responses: [
+        { model: "Claude 4.1 Opus", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Flatten API: GET /comments?userId=123&postId=456 with proper filtering", delay: 500 },
+        { model: "GPT-5", company: "OpenAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/openai.svg", solution: "Use DataLoader pattern: const posts = await dataLoader.loadMany(userIds);", delay: 1200 },
+        { model: "Gemini 2.5 Pro", company: "Google AI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/google.svg", solution: "Parameterized queries: await db.query('SELECT * FROM users WHERE email = ?', [email])", delay: 1900 },
+        { model: "Grok 4", company: "xAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/x.svg", solution: "GraphQL resolvers with field-level caching and batch loading", delay: 2600 },
+        { model: "Claude 4 Sonnet", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "ORM with eager loading: User.findAll({ include: [{ model: Post, include: [Comment] }] })", delay: 3300 },
+        { model: "Llama 3.3", company: "Meta", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/meta.svg", solution: "Input validation middleware with sanitization and rate limiting", delay: 4000 }
+      ]
     },
     {
-      name: "Cline",
-      logo: "https://cline.bot/assets/branding/logos/cline-wordmark-black.svg",
-      command: "// Ask Cline to use Polydev for perspectives",
-      description: "Get diverse viewpoints on your VS Code problems"
+      problems: [
+        {
+          type: "State Management",
+          color: "green",
+          title: "Redux Complexity",
+          code: "const mapStateToProps = (state) => ({\n  user: state.auth.user,\n  loading: state.ui.loading,\n  error: state.api.errors.user\n});",
+          error: "⚠ Props drilling across 15 components"
+        },
+        {
+          type: "Build Performance",
+          color: "yellow",
+          title: "Webpack Bundle Size",
+          code: "import * as lodash from 'lodash';\nimport moment from 'moment';\n// 2MB+ bundle size",
+          error: "⚠ Bundle size: 2.1MB"
+        },
+        {
+          type: "Testing Coverage",
+          color: "indigo",
+          title: "Missing Edge Cases",
+          code: "it('should handle user login', () => {\n  expect(login('user', 'pass')).toBeTruthy();\n  // Missing error cases\n});",
+          error: "⚠ 23% test coverage"
+        }
+      ],
+      responses: [
+        { model: "Claude 4.1 Opus", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Zustand with slices: const useAuth = create((set) => ({ user: null, setUser: (user) => set({ user }) }))", delay: 500 },
+        { model: "GPT-5", company: "OpenAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/openai.svg", solution: "Tree shaking: import { debounce } from 'lodash/debounce'; use date-fns instead of moment", delay: 1200 },
+        { model: "Gemini 2.5 Pro", company: "Google AI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/google.svg", solution: "Property-based testing: fc.test(fc.record({email: fc.emailAddress()}), testLogin)", delay: 1900 },
+        { model: "Grok 4", company: "xAI", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/x.svg", solution: "Context-based state: const { state, dispatch } = useContext(AppContext) with useReducer", delay: 2600 },
+        { model: "Claude 4 Sonnet", company: "Anthropic", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/anthropic.svg", solution: "Dynamic imports: const Component = lazy(() => import('./HeavyComponent'))", delay: 3300 },
+        { model: "Llama 3.3", company: "Meta", icon: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons@v11/icons/meta.svg", solution: "Mutation testing with Stryker to find untested edge cases and improve coverage", delay: 4000 }
+      ]
     }
   ]
 
   useEffect(() => {
     setIsMounted(true)
+    const interval = setInterval(() => {
+      setCurrentProblemSet((prev) => (prev + 1) % problemSets.length)
+    }, 12000) // Change problem set every 12 seconds
+    return () => clearInterval(interval)
   }, [])
 
-  useEffect(() => {
-    if (!isMounted) return
+  if (!isMounted) return null
 
-    const interval = setInterval(() => {
-      setCurrentClient((prev) => (prev + 1) % mcpClients.length)
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [isMounted])
-
-  const currentDemo = mcpClients[currentClient]
+  const currentSet = problemSets[currentProblemSet]
 
   return (
-    <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-w-2xl mx-auto">
-      <div className="bg-slate-900 px-6 py-4 border-b">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-          <div className="ml-3 flex items-center gap-2">
-            <div className="w-6 h-6 relative">
-              <Image src={currentDemo.logo} alt={currentDemo.name} fill className="object-contain" />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+      {/* Left Column - Multiple Problems with Cycling */}
+      <div className="space-y-6">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">
+          <TypewriterText
+            text={`Active Problems (Set ${currentProblemSet + 1}/${problemSets.length})`}
+            delay={50}
+            key={`problems-header-${currentProblemSet}`}
+          />
+        </h3>
+
+        {currentSet.problems.map((problem, index) => (
+          <div key={`${currentProblemSet}-${index}`} className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
+            <div className={`bg-${problem.color}-50 px-4 py-3 border-b border-${problem.color}-100`}>
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 bg-${problem.color}-500 rounded-full animate-pulse`}></div>
+                <span className={`text-sm font-medium text-${problem.color}-700`}>
+                  <TypewriterText
+                    text={problem.type}
+                    delay={30}
+                    startDelay={index * 200}
+                    key={`${currentProblemSet}-${index}-type`}
+                  />
+                </span>
+              </div>
             </div>
-            <span className="text-slate-300 text-sm font-mono">{currentDemo.name}</span>
+            <div className="p-4">
+              <div className="font-mono text-sm text-slate-800 whitespace-pre-line">
+                <TypewriterText
+                  text={problem.code}
+                  delay={20}
+                  startDelay={500 + index * 300}
+                  key={`${currentProblemSet}-${index}-code`}
+                />
+              </div>
+              <div className="mt-3 text-xs text-slate-600 bg-slate-50 rounded px-2 py-1">
+                <TypewriterText
+                  text={problem.error}
+                  delay={40}
+                  startDelay={1500 + index * 200}
+                  key={`${currentProblemSet}-${index}-error`}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Center Column - Enhanced Engine with Light Beams */}
+      <div className="flex flex-col items-center justify-center space-y-6">
+        <div className="text-center">
+          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-full flex items-center justify-center relative overflow-hidden">
+            {/* Pulsing core */}
+            <div className="absolute inset-2 bg-white rounded-full opacity-20 animate-pulse"></div>
+            <svg className="w-10 h-10 text-white z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            {/* Light beam effects */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-spin"></div>
+          </div>
+          <h4 className="text-lg font-semibold text-slate-800 mb-2">
+            <TypewriterText text="Polydev Engine" delay={50} />
+          </h4>
+          <p className="text-sm text-slate-600">
+            <TypewriterText text="Analyzing & routing problems" delay={30} startDelay={800} />
+          </p>
+        </div>
+
+        {/* Enhanced Light Beam Animation */}
+        <div className="relative">
+          <svg width="150" height="300" viewBox="0 0 150 300" className="text-slate-300">
+            <defs>
+              <linearGradient id="beamGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#8B5CF6" stopOpacity="0.8" />
+                <stop offset="50%" stopColor="#06B6D4" stopOpacity="1" />
+                <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0.8" />
+              </linearGradient>
+              <linearGradient id="beamGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.8" />
+                <stop offset="50%" stopColor="#EF4444" stopOpacity="1" />
+                <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.8" />
+              </linearGradient>
+            </defs>
+
+            {/* Multiple beam paths */}
+            <path d="M75 50 Q120 80 75 110" stroke="url(#beamGradient1)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDuration: '2s'}} />
+            <path d="M75 80 Q120 110 75 140" stroke="url(#beamGradient2)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '0.5s', animationDuration: '2s'}} />
+            <path d="M75 110 Q120 140 75 170" stroke="url(#beamGradient1)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '1s', animationDuration: '2s'}} />
+            <path d="M75 140 Q120 170 75 200" stroke="url(#beamGradient2)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '1.5s', animationDuration: '2s'}} />
+            <path d="M75 170 Q120 200 75 230" stroke="url(#beamGradient1)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '2s', animationDuration: '2s'}} />
+            <path d="M75 200 Q120 230 75 260" stroke="url(#beamGradient2)" strokeWidth="3" fill="none" className="animate-pulse" style={{animationDelay: '2.5s', animationDuration: '2s'}} />
+
+            {/* Data flow particles */}
+            <circle r="3" fill="#8B5CF6" className="animate-ping" style={{animationDelay: '0s'}}>
+              <animateMotion dur="3s" repeatCount="indefinite">
+                <path d="M75 50 Q120 80 75 110" />
+              </animateMotion>
+            </circle>
+            <circle r="2" fill="#06B6D4" className="animate-ping" style={{animationDelay: '1s'}}>
+              <animateMotion dur="3s" repeatCount="indefinite">
+                <path d="M75 110 Q120 140 75 170" />
+              </animateMotion>
+            </circle>
+            <circle r="2" fill="#F59E0B" className="animate-ping" style={{animationDelay: '2s'}}>
+              <animateMotion dur="3s" repeatCount="indefinite">
+                <path d="M75 170 Q120 200 75 230" />
+              </animateMotion>
+            </circle>
+          </svg>
+
+          {/* Floating energy particles */}
+          <div className="absolute inset-0 pointer-events-none">
+            {Array.from({length: 8}).map((_, i) => (
+              <div
+                key={i}
+                className={`w-1 h-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full absolute animate-bounce`}
+                style={{
+                  top: `${20 + (i * 8)}%`,
+                  left: `${30 + (i % 2 * 40)}%`,
+                  animationDelay: `${i * 0.3}s`,
+                  animationDuration: '2s'
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="text-center">
+          <div className="bg-gradient-to-r from-purple-100 to-cyan-100 rounded-full px-4 py-2">
+            <span className="text-sm font-medium text-slate-700">
+              <TypewriterText text="6 models responding" delay={40} startDelay={2000} />
+            </span>
           </div>
         </div>
       </div>
-      <div className="p-6">
-        <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm mb-4">
-          <div className="text-green-400 mb-2">$ {currentDemo.command}</div>
-          <div className="text-slate-400">🔗 Connected to Polydev MCP server</div>
-          <div className="text-slate-400">📡 Getting perspectives from multiple models...</div>
+
+      {/* Right Column - Enhanced AI Model Responses (2 rows of 3) */}
+      <div className="space-y-6">
+        <h3 className="text-lg font-semibold text-slate-800 mb-4">
+          <TypewriterText text="AI Perspectives" delay={50} />
+        </h3>
+
+        {/* First Row of Models */}
+        <div className="space-y-4">
+          {currentSet.responses.slice(0, 3).map((response, index) => (
+            <div key={`${currentProblemSet}-response-${index}`} className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-slate-200">
+                  <Image src={response.icon} alt={response.model} width={20} height={20} className="filter" />
+                </div>
+                <div>
+                  <div className="font-medium text-slate-900">
+                    <TypewriterText text={response.model} delay={30} startDelay={200 + index * 100} />
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    <TypewriterText text={response.company} delay={40} startDelay={500 + index * 100} />
+                  </div>
+                </div>
+                <div className="ml-auto">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-slate-400">typing</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-sm text-slate-700 font-mono">
+                <TypewriterText
+                  text={response.solution}
+                  delay={25}
+                  startDelay={response.delay}
+                  key={`${currentProblemSet}-solution-${index}`}
+                />
+              </div>
+            </div>
+          ))}
         </div>
-        <p className="text-slate-600 text-center">{currentDemo.description}</p>
+
+        {/* Second Row of Models */}
+        <div className="space-y-4">
+          {currentSet.responses.slice(3, 6).map((response, index) => (
+            <div key={`${currentProblemSet}-response-${index + 3}`} className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-slate-200">
+                  <Image src={response.icon} alt={response.model} width={20} height={20} className="filter" />
+                </div>
+                <div>
+                  <div className="font-medium text-slate-900">
+                    <TypewriterText text={response.model} delay={30} startDelay={200 + (index + 3) * 100} />
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    <TypewriterText text={response.company} delay={40} startDelay={500 + (index + 3) * 100} />
+                  </div>
+                </div>
+                <div className="ml-auto">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs text-slate-400">typing</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-sm text-slate-700 font-mono">
+                <TypewriterText
+                  text={response.solution}
+                  delay={25}
+                  startDelay={response.delay}
+                  key={`${currentProblemSet}-solution-${index + 3}`}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
 }
+
 
 export default function Home() {
   const { isAuthenticated } = useAuth()
@@ -800,14 +1069,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Dynamic Model Switching Demo */}
-            <div className="mt-16">
-              <div className="text-center mb-8">
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Production-ready MCP integration</h3>
-                <p className="text-slate-600">Seamless multi-model inference through standardized protocol—no workflow disruption</p>
-              </div>
-              <MCPIntegrationDemo />
-            </div>
           </div>
 
           {/* Stats */}
@@ -846,222 +1107,8 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Dynamic Multi-Problem Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-
-            {/* Left Column - Multiple Problems */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Active Problems</h3>
-
-              {/* Problem 1: React useEffect Bug */}
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
-                <div className="bg-red-50 px-4 py-3 border-b border-red-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-red-700">React Hook Issue</span>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="font-mono text-sm text-slate-800">
-                    <div className="text-red-600">useEffect(() =&gt; {`{`}</div>
-                    <div className="text-red-600 ml-2">fetch(`/api/users/${'{userId}'}`)</div>
-                    <div className="text-red-600 ml-2">.then(setUser)</div>
-                    <div className="text-red-600">{`}`}) // Missing deps</div>
-                  </div>
-                  <div className="mt-3 text-xs text-slate-600 bg-slate-50 rounded px-2 py-1">
-                    ⚠ Infinite re-render detected
-                  </div>
-                </div>
-              </div>
-
-              {/* Problem 2: SQL Performance */}
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
-                <div className="bg-amber-50 px-4 py-3 border-b border-amber-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-amber-700">SQL Performance</span>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="font-mono text-sm text-slate-800">
-                    <div className="text-amber-600">SELECT * FROM users</div>
-                    <div className="text-amber-600">WHERE created_at &gt; '2024'</div>
-                    <div className="text-amber-600">ORDER BY name;</div>
-                  </div>
-                  <div className="mt-3 text-xs text-slate-600 bg-slate-50 rounded px-2 py-1">
-                    ⚠ Query taking 2.3s
-                  </div>
-                </div>
-              </div>
-
-              {/* Problem 3: Memory Leak */}
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl transition-shadow">
-                <div className="bg-orange-50 px-4 py-3 border-b border-orange-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-orange-700">Memory Leak</span>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="font-mono text-sm text-slate-800">
-                    <div className="text-orange-600">setInterval(() =&gt; {`{`}</div>
-                    <div className="text-orange-600 ml-2">updateData();</div>
-                    <div className="text-orange-600">{`}`}, 1000);</div>
-                  </div>
-                  <div className="mt-3 text-xs text-slate-600 bg-slate-50 rounded px-2 py-1">
-                    ⚠ Memory usage increasing
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Center Column - Polydev Engine Flow */}
-            <div className="flex flex-col items-center justify-center space-y-6">
-              <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-purple-600 to-cyan-600 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h4 className="text-lg font-semibold text-slate-800 mb-2">Polydev Engine</h4>
-                <p className="text-sm text-slate-600">Analyzing & routing problems</p>
-              </div>
-
-              {/* Animated Flow Lines */}
-              <div className="relative">
-                <svg width="120" height="200" viewBox="0 0 120 200" className="text-slate-300">
-                  <defs>
-                    <linearGradient id="flowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#8B5CF6" />
-                      <stop offset="100%" stopColor="#06B6D4" />
-                    </linearGradient>
-                  </defs>
-                  {/* Curved lines to models */}
-                  <path d="M60 50 Q90 75 60 100" stroke="url(#flowGradient)" strokeWidth="2" fill="none" className="animate-pulse" />
-                  <path d="M60 75 Q90 100 60 125" stroke="url(#flowGradient)" strokeWidth="2" fill="none" className="animate-pulse" style={{animationDelay: '0.5s'}} />
-                  <path d="M60 100 Q90 125 60 150" stroke="url(#flowGradient)" strokeWidth="2" fill="none" className="animate-pulse" style={{animationDelay: '1s'}} />
-                  <path d="M60 125 Q90 150 60 175" stroke="url(#flowGradient)" strokeWidth="2" fill="none" className="animate-pulse" style={{animationDelay: '1.5s'}} />
-                </svg>
-
-                {/* Floating particles */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full absolute animate-bounce" style={{top: '20%', left: '30%', animationDelay: '0s'}}></div>
-                  <div className="w-2 h-2 bg-cyan-500 rounded-full absolute animate-bounce" style={{top: '40%', right: '30%', animationDelay: '0.7s'}}></div>
-                  <div className="w-2 h-2 bg-orange-500 rounded-full absolute animate-bounce" style={{top: '60%', left: '40%', animationDelay: '1.4s'}}></div>
-                  <div className="w-2 h-2 bg-green-500 rounded-full absolute animate-bounce" style={{top: '80%', right: '40%', animationDelay: '2.1s'}}></div>
-                </div>
-              </div>
-
-              <div className="text-center">
-                <div className="bg-gradient-to-r from-purple-100 to-cyan-100 rounded-full px-4 py-2">
-                  <span className="text-sm font-medium text-slate-700">4 models responding</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - AI Model Responses */}
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">AI Perspectives</h3>
-
-              {/* Claude 4.1 Opus Response */}
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
-                <div className="flex items-center gap-3 mb-3">
-                  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/claude/claude-original.svg" alt="Claude" className="w-8 h-8" />
-                  <div>
-                    <div className="font-medium text-slate-900">Claude 4.1 Opus</div>
-                    <div className="text-xs text-slate-500">Anthropic</div>
-                  </div>
-                  <div className="ml-auto">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-slate-400">typing</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-slate-700 font-mono">
-                  <TypewriterText
-                    text="Add dependency array: useEffect(() => {...}, [user?.id])"
-                    delay={30}
-                    startDelay={500}
-                  />
-                </div>
-              </div>
-
-              {/* GPT-5 Response */}
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
-                <div className="flex items-center gap-3 mb-3">
-                  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/openai/openai-original.svg" alt="GPT-5" className="w-8 h-8" />
-                  <div>
-                    <div className="font-medium text-slate-900">GPT-5</div>
-                    <div className="text-xs text-slate-500">OpenAI</div>
-                  </div>
-                  <div className="ml-auto">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-slate-400">typing</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-slate-700 font-mono">
-                  <TypewriterText
-                    text="CREATE INDEX idx_users_created ON users(created_at, name);"
-                    delay={35}
-                    startDelay={1200}
-                  />
-                </div>
-              </div>
-
-              {/* Gemini 2.5 Pro Response */}
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
-                <div className="flex items-center gap-3 mb-3">
-                  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg" alt="Gemini" className="w-8 h-8" />
-                  <div>
-                    <div className="font-medium text-slate-900">Gemini 2.5 Pro</div>
-                    <div className="text-xs text-slate-500">Google AI</div>
-                  </div>
-                  <div className="ml-auto">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-slate-400">typing</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-slate-700 font-mono">
-                  <TypewriterText
-                    text="const cleanup = () => clearInterval(timer); useEffect(() => cleanup, []);"
-                    delay={28}
-                    startDelay={1900}
-                  />
-                </div>
-              </div>
-
-              {/* Grok 4 Response */}
-              <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-slate-800 to-slate-900 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">X</span>
-                  </div>
-                  <div>
-                    <div className="font-medium text-slate-900">Grok 4</div>
-                    <div className="text-xs text-slate-500">xAI</div>
-                  </div>
-                  <div className="ml-auto">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-slate-400">typing</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-slate-700 font-mono">
-                  <TypewriterText
-                    text="Use custom hook: const { data, cleanup } = useAsyncData(url, deps);"
-                    delay={32}
-                    startDelay={2600}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Enhanced Dynamic Multi-Problem Showcase */}
+          <DynamicMultiProblemShowcase />
 
           {/* Bottom CTA */}
           <div className="text-center mt-16">
