@@ -687,181 +687,62 @@ app.post('/login', async (req, res) => {
             </div>
           </div>
 
-          {/* Center - Dynamic Light Beam Engine */}
-          <div className="flex flex-col items-center justify-center relative bg-gradient-to-br from-slate-900 via-purple-900 to-blue-900 rounded-lg border border-purple-500/30 overflow-hidden">
-            {/* Animated Background Grid */}
-            <div className="absolute inset-0 opacity-20">
-              <div className="absolute inset-0" style={{
-                backgroundImage: `
-                  linear-gradient(rgba(99, 102, 241, 0.1) 1px, transparent 1px),
-                  linear-gradient(90deg, rgba(99, 102, 241, 0.1) 1px, transparent 1px)
-                `,
-                backgroundSize: '20px 20px',
-                animation: 'grid-move 4s linear infinite'
-              }}></div>
-            </div>
-
-            {/* Dynamic Light Beams from Left */}
-            <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-full flex items-center justify-center pointer-events-none">
-              {Array.from({length: 5}).map((_, i) => (
-                <div
-                  key={`left-beam-${i}`}
-                  className="absolute left-0 h-0.5 bg-gradient-to-r from-red-400/80 via-orange-400/60 to-transparent"
-                  style={{
-                    width: '45%',
-                    top: `${30 + i * 10}%`,
-                    animation: `beam-pulse-left ${2 + i * 0.3}s ease-in-out infinite`,
-                    animationDelay: `${i * 0.2}s`
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Dynamic Light Beams from Right */}
-            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-full h-full flex items-center justify-center pointer-events-none">
-              {Array.from({length: 5}).map((_, i) => (
-                <div
-                  key={`right-beam-${i}`}
-                  className="absolute right-0 h-0.5 bg-gradient-to-l from-green-400/80 via-emerald-400/60 to-transparent"
-                  style={{
-                    width: '45%',
-                    top: `${30 + i * 10}%`,
-                    animation: `beam-pulse-right ${2 + i * 0.3}s ease-in-out infinite`,
-                    animationDelay: `${i * 0.2}s`
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Central Energy Nexus */}
-            <div className="relative z-10 flex flex-col items-center">
-              {/* Main Energy Core */}
+          {/* Center - Clean Processing Animation */}
+          <div className="flex flex-col items-center justify-center relative bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {/* Minimal Processing Visual */}
+            <div className="relative z-10 flex flex-col items-center space-y-8 py-12">
+              {/* Simple Processing Animation */}
               <div className="relative">
-                {/* Outer Energy Ring */}
-                <div className="w-32 h-32 relative">
-                  <div className="absolute inset-0 rounded-full border-2 border-cyan-400/30 animate-spin" style={{ animationDuration: '6s' }}>
-                    <div className="absolute top-0 left-1/2 w-2 h-2 bg-cyan-400 rounded-full transform -translate-x-1/2 animate-pulse"></div>
-                    <div className="absolute right-0 top-1/2 w-2 h-2 bg-blue-400 rounded-full transform -translate-y-1/2 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                    <div className="absolute bottom-0 left-1/2 w-2 h-2 bg-purple-400 rounded-full transform -translate-x-1/2 animate-pulse" style={{ animationDelay: '1s' }}></div>
-                    <div className="absolute left-0 top-1/2 w-2 h-2 bg-pink-400 rounded-full transform -translate-y-1/2 animate-pulse" style={{ animationDelay: '1.5s' }}></div>
-                  </div>
+                {/* Subtle pulse rings */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-24 h-24 border border-gray-200 rounded-full animate-ping" style={{ animationDuration: '2s' }}></div>
+                  <div className="absolute w-16 h-16 border border-gray-300 rounded-full animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }}></div>
                 </div>
 
                 {/* Central Processing Hub */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="relative">
-                    {/* Inner glow effect */}
-                    <div className="absolute -inset-6 bg-gradient-to-r from-blue-500/20 via-purple-500/30 to-cyan-500/20 rounded-full blur-xl animate-pulse"></div>
+                <div className="relative w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+              </div>
 
-                    {/* Main hub */}
-                    <div className="relative w-16 h-16 bg-gradient-to-br from-indigo-500 via-purple-600 to-blue-700 rounded-full flex items-center justify-center shadow-2xl border-2 border-white/20">
-                      {/* Rotating inner elements */}
-                      <div className="absolute inset-2 border border-white/30 rounded-full animate-spin" style={{ animationDuration: '4s' }}>
-                        <div className="absolute top-0 left-1/2 w-0.5 h-2 bg-white/80 transform -translate-x-1/2"></div>
-                        <div className="absolute bottom-0 left-1/2 w-0.5 h-2 bg-white/80 transform -translate-x-1/2"></div>
-                      </div>
+              {/* Clean Status Display */}
+              <div className="text-center space-y-4">
+                <h3 className="text-xl font-bold text-gray-900">Polydev Engine</h3>
 
-                      {/* Central icon */}
-                      <div className="relative z-10">
-                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                        </svg>
-                      </div>
-                    </div>
+                {/* Typing Dots Animation */}
+                <div className="flex items-center justify-center gap-2">
+                  <p className="text-sm text-gray-600 font-medium">Processing perspectives</p>
+                  <div className="flex gap-1">
+                    <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                   </div>
                 </div>
 
-                {/* Connecting Energy Streams */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {Array.from({length: 8}).map((_, i) => (
-                    <div
-                      key={`stream-${i}`}
-                      className="absolute w-0.5 bg-gradient-to-t from-transparent via-cyan-400/60 to-transparent"
-                      style={{
-                        height: '80px',
-                        transform: `rotate(${i * 45}deg)`,
-                        transformOrigin: 'center',
-                        animation: `energy-flow ${3 + i * 0.2}s linear infinite`,
-                        animationDelay: `${i * 0.1}s`
-                      }}
-                    />
-                  ))}
+                {/* Progress Bar */}
+                <div className="w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-blue-500 to-purple-600 rounded-full animate-pulse" style={{ width: '60%' }}></div>
                 </div>
-              </div>
 
-              {/* Status Display */}
-              <div className="mt-8 text-center space-y-3">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-                  Polydev Engine
-                </h3>
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <p className="text-sm text-gray-300 font-medium">Synthesizing perspectives...</p>
-                </div>
-                <div className="flex justify-center gap-1">
-                  {Array.from({length: 5}).map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-1 h-1 bg-gradient-to-r from-cyan-400 to-purple-400 rounded-full animate-bounce"
-                      style={{ animationDelay: `${i * 0.15}s` }}
-                    />
-                  ))}
+                {/* Model Status Indicators */}
+                <div className="flex justify-center gap-4 text-xs">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-gray-500">Claude</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                    <span className="text-gray-500">GPT-4</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                    <span className="text-gray-500">Gemini</span>
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Enhanced Animations */}
-            <style jsx>{`
-              @keyframes beam-pulse-left {
-                0% {
-                  opacity: 0.3;
-                  transform: translateX(-10px) scaleX(0.8);
-                }
-                50% {
-                  opacity: 1;
-                  transform: translateX(0px) scaleX(1);
-                }
-                100% {
-                  opacity: 0.3;
-                  transform: translateX(-10px) scaleX(0.8);
-                }
-              }
-
-              @keyframes beam-pulse-right {
-                0% {
-                  opacity: 0.3;
-                  transform: translateX(10px) scaleX(0.8);
-                }
-                50% {
-                  opacity: 1;
-                  transform: translateX(0px) scaleX(1);
-                }
-                100% {
-                  opacity: 0.3;
-                  transform: translateX(10px) scaleX(0.8);
-                }
-              }
-
-              @keyframes energy-flow {
-                0% {
-                  opacity: 0;
-                  height: 20px;
-                }
-                50% {
-                  opacity: 1;
-                  height: 80px;
-                }
-                100% {
-                  opacity: 0;
-                  height: 20px;
-                }
-              }
-
-              @keyframes grid-move {
-                0% { transform: translate(0, 0); }
-                100% { transform: translate(20px, 20px); }
-              }
-            `}</style>
           </div>
 
           {/* Right Side - AI Responses */}
