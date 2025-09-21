@@ -687,138 +687,179 @@ app.post('/login', async (req, res) => {
             </div>
           </div>
 
-          {/* Center - Enhanced Polydev Engine */}
-          <div className="flex flex-col items-center justify-center relative bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 rounded-lg border border-purple-200 overflow-hidden">
-            {/* Background Particles */}
-            <div className="absolute inset-0">
-              {Array.from({length: 20}).map((_, i) => (
+          {/* Center - Dynamic Light Beam Engine */}
+          <div className="flex flex-col items-center justify-center relative bg-gradient-to-br from-slate-900 via-purple-900 to-blue-900 rounded-lg border border-purple-500/30 overflow-hidden">
+            {/* Animated Background Grid */}
+            <div className="absolute inset-0 opacity-20">
+              <div className="absolute inset-0" style={{
+                backgroundImage: `
+                  linear-gradient(rgba(99, 102, 241, 0.1) 1px, transparent 1px),
+                  linear-gradient(90deg, rgba(99, 102, 241, 0.1) 1px, transparent 1px)
+                `,
+                backgroundSize: '20px 20px',
+                animation: 'grid-move 4s linear infinite'
+              }}></div>
+            </div>
+
+            {/* Dynamic Light Beams from Left */}
+            <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-full flex items-center justify-center pointer-events-none">
+              {Array.from({length: 5}).map((_, i) => (
                 <div
-                  key={i}
-                  className="absolute w-1 h-1 bg-blue-400/30 rounded-full animate-pulse"
+                  key={`left-beam-${i}`}
+                  className="absolute left-0 h-0.5 bg-gradient-to-r from-red-400/80 via-orange-400/60 to-transparent"
                   style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    animationDelay: `${Math.random() * 3}s`,
-                    animationDuration: `${2 + Math.random() * 2}s`
+                    width: '45%',
+                    top: `${30 + i * 10}%`,
+                    animation: `beam-pulse-left ${2 + i * 0.3}s ease-in-out infinite`,
+                    animationDelay: `${i * 0.2}s`
                   }}
                 />
               ))}
             </div>
 
-            {/* Enhanced Light Beam System */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-40 h-40">
-                {/* Primary rotating beams */}
-                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '8s' }}>
-                  <div className="absolute top-0 left-1/2 w-1 h-20 bg-gradient-to-t from-blue-500/70 via-blue-400/50 to-transparent transform -translate-x-1/2 rounded-full"></div>
-                  <div className="absolute bottom-0 left-1/2 w-1 h-20 bg-gradient-to-b from-purple-500/70 via-purple-400/50 to-transparent transform -translate-x-1/2 rounded-full"></div>
-                  <div className="absolute left-0 top-1/2 h-1 w-20 bg-gradient-to-l from-cyan-500/70 via-cyan-400/50 to-transparent transform -translate-y-1/2 rounded-full"></div>
-                  <div className="absolute right-0 top-1/2 h-1 w-20 bg-gradient-to-r from-pink-500/70 via-pink-400/50 to-transparent transform -translate-y-1/2 rounded-full"></div>
+            {/* Dynamic Light Beams from Right */}
+            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-full h-full flex items-center justify-center pointer-events-none">
+              {Array.from({length: 5}).map((_, i) => (
+                <div
+                  key={`right-beam-${i}`}
+                  className="absolute right-0 h-0.5 bg-gradient-to-l from-green-400/80 via-emerald-400/60 to-transparent"
+                  style={{
+                    width: '45%',
+                    top: `${30 + i * 10}%`,
+                    animation: `beam-pulse-right ${2 + i * 0.3}s ease-in-out infinite`,
+                    animationDelay: `${i * 0.2}s`
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Central Energy Nexus */}
+            <div className="relative z-10 flex flex-col items-center">
+              {/* Main Energy Core */}
+              <div className="relative">
+                {/* Outer Energy Ring */}
+                <div className="w-32 h-32 relative">
+                  <div className="absolute inset-0 rounded-full border-2 border-cyan-400/30 animate-spin" style={{ animationDuration: '6s' }}>
+                    <div className="absolute top-0 left-1/2 w-2 h-2 bg-cyan-400 rounded-full transform -translate-x-1/2 animate-pulse"></div>
+                    <div className="absolute right-0 top-1/2 w-2 h-2 bg-blue-400 rounded-full transform -translate-y-1/2 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                    <div className="absolute bottom-0 left-1/2 w-2 h-2 bg-purple-400 rounded-full transform -translate-x-1/2 animate-pulse" style={{ animationDelay: '1s' }}></div>
+                    <div className="absolute left-0 top-1/2 w-2 h-2 bg-pink-400 rounded-full transform -translate-y-1/2 animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+                  </div>
                 </div>
 
-                {/* Secondary counter-rotating beams */}
-                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '12s', animationDirection: 'reverse' }}>
+                {/* Central Processing Hub */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="relative">
+                    {/* Inner glow effect */}
+                    <div className="absolute -inset-6 bg-gradient-to-r from-blue-500/20 via-purple-500/30 to-cyan-500/20 rounded-full blur-xl animate-pulse"></div>
+
+                    {/* Main hub */}
+                    <div className="relative w-16 h-16 bg-gradient-to-br from-indigo-500 via-purple-600 to-blue-700 rounded-full flex items-center justify-center shadow-2xl border-2 border-white/20">
+                      {/* Rotating inner elements */}
+                      <div className="absolute inset-2 border border-white/30 rounded-full animate-spin" style={{ animationDuration: '4s' }}>
+                        <div className="absolute top-0 left-1/2 w-0.5 h-2 bg-white/80 transform -translate-x-1/2"></div>
+                        <div className="absolute bottom-0 left-1/2 w-0.5 h-2 bg-white/80 transform -translate-x-1/2"></div>
+                      </div>
+
+                      {/* Central icon */}
+                      <div className="relative z-10">
+                        <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Connecting Energy Streams */}
+                <div className="absolute inset-0 flex items-center justify-center">
                   {Array.from({length: 8}).map((_, i) => (
                     <div
-                      key={i}
-                      className="absolute w-0.5 h-16 bg-gradient-to-t from-indigo-500/40 to-transparent rounded-full"
+                      key={`stream-${i}`}
+                      className="absolute w-0.5 bg-gradient-to-t from-transparent via-cyan-400/60 to-transparent"
                       style={{
-                        top: '50%',
-                        left: '50%',
-                        transform: `translateX(-50%) translateY(-50%) rotate(${i * 45}deg)`,
-                        transformOrigin: 'center bottom'
+                        height: '80px',
+                        transform: `rotate(${i * 45}deg)`,
+                        transformOrigin: 'center',
+                        animation: `energy-flow ${3 + i * 0.2}s linear infinite`,
+                        animationDelay: `${i * 0.1}s`
                       }}
                     />
                   ))}
                 </div>
+              </div>
 
-                {/* Dynamic pulsing rings */}
-                <div className="absolute inset-0">
-                  <div className="absolute inset-4 border-2 border-blue-400/40 rounded-full animate-ping" style={{ animationDuration: '2s' }}></div>
-                  <div className="absolute inset-8 border-2 border-purple-400/40 rounded-full animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }}></div>
-                  <div className="absolute inset-12 border-2 border-cyan-400/40 rounded-full animate-ping" style={{ animationDuration: '4s', animationDelay: '1s' }}></div>
+              {/* Status Display */}
+              <div className="mt-8 text-center space-y-3">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                  Polydev Engine
+                </h3>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <p className="text-sm text-gray-300 font-medium">Synthesizing perspectives...</p>
                 </div>
-
-                {/* Energy waves */}
-                <div className="absolute inset-0">
-                  {Array.from({length: 3}).map((_, i) => (
+                <div className="flex justify-center gap-1">
+                  {Array.from({length: 5}).map((_, i) => (
                     <div
                       key={i}
-                      className="absolute inset-6 border border-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-ping"
-                      style={{
-                        animationDuration: `${2 + i}s`,
-                        animationDelay: `${i * 0.7}s`,
-                        transform: `scale(${1 + i * 0.2})`
-                      }}
+                      className="w-1 h-1 bg-gradient-to-r from-cyan-400 to-purple-400 rounded-full animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }}
                     />
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Enhanced Central Core */}
-            <div className="relative z-10 group">
-              {/* Outer glow */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 rounded-full blur-xl animate-pulse"></div>
-
-              {/* Main core */}
-              <div className="relative bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-full w-24 h-24 flex items-center justify-center shadow-2xl border-2 border-white/20">
-                {/* Inner rotating ring */}
-                <div className="absolute inset-2 border-2 border-white/30 rounded-full animate-spin" style={{ animationDuration: '6s' }}>
-                  <div className="absolute top-0 left-1/2 w-1 h-1 bg-white rounded-full transform -translate-x-1/2"></div>
-                  <div className="absolute bottom-0 left-1/2 w-1 h-1 bg-white rounded-full transform -translate-x-1/2"></div>
-                </div>
-
-                {/* Central icon with animation */}
-                <div className="relative z-10 transform transition-transform group-hover:scale-110">
-                  <svg className="w-10 h-10 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-
-                {/* Reflection effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-full"></div>
-              </div>
-
-              {/* Orbiting particles */}
-              {Array.from({length: 6}).map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute w-2 h-2 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full"
-                  style={{
-                    animation: `orbit ${3 + i * 0.5}s linear infinite`,
-                    transformOrigin: '50px 50px',
-                    left: '50%',
-                    top: '50%',
-                    transform: `translate(-50%, -50%) rotate(${i * 60}deg) translateX(50px)`
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Enhanced status display */}
-            <div className="mt-6 text-center z-10 space-y-2">
-              <h3 className="font-bold text-gray-900 text-lg">Polydev Engine</h3>
-              <div className="flex items-center justify-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <p className="text-sm text-gray-600 font-medium">Processing perspectives...</p>
-              </div>
-              <div className="flex justify-center gap-1">
-                <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-1 h-1 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-              </div>
-            </div>
-
-            {/* Custom keyframes for orbit animation */}
+            {/* Enhanced Animations */}
             <style jsx>{`
-              @keyframes orbit {
-                from {
-                  transform: translate(-50%, -50%) rotate(0deg) translateX(50px) rotate(0deg);
+              @keyframes beam-pulse-left {
+                0% {
+                  opacity: 0.3;
+                  transform: translateX(-10px) scaleX(0.8);
                 }
-                to {
-                  transform: translate(-50%, -50%) rotate(360deg) translateX(50px) rotate(-360deg);
+                50% {
+                  opacity: 1;
+                  transform: translateX(0px) scaleX(1);
                 }
+                100% {
+                  opacity: 0.3;
+                  transform: translateX(-10px) scaleX(0.8);
+                }
+              }
+
+              @keyframes beam-pulse-right {
+                0% {
+                  opacity: 0.3;
+                  transform: translateX(10px) scaleX(0.8);
+                }
+                50% {
+                  opacity: 1;
+                  transform: translateX(0px) scaleX(1);
+                }
+                100% {
+                  opacity: 0.3;
+                  transform: translateX(10px) scaleX(0.8);
+                }
+              }
+
+              @keyframes energy-flow {
+                0% {
+                  opacity: 0;
+                  height: 20px;
+                }
+                50% {
+                  opacity: 1;
+                  height: 80px;
+                }
+                100% {
+                  opacity: 0;
+                  height: 20px;
+                }
+              }
+
+              @keyframes grid-move {
+                0% { transform: translate(0, 0); }
+                100% { transform: translate(20px, 20px); }
               }
             `}</style>
           </div>
