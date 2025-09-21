@@ -83,6 +83,94 @@ const MODEL_PROVIDERS = [
   { name: 'xAI', logo: 'https://models.dev/logos/xai.svg' }
 ]
 
+// Typewriter component for dynamic typing effect
+function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, className = '' }: {
+  text: string;
+  delay?: number;
+  onComplete?: () => void;
+  startDelay?: number;
+  className?: string
+}) {
+  const [displayedText, setDisplayedText] = useState('')
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [hasStarted, setHasStarted] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isMounted) return
+
+    if (startDelay > 0 && !hasStarted) {
+      const startTimeout = setTimeout(() => {
+        setHasStarted(true)
+      }, startDelay)
+      return () => clearTimeout(startTimeout)
+    } else if (startDelay === 0) {
+      setHasStarted(true)
+    }
+  }, [startDelay, hasStarted, isMounted])
+
+  useEffect(() => {
+    if (!isMounted) return
+
+    if (hasStarted && currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex])
+        setCurrentIndex(prev => prev + 1)
+      }, delay)
+      return () => clearTimeout(timeout)
+    } else if (hasStarted && currentIndex >= text.length && onComplete) {
+      onComplete()
+    }
+  }, [currentIndex, text, delay, onComplete, hasStarted, isMounted])
+
+  useEffect(() => {
+    setDisplayedText('')
+    setCurrentIndex(0)
+    setHasStarted(false)
+  }, [text])
+
+  if (!isMounted) {
+    return <span></span>
+  }
+
+  return <span className={className}>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
+}
+
+// Collapsible FAQ Item
+function FAQItem({ question, answer, isOpen, onToggle }: {
+  question: string;
+  answer: string;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-lg hover:shadow-xl transition-all duration-300">
+      <button
+        onClick={onToggle}
+        className="w-full text-left p-8 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-opacity-50 rounded-2xl"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-slate-900 pr-4">{question}</h3>
+          <div className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+            <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+      </button>
+      {isOpen && (
+        <div className="px-8 pb-8">
+          <p className="text-slate-600 leading-relaxed">{answer}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const CODE_EXAMPLES = [
   {
     title: "React State Management Complexity",
@@ -227,6 +315,7 @@ export default function HomePage() {
   const [currentPersonality, setCurrentPersonality] = useState(PERSONALITIES[1])
   const [currentExampleIndex, setCurrentExampleIndex] = useState(0)
   const [modelStats, setModelStats] = useState({ totalModels: 346, totalProviders: 37 })
+  const [openFAQs, setOpenFAQs] = useState<number[]>([])
 
   useEffect(() => {
     setIsMounted(true)
@@ -241,6 +330,41 @@ export default function HomePage() {
   }, [])
 
   const currentExample = CODE_EXAMPLES[currentExampleIndex]
+
+  const toggleFAQ = (index: number) => {
+    setOpenFAQs(prev =>
+      prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    )
+  }
+
+  const faqData = [
+    {
+      question: "How does MCP auto-detect when I'm stuck?",
+      answer: "When you're debugging or need help in Claude Code, Cursor, or Cline, your MCP client automatically sends context to Polydev. No manual requests—it just works when you need it."
+    },
+    {
+      question: "Do models see my project files?",
+      answer: "Each model sees your entire project context—your files, dependencies, recent changes. They understand what you're actually working on, not just your question."
+    },
+    {
+      question: "Which models respond?",
+      answer: "Free tier: GPT-4, Claude-3-Sonnet, Gemini-Pro. Pro tier: All models including GPT-5, Claude-4-Opus, Grok-4, and 340+ others. You get multiple perspectives from different providers."
+    },
+    {
+      question: "How is this different from using models individually?",
+      answer: "Instead of asking ChatGPT, then Claude, then others separately, you get all responses at once to compare approaches. Different models excel at different things—one might catch an edge case another missed."
+    },
+    {
+      question: "What editors work?",
+      answer: "Any editor that supports MCP (Model Context Protocol): Claude Code, Cursor, Cline, and others. Setup takes about 30 seconds."
+    },
+    {
+      question: "How do Polydev credits work?",
+      answer: "Credits let you get perspectives without adding your own API keys. Fast models (GPT-5 Mini, Claude Haiku, Grok 4 Fast, etc.) cost 1 credit each. Premium models (GPT-5, Claude Opus 4, Gemini 2.5 Pro) cost 5 credits each."
+    }
+  ]
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -437,6 +561,116 @@ export default function HomePage() {
             <div className="text-center group">
               <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">1.7 s</div>
               <div className="mt-2 text-lg text-slate-600 group-hover:text-orange-600 transition-colors">Median response</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it Works Section */}
+      <section className="relative py-20 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-6">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              How it works
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6">
+              Stop debugging <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">alone</span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+              Get multiple perspectives on your code, right where you're already working
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 relative">
+            {/* Step 1 */}
+            <div className="text-center group">
+              <div className="relative mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  1
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-3">MCP auto-detects when you're stuck</h3>
+              <p className="text-slate-600 leading-relaxed">
+                When you're debugging or need help in Claude Code, Cursor, or Cline, your MCP client automatically sends context to Polydev. No manual requests—it just works when you need it.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="text-center group">
+              <div className="relative mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  2
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-3">Models analyze your actual code</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Each model sees your entire project context—your files, dependencies, recent changes. They understand what you're actually working on, not just your question.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="text-center group">
+              <div className="relative mb-6">
+                <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  3
+                </div>
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-3">Compare and choose the best approach</h3>
+              <p className="text-slate-600 leading-relaxed">
+                See different solutions side by side. One model might catch an edge case another missed. Pick the approach that makes the most sense for your situation.
+              </p>
+            </div>
+
+            {/* Connection lines */}
+            <div className="hidden md:block absolute top-8 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-blue-200 via-purple-200 to-green-200"></div>
+          </div>
+
+          {/* Benefits */}
+          <div className="grid md:grid-cols-3 gap-8 mt-20">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-orange-100 to-orange-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-slate-900 mb-2">Better solutions</h4>
+              <p className="text-slate-600">Different models excel at different things. Get the best of each without the hassle.</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-slate-900 mb-2">Stay in flow</h4>
+              <p className="text-slate-600">No tab switching, no copy-pasting. Everything happens right in your editor.</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-green-100 to-green-200 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h4 className="text-lg font-semibold text-slate-900 mb-2">Remembers context</h4>
+              <p className="text-slate-600">Picks up where you left off, even across sessions. No more explaining your project every time.</p>
             </div>
           </div>
         </div>
@@ -642,13 +876,13 @@ export default function HomePage() {
 
       {/* Pricing */}
       <section className="relative py-16 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Pricing</h2>
             <p className="text-xl text-slate-600">Simple, transparent pricing</p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
               <div className="text-center mb-8">
                 <h3 className="text-xl font-semibold text-slate-900 mb-2">Free</h3>
@@ -661,19 +895,25 @@ export default function HomePage() {
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">1,000 requests per month</span>
+                  <span className="text-slate-700">10 Polydev credits</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">3 models: GPT-4, Claude, Gemini</span>
+                  <span className="text-slate-700">Use your own API keys</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   <span className="text-slate-700">MCP integration</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">CLI tool detection</span>
                 </li>
               </ul>
 
@@ -694,8 +934,8 @@ export default function HomePage() {
 
               <div className="text-center mb-8">
                 <h3 className="text-xl font-semibold text-slate-900 mb-2">Pro</h3>
-                <div className="text-4xl font-bold text-slate-900 mb-1">Pay per use</div>
-                <div className="text-slate-600">no subscription</div>
+                <div className="text-4xl font-bold text-slate-900 mb-1">$25</div>
+                <div className="text-slate-600">1,500 credits included</div>
               </div>
 
               <ul className="space-y-4 mb-8">
@@ -703,13 +943,13 @@ export default function HomePage() {
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Unlimited requests</span>
+                  <span className="text-slate-700">1,500 Polydev credits</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">All models including GPT-5, Grok</span>
+                  <span className="text-slate-700">All models (no API keys needed)</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -721,7 +961,7 @@ export default function HomePage() {
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Project memory (optional)</span>
+                  <span className="text-slate-700">Additional credits: 500 for $10</span>
                 </li>
               </ul>
 
@@ -731,6 +971,50 @@ export default function HomePage() {
               >
                 Upgrade
               </Link>
+            </div>
+          </div>
+
+          {/* Credit Pricing Details */}
+          <div className="mt-16 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-200/60 p-8 shadow-lg">
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">Credit Pricing</h3>
+              <p className="text-slate-600">Different models cost different amounts of credits</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="bg-white rounded-xl border border-slate-200/60 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <span className="text-emerald-600 font-bold text-sm">1</span>
+                  </div>
+                  <h4 className="text-lg font-semibold text-slate-900">1 Credit Models</h4>
+                </div>
+                <ul className="space-y-2 text-slate-600">
+                  <li>• GPT-5 Mini</li>
+                  <li>• Claude Haiku</li>
+                  <li>• Grok 4 Fast</li>
+                  <li>• Google Flash 2.5</li>
+                  <li>• GLM 4.5</li>
+                  <li>• Qwen 3 Coder</li>
+                  <li>• Kimi K2</li>
+                </ul>
+              </div>
+
+              <div className="bg-white rounded-xl border border-slate-200/60 p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+                    <span className="text-violet-600 font-bold text-sm">5</span>
+                  </div>
+                  <h4 className="text-lg font-semibold text-slate-900">5 Credit Models</h4>
+                </div>
+                <ul className="space-y-2 text-slate-600">
+                  <li>• GPT-5</li>
+                  <li>• Claude Opus 4</li>
+                  <li>• Claude Sonnet 4</li>
+                  <li>• Gemini 2.5 Pro</li>
+                  <li>• Grok 4</li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -744,45 +1028,16 @@ export default function HomePage() {
             <p className="text-xl text-slate-600">Common questions answered</p>
           </div>
 
-          <div className="space-y-8">
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">How does MCP auto-detect when I'm stuck?</h3>
-              <p className="text-slate-600 leading-relaxed">
-                It doesn't auto-detect. You manually call the MCP tool when you want multiple perspectives.
-                Think of it as asking "Can you get multiple opinions on this?" in your editor.
-              </p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Do models see my project files?</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Only if you enable project memory (Pro feature). By default, models only see your specific question.
-                Project memory can optionally include recent conversations and relevant file context.
-              </p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Which models respond?</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Free tier: GPT-4, Claude-3-Sonnet, Gemini-Pro. Pro tier: All models including GPT-5, Claude-4-Opus, Grok-4, and others.
-              </p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">How is this different from using models individually?</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Instead of asking ChatGPT, then Claude, then others separately, you get all responses at once to compare approaches.
-                Different models excel at different things - one might catch an edge case another missed.
-              </p>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">What editors work?</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Any editor that supports MCP (Model Context Protocol): Claude Code, Cursor, Cline, and others.
-                Setup takes about 30 seconds.
-              </p>
-            </div>
+          <div className="space-y-4">
+            {faqData.map((faq, index) => (
+              <FAQItem
+                key={index}
+                question={faq.question}
+                answer={faq.answer}
+                isOpen={openFAQs.includes(index)}
+                onToggle={() => toggleFAQ(index)}
+              />
+            ))}
           </div>
         </div>
       </section>
