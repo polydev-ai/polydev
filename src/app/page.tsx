@@ -687,41 +687,140 @@ app.post('/login', async (req, res) => {
             </div>
           </div>
 
-          {/* Center - Polydev Engine with Light Beams */}
-          <div className="flex flex-col items-center justify-center relative bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border border-purple-200">
-            {/* Light Beam Animations */}
+          {/* Center - Enhanced Polydev Engine */}
+          <div className="flex flex-col items-center justify-center relative bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50 rounded-lg border border-purple-200 overflow-hidden">
+            {/* Background Particles */}
+            <div className="absolute inset-0">
+              {Array.from({length: 20}).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-1 h-1 bg-blue-400/30 rounded-full animate-pulse"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${Math.random() * 3}s`,
+                    animationDuration: `${2 + Math.random() * 2}s`
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Enhanced Light Beam System */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-32 h-32">
-                {/* Rotating light beams */}
-                <div className="absolute inset-0 animate-spin">
-                  <div className="absolute top-0 left-1/2 w-0.5 h-16 bg-gradient-to-t from-blue-500/50 to-transparent transform -translate-x-1/2"></div>
-                  <div className="absolute bottom-0 left-1/2 w-0.5 h-16 bg-gradient-to-b from-blue-500/50 to-transparent transform -translate-x-1/2"></div>
-                  <div className="absolute left-0 top-1/2 h-0.5 w-16 bg-gradient-to-l from-purple-500/50 to-transparent transform -translate-y-1/2"></div>
-                  <div className="absolute right-0 top-1/2 h-0.5 w-16 bg-gradient-to-r from-purple-500/50 to-transparent transform -translate-y-1/2"></div>
+              <div className="relative w-40 h-40">
+                {/* Primary rotating beams */}
+                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '8s' }}>
+                  <div className="absolute top-0 left-1/2 w-1 h-20 bg-gradient-to-t from-blue-500/70 via-blue-400/50 to-transparent transform -translate-x-1/2 rounded-full"></div>
+                  <div className="absolute bottom-0 left-1/2 w-1 h-20 bg-gradient-to-b from-purple-500/70 via-purple-400/50 to-transparent transform -translate-x-1/2 rounded-full"></div>
+                  <div className="absolute left-0 top-1/2 h-1 w-20 bg-gradient-to-l from-cyan-500/70 via-cyan-400/50 to-transparent transform -translate-y-1/2 rounded-full"></div>
+                  <div className="absolute right-0 top-1/2 h-1 w-20 bg-gradient-to-r from-pink-500/70 via-pink-400/50 to-transparent transform -translate-y-1/2 rounded-full"></div>
                 </div>
 
-                {/* Pulsing rings */}
-                <div className="absolute inset-0 animate-ping">
-                  <div className="absolute inset-8 border-2 border-blue-300/30 rounded-full"></div>
+                {/* Secondary counter-rotating beams */}
+                <div className="absolute inset-0 animate-spin" style={{ animationDuration: '12s', animationDirection: 'reverse' }}>
+                  {Array.from({length: 8}).map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute w-0.5 h-16 bg-gradient-to-t from-indigo-500/40 to-transparent rounded-full"
+                      style={{
+                        top: '50%',
+                        left: '50%',
+                        transform: `translateX(-50%) translateY(-50%) rotate(${i * 45}deg)`,
+                        transformOrigin: 'center bottom'
+                      }}
+                    />
+                  ))}
                 </div>
-                <div className="absolute inset-0 animate-ping delay-300">
-                  <div className="absolute inset-12 border-2 border-purple-300/30 rounded-full"></div>
+
+                {/* Dynamic pulsing rings */}
+                <div className="absolute inset-0">
+                  <div className="absolute inset-4 border-2 border-blue-400/40 rounded-full animate-ping" style={{ animationDuration: '2s' }}></div>
+                  <div className="absolute inset-8 border-2 border-purple-400/40 rounded-full animate-ping" style={{ animationDuration: '3s', animationDelay: '0.5s' }}></div>
+                  <div className="absolute inset-12 border-2 border-cyan-400/40 rounded-full animate-ping" style={{ animationDuration: '4s', animationDelay: '1s' }}></div>
+                </div>
+
+                {/* Energy waves */}
+                <div className="absolute inset-0">
+                  {Array.from({length: 3}).map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute inset-6 border border-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full animate-ping"
+                      style={{
+                        animationDuration: `${2 + i}s`,
+                        animationDelay: `${i * 0.7}s`,
+                        transform: `scale(${1 + i * 0.2})`
+                      }}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Central Engine */}
-            <div className="relative z-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full w-20 h-20 flex items-center justify-center shadow-lg">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <div className="absolute -inset-1 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full opacity-50 animate-pulse"></div>
+            {/* Enhanced Central Core */}
+            <div className="relative z-10 group">
+              {/* Outer glow */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 rounded-full blur-xl animate-pulse"></div>
+
+              {/* Main core */}
+              <div className="relative bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-full w-24 h-24 flex items-center justify-center shadow-2xl border-2 border-white/20">
+                {/* Inner rotating ring */}
+                <div className="absolute inset-2 border-2 border-white/30 rounded-full animate-spin" style={{ animationDuration: '6s' }}>
+                  <div className="absolute top-0 left-1/2 w-1 h-1 bg-white rounded-full transform -translate-x-1/2"></div>
+                  <div className="absolute bottom-0 left-1/2 w-1 h-1 bg-white rounded-full transform -translate-x-1/2"></div>
+                </div>
+
+                {/* Central icon with animation */}
+                <div className="relative z-10 transform transition-transform group-hover:scale-110">
+                  <svg className="w-10 h-10 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+
+                {/* Reflection effect */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-full"></div>
+              </div>
+
+              {/* Orbiting particles */}
+              {Array.from({length: 6}).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-2 h-2 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full"
+                  style={{
+                    animation: `orbit ${3 + i * 0.5}s linear infinite`,
+                    transformOrigin: '50px 50px',
+                    left: '50%',
+                    top: '50%',
+                    transform: `translate(-50%, -50%) rotate(${i * 60}deg) translateX(50px)`
+                  }}
+                />
+              ))}
             </div>
 
-            <div className="mt-4 text-center z-10">
-              <h3 className="font-bold text-gray-900">Polydev Engine</h3>
-              <p className="text-sm text-gray-600">Processing perspectives...</p>
+            {/* Enhanced status display */}
+            <div className="mt-6 text-center z-10 space-y-2">
+              <h3 className="font-bold text-gray-900 text-lg">Polydev Engine</h3>
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <p className="text-sm text-gray-600 font-medium">Processing perspectives...</p>
+              </div>
+              <div className="flex justify-center gap-1">
+                <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                <div className="w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-1 h-1 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
             </div>
+
+            {/* Custom keyframes for orbit animation */}
+            <style jsx>{`
+              @keyframes orbit {
+                from {
+                  transform: translate(-50%, -50%) rotate(0deg) translateX(50px) rotate(0deg);
+                }
+                to {
+                  transform: translate(-50%, -50%) rotate(360deg) translateX(50px) rotate(-360deg);
+                }
+              }
+            `}</style>
           </div>
 
           {/* Right Side - AI Responses */}
