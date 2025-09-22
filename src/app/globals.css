@@ -39,6 +39,11 @@ body {
   backface-visibility: hidden;
 }
 
+/* Prevent layout shifts */
+.typewriter-container {
+  contain: layout;
+}
+
 /* Improved scrolling on mobile */
 html {
   -webkit-overflow-scrolling: touch;

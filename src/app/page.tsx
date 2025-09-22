@@ -137,7 +137,19 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
     return <span></span>
   }
 
-  return <span className={className}>{displayedText}{hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}</span>
+  return (
+    <div className="relative typewriter-container">
+      {/* Invisible full text to reserve space */}
+      <span className={`${className} invisible absolute top-0 left-0 pointer-events-none`} aria-hidden="true">
+        {text}
+      </span>
+      {/* Visible typewriter text */}
+      <span className={className}>
+        {displayedText}
+        {hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}
+      </span>
+    </div>
+  )
 }
 
 // Collapsible FAQ Item
@@ -774,7 +786,7 @@ export default function HomePage() {
                               <span className="text-xs text-emerald-600 ml-1 font-medium">typing</span>
                             </div>
                           </div>
-                          <div className="text-slate-600 text-sm leading-relaxed min-h-[4rem]">
+                          <div className="text-slate-600 text-sm leading-relaxed">
                             <TypewriterText
                               text={response.text}
                               delay={20}
