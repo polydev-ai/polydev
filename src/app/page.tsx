@@ -462,8 +462,8 @@ export default function HomePage() {
           {/* Sophisticated geometric elements */}
           <div className="absolute top-1/3 right-1/3 w-2 h-16 bg-gradient-to-b from-orange-300/20 to-transparent rounded-full hidden lg:block animate-float-delayed"></div>
           <div className="absolute bottom-1/3 left-1/3 w-16 h-2 bg-gradient-to-r from-violet-300/20 to-transparent rounded-full hidden lg:block animate-float"></div>
-          <div className="absolute top-1/2 left-1/4 w-1 h-1 bg-orange-400/40 rounded-full animate-ping hidden sm:block"></div>
-          <div className="absolute top-2/3 right-1/4 w-1 h-1 bg-violet-400/40 rounded-full animate-ping hidden sm:block" style={{animationDelay: '1s'}}></div>
+          <div className="absolute top-1/2 left-1/4 w-1 h-1 bg-orange-400/60 rounded-full hidden sm:block"></div>
+          <div className="absolute top-2/3 right-1/4 w-1 h-1 bg-violet-400/60 rounded-full hidden sm:block"></div>
         </div>
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-4">
@@ -493,7 +493,6 @@ export default function HomePage() {
                 <div className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/80 backdrop-blur-xl border border-orange-200/50 shadow-lg shadow-orange-100/20 hover:shadow-orange-100/40 transition-all duration-300">
                   <div className="relative">
                     <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-                    <div className="absolute inset-0 w-2 h-2 bg-orange-400 rounded-full animate-ping opacity-20"></div>
                   </div>
                   <span className="text-sm font-medium text-slate-700 tracking-wide">Production Ready</span>
                 </div>
@@ -852,7 +851,6 @@ export default function HomePage() {
                   <div className="flex items-center justify-center gap-3 mb-3">
                     <div className="relative">
                       <div className="w-3 h-3 bg-gradient-to-r from-violet-500 to-orange-500 rounded-full animate-spin"></div>
-                      <div className="absolute inset-0 w-3 h-3 bg-gradient-to-r from-violet-300 to-orange-300 rounded-full animate-ping opacity-20"></div>
                     </div>
                     <span className="text-slate-700 font-semibold text-sm">Polydev Engine</span>
                   </div>

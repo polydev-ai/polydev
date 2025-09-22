@@ -32,6 +32,11 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
   -webkit-text-size-adjust: 100%;
+  /* Prevent animation jittering */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Improved scrolling on mobile */
@@ -43,6 +48,10 @@ html {
 
 body {
   overflow-x: hidden;
+  /* Prevent layout shifts */
+  position: relative;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Reduce motion for users who prefer it */
@@ -59,6 +68,13 @@ body {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Optimized fixed elements */
+.fixed {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 /* Smoother transitions for buttons and cards */
@@ -163,6 +179,9 @@ code:not(pre code) {
     backdrop-filter: blur(16px);
     background: rgba(255, 255, 255, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    will-change: backdrop-filter;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
   
   .dark .glass-effect {
@@ -266,31 +285,43 @@ code:not(pre code) {
 
 /* Floating animation keyframes */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -5px, 0);
+  }
 }
 
 @keyframes float-reverse {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(10px); }
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 5px, 0);
+  }
 }
 
 .animate-float {
-  animation: float 4s ease-in-out infinite;
+  animation: float 8s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-float-reverse {
-  animation: float-reverse 5s ease-in-out infinite;
+  animation: float-reverse 10s ease-in-out infinite;
+  will-change: transform;
 }
 
 .animate-float-delayed {
-  animation: float 5s ease-in-out infinite;
-  animation-delay: 2s;
+  animation: float 12s ease-in-out infinite;
+  animation-delay: 4s;
+  will-change: transform;
 }
 
 .animate-float-slow {
-  animation: float 6s ease-in-out infinite;
-  animation-delay: 1s;
+  animation: float 14s ease-in-out infinite;
+  animation-delay: 2s;
+  will-change: transform;
 }
 
 @keyframes bounce-slow {
