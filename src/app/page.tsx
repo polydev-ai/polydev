@@ -834,7 +834,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Code Content */}
-                <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-900 font-mono text-sm leading-relaxed min-h-[400px]">
+                <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-900 font-mono text-sm leading-relaxed min-h-[400px] lg:min-h-[500px]">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
                     <span className="text-red-300 text-xs font-medium uppercase tracking-wider">{currentExample.title}</span>
@@ -844,7 +844,7 @@ export default function HomePage() {
                     {currentExample.problem}
                   </div>
 
-                  <pre className="text-slate-900 whitespace-pre-wrap leading-relaxed">
+                  <pre className="text-slate-900 whitespace-pre-wrap leading-relaxed overflow-x-auto text-xs sm:text-sm">
                     {currentExample.code}
                   </pre>
 
@@ -859,7 +859,7 @@ export default function HomePage() {
               </div>
 
               {/* AI Responses Side */}
-              <div className="bg-gradient-to-br from-white to-slate-50/50 p-6">
+              <div className="bg-gradient-to-br from-white to-slate-50/50 p-6 min-h-[400px] lg:min-h-[500px]">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold text-slate-900">AI Perspectives</h3>
                   <div className="flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full">
@@ -885,7 +885,7 @@ export default function HomePage() {
                               <span className="text-xs text-emerald-600 ml-1 font-medium">typing</span>
                             </div>
                           </div>
-                          <div className="text-slate-600 text-sm leading-relaxed">
+                          <div className="text-slate-600 text-sm leading-relaxed break-words">
                             <TypewriterText
                               text={response.text}
                               delay={20}
