@@ -395,14 +395,8 @@ class AuthHandler:
                 "exp": exp_time
             }, self.secret, algorithm="HS256")
             return {"token": token}
-        return None
-
-    def validate_token(self, token):
-        try:
-            payload = jwt.decode(token, self.secret,
-                              algorithms=["HS256"])
-        except:
-            return None`,
+        # Missing proper error handling and validation
+        # No rate limiting or security context`,
     responses: [
       {
         model: "Claude Opus 4",
