@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { ArrowLeft, Plus, Copy, Trash2, Gift, Calendar, Users, Check } from 'lucide-react'
 
 interface CouponCode {
@@ -31,7 +32,7 @@ interface CouponUsage {
 }
 
 export default function CouponsManagement() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [coupons, setCoupons] = useState<CouponCode[]>([])
@@ -163,7 +164,7 @@ export default function CouponsManagement() {
       await loadData()
     } catch (error) {
       console.error('Error saving coupon:', error)
-      alert('Error saving coupon: ' + error.message)
+      alert('Error saving coupon: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
@@ -184,7 +185,7 @@ export default function CouponsManagement() {
       await loadData()
     } catch (error) {
       console.error('Error deleting coupon:', error)
-      alert('Error deleting coupon: ' + error.message)
+      alert('Error deleting coupon: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
@@ -201,7 +202,7 @@ export default function CouponsManagement() {
       await loadData()
     } catch (error) {
       console.error('Error toggling coupon status:', error)
-      alert('Error updating coupon status: ' + error.message)
+      alert('Error updating coupon status: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 

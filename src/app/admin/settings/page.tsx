@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { ArrowLeft, Save, Settings, Database, Key, Bell, Shield } from 'lucide-react'
 
 interface SystemSettings {
@@ -19,7 +20,7 @@ interface SystemSettings {
 }
 
 export default function AdminSettings() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<SystemSettings>({
@@ -110,7 +111,7 @@ export default function AdminSettings() {
       alert('Settings saved successfully!')
     } catch (error) {
       console.error('Error saving settings:', error)
-      alert('Error saving settings: ' + error.message)
+      alert('Error saving settings: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setSaving(false)
     }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { ArrowLeft, Search, Shield, ShieldCheck, User, Mail, Calendar, CreditCard } from 'lucide-react'
 
 interface UserProfile {
@@ -16,7 +17,7 @@ interface UserProfile {
 }
 
 export default function UserManagement() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<SupabaseUser | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<UserProfile[]>([])
@@ -93,7 +94,7 @@ export default function UserManagement() {
       }
 
       // Try to get subscription data if table exists
-      let subscriptionData = []
+      let subscriptionData: any[] = []
       try {
         const { data: subData } = await supabase
           .from('subscriptions')
@@ -142,7 +143,7 @@ export default function UserManagement() {
       setSelectedUser(null)
     } catch (error) {
       console.error('Error updating admin role:', error)
-      alert('Error updating admin role: ' + error.message)
+      alert('Error updating admin role: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 

@@ -102,10 +102,10 @@ export default function AdminDashboard() {
 
       const [usersResult, subscriptionsResult, creditsResult, modelsResult] = await Promise.allSettled(statsPromises)
 
-      const totalUsers = usersResult.status === 'fulfilled' ? usersResult.value.count : 0
-      const activeSubscriptions = subscriptionsResult.status === 'fulfilled' ? subscriptionsResult.value.count : 0
-      const creditsData = creditsResult.status === 'fulfilled' ? creditsResult.value.data : []
-      const activeModels = modelsResult.status === 'fulfilled' ? modelsResult.value.count : 0
+      const totalUsers = usersResult.status === 'fulfilled' ? (usersResult.value as any).count : 0
+      const activeSubscriptions = subscriptionsResult.status === 'fulfilled' ? (subscriptionsResult.value as any).count : 0
+      const creditsData = creditsResult.status === 'fulfilled' ? (creditsResult.value as any).data : []
+      const activeModels = modelsResult.status === 'fulfilled' ? (modelsResult.value as any).count : 0
 
       const totalCreditsIssued = creditsData.reduce((sum: number, record: any) => sum + (record.amount || 0), 0)
 

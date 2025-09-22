@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { ArrowLeft, Plus, Search, Download, Filter, CreditCard } from 'lucide-react'
 
 interface User {
@@ -23,7 +24,7 @@ interface CreditAdjustment {
 }
 
 export default function CreditManagement() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<SupabaseUser | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<User[]>([])
@@ -178,7 +179,7 @@ export default function CreditManagement() {
       setShowAdjustmentForm(false)
     } catch (error) {
       console.error('Error adjusting credits:', error)
-      alert('Error adjusting credits: ' + error.message)
+      alert('Error adjusting credits: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
@@ -215,7 +216,7 @@ export default function CreditManagement() {
       alert(`Successfully applied bulk adjustment to ${filteredUsers.length} users`)
     } catch (error) {
       console.error('Error with bulk adjustment:', error)
-      alert('Error with bulk adjustment: ' + error.message)
+      alert('Error with bulk adjustment: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 

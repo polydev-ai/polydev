@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { ArrowLeft, Plus, Edit, Trash2, Save, X, Eye, EyeOff } from 'lucide-react'
 
 interface ModelProvider {
@@ -34,7 +35,7 @@ interface ModelMapping {
 }
 
 export default function ModelsManagement() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [providers, setProviders] = useState<ModelProvider[]>([])
@@ -149,7 +150,7 @@ export default function ModelsManagement() {
       await loadData()
     } catch (error) {
       console.error('Error saving provider:', error)
-      alert('Error saving provider: ' + error.message)
+      alert('Error saving provider: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
@@ -170,7 +171,7 @@ export default function ModelsManagement() {
       await loadData()
     } catch (error) {
       console.error('Error deleting provider:', error)
-      alert('Error deleting provider: ' + error.message)
+      alert('Error deleting provider: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
@@ -202,7 +203,7 @@ export default function ModelsManagement() {
       await loadData()
     } catch (error) {
       console.error('Error saving model:', error)
-      alert('Error saving model: ' + error.message)
+      alert('Error saving model: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
@@ -223,7 +224,7 @@ export default function ModelsManagement() {
       await loadData()
     } catch (error) {
       console.error('Error deleting model:', error)
-      alert('Error deleting model: ' + error.message)
+      alert('Error deleting model: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 

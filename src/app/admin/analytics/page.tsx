@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 import { ArrowLeft, TrendingUp, Users, CreditCard, Activity, Download, Calendar } from 'lucide-react'
 
 interface AnalyticsData {
@@ -39,7 +40,7 @@ interface AnalyticsData {
 }
 
 export default function Analytics() {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
@@ -141,7 +142,10 @@ export default function Analytics() {
       }
 
       // Credit Analytics
-      let creditData = { totalIssued: 0, topUsers: [] }
+      let creditData: { totalIssued: number; topUsers: Array<{ email: string; credits: number }> } = {
+        totalIssued: 0,
+        topUsers: []
+      }
       try {
         const { data: creditAdjustments } = await supabase
           .from('admin_credit_adjustments')
