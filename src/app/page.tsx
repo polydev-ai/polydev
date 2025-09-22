@@ -816,7 +816,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Code Content */}
-                <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-900 font-mono text-sm leading-relaxed h-[500px] overflow-y-auto">
+                <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-900 font-mono text-sm leading-relaxed min-h-[400px]">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
                     <span className="text-red-300 text-xs font-medium uppercase tracking-wider">{currentExample.title}</span>
@@ -841,7 +841,7 @@ export default function HomePage() {
               </div>
 
               {/* AI Responses Side */}
-              <div className="bg-gradient-to-br from-white to-slate-50/50 p-6 h-[572px] overflow-y-auto">
+              <div className="bg-gradient-to-br from-white to-slate-50/50 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold text-slate-900">AI Perspectives</h3>
                   <div className="flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full">
