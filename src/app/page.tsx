@@ -299,19 +299,19 @@ const CODE_EXAMPLES = [
       {
         model: "Claude Opus 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "This approach has multiple issues: unnecessary re-renders, scattered state updates, and no optimistic updates. Use useReducer for complex state logic with actions like ADD_ITEM, UPDATE_QUANTITY, APPLY_DISCOUNT. Implement useMemo for expensive calculations and consider using Zustand or Redux Toolkit for global state. Add error boundaries and implement optimistic updates for better UX.",
+        text: "This approach has multiple issues: unnecessary re-renders, scattered state updates, and no optimistic updates. Use useReducer for complex state logic with actions like ADD_ITEM, UPDATE_QUANTITY, APPLY_DISCOUNT. Implement useMemo for expensive calculations and consider using Zustand or Redux Toolkit for global state management.",
         typing: true
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Replace multiple useState with a single useReducer to ensure state consistency. Implement memoization with useMemo for total calculation and useCallback for update functions. Consider using React Query for server state management and local state for UI-only concerns. Add TypeScript interfaces for better type safety and implement proper error handling with React Error Boundaries.",
+        text: "Replace multiple useState with a single useReducer to ensure state consistency. Implement memoization with useMemo for total calculation and useCallback for update functions. Consider using React Query for server state management and local state for UI-only concerns. Add TypeScript interfaces for better type safety.",
         typing: true
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Implement a proper state management solution like Redux Toolkit with RTK Query for API calls, or use Jotai for atomic state management. Add middleware for logging, persistence, and analytics. Implement proper loading states, optimistic updates, and conflict resolution. Consider using Immer for immutable updates and add React DevTools for debugging state changes.",
+        text: "Implement a proper state management solution like Redux Toolkit with RTK Query for API calls, or use Jotai for atomic state management. Add middleware for logging, persistence, and analytics. Implement proper loading states, optimistic updates, and conflict resolution for better user experience.",
         typing: true
       }
     ]
@@ -345,24 +345,25 @@ spec:
         # Missing resource limits and health checks
         # No readiness/liveness probes
         # No security context configured
-        # No graceful shutdown handling`,
+        # No graceful shutdown handling
+        # Missing environment configuration`,
     responses: [
       {
         model: "Claude Opus 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Critical missing configurations: Add resource requests/limits to prevent OOMKilled pods, implement readiness/liveness probes for proper health checking, use specific image tags instead of 'latest' for reproducible deployments, add security context with non-root user, and implement proper graceful shutdown.",
+        text: "Critical missing configurations: Add resource requests/limits to prevent OOMKilled pods, implement readiness/liveness probes for proper health checking, use specific image tags instead of 'latest' for reproducible deployments, add security context with non-root user, and implement proper graceful shutdown handling.",
         typing: true
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Add comprehensive monitoring and observability: resource limits (memory: 512Mi, cpu: 500m), health checks with proper endpoints, pod disruption budgets for high availability, horizontal pod autoscaler based on CPU/memory metrics, and proper labels for monitoring.",
+        text: "Add comprehensive monitoring and observability: resource limits (memory: 512Mi, cpu: 500m), health checks with proper endpoints, pod disruption budgets for high availability, horizontal pod autoscaler based on CPU/memory metrics, and proper labels for monitoring and observability.",
         typing: true
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Implement a complete production-ready configuration: add ConfigMaps and Secrets for configuration management, use NetworkPolicies for security, implement service mesh with Istio for traffic management, add monitoring with Prometheus/Grafana, and use admission controllers for policy enforcement.",
+        text: "Implement a complete production-ready configuration: add ConfigMaps and Secrets for configuration management, use NetworkPolicies for security, implement service mesh with Istio for traffic management, add monitoring with Prometheus/Grafana, and use admission controllers for policy enforcement and governance.",
         typing: true
       }
     ]
@@ -401,19 +402,19 @@ class AuthHandler:
       {
         model: "Claude Opus 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Critical security flaws identified: Replace MD5 with bcrypt for password hashing, use parameterized queries to prevent SQL injection, store secrets in environment variables, implement rate limiting for brute force protection, and add proper JWT expiration.",
+        text: "Critical security flaws identified: Replace MD5 with bcrypt for password hashing, use parameterized queries to prevent SQL injection, store secrets in environment variables, implement rate limiting for brute force protection, and add proper JWT expiration and validation mechanisms.",
         typing: true
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Implement security best practices: use ORM with parameterized queries, bcrypt with salt for passwords, environment-based secret management, proper JWT validation with refresh tokens, add input validation and CSRF protection.",
+        text: "Implement security best practices: use ORM with parameterized queries, bcrypt with salt for passwords, environment-based secret management, proper JWT validation with refresh tokens, add input validation and CSRF protection for comprehensive security coverage.",
         typing: true
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Build production-ready security: implement OAuth2 with PKCE flow, use AWS Cognito or Auth0 for authentication service, add comprehensive audit logging, implement zero-trust architecture with proper session management.",
+        text: "Build production-ready security: implement OAuth2 with PKCE flow, use AWS Cognito or Auth0 for authentication service, add comprehensive audit logging, implement zero-trust architecture with proper session management and monitoring capabilities for full security.",
         typing: true
       }
     ]
@@ -815,7 +816,7 @@ export default function HomePage() {
           </div>
 
           <div className="bg-gradient-to-br from-slate-50/80 via-white to-slate-100/50 rounded-3xl border border-slate-200/60 shadow-2xl shadow-slate-200/50 overflow-hidden backdrop-blur-xl">
-            <div className="grid lg:grid-cols-2 gap-0">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
               {/* Code Editor Side */}
               <div className="relative">
                 {/* Window Controls */}
@@ -834,23 +835,23 @@ export default function HomePage() {
                 </div>
 
                 {/* Code Content */}
-                <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-900 font-mono text-sm leading-relaxed min-h-[400px] lg:min-h-[500px]">
-                  <div className="flex items-center gap-2 mb-4">
+                <div className="p-4 sm:p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-900 font-mono text-sm leading-relaxed h-[450px] sm:h-[500px] lg:h-[580px] overflow-y-auto">
+                  <div className="flex items-center gap-2 mb-3 sm:mb-4">
                     <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
                     <span className="text-red-300 text-xs font-medium uppercase tracking-wider">{currentExample.title}</span>
                   </div>
 
-                  <div className="text-slate-400 mb-4 italic">
+                  <div className="text-slate-400 mb-3 sm:mb-4 italic text-xs sm:text-sm">
                     {currentExample.problem}
                   </div>
 
-                  <pre className="text-slate-900 whitespace-pre-wrap leading-relaxed overflow-x-auto text-xs sm:text-sm">
+                  <pre className="text-slate-900 whitespace-pre-wrap leading-relaxed overflow-x-auto text-xs sm:text-sm flex-1">
                     {currentExample.code}
                   </pre>
 
                   {/* Performance Alert */}
-                  <div className="mt-6 flex items-center gap-2 p-3 bg-red-500/20 border border-red-400/30 rounded-lg">
-                    <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="mt-3 sm:mt-4 flex items-center gap-2 p-2 sm:p-3 bg-red-500/20 border border-red-400/30 rounded-lg">
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
                     <span className="text-red-300 text-xs">Performance issue detected: Multiple state updates causing unnecessary re-renders</span>
@@ -859,7 +860,7 @@ export default function HomePage() {
               </div>
 
               {/* AI Responses Side */}
-              <div className="bg-gradient-to-br from-white to-slate-50/50 p-6 min-h-[400px] lg:min-h-[500px]">
+              <div className="bg-gradient-to-br from-white to-slate-50/50 p-4 sm:p-6 h-[450px] sm:h-[500px] lg:h-[580px] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold text-slate-900">AI Perspectives</h3>
                   <div className="flex items-center gap-2 px-3 py-1 bg-emerald-100 rounded-full">
@@ -868,16 +869,16 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4 h-full flex flex-col">
                   {currentExample.responses.map((response, index) => (
-                    <div key={index} className="relative">
-                      <div className="flex items-start gap-4 p-4 rounded-2xl bg-gradient-to-r from-white to-slate-50/50 border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300">
-                        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-white shadow-sm flex-shrink-0">
+                    <div key={index} className="relative flex-1">
+                      <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-white to-slate-50/50 border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 h-full">
+                        <div className="relative w-6 h-6 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-white shadow-sm flex-shrink-0">
                           <Image src={response.avatar} alt={response.model} fill className="object-contain p-1" />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 h-full flex flex-col">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm font-semibold text-slate-900">{response.model}</span>
+                            <span className="text-xs sm:text-sm font-semibold text-slate-900">{response.model}</span>
                             <div className="flex items-center gap-1">
                               <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce"></div>
                               <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
@@ -885,7 +886,7 @@ export default function HomePage() {
                               <span className="text-xs text-emerald-600 ml-1 font-medium">typing</span>
                             </div>
                           </div>
-                          <div className="text-slate-600 text-sm leading-relaxed break-words">
+                          <div className="text-slate-600 text-xs sm:text-sm leading-relaxed break-words flex-1 overflow-y-auto">
                             <TypewriterText
                               text={response.text}
                               delay={20}
