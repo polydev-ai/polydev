@@ -341,35 +341,94 @@ export default function HomePage() {
 
   const faqData = [
     {
-      question: "How does MCP auto-detect when I'm stuck?",
-      answer: "When you're debugging or need help in Claude Code, Cursor, or Cline, your MCP client automatically sends context to Polydev. No manual requests—it just works when you need it."
+      question: "How do I trigger multiple perspectives?",
+      answer: "You manually ask your MCP-enabled editor (Claude Code, Cursor, Cline) to get perspectives using a tool call. Example: 'Can you get multiple perspectives on debugging this React issue?' Your editor uses the MCP protocol to call Polydev."
     },
     {
-      question: "Do models see my project files?",
-      answer: "Each model sees your entire project context—your files, dependencies, recent changes. They understand what you're actually working on, not just your question."
+      question: "What context do models receive?",
+      answer: "Models receive the context your MCP client provides - typically your current code, error messages, and project context. They see what your editor shares through the MCP protocol, not your entire codebase automatically."
     },
     {
-      question: "Which models respond?",
-      answer: "Free tier: GPT-4, Claude-3-Sonnet, Gemini-Pro. Pro tier: All models including GPT-5, Claude-4-Opus, Grok-4, and 340+ others. You get multiple perspectives from different providers."
+      question: "Which models are available?",
+      answer: "Free tier: 10 credits to try various models. Pro tier: 1,500 credits for GPT-5, Claude Opus 4, Gemini 2.5 Pro (5 credits each), plus faster models like GPT-5 Mini, Claude Haiku, Grok 4 Fast (1 credit each)."
     },
     {
-      question: "How is this different from using models individually?",
-      answer: "Instead of asking ChatGPT, then Claude, then others separately, you get all responses at once to compare approaches. Different models excel at different things—one might catch an edge case another missed."
+      question: "How is this different from using ChatGPT/Claude separately?",
+      answer: "Instead of manually copying your code to different AI chat interfaces, you get multiple model responses in one request through your editor. Save time, compare approaches side-by-side, and get diverse solutions without context switching."
     },
     {
-      question: "What editors work?",
-      answer: "Any editor that supports MCP (Model Context Protocol): Claude Code, Cursor, Cline, and others. Setup takes about 30 seconds."
+      question: "What editors and tools are supported?",
+      answer: "Any MCP-compatible client: Claude Code, Cursor, Cline, and other editors that support the Model Context Protocol. Setup involves adding our MCP server to your editor's configuration."
     },
     {
-      question: "How do Polydev credits work?",
-      answer: "Credits let you get perspectives without adding your own API keys. Fast models (GPT-5 Mini, Claude Haiku, Grok 4 Fast, etc.) cost 1 credit each. Premium models (GPT-5, Claude Opus 4, Gemini 2.5 Pro) cost 5 credits each."
+      question: "How does the credit system work?",
+      answer: "Credits are consumed when you use Polydev's hosted models. Fast models (Claude Haiku, GPT-5 Mini) cost 1 credit. Premium models (Claude Opus 4, GPT-5) cost 5 credits. You can also use your own API keys to bypass credits entirely."
     }
   ]
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
+      {/* Modern Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/20 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-violet-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">P</span>
+              </div>
+              <span className="text-xl font-bold text-slate-900">Polydev</span>
+            </div>
+
+            {/* Navigation Links */}
+            <div className="hidden md:flex items-center gap-8">
+              <Link href="/docs" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">
+                Docs
+              </Link>
+              <Link href="/pricing" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">
+                Pricing
+              </Link>
+              <Link href="/blog" className="text-slate-600 hover:text-slate-900 font-medium transition-colors">
+                Blog
+              </Link>
+              <div className="h-4 w-px bg-slate-300"></div>
+              {isMounted ? (
+                isAuthenticated ? (
+                  <Link
+                    href="/dashboard"
+                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-violet-500 text-white rounded-lg font-medium hover:shadow-lg transition-all duration-300"
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
+                  <Link
+                    href="/auth"
+                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-violet-500 text-white rounded-lg font-medium hover:shadow-lg transition-all duration-300"
+                  >
+                    Sign In
+                  </Link>
+                )
+              ) : (
+                <div className="px-4 py-2 bg-gradient-to-r from-orange-500 to-violet-500 text-white rounded-lg font-medium">
+                  Loading...
+                </div>
+              )}
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <button className="p-2 text-slate-600 hover:text-slate-900 transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero */}
-      <section className={`relative min-h-[40vh] flex items-center justify-center overflow-hidden bg-gradient-to-br ${currentPersonality.theme.bg} transition-all duration-1000`}>
+      <section className={`relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br ${currentPersonality.theme.bg} transition-all duration-1000 pt-16`}>
         {/* Sophisticated background patterns */}
         <div className="absolute inset-0">
           {/* Main gradient mesh */}
@@ -676,25 +735,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Multiple Perspectives Demo */}
+      {/* Interactive Demo Section with Typewriter Effect */}
       <section className="relative py-20 bg-gradient-to-br from-slate-50 via-white to-slate-100/50 overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(15,23,42,0.02)_1px,transparent_1px),linear-gradient(-45deg,rgba(15,23,42,0.02)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-100 text-violet-700 rounded-full text-sm font-medium mb-6">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              See it in action
+            </div>
             <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6">
               Multiple Problems, <span className="bg-gradient-to-r from-violet-600 to-orange-600 bg-clip-text text-transparent">Multiple Perspectives</span>
             </h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-              Watch AI models solve different challenges simultaneously with diverse approaches
+              Watch AI models solve different challenges with diverse approaches in real-time
             </p>
           </div>
-        </div>
-      </section>
 
-      {/* Interactive Demo */}
-      <section className="relative py-20 bg-white overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="bg-gradient-to-br from-slate-50/80 via-white to-slate-100/50 rounded-3xl border border-slate-200/60 shadow-2xl shadow-slate-200/50 overflow-hidden backdrop-blur-xl">
             <div className="grid lg:grid-cols-2 gap-0">
               {/* Code Editor Side */}
@@ -715,10 +775,10 @@ export default function HomePage() {
                 </div>
 
                 {/* Code Content */}
-                <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-100 font-mono text-sm leading-relaxed">
+                <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-100 font-mono text-sm leading-relaxed min-h-[400px]">
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                    <span className="text-blue-300 text-xs font-medium uppercase tracking-wider">{currentExample.title}</span>
+                    <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                    <span className="text-red-300 text-xs font-medium uppercase tracking-wider">{currentExample.title}</span>
                   </div>
 
                   <div className="text-slate-400 mb-4 italic">
@@ -728,29 +788,13 @@ export default function HomePage() {
                   <pre className="text-slate-100 whitespace-pre-wrap leading-relaxed">
                     {currentExample.code}
                   </pre>
-                </div>
 
-                {/* Processing Indicator */}
-                <div className="absolute bottom-6 left-6 right-6">
-                  <div className="flex items-center justify-center p-4 bg-gradient-to-r from-violet-500/90 to-orange-500/90 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div className="w-4 h-4 bg-white/80 rounded-full animate-spin"></div>
-                        <div className="absolute inset-0 w-4 h-4 bg-gradient-to-r from-transparent via-white to-transparent rounded-full animate-ping opacity-20"></div>
-                      </div>
-                      <span className="text-white font-semibold">Polydev Engine</span>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-center">
-                    <span className="text-slate-600 text-sm">Processing perspectives</span>
-                    <div className="flex items-center justify-center gap-2 mt-2">
-                      <span className="text-xs text-slate-500">•</span>
-                      <span className="text-xs text-emerald-600 font-medium">Claude</span>
-                      <span className="text-xs text-slate-500">•</span>
-                      <span className="text-xs text-blue-600 font-medium">GPT-5</span>
-                      <span className="text-xs text-slate-500">•</span>
-                      <span className="text-xs text-orange-600 font-medium">Gemini</span>
-                    </div>
+                  {/* Performance Alert */}
+                  <div className="mt-6 flex items-center gap-2 p-3 bg-red-500/20 border border-red-400/30 rounded-lg">
+                    <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span className="text-red-300 text-xs">Performance issue detected: Multiple state updates causing unnecessary re-renders</span>
                   </div>
                 </div>
               </div>
@@ -769,125 +813,327 @@ export default function HomePage() {
                   {currentExample.responses.map((response, index) => (
                     <div key={index} className="relative">
                       <div className="flex items-start gap-4 p-4 rounded-2xl bg-gradient-to-r from-white to-slate-50/50 border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300">
-                        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-white shadow-sm">
+                        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-white shadow-sm flex-shrink-0">
                           <Image src={response.avatar} alt={response.model} fill className="object-contain p-1" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-sm font-semibold text-slate-900">{response.model}</span>
-                            {response.typing && (
-                              <div className="flex items-center gap-1">
-                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce"></div>
-                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                                <div className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                                <span className="text-xs text-slate-500 ml-1">typing</span>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-1">
+                              <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce"></div>
+                              <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                              <div className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                              <span className="text-xs text-emerald-600 ml-1 font-medium">typing</span>
+                            </div>
                           </div>
-                          <p className="text-slate-600 text-sm leading-relaxed">
-                            {response.text}
-                          </p>
+                          <div className="text-slate-600 text-sm leading-relaxed">
+                            <TypewriterText
+                              text={response.text}
+                              delay={20}
+                              startDelay={index * 1000}
+                              className="block"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Processing Engine */}
+                <div className="mt-6 p-4 bg-gradient-to-r from-violet-500/10 to-orange-500/10 rounded-2xl border border-violet-200/30">
+                  <div className="flex items-center justify-center gap-3 mb-3">
+                    <div className="relative">
+                      <div className="w-3 h-3 bg-gradient-to-r from-violet-500 to-orange-500 rounded-full animate-spin"></div>
+                      <div className="absolute inset-0 w-3 h-3 bg-gradient-to-r from-violet-300 to-orange-300 rounded-full animate-ping opacity-20"></div>
+                    </div>
+                    <span className="text-slate-700 font-semibold text-sm">Polydev Engine</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-slate-600 text-xs">Processing perspectives from multiple models</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Setup Section */}
-      <section className="relative py-16 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Setup</h2>
-            <p className="text-xl text-slate-600">Get started in 30 seconds</p>
+      {/* Enhanced Setup Section */}
+      <section className="relative py-20 bg-gradient-to-br from-slate-50 via-white to-orange-50/30 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(139,69,19,0.03),transparent_50%)]"></div>
+
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-full text-sm font-medium mb-6">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Quick Setup
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6">
+              Get Started in <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">30 Seconds</span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+              Choose your setup method and start getting multiple AI perspectives immediately
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Option 1: CLI Tools */}
+            <div className="bg-gradient-to-br from-white to-emerald-50/30 rounded-3xl border border-emerald-200/60 p-8 shadow-xl hover:shadow-2xl transition-all duration-500">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
+                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900">With CLI tools</h3>
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900">Option 1: CLI Tools</h3>
+                  <p className="text-emerald-600 font-medium">Recommended - Auto-detects when you need help</p>
+                </div>
               </div>
 
-              <p className="text-slate-600 mb-6">If you have Claude Code, Cursor, or Cline, just add this to your MCP config:</p>
+              <div className="space-y-6">
+                <div className="bg-white/80 rounded-2xl p-6 border border-emerald-100">
+                  <h4 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                    Get your token from dashboard
+                  </h4>
+                  <div className="bg-slate-900 rounded-xl p-4 mb-3">
+                    <code className="text-emerald-400 font-mono text-sm">
+                      POLYDEV_USER_TOKEN=pd_your_token_here
+                    </code>
+                  </div>
+                  <p className="text-slate-600 text-sm">Visit <Link href="/auth" className="text-emerald-600 hover:text-emerald-700 font-medium">dashboard</Link> → Settings → Copy your user token</p>
+                </div>
 
-              <div className="bg-slate-900 rounded-xl p-4 mb-6 overflow-x-auto">
-                <code className="text-green-400 font-mono text-sm whitespace-nowrap">
-                  npx polydev-ai@latest polydev-stdio
-                </code>
-              </div>
+                <div className="bg-white/80 rounded-2xl p-6 border border-emerald-100">
+                  <h4 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                    Add to your MCP config
+                  </h4>
 
-              <div className="text-sm text-slate-500 mb-4">Then in your editor:</div>
-              <div className="bg-slate-100 rounded-xl p-4 border-l-4 border-blue-500">
-                <p className="text-slate-800 text-sm italic">
-                  "Can you get multiple perspectives on debugging React re-renders?"
-                </p>
+                  {/* Claude Code */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Image src="https://sajalsharma.com/_astro/claude_code.GbHphWWe_Z29KFWg.webp.jpg" alt="Claude Code" width={16} height={16} className="rounded" />
+                      <span className="font-medium text-slate-700">Claude Code</span>
+                    </div>
+                    <div className="bg-slate-900 rounded-lg p-3 text-xs">
+                      <code className="text-green-400 font-mono">
+{`{
+  "mcpServers": {
+    "polydev": {
+      "command": "npx",
+      "args": ["-y", "polydev-ai@latest", "polydev-stdio"],
+      "env": {"POLYDEV_USER_TOKEN": "pd_your_token_here"}
+    }
+  }
+}`}
+                      </code>
+                    </div>
+                  </div>
+
+                  {/* Cursor */}
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Image src="https://cdn.freelogovectors.net/wp-content/uploads/2025/06/cursor-logo-freelogovectors.net_.png" alt="Cursor" width={16} height={16} className="rounded" />
+                      <span className="font-medium text-slate-700">Cursor</span>
+                    </div>
+                    <div className="bg-slate-900 rounded-lg p-3 text-xs">
+                      <code className="text-green-400 font-mono">
+{`[mcp_servers.polydev]
+command = "npx"
+args = ["-y", "polydev-ai@latest", "polydev-stdio"]
+env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }`}
+                      </code>
+                    </div>
+                  </div>
+
+                  {/* Cline */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Image src="https://cline.bot/assets/branding/logos/cline-wordmark-black.svg" alt="Cline" width={16} height={16} className="rounded" />
+                      <span className="font-medium text-slate-700">Cline</span>
+                    </div>
+                    <div className="bg-slate-900 rounded-lg p-3 text-xs">
+                      <code className="text-green-400 font-mono">
+{`"polydev": {
+  "command": "npx",
+  "args": ["-y", "polydev-ai@latest", "polydev-stdio"],
+  "env": {"POLYDEV_USER_TOKEN": "pd_your_token_here"}
+}`}
+                      </code>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/80 rounded-2xl p-6 border border-emerald-100">
+                  <h4 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                    Ask for perspectives in your editor
+                  </h4>
+                  <div className="bg-emerald-50 rounded-xl p-4 border-l-4 border-emerald-500">
+                    <p className="text-slate-800 font-medium italic">
+                      "Can you get multiple perspectives on optimizing this React component?"
+                    </p>
+                  </div>
+                  <p className="text-slate-600 text-sm mt-2">Your editor will automatically provide context to get relevant advice</p>
+                </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-r from-violet-500 to-purple-500 rounded-xl flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            {/* Option 2: API Keys */}
+            <div className="bg-gradient-to-br from-white to-violet-50/30 rounded-3xl border border-violet-200/60 p-8 shadow-xl hover:shadow-2xl transition-all duration-500">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1721 9z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-slate-900">With API keys</h3>
-              </div>
-
-              <p className="text-slate-600 mb-6">No CLI tools? Add your own API keys at the dashboard:</p>
-
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">1</span>
-                  <span className="text-slate-700">Visit the dashboard</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">2</span>
-                  <span className="text-slate-700">Add API keys for OpenAI, Anthropic, etc.</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-semibold">3</span>
-                  <span className="text-slate-700">Use the MCP tool in your editor</span>
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900">Option 2: API Keys</h3>
+                  <p className="text-violet-600 font-medium">Use your own API keys for unlimited access</p>
                 </div>
               </div>
 
-              <Link
-                href="/auth"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl font-medium hover:from-violet-600 hover:to-purple-600 transition-all duration-300"
-              >
-                Go to Dashboard
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              <div className="space-y-6">
+                <div className="bg-white/80 rounded-2xl p-6 border border-violet-100">
+                  <h4 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-violet-500 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                    Get API keys from providers
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                      <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={20} height={20} />
+                      <span className="text-sm font-medium text-slate-700">OpenAI</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                      <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" width={20} height={20} />
+                      <span className="text-sm font-medium text-slate-700">Anthropic</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                      <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" width={20} height={20} />
+                      <span className="text-sm font-medium text-slate-700">Google AI</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                      <Image src="https://models.dev/logos/xai.svg" alt="xAI" width={20} height={20} />
+                      <span className="text-sm font-medium text-slate-700">xAI</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/80 rounded-2xl p-6 border border-violet-100">
+                  <h4 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-violet-500 text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                    Add them to your dashboard
+                  </h4>
+                  <p className="text-slate-600 mb-4">Save your API keys securely in the Polydev dashboard</p>
+                  <div className="bg-violet-50 rounded-xl p-4 border border-violet-200">
+                    <div className="flex items-center gap-2 text-violet-700">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.414-4.414a2 2 0 00-2.828 0L4 12v4h4l7.586-7.586a2 2 0 000-2.828z" />
+                      </svg>
+                      <span className="font-medium text-sm">Dashboard → Settings → API Keys</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white/80 rounded-2xl p-6 border border-violet-100">
+                  <h4 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <span className="w-6 h-6 bg-violet-500 text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                    Configure MCP (optional token)
+                  </h4>
+                  <div className="bg-slate-900 rounded-xl p-4 mb-3">
+                    <code className="text-violet-400 font-mono text-sm">
+                      npx polydev-ai@latest polydev-stdio
+                    </code>
+                  </div>
+                  <p className="text-slate-600 text-sm">No token needed - uses your dashboard API keys automatically</p>
+                </div>
+
+                <Link
+                  href="/auth"
+                  className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-2xl font-semibold text-lg hover:from-violet-600 hover:to-purple-600 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1721 9z" />
+                  </svg>
+                  Go to Dashboard
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Memory Instructions */}
+          <div className="mt-16 bg-gradient-to-br from-orange-50 to-yellow-50/50 rounded-3xl border border-orange-200/60 p-8 shadow-lg">
+            <div className="text-center mb-8">
+              <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
-              </Link>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">Pro Tip: Add Memory Instructions</h3>
+              <p className="text-slate-600 max-w-2xl mx-auto">Add this to your MCP client's memory to automatically trigger perspectives when needed</p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 border border-orange-200/60">
+              <h4 className="font-semibold text-slate-900 mb-4">Add to Claude Code/Cursor/Cline Memory:</h4>
+              <div className="bg-slate-900 rounded-xl p-4">
+                <code className="text-orange-400 font-mono text-sm leading-relaxed whitespace-pre-wrap">
+{`When I'm struggling with a coding problem, debugging an issue, or need different approaches to solve something, automatically use the get_perspectives tool from Polydev MCP to get multiple AI model responses. This helps me see different solutions and pick the best approach.
+
+Examples when to use:
+- "This React component is re-rendering too much"
+- "My API is slow, how can I optimize it?"
+- "I'm getting this error and can't figure it out"
+- "What's the best way to implement this feature?"
+
+Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other models simultaneously.`}
+                </code>
+              </div>
+              <p className="text-slate-600 text-sm mt-3">This helps your editor know when to automatically call Polydev for multiple perspectives</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="relative py-16 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Pricing</h2>
-            <p className="text-xl text-slate-600">Simple, transparent pricing</p>
+      {/* Enhanced Pricing Section */}
+      <section className="relative py-20 bg-gradient-to-br from-white via-slate-50/20 to-violet-50/30 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(139,69,19,0.03),transparent_50%)]"></div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium mb-6">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+              </svg>
+              Simple Pricing
+            </div>
+            <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6">
+              Pay for <span className="bg-gradient-to-r from-emerald-600 to-violet-600 bg-clip-text text-transparent">What You Use</span>
+            </h2>
+            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
+              Choose credits for convenience or use your own API keys for unlimited access
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-2xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16">
+            {/* Free Tier */}
+            <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-3xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-500">
               <div className="text-center mb-8">
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">Free</h3>
+                <div className="w-12 h-12 bg-gradient-to-r from-slate-500 to-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Free</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$0</div>
-                <div className="text-slate-600">per month</div>
+                <div className="text-slate-600">Try before you buy</div>
               </div>
 
               <ul className="space-y-4 mb-8">
@@ -901,39 +1147,45 @@ export default function HomePage() {
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Use your own API keys</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
                   <span className="text-slate-700">MCP integration</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">CLI tool detection</span>
+                  <span className="text-slate-700">All fast models</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">Use your own API keys</span>
                 </li>
               </ul>
 
               <Link
                 href="/auth"
-                className="w-full block text-center px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-xl font-medium hover:border-slate-400 hover:bg-slate-50 transition-all duration-300"
+                className="w-full block text-center px-6 py-4 border-2 border-slate-300 text-slate-700 rounded-2xl font-semibold hover:border-slate-400 hover:bg-slate-50 transition-all duration-300"
               >
-                Get Started
+                Get Started Free
               </Link>
             </div>
 
-            <div className="bg-gradient-to-br from-violet-50 to-orange-50/50 rounded-2xl border-2 border-violet-200/60 p-8 shadow-xl hover:shadow-2xl transition-all duration-300 relative">
+            {/* Pro Tier */}
+            <div className="bg-gradient-to-br from-violet-50 to-orange-50/50 rounded-3xl border-2 border-violet-300/60 p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 relative scale-105">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <span className="bg-gradient-to-r from-violet-500 to-orange-500 text-white px-4 py-1 rounded-full text-sm font-medium">
+                <span className="bg-gradient-to-r from-violet-500 to-orange-500 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
                   Most Popular
                 </span>
               </div>
 
               <div className="text-center mb-8">
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">Pro</h3>
+                <div className="w-12 h-12 bg-gradient-to-r from-violet-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Pro</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$25</div>
                 <div className="text-slate-600">1,500 credits included</div>
               </div>
@@ -949,71 +1201,177 @@ export default function HomePage() {
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">All models (no API keys needed)</span>
+                  <span className="text-slate-700">All premium models</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">CLI tool integration</span>
+                  <span className="text-slate-700">Priority processing</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Additional credits: 500 for $10</span>
+                  <span className="text-slate-700">Extra credits: 500 for $10</span>
                 </li>
               </ul>
 
               <Link
                 href="/auth"
-                className="w-full block text-center px-6 py-3 bg-gradient-to-r from-violet-500 to-orange-500 text-white rounded-xl font-medium hover:from-violet-600 hover:to-orange-600 transition-all duration-300"
+                className="w-full block text-center px-6 py-4 bg-gradient-to-r from-violet-500 to-orange-500 text-white rounded-2xl font-bold text-lg hover:from-violet-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl"
               >
-                Upgrade
+                Upgrade to Pro
               </Link>
+            </div>
+
+            {/* Enterprise/Custom */}
+            <div className="bg-gradient-to-br from-white to-emerald-50/30 rounded-3xl border border-emerald-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-500">
+              <div className="text-center mb-8">
+                <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Enterprise</h3>
+                <div className="text-4xl font-bold text-slate-900 mb-1">Custom</div>
+                <div className="text-slate-600">Unlimited everything</div>
+              </div>
+
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">Unlimited credits</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">Custom model integrations</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">Private deployment</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">24/7 dedicated support</span>
+                </li>
+              </ul>
+
+              <button className="w-full px-6 py-4 border-2 border-emerald-300 text-emerald-700 rounded-2xl font-semibold hover:border-emerald-400 hover:bg-emerald-50 transition-all duration-300">
+                Contact Sales
+              </button>
             </div>
           </div>
 
-          {/* Credit Pricing Details */}
-          <div className="mt-16 bg-gradient-to-br from-slate-50 to-white rounded-2xl border border-slate-200/60 p-8 shadow-lg">
-            <div className="text-center mb-8">
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">Credit Pricing</h3>
-              <p className="text-slate-600">Different models cost different amounts of credits</p>
+          {/* Credit Breakdown */}
+          <div className="bg-gradient-to-br from-slate-50 to-white rounded-3xl border border-slate-200/60 p-8 shadow-xl">
+            <div className="text-center mb-12">
+              <h3 className="text-3xl font-bold text-slate-900 mb-4">Credit Breakdown</h3>
+              <p className="text-xl text-slate-600">Different models, different costs. Choose what works for your needs.</p>
             </div>
 
             <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-white rounded-xl border border-slate-200/60 p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                    <span className="text-emerald-600 font-bold text-sm">1</span>
+              <div className="bg-white rounded-2xl border border-slate-200/60 p-8 shadow-lg">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
+                    <span className="text-emerald-600 font-bold text-xl">1</span>
                   </div>
-                  <h4 className="text-lg font-semibold text-slate-900">1 Credit Models</h4>
+                  <div>
+                    <h4 className="text-xl font-bold text-slate-900">Fast Models</h4>
+                    <p className="text-slate-600">1 credit per perspective</p>
+                  </div>
                 </div>
-                <ul className="space-y-2 text-slate-600">
-                  <li>• GPT-5 Mini</li>
-                  <li>• Claude Haiku</li>
-                  <li>• Grok 4 Fast</li>
-                  <li>• Google Flash 2.5</li>
-                  <li>• GLM 4.5</li>
-                  <li>• Qwen 3 Coder</li>
-                  <li>• Kimi K2</li>
-                </ul>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">GPT-5 Mini</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Claude Haiku</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Grok 4 Fast</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Gemini Flash</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">GLM 4.5</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Qwen Coder</div>
+                  </div>
+                </div>
               </div>
 
-              <div className="bg-white rounded-xl border border-slate-200/60 p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
-                    <span className="text-violet-600 font-bold text-sm">5</span>
+              <div className="bg-white rounded-2xl border border-violet-200/60 p-8 shadow-lg">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center">
+                    <span className="text-violet-600 font-bold text-xl">5</span>
                   </div>
-                  <h4 className="text-lg font-semibold text-slate-900">5 Credit Models</h4>
+                  <div>
+                    <h4 className="text-xl font-bold text-slate-900">Premium Models</h4>
+                    <p className="text-slate-600">5 credits per perspective</p>
+                  </div>
                 </div>
-                <ul className="space-y-2 text-slate-600">
-                  <li>• GPT-5</li>
-                  <li>• Claude Opus 4</li>
-                  <li>• Claude Sonnet 4</li>
-                  <li>• Gemini 2.5 Pro</li>
-                  <li>• Grok 4</li>
-                </ul>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-violet-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">GPT-5</div>
+                  </div>
+                  <div className="bg-violet-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Claude Opus 4</div>
+                  </div>
+                  <div className="bg-violet-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Claude Sonnet 4</div>
+                  </div>
+                  <div className="bg-violet-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Gemini 2.5 Pro</div>
+                  </div>
+                  <div className="bg-violet-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Grok 4</div>
+                  </div>
+                  <div className="bg-violet-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">o1-preview</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Value Proposition */}
+            <div className="mt-12 grid md:grid-cols-3 gap-6">
+              <div className="text-center p-6 bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-2xl">
+                <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h5 className="font-semibold text-slate-900 mb-2">Save Time</h5>
+                <p className="text-sm text-slate-600">Get multiple perspectives in one request vs. querying each model separately</p>
+              </div>
+              <div className="text-center p-6 bg-gradient-to-br from-violet-50 to-violet-100/50 rounded-2xl">
+                <div className="w-8 h-8 bg-violet-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                  </svg>
+                </div>
+                <h5 className="font-semibold text-slate-900 mb-2">Cost Effective</h5>
+                <p className="text-sm text-slate-600">One credit can cost less than a single API call to premium models</p>
+              </div>
+              <div className="text-center p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-2xl">
+                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h5 className="font-semibold text-slate-900 mb-2">Better Results</h5>
+                <p className="text-sm text-slate-600">Compare approaches and choose the best solution for your specific case</p>
               </div>
             </div>
           </div>
@@ -1042,16 +1400,97 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative py-4 bg-gradient-to-br from-white via-slate-50/20 to-white overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-8">
-              <Link href="/docs" className="text-slate-600 hover:text-slate-900 transition-colors">Docs</Link>
-              <Link href="/auth" className="text-slate-600 hover:text-slate-900 transition-colors">Dashboard</Link>
-              <Link href="https://github.com/polydev-ai/perspectives-mcp" className="text-slate-600 hover:text-slate-900 transition-colors">GitHub</Link>
+      {/* Modern Footer */}
+      <footer className="relative py-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
+        {/* Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.1),transparent_70%)]"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+            {/* Brand */}
+            <div className="md:col-span-1">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-violet-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">P</span>
+                </div>
+                <span className="text-xl font-bold">Polydev</span>
+              </div>
+              <p className="text-slate-400 leading-relaxed mb-6">
+                Multi-model intelligence in your workflow. Get unstuck faster with diverse AI perspectives.
+              </p>
+              <div className="flex items-center gap-4">
+                <Link
+                  href="https://github.com/polydev-ai/perspectives-mcp"
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                  </svg>
+                </Link>
+                <Link
+                  href="https://discord.gg/polydev"
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419-.0190 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1568 2.4189Z"/>
+                  </svg>
+                </Link>
+              </div>
             </div>
-            <p className="text-slate-500 text-sm">© 2025 Polydev AI. Get unstuck faster.</p>
+
+            {/* Products */}
+            <div>
+              <h3 className="font-semibold text-white mb-4">Product</h3>
+              <ul className="space-y-3">
+                <li><Link href="/docs" className="text-slate-400 hover:text-white transition-colors">Documentation</Link></li>
+                <li><Link href="/pricing" className="text-slate-400 hover:text-white transition-colors">Pricing</Link></li>
+                <li><Link href="/dashboard" className="text-slate-400 hover:text-white transition-colors">Dashboard</Link></li>
+                <li><Link href="/api" className="text-slate-400 hover:text-white transition-colors">API</Link></li>
+              </ul>
+            </div>
+
+            {/* Resources */}
+            <div>
+              <h3 className="font-semibold text-white mb-4">Resources</h3>
+              <ul className="space-y-3">
+                <li><Link href="/blog" className="text-slate-400 hover:text-white transition-colors">Blog</Link></li>
+                <li><Link href="/examples" className="text-slate-400 hover:text-white transition-colors">Examples</Link></li>
+                <li><Link href="/changelog" className="text-slate-400 hover:text-white transition-colors">Changelog</Link></li>
+                <li><Link href="/status" className="text-slate-400 hover:text-white transition-colors">Status</Link></li>
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div>
+              <h3 className="font-semibold text-white mb-4">Company</h3>
+              <ul className="space-y-3">
+                <li><Link href="/about" className="text-slate-400 hover:text-white transition-colors">About</Link></li>
+                <li><Link href="/privacy" className="text-slate-400 hover:text-white transition-colors">Privacy</Link></li>
+                <li><Link href="/terms" className="text-slate-400 hover:text-white transition-colors">Terms</Link></li>
+                <li><Link href="/support" className="text-slate-400 hover:text-white transition-colors">Support</Link></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-slate-400 text-sm">
+              © 2025 Polydev AI. All rights reserved.
+            </p>
+            <div className="flex items-center gap-2 text-sm text-slate-400">
+              <span>Built with</span>
+              <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
+              <span>by developers, for developers</span>
+            </div>
           </div>
         </div>
       </footer>
