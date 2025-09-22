@@ -350,19 +350,19 @@ spec:
       {
         model: "Claude Opus 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Critical missing configurations: Add resource requests/limits to prevent OOMKilled pods, implement readiness/liveness probes for proper health checking, use specific image tags instead of 'latest' for reproducible deployments, add security context with non-root user, and implement proper graceful shutdown with terminationGracePeriodSeconds. Consider using init containers for setup tasks.",
+        text: "Critical missing configurations: Add resource requests/limits to prevent OOMKilled pods, implement readiness/liveness probes for proper health checking, use specific image tags instead of 'latest' for reproducible deployments, add security context with non-root user, and implement proper graceful shutdown.",
         typing: true
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Add comprehensive monitoring and observability: resource limits (memory: 512Mi, cpu: 500m), health checks with proper endpoints, pod disruption budgets for high availability, horizontal pod autoscaler based on CPU/memory metrics, and proper labels for monitoring. Implement rolling update strategy with maxSurge and maxUnavailable settings for zero-downtime deployments.",
+        text: "Add comprehensive monitoring and observability: resource limits (memory: 512Mi, cpu: 500m), health checks with proper endpoints, pod disruption budgets for high availability, horizontal pod autoscaler based on CPU/memory metrics, and proper labels for monitoring.",
         typing: true
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Implement a complete production-ready configuration: add ConfigMaps and Secrets for configuration management, use NetworkPolicies for security, implement service mesh with Istio for traffic management, add monitoring with Prometheus/Grafana, use admission controllers for policy enforcement, and implement GitOps workflow with ArgoCD for automated deployments.",
+        text: "Implement a complete production-ready configuration: add ConfigMaps and Secrets for configuration management, use NetworkPolicies for security, implement service mesh with Istio for traffic management, add monitoring with Prometheus/Grafana, and use admission controllers for policy enforcement.",
         typing: true
       }
     ]
@@ -403,19 +403,19 @@ class AuthHandler:
       {
         model: "Claude Opus 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Critical security flaws identified: Replace MD5 with bcrypt for password hashing, use parameterized queries to prevent SQL injection, store secrets in environment variables, implement rate limiting for brute force protection, and add proper JWT expiration. Consider implementing OAuth2 for better authentication flow.",
+        text: "Critical security flaws identified: Replace MD5 with bcrypt for password hashing, use parameterized queries to prevent SQL injection, store secrets in environment variables, implement rate limiting for brute force protection, and add proper JWT expiration.",
         typing: true
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Implement security best practices: use ORM with parameterized queries, bcrypt with salt for passwords, environment-based secret management, proper JWT validation with refresh tokens, add input validation and CSRF protection. Implement secure headers and comprehensive audit logging.",
+        text: "Implement security best practices: use ORM with parameterized queries, bcrypt with salt for passwords, environment-based secret management, proper JWT validation with refresh tokens, add input validation and CSRF protection.",
         typing: true
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Build production-ready security: implement OAuth2 with PKCE flow, use AWS Cognito or Auth0 for authentication service, add comprehensive audit logging, implement zero-trust architecture with proper session management. Use secrets management systems like HashiCorp Vault for sensitive data.",
+        text: "Build production-ready security: implement OAuth2 with PKCE flow, use AWS Cognito or Auth0 for authentication service, add comprehensive audit logging, implement zero-trust architecture with proper session management.",
         typing: true
       }
     ]
