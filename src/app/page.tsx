@@ -275,6 +275,7 @@ const CODE_EXAMPLES = [
   const [loading, setLoading] = useState(false);
   const [discounts, setDiscounts] = useState({});
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Recalculating total on every render - expensive
@@ -283,12 +284,15 @@ const CODE_EXAMPLES = [
       return sum + (item.price * item.quantity * (1 - discount));
     }, 0);
     setTotal(newTotal);
+    // Missing dependency array optimization
   }, [items, discounts]);
 
   const updateQuantity = (id, quantity) => {
+    // No error handling or validation
     setItems(prev => prev.map(item =>
       item.id === id ? { ...item, quantity } : item
     ));
+    // No optimistic updates or loading states
   };
 }`,
     responses: [
@@ -390,6 +394,7 @@ class AuthHandler:
                 "role": user.role
             }, self.secret, algorithm="HS256")
             return {"token": token, "user": user.username}
+        # No error logging or monitoring
         return None`,
     responses: [
       {
