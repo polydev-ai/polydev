@@ -900,18 +900,6 @@ export default function HomePage() {
                   ))}
                 </div>
 
-                {/* Processing Engine */}
-                <div className="mt-6 p-4 bg-gradient-to-r from-violet-500/10 to-orange-500/10 rounded-2xl border border-violet-200/30">
-                  <div className="flex items-center justify-center gap-3 mb-3">
-                    <div className="relative">
-                      <div className="w-3 h-3 bg-gradient-to-r from-violet-500 to-orange-500 rounded-full animate-spin"></div>
-                    </div>
-                    <span className="text-slate-700 font-semibold text-sm">Polydev Engine</span>
-                  </div>
-                  <div className="text-center">
-                    <span className="text-slate-600 text-xs">Processing perspectives from multiple models</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -1415,31 +1403,47 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
         </div>
       </section>
 
-      {/* Modern Footer */}
-      <footer className="relative py-16 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.1),transparent_70%)]"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
-        </div>
+      {/* Simple Footer */}
+      <footer className="bg-slate-900 text-white py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+            {/* Product */}
+            <div>
+              <h3 className="font-semibold text-white mb-3 text-sm">Product</h3>
+              <ul className="space-y-2">
+                <li><Link href="/docs" className="text-slate-400 hover:text-white transition-colors text-sm">Documentation</Link></li>
+                <li><Link href="/pricing" className="text-slate-400 hover:text-white transition-colors text-sm">Pricing</Link></li>
+                <li><Link href="/dashboard" className="text-slate-400 hover:text-white transition-colors text-sm">Dashboard</Link></li>
+              </ul>
+            </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-            {/* Brand */}
-            <div className="sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-violet-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">P</span>
-                </div>
-                <span className="text-xl font-bold">Polydev</span>
-              </div>
-              <p className="text-slate-400 leading-relaxed mb-6 text-sm sm:text-base">
-                Multi-model intelligence in your workflow. Get unstuck faster with diverse AI perspectives.
-              </p>
-              <div className="flex items-center gap-4 justify-center sm:justify-start">
+            {/* Resources */}
+            <div>
+              <h3 className="font-semibold text-white mb-3 text-sm">Resources</h3>
+              <ul className="space-y-2">
+                <li><Link href="/blog" className="text-slate-400 hover:text-white transition-colors text-sm">Blog</Link></li>
+                <li><Link href="/changelog" className="text-slate-400 hover:text-white transition-colors text-sm">Changelog</Link></li>
+                <li><Link href="/examples" className="text-slate-400 hover:text-white transition-colors text-sm">Examples</Link></li>
+              </ul>
+            </div>
+
+            {/* Company */}
+            <div>
+              <h3 className="font-semibold text-white mb-3 text-sm">Company</h3>
+              <ul className="space-y-2">
+                <li><Link href="/about" className="text-slate-400 hover:text-white transition-colors text-sm">About</Link></li>
+                <li><Link href="/privacy" className="text-slate-400 hover:text-white transition-colors text-sm">Privacy</Link></li>
+                <li><Link href="/terms" className="text-slate-400 hover:text-white transition-colors text-sm">Terms</Link></li>
+              </ul>
+            </div>
+
+            {/* Social */}
+            <div>
+              <h3 className="font-semibold text-white mb-3 text-sm">Connect</h3>
+              <div className="flex items-center gap-3">
                 <Link
                   href="https://github.com/polydev-ai/perspectives-mcp"
-                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors"
+                  className="text-slate-400 hover:text-white transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -1449,7 +1453,7 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                 </Link>
                 <Link
                   href="https://discord.gg/polydev"
-                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors"
+                  className="text-slate-400 hover:text-white transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -1459,53 +1463,21 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                 </Link>
               </div>
             </div>
-
-            {/* Products */}
-            <div className="text-center sm:text-left">
-              <h3 className="font-semibold text-white mb-4 text-base">Product</h3>
-              <ul className="space-y-3">
-                <li><Link href="/docs" className="text-slate-400 hover:text-white transition-colors text-sm">Documentation</Link></li>
-                <li><Link href="/pricing" className="text-slate-400 hover:text-white transition-colors text-sm">Pricing</Link></li>
-                <li><Link href="/dashboard" className="text-slate-400 hover:text-white transition-colors text-sm">Dashboard</Link></li>
-                <li><Link href="/api" className="text-slate-400 hover:text-white transition-colors text-sm">API</Link></li>
-              </ul>
-            </div>
-
-            {/* Resources */}
-            <div className="text-center sm:text-left">
-              <h3 className="font-semibold text-white mb-4 text-base">Resources</h3>
-              <ul className="space-y-3">
-                <li><Link href="/blog" className="text-slate-400 hover:text-white transition-colors text-sm">Blog</Link></li>
-                <li><Link href="/examples" className="text-slate-400 hover:text-white transition-colors text-sm">Examples</Link></li>
-                <li><Link href="/changelog" className="text-slate-400 hover:text-white transition-colors text-sm">Changelog</Link></li>
-                <li><Link href="/status" className="text-slate-400 hover:text-white transition-colors text-sm">Status</Link></li>
-              </ul>
-            </div>
-
-            {/* Company */}
-            <div className="text-center sm:text-left">
-              <h3 className="font-semibold text-white mb-4 text-base">Company</h3>
-              <ul className="space-y-3">
-                <li><Link href="/about" className="text-slate-400 hover:text-white transition-colors text-sm">About</Link></li>
-                <li><Link href="/privacy" className="text-slate-400 hover:text-white transition-colors text-sm">Privacy</Link></li>
-                <li><Link href="/terms" className="text-slate-400 hover:text-white transition-colors text-sm">Terms</Link></li>
-                <li><Link href="/support" className="text-slate-400 hover:text-white transition-colors text-sm">Support</Link></li>
-              </ul>
-            </div>
           </div>
 
           {/* Bottom Bar */}
-          <div className="pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-            <p className="text-slate-400 text-xs sm:text-sm">
+          <div className="flex flex-col md:flex-row-reverse items-center justify-between pt-6 border-t border-slate-800 gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-gradient-to-r from-orange-500 to-violet-500 rounded-md flex items-center justify-center">
+                  <span className="text-white font-bold text-xs">P</span>
+                </div>
+                <span className="text-white font-semibold text-sm">Polydev</span>
+              </div>
+            </div>
+            <p className="text-slate-400 text-sm">
               © 2025 Polydev AI. All rights reserved.
             </p>
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-400">
-              <span>Built with</span>
-              <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-              <span>by developers, for developers</span>
-            </div>
           </div>
         </div>
       </footer>
