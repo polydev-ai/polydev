@@ -45,6 +45,34 @@ export default function AdminDashboard() {
     loadAdminData()
   }, [])
 
+  // Debug effect to catch objects with test and timestamp
+  useEffect(() => {
+    const debugObjects = () => {
+      // Log all state variables to see if any have {test, timestamp} structure
+      console.log('DEBUG: Checking for objects with test/timestamp keys')
+      console.log('stats:', stats)
+      console.log('recentActivity:', recentActivity)
+      console.log('backfillResult:', backfillResult)
+      console.log('syncStatus:', syncStatus)
+      console.log('syncResult:', syncResult)
+
+      // Check if any variables have test and timestamp properties
+      const checkObject = (obj: any, name: string) => {
+        if (obj && typeof obj === 'object' && obj.hasOwnProperty('test') && obj.hasOwnProperty('timestamp')) {
+          console.error(`FOUND PROBLEMATIC OBJECT in ${name}:`, obj)
+        }
+      }
+
+      checkObject(stats, 'stats')
+      checkObject(backfillResult, 'backfillResult')
+      checkObject(syncStatus, 'syncStatus')
+      checkObject(syncResult, 'syncResult')
+      recentActivity.forEach((activity, index) => checkObject(activity, `recentActivity[${index}]`))
+    }
+
+    debugObjects()
+  }, [stats, recentActivity, backfillResult, syncStatus, syncResult])
+
   async function checkAdminAccess() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
