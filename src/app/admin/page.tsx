@@ -372,12 +372,12 @@ export default function AdminDashboard() {
               <div className="space-y-2">
                 <div>
                   <h4 className="text-sm font-medium text-gray-900">Status</h4>
-                  <pre className="text-xs p-2 rounded bg-gray-50 overflow-x-auto">{JSON.stringify(syncStatus, null, 2)}</pre>
+                  <pre className="text-xs p-2 rounded bg-gray-50 overflow-x-auto">{syncStatus ? JSON.stringify(syncStatus, null, 2) : 'Loading...'}</pre>
                 </div>
                 {syncResult && (
                   <div>
                     <h4 className="text-sm font-medium text-gray-900">Last Result</h4>
-                    <pre className="text-xs p-2 rounded bg-gray-50 overflow-x-auto">{JSON.stringify(syncResult, null, 2)}</pre>
+                    <pre className="text-xs p-2 rounded bg-gray-50 overflow-x-auto">{syncResult ? JSON.stringify(syncResult, null, 2) : 'No result yet'}</pre>
                   </div>
                 )}
               </div>
