@@ -374,45 +374,49 @@ spec:
     problem: "// Authentication system with security flaws",
     code: `import hashlib
 import jwt
-from datetime import datetime
 
 class AuthHandler:
     def __init__(self):
-        self.secret = "mysecret123"  # Hardcoded secret - security risk
+        self.secret = "mysecret123"  # Hardcoded secret
         self.failed_attempts = {}
 
     def login(self, username, password):
-        # No rate limiting - brute force vulnerable
         # SQL injection vulnerable
         query = f"SELECT * FROM users WHERE username='{username}' AND password='{hashlib.md5(password.encode()).hexdigest()}'"
         user = db.execute(query)
 
         if user:
-            # Weak JWT implementation
             token = jwt.encode({
                 "user_id": user.id,
-                "role": user.role
+                "role": user.role,
+                "exp": datetime.utcnow() + timedelta(hours=24)
             }, self.secret, algorithm="HS256")
-            return {"token": token, "user": user.username}
-        # No error logging or monitoring
-        return None`,
+            return {"token": token}
+        return None
+
+    def validate_token(self, token):
+        try:
+            payload = jwt.decode(token, self.secret, algorithms=["HS256"])
+            return payload
+        except:
+            return None`,
     responses: [
       {
         model: "Claude Opus 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Multiple critical security vulnerabilities: Use parameterized queries to prevent SQL injection, replace MD5 with bcrypt/scrypt for password hashing, store secrets in environment variables or secret management systems, implement rate limiting to prevent brute force attacks, add proper session management with secure cookies, and use HTTPS only. Consider implementing OAuth2/OIDC for authentication.",
+        text: "Critical security flaws identified: Replace MD5 with bcrypt for password hashing, use parameterized queries to prevent SQL injection, store secrets in environment variables, implement rate limiting for brute force protection, and add proper JWT expiration. Consider implementing OAuth2 for better authentication flow.",
         typing: true
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Implement comprehensive security measures: use ORM with parameterized queries, bcrypt with salt for password hashing, environment-based secret management, JWT with proper expiration and refresh tokens, implement CSRF protection, add input validation and sanitization, use secure headers (HSTS, CSP), and implement proper logging for security events. Add MFA for additional security.",
+        text: "Implement security best practices: use ORM with parameterized queries, bcrypt with salt for passwords, environment-based secret management, proper JWT validation with refresh tokens, add input validation and CSRF protection. Implement secure headers and comprehensive audit logging.",
         typing: true
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Build a production-grade security system: implement OAuth2 with PKCE, use AWS Cognito or Auth0 for authentication service, add comprehensive audit logging, implement zero-trust architecture, use secrets management (HashiCorp Vault, AWS Secrets Manager), add penetration testing with OWASP ZAP, implement security headers with helmet.js equivalent, and use dependency scanning for vulnerabilities.",
+        text: "Build production-ready security: implement OAuth2 with PKCE flow, use AWS Cognito or Auth0 for authentication service, add comprehensive audit logging, implement zero-trust architecture with proper session management. Use secrets management systems like HashiCorp Vault for sensitive data.",
         typing: true
       }
     ]
