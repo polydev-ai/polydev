@@ -397,7 +397,6 @@ class AuthHandler:
     def validate_token(self, token):
         try:
             payload = jwt.decode(token, self.secret, algorithms=["HS256"])
-            return payload
         except:
             return None`,
     responses: [
