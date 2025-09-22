@@ -131,7 +131,7 @@ export default function Analytics() {
       let subscriptionData = { active: 0, revenue: 0 }
       try {
         const { data: activeSubscriptions } = await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .select('*')
           .eq('status', 'active')
 

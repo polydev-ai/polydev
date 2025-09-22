@@ -95,9 +95,9 @@ export default function AdminDashboard() {
       // Get basic stats - handle cases where tables might not exist yet
       const statsPromises = [
         supabase.from('profiles').select('id', { count: 'exact' }).then(r => ({ count: r.count || 0 })),
-        supabase.from('subscriptions').select('id', { count: 'exact' }).eq('status', 'active').then(r => ({ count: r.count || 0 })),
+        supabase.from('user_subscriptions').select('id', { count: 'exact' }).eq('status', 'active').then(r => ({ count: r.count || 0 })),
         supabase.from('admin_credit_adjustments').select('amount').then(r => ({ data: r.data || [] })),
-        supabase.from('model_providers').select('id', { count: 'exact' }).eq('enabled', true).then(r => ({ count: r.count || 0 }))
+        supabase.from('providers_registry').select('id', { count: 'exact' }).eq('is_active', true).then(r => ({ count: r.count || 0 }))
       ]
 
       const [usersResult, subscriptionsResult, creditsResult, modelsResult] = await Promise.allSettled(statsPromises)

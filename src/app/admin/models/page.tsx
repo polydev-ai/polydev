@@ -103,10 +103,10 @@ export default function ModelsManagement() {
   async function loadData() {
     try {
       const [providersResult, modelsResult] = await Promise.all([
-        supabase.from('model_providers').select('*').order('name'),
+        supabase.from('providers_registry').select('*').order('name'),
         supabase.from('model_mappings').select(`
           *,
-          provider:model_providers(*)
+          provider:providers_registry(*)
         `).order('display_name')
       ])
 
@@ -127,7 +127,7 @@ export default function ModelsManagement() {
       if (editingProvider?.id) {
         // Update existing provider
         const { error } = await supabase
-          .from('model_providers')
+          .from('providers_registry')
           .update(provider)
           .eq('id', editingProvider.id)
 
@@ -137,7 +137,7 @@ export default function ModelsManagement() {
       } else {
         // Create new provider
         const { error } = await supabase
-          .from('model_providers')
+          .from('providers_registry')
           .insert([provider])
 
         if (error) throw error
@@ -161,7 +161,7 @@ export default function ModelsManagement() {
 
     try {
       const { error } = await supabase
-        .from('model_providers')
+        .from('providers_registry')
         .delete()
         .eq('id', providerId)
 

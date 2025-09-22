@@ -97,7 +97,7 @@ export default function UserManagement() {
       let subscriptionData: any[] = []
       try {
         const { data: subData } = await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .select('user_id, status')
           .eq('status', 'active')
 
