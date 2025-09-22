@@ -38,6 +38,11 @@ body {
 html {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
 }
 
 /* Reduce motion for users who prefer it */

@@ -362,7 +362,11 @@ export default function HomePage() {
     },
     {
       question: "How does the credit system work?",
-      answer: "Credits are consumed when you use Polydev's hosted models. Fast models (Claude Haiku, GPT-5 Mini) cost 1 credit. Premium models (Claude Opus 4, GPT-5) cost 5 credits. You can also use your own API keys to bypass credits entirely."
+      answer: "Credits are consumed when you use Polydev's hosted models. Fast models (Claude Haiku, GPT-5 Mini, Grok 4 Fast) cost 1 credit per perspective. Premium models (Claude Opus 4, GPT-5, Gemini 2.5 Pro) cost 5 credits per perspective. You can also use your own API keys to bypass credits entirely."
+    },
+    {
+      question: "What's the credit breakdown per model?",
+      answer: "• Fast models: 1 credit per perspective (Claude Haiku, GPT-5 Mini, Grok 4 Fast)\n• Premium models: 5 credits per perspective (Claude Opus 4, GPT-5, Gemini 2.5 Pro)\n• Free tier: 10 credits total to try any models\n• Pro tier: 1,500 credits monthly"
     }
   ]
 
@@ -626,15 +630,9 @@ export default function HomePage() {
       </section>
 
       {/* How it Works Section */}
-      <section className="relative py-20 bg-gradient-to-b from-white via-slate-50/30 to-white overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+      <section className="relative py-20 bg-white overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium mb-6">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              How it works
-            </div>
             <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6">
               Stop debugging <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">alone</span>
             </h2>
@@ -643,20 +641,20 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 relative">
+          <div className="grid md:grid-cols-3 gap-12 relative">
             {/* Step 1 */}
             <div className="text-center group">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="relative mb-8">
+                <div className="w-20 h-20 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300 relative">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
-                </div>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                  1
+                  <div className="absolute -top-3 -right-3 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold border-4 border-white">
+                    1
+                  </div>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-3">MCP auto-detects when you're stuck</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">MCP auto-detects when you're stuck</h3>
               <p className="text-slate-600 leading-relaxed">
                 When you're debugging or need help in Claude Code, Cursor, or Cline, your MCP client automatically sends context to Polydev. No manual requests—it just works when you need it.
               </p>
@@ -664,17 +662,17 @@ export default function HomePage() {
 
             {/* Step 2 */}
             <div className="text-center group">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="relative mb-8">
+                <div className="w-20 h-20 bg-purple-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300 relative">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                </div>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                  2
+                  <div className="absolute -top-3 -right-3 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold border-4 border-white">
+                    2
+                  </div>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-3">Models analyze your actual code</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">Models analyze your actual code</h3>
               <p className="text-slate-600 leading-relaxed">
                 Each model sees your entire project context—your files, dependencies, recent changes. They understand what you're actually working on, not just your question.
               </p>
@@ -682,54 +680,60 @@ export default function HomePage() {
 
             {/* Step 3 */}
             <div className="text-center group">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="relative mb-8">
+                <div className="w-20 h-20 bg-green-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300 relative">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                </div>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                  3
+                  <div className="absolute -top-3 -right-3 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold border-4 border-white">
+                    3
+                  </div>
                 </div>
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-3">Compare and choose the best approach</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">Compare and choose the best approach</h3>
               <p className="text-slate-600 leading-relaxed">
                 See different solutions side by side. One model might catch an edge case another missed. Pick the approach that makes the most sense for your situation.
               </p>
             </div>
 
             {/* Connection lines */}
-            <div className="hidden md:block absolute top-8 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-blue-200 via-purple-200 to-green-200"></div>
+            <div className="hidden md:block absolute top-10 left-1/3 right-1/3 h-px bg-gradient-to-r from-blue-300 via-purple-300 to-green-300"></div>
           </div>
 
           {/* Benefits */}
           <div className="grid md:grid-cols-3 gap-8 mt-20">
             <div className="text-center">
-              <div className="w-12 h-12 bg-gradient-to-r from-orange-100 to-orange-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h4 className="text-lg font-semibold text-slate-900 mb-2">Better solutions</h4>
-              <p className="text-slate-600">Different models excel at different things. Get the best of each without the hassle.</p>
+              <h3 className="text-lg font-semibold text-slate-900 mb-3">Better solutions</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Different models excel at different things. Get the best of each without the hassle.
+              </p>
             </div>
             <div className="text-center">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <h4 className="text-lg font-semibold text-slate-900 mb-2">Stay in flow</h4>
-              <p className="text-slate-600">No tab switching, no copy-pasting. Everything happens right in your editor.</p>
+              <h3 className="text-lg font-semibold text-slate-900 mb-3">Stay in flow</h3>
+              <p className="text-slate-600 leading-relaxed">
+                No tab switching, no copy-pasting. Everything happens right in your editor.
+              </p>
             </div>
             <div className="text-center">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-100 to-green-200 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h4 className="text-lg font-semibold text-slate-900 mb-2">Remembers context</h4>
-              <p className="text-slate-600">Picks up where you left off, even across sessions. No more explaining your project every time.</p>
+              <h3 className="text-lg font-semibold text-slate-900 mb-3">Remembers context</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Picks up where you left off, even across sessions. No more explaining your project every time.
+              </p>
             </div>
           </div>
         </div>
@@ -741,17 +745,20 @@ export default function HomePage() {
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-violet-100 text-violet-700 rounded-full text-sm font-medium mb-6">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-100 to-orange-100 text-violet-700 rounded-full text-sm font-medium mb-8 border border-violet-200/50 shadow-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
               </svg>
-              See it in action
+              Live demo - Multiple AI perspectives
             </div>
-            <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6">
-              Multiple Problems, <span className="bg-gradient-to-r from-violet-600 to-orange-600 bg-clip-text text-transparent">Multiple Perspectives</span>
+            <h2 className="text-4xl sm:text-6xl font-bold text-slate-900 mb-8 leading-tight">
+              Multiple Problems,<br />
+              <span className="bg-gradient-to-r from-violet-600 via-purple-600 to-orange-600 bg-clip-text text-transparent">Multiple Perspectives</span>
             </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-              Watch AI models solve different challenges with diverse approaches in real-time
+            <p className="text-xl text-slate-600 max-w-4xl mx-auto leading-relaxed">
+              See how different AI models approach the same coding challenge. Each brings unique insights,
+              <br className="hidden sm:block" />
+              catching edge cases others might miss.
             </p>
           </div>
 
@@ -766,7 +773,7 @@ export default function HomePage() {
                     <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
                     <div className="w-3 h-3 rounded-full bg-green-400"></div>
                   </div>
-                  <div className="text-slate-300 text-sm font-medium">
+                  <div className="text-slate-600 text-sm font-medium">
                     {currentExample.filename}
                   </div>
                   <div className="text-xs text-slate-400 bg-slate-700/50 px-2 py-1 rounded">
@@ -775,7 +782,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Code Content */}
-                <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-100 font-mono text-sm leading-relaxed min-h-[400px]">
+                <div className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-slate-900 font-mono text-sm leading-relaxed min-h-[400px]">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
                     <span className="text-red-300 text-xs font-medium uppercase tracking-wider">{currentExample.title}</span>
@@ -785,7 +792,7 @@ export default function HomePage() {
                     {currentExample.problem}
                   </div>
 
-                  <pre className="text-slate-100 whitespace-pre-wrap leading-relaxed">
+                  <pre className="text-slate-900 whitespace-pre-wrap leading-relaxed">
                     {currentExample.code}
                   </pre>
 
@@ -900,7 +907,7 @@ export default function HomePage() {
                     <span className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
                     Get your token from dashboard
                   </h4>
-                  <div className="bg-slate-900 rounded-xl p-4 mb-3">
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
                     <code className="text-emerald-400 font-mono text-sm">
                       POLYDEV_USER_TOKEN=pd_your_token_here
                     </code>
@@ -920,7 +927,7 @@ export default function HomePage() {
                       <Image src="https://sajalsharma.com/_astro/claude_code.GbHphWWe_Z29KFWg.webp.jpg" alt="Claude Code" width={16} height={16} className="rounded" />
                       <span className="font-medium text-slate-700">Claude Code</span>
                     </div>
-                    <div className="bg-slate-900 rounded-lg p-3 text-xs">
+                    <div className="bg-white border border-slate-200 rounded-lg p-3 text-xs">
                       <code className="text-green-400 font-mono">
 {`{
   "mcpServers": {
@@ -941,7 +948,7 @@ export default function HomePage() {
                       <Image src="https://cdn.freelogovectors.net/wp-content/uploads/2025/06/cursor-logo-freelogovectors.net_.png" alt="Cursor" width={16} height={16} className="rounded" />
                       <span className="font-medium text-slate-700">Cursor</span>
                     </div>
-                    <div className="bg-slate-900 rounded-lg p-3 text-xs">
+                    <div className="bg-white border border-slate-200 rounded-lg p-3 text-xs">
                       <code className="text-green-400 font-mono">
 {`[mcp_servers.polydev]
 command = "npx"
@@ -957,7 +964,7 @@ env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }`}
                       <Image src="https://cline.bot/assets/branding/logos/cline-wordmark-black.svg" alt="Cline" width={16} height={16} className="rounded" />
                       <span className="font-medium text-slate-700">Cline</span>
                     </div>
-                    <div className="bg-slate-900 rounded-lg p-3 text-xs">
+                    <div className="bg-white border border-slate-200 rounded-lg p-3 text-xs">
                       <code className="text-green-400 font-mono">
 {`"polydev": {
   "command": "npx",
@@ -1045,7 +1052,7 @@ env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }`}
                     <span className="w-6 h-6 bg-violet-500 text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
                     Configure MCP (optional token)
                   </h4>
-                  <div className="bg-slate-900 rounded-xl p-4 mb-3">
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 mb-3">
                     <code className="text-violet-400 font-mono text-sm">
                       npx polydev-ai@latest polydev-stdio
                     </code>
@@ -1083,7 +1090,7 @@ env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }`}
 
             <div className="bg-white rounded-2xl p-6 border border-orange-200/60">
               <h4 className="font-semibold text-slate-900 mb-4">Add to Claude Code/Cursor/Cline Memory:</h4>
-              <div className="bg-slate-900 rounded-xl p-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-4">
                 <code className="text-orange-400 font-mono text-sm leading-relaxed whitespace-pre-wrap">
 {`When I'm struggling with a coding problem, debugging an issue, or need different approaches to solve something, automatically use the get_perspectives tool from Polydev MCP to get multiple AI model responses. This helps me see different solutions and pick the best approach.
 
@@ -1122,7 +1129,7 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16">
+          <div className="grid lg:grid-cols-2 gap-8 max-w-4xl mx-auto mb-16">
             {/* Free Tier */}
             <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-3xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-500">
               <div className="text-center mb-8">
@@ -1225,50 +1232,6 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
               </Link>
             </div>
 
-            {/* Enterprise/Custom */}
-            <div className="bg-gradient-to-br from-white to-emerald-50/30 rounded-3xl border border-emerald-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-500">
-              <div className="text-center mb-8">
-                <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Enterprise</h3>
-                <div className="text-4xl font-bold text-slate-900 mb-1">Custom</div>
-                <div className="text-slate-600">Unlimited everything</div>
-              </div>
-
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-slate-700">Unlimited credits</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-slate-700">Custom model integrations</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-slate-700">Private deployment</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-slate-700">24/7 dedicated support</span>
-                </li>
-              </ul>
-
-              <button className="w-full px-6 py-4 border-2 border-emerald-300 text-emerald-700 rounded-2xl font-semibold hover:border-emerald-400 hover:bg-emerald-50 transition-all duration-300">
-                Contact Sales
-              </button>
-            </div>
           </div>
 
           {/* Credit Breakdown */}
