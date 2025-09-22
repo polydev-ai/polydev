@@ -349,7 +349,7 @@ export default function AdminDashboard() {
               </p>
               {backfillResult && (
                 <pre className={`text-sm p-3 rounded bg-gray-50 overflow-x-auto ${backfillResult.ok ? 'text-gray-800' : 'text-red-600'}`}>
-                  {JSON.stringify(backfillResult, null, 2)}
+                  {backfillResult ? JSON.stringify(backfillResult, null, 2) : 'No result yet'}
                 </pre>
               )}
             </div>
