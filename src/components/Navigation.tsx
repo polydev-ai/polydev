@@ -65,11 +65,16 @@ export default function Navigation() {
     }
   }
 
-  // Close dropdown when clicking outside
+  // Close dropdown and mobile menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setUserDropdownOpen(false)
+      }
+      // Close mobile menu when clicking outside
+      const target = event.target as Element
+      if (isOpen && !target.closest('nav')) {
+        setIsOpen(false)
       }
     }
 
@@ -77,7 +82,7 @@ export default function Navigation() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [])
+  }, [isOpen])
 
   const publicNavigation = [
     { name: 'Home', href: '/' },
@@ -324,7 +329,7 @@ export default function Navigation() {
         {/* Mobile Navigation */}
         {isOpen && (
           <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
@@ -377,53 +382,11 @@ export default function Navigation() {
                       Profile
                     </Link>
                     <Link
-                      href="/dashboard/models"
-                      onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      Models
-                    </Link>
-                    <Link
-                      href="/dashboard/mcp-tokens"
-                      onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      MCP Tokens
-                    </Link>
-                    <Link
-                      href="/dashboard/credits"
-                      onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      Credits & Billing
-                    </Link>
-                    <Link
-                      href="/dashboard/usage"
-                      onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      Usage & Analytics
-                    </Link>
-                    <Link
                       href="/dashboard/subscription"
                       onClick={() => setIsOpen(false)}
                       className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                       👑 Subscription
-                    </Link>
-                    <Link
-                      href="/dashboard/referrals"
-                      onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      🎁 Referrals
-                    </Link>
-                    <Link
-                      href="/dashboard/preferences"
-                      onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      Preferences
                     </Link>
                     <Link
                       href="/settings"
@@ -445,18 +408,32 @@ export default function Navigation() {
                 ) : (
                   <>
                     <Link
-                      href="/auth"
+                      href="/docs"
                       onClick={() => setIsOpen(false)}
                       className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
-                      Sign In
+                      Docs
+                    </Link>
+                    <Link
+                      href="/pricing"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Pricing
+                    </Link>
+                    <Link
+                      href="/blog"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                    >
+                      Blog
                     </Link>
                     <Link
                       href="/auth"
                       onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium bg-blue-600 text-white hover:bg-blue-700"
+                      className="block px-3 py-2 rounded-md text-base font-medium bg-gradient-to-r from-orange-500 to-violet-500 text-white hover:shadow-lg transition-all duration-300 mx-3 mt-4 text-center"
                     >
-                      Get Started
+                      Sign In
                     </Link>
                   </>
                 )}
