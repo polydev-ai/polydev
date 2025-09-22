@@ -199,37 +199,36 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
         width: containerDimensions.width > 0 ? `${containerDimensions.width}px` : 'auto',
         height: containerDimensions.height > 0 ? `${containerDimensions.height}px` : 'auto',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        // Prevent any visual shifting during measurement
+        minHeight: containerDimensions.height > 0 ? `${containerDimensions.height}px` : 'auto'
       }}
     >
-      {/* Invisible measurement text - always rendered to get exact dimensions */}
+      {/* Invisible measurement text - positioned absolutely from the start to avoid layout shifts */}
       <span
         ref={measureRef}
-        className={`${className} invisible block pointer-events-none whitespace-pre-wrap select-none`}
+        className={`${className} invisible absolute top-0 left-0 pointer-events-none whitespace-pre-wrap select-none`}
         aria-hidden="true"
         style={{
-          position: containerDimensions.width > 0 ? 'absolute' : 'static',
-          top: 0,
-          left: 0,
-          width: '100%'
+          width: '100%',
+          zIndex: -1
         }}
       >
         {text}
       </span>
 
-      {/* Visible typewriter text - only shows when ready */}
-      {isReady && (
-        <div
-          className={`${className} absolute top-0 left-0 whitespace-pre-wrap`}
-          style={{
-            width: `${containerDimensions.width}px`,
-            height: `${containerDimensions.height}px`
-          }}
-        >
-          {displayedText}
-          {!disableTyping && hasStarted && currentIndex < text.length && <span className="animate-blink">|</span>}
-        </div>
-      )}
+      {/* Visible typewriter text - smoothly appears without causing layout shift */}
+      <div
+        className={`${className} absolute top-0 left-0 whitespace-pre-wrap transition-opacity duration-100`}
+        style={{
+          width: containerDimensions.width > 0 ? `${containerDimensions.width}px` : '100%',
+          height: containerDimensions.height > 0 ? `${containerDimensions.height}px` : 'auto',
+          opacity: isReady ? 1 : 0
+        }}
+      >
+        {displayedText}
+        {!disableTyping && hasStarted && currentIndex < text.length && <span className="animate-blink">|</span>}
+      </div>
     </div>
   )
 }
