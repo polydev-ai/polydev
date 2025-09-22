@@ -92,7 +92,8 @@ export default function Navigation() {
     { name: 'Docs', href: '/docs' },
   ]
 
-  const navigation = isMounted && isAuthenticated ? authenticatedNavigation : publicNavigation
+  // Always show public navigation on home page
+  const navigation = (isMounted && isAuthenticated && pathname !== '/') ? authenticatedNavigation : publicNavigation
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -107,9 +108,11 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center group">
-              <span className="text-2xl font-bold text-blue-600 group-hover:text-blue-700 transition-colors duration-200">Polydev</span>
-              <span className="text-2xl font-bold text-slate-900 dark:text-white ml-1 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors duration-200">AI</span>
+            <Link href="/" className="flex items-center gap-3 group">
+              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-violet-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">P</span>
+              </div>
+              <span className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors duration-200">Polydev</span>
             </Link>
           </div>
 
@@ -259,16 +262,29 @@ export default function Navigation() {
             ) : (
               <>
                 <Link
-                  href="/auth"
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 text-sm font-medium"
+                  href="/docs"
+                  className="text-slate-600 hover:text-slate-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 text-sm font-medium transition-colors"
                 >
-                  Sign In
+                  Docs
                 </Link>
                 <Link
-                  href="/auth"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  href="/pricing"
+                  className="text-slate-600 hover:text-slate-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 text-sm font-medium transition-colors"
                 >
-                  Get Started
+                  Pricing
+                </Link>
+                <Link
+                  href="/blog"
+                  className="text-slate-600 hover:text-slate-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 text-sm font-medium transition-colors"
+                >
+                  Blog
+                </Link>
+                <div className="h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+                <Link
+                  href="/auth"
+                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-violet-500 text-white rounded-lg font-medium hover:shadow-lg transition-all duration-300"
+                >
+                  Sign In
                 </Link>
               </>
             )}
