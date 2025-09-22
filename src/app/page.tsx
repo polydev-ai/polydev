@@ -382,22 +382,25 @@ class AuthHandler:
 
     def login(self, username, password):
         # SQL injection vulnerable
-        hash_pwd = hashlib.md5(password.encode()).hexdigest()
-        query = f"SELECT * FROM users WHERE username='{username}' AND password='{hash_pwd}'"
+        pwd_hash = hashlib.md5(password.encode()).hexdigest()
+        query = f"SELECT * FROM users WHERE username='{username}'"
+        query += f" AND password='{pwd_hash}'"
         user = db.execute(query)
 
         if user:
+            exp_time = datetime.utcnow() + timedelta(hours=24)
             token = jwt.encode({
                 "user_id": user.id,
                 "role": user.role,
-                "exp": datetime.utcnow() + timedelta(hours=24)
+                "exp": exp_time
             }, self.secret, algorithm="HS256")
             return {"token": token}
         return None
 
     def validate_token(self, token):
         try:
-            payload = jwt.decode(token, self.secret, algorithms=["HS256"])
+            payload = jwt.decode(token, self.secret,
+                              algorithms=["HS256"])
         except:
             return None`,
     responses: [
