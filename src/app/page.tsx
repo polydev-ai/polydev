@@ -165,7 +165,7 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
         {text}
       </span>
       {/* Visible typewriter text overlay (no layout shift) */}
-      <span className={`${className} absolute top-0 left-0`}>
+      <span className={`${className} absolute inset-0 whitespace-pre-wrap`}>
         {displayedText}
         {!disableTyping && hasStarted && currentIndex < text.length && <span className="animate-blink">|</span>}
       </span>
