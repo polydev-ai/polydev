@@ -39,9 +39,11 @@ body {
   backface-visibility: hidden;
 }
 
-/* Prevent layout shifts */
+/* Prevent layout shifts with strict containment */
 .typewriter-container {
-  contain: layout;
+  contain: layout size style;
+  transform: translateZ(0);
+  will-change: contents;
 }
 
 /* Improved scrolling on mobile */

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '../hooks/useAuth'
@@ -95,8 +95,11 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hasStarted, setHasStarted] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [isReady, setIsReady] = useState(false)
   const [disableTyping, setDisableTyping] = useState(false)
   const [chunkSize, setChunkSize] = useState(1)
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 })
+  const measureRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     setIsMounted(true)
@@ -112,8 +115,39 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
     }
   }, [])
 
+  // Wait for fonts to load and measure exact dimensions
   useEffect(() => {
-    if (!isMounted) return
+    if (!isMounted || !measureRef.current) return
+
+    const measureDimensions = () => {
+      if (measureRef.current) {
+        const rect = measureRef.current.getBoundingClientRect()
+        setContainerDimensions({
+          width: Math.ceil(rect.width),
+          height: Math.ceil(rect.height)
+        })
+        setIsReady(true)
+      }
+    }
+
+    // Wait for fonts to be fully loaded
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(measureDimensions)
+    } else {
+      // Fallback for older browsers
+      setTimeout(measureDimensions, 100)
+    }
+
+    // Also measure on window resize
+    const handleResize = () => {
+      setTimeout(measureDimensions, 50)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isMounted, text, className])
+
+  useEffect(() => {
+    if (!isReady) return
     if (disableTyping) {
       setDisplayedText(text)
       setCurrentIndex(text.length)
@@ -127,10 +161,10 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
     } else if (startDelay === 0) {
       setHasStarted(true)
     }
-  }, [startDelay, hasStarted, isMounted, disableTyping, text, onComplete])
+  }, [startDelay, hasStarted, isReady, disableTyping, text, onComplete])
 
   useEffect(() => {
-    if (!isMounted || disableTyping) return
+    if (!isReady || disableTyping) return
     if (hasStarted && currentIndex < text.length) {
       const timeout = setTimeout(() => {
         setDisplayedText(prev => prev + text.slice(currentIndex, Math.min(text.length, currentIndex + chunkSize)))
@@ -140,7 +174,7 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
     } else if (hasStarted && currentIndex >= text.length && onComplete) {
       onComplete()
     }
-  }, [currentIndex, text, delay, onComplete, hasStarted, isMounted, disableTyping, chunkSize])
+  }, [currentIndex, text, delay, onComplete, hasStarted, isReady, disableTyping, chunkSize])
 
   useEffect(() => {
     if (disableTyping) {
@@ -159,16 +193,43 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
   }
 
   return (
-    <div className="relative typewriter-container">
-      {/* Invisible full text to reserve space in flow (no absolute) */}
-      <span className={`${className} invisible block pointer-events-none whitespace-pre-wrap select-none`} aria-hidden="true">
+    <div
+      className="typewriter-container"
+      style={{
+        width: containerDimensions.width > 0 ? `${containerDimensions.width}px` : 'auto',
+        height: containerDimensions.height > 0 ? `${containerDimensions.height}px` : 'auto',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Invisible measurement text - always rendered to get exact dimensions */}
+      <span
+        ref={measureRef}
+        className={`${className} invisible block pointer-events-none whitespace-pre-wrap select-none`}
+        aria-hidden="true"
+        style={{
+          position: containerDimensions.width > 0 ? 'absolute' : 'static',
+          top: 0,
+          left: 0,
+          width: '100%'
+        }}
+      >
         {text}
       </span>
-      {/* Visible typewriter text overlay (no layout shift) */}
-      <span className={`${className} absolute inset-0 whitespace-pre-wrap`}>
-        {displayedText}
-        {!disableTyping && hasStarted && currentIndex < text.length && <span className="animate-blink">|</span>}
-      </span>
+
+      {/* Visible typewriter text - only shows when ready */}
+      {isReady && (
+        <div
+          className={`${className} absolute top-0 left-0 whitespace-pre-wrap`}
+          style={{
+            width: `${containerDimensions.width}px`,
+            height: `${containerDimensions.height}px`
+          }}
+        >
+          {displayedText}
+          {!disableTyping && hasStarted && currentIndex < text.length && <span className="animate-blink">|</span>}
+        </div>
+      )}
     </div>
   )
 }
