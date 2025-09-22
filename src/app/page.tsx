@@ -382,7 +382,8 @@ class AuthHandler:
 
     def login(self, username, password):
         # SQL injection vulnerable
-        query = f"SELECT * FROM users WHERE username='{username}' AND password='{hashlib.md5(password.encode()).hexdigest()}'"
+        hash_pwd = hashlib.md5(password.encode()).hexdigest()
+        query = f"SELECT * FROM users WHERE username='{username}' AND password='{hash_pwd}'"
         user = db.execute(query)
 
         if user:
