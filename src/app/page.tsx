@@ -95,43 +95,64 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
   const [currentIndex, setCurrentIndex] = useState(0)
   const [hasStarted, setHasStarted] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [disableTyping, setDisableTyping] = useState(false)
+  const [chunkSize, setChunkSize] = useState(1)
 
   useEffect(() => {
     setIsMounted(true)
+    // Respect reduced motion and avoid long typing on small screens
+    try {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      const small = window.innerWidth < 640
+      // Keep typewriter on mobile, but reveal in larger chunks to avoid jitter
+      setDisableTyping(reduce)
+      setChunkSize(small ? 3 : 1)
+    } catch {
+      setChunkSize(1)
+    }
   }, [])
 
   useEffect(() => {
     if (!isMounted) return
-
+    if (disableTyping) {
+      setDisplayedText(text)
+      setCurrentIndex(text.length)
+      setHasStarted(true)
+      if (onComplete) onComplete()
+      return
+    }
     if (startDelay > 0 && !hasStarted) {
-      const startTimeout = setTimeout(() => {
-        setHasStarted(true)
-      }, startDelay)
+      const startTimeout = setTimeout(() => setHasStarted(true), startDelay)
       return () => clearTimeout(startTimeout)
     } else if (startDelay === 0) {
       setHasStarted(true)
     }
-  }, [startDelay, hasStarted, isMounted])
+  }, [startDelay, hasStarted, isMounted, disableTyping, text, onComplete])
 
   useEffect(() => {
-    if (!isMounted) return
-
+    if (!isMounted || disableTyping) return
     if (hasStarted && currentIndex < text.length) {
       const timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + text[currentIndex])
-        setCurrentIndex(prev => prev + 1)
-      }, delay)
+        setDisplayedText(prev => prev + text.slice(currentIndex, Math.min(text.length, currentIndex + chunkSize)))
+        setCurrentIndex(prev => Math.min(text.length, prev + chunkSize))
+      }, Math.max(12, delay))
       return () => clearTimeout(timeout)
     } else if (hasStarted && currentIndex >= text.length && onComplete) {
       onComplete()
     }
-  }, [currentIndex, text, delay, onComplete, hasStarted, isMounted])
+  }, [currentIndex, text, delay, onComplete, hasStarted, isMounted, disableTyping, chunkSize])
 
   useEffect(() => {
-    setDisplayedText('')
-    setCurrentIndex(0)
-    setHasStarted(false)
-  }, [text])
+    if (disableTyping) {
+      setDisplayedText(text)
+      setCurrentIndex(text.length)
+      setHasStarted(true)
+    } else {
+      setDisplayedText('')
+      setCurrentIndex(0)
+      setHasStarted(false)
+    }
+  }, [text, disableTyping])
 
   if (!isMounted) {
     return <span></span>
@@ -139,14 +160,14 @@ function TypewriterText({ text, delay = 30, onComplete, startDelay = 0, classNam
 
   return (
     <div className="relative typewriter-container">
-      {/* Invisible full text to reserve space */}
-      <span className={`${className} invisible absolute top-0 left-0 pointer-events-none`} aria-hidden="true">
+      {/* Invisible full text to reserve space in flow (no absolute) */}
+      <span className={`${className} invisible block pointer-events-none whitespace-pre-wrap select-none`} aria-hidden="true">
         {text}
       </span>
-      {/* Visible typewriter text */}
-      <span className={className}>
+      {/* Visible typewriter text overlay (no layout shift) */}
+      <span className={`${className} absolute top-0 left-0`}>
         {displayedText}
-        {hasStarted && currentIndex < text.length && <span className="animate-pulse">|</span>}
+        {!disableTyping && hasStarted && currentIndex < text.length && <span className="animate-blink">|</span>}
       </span>
     </div>
   )
