@@ -321,6 +321,8 @@ const CODE_EXAMPLES = [
 kind: Deployment
 metadata:
   name: web-app
+  labels:
+    app: web-app
 spec:
   replicas: 3
   selector:
@@ -333,10 +335,13 @@ spec:
     spec:
       containers:
       - name: web
-        image: myapp:latest
+        image: myapp:latest  # Using 'latest' tag - problematic
         ports:
         - containerPort: 3000
-        # Missing resource limits and health checks`,
+        # Missing resource limits and health checks
+        # No readiness/liveness probes
+        # No security context configured
+        # No graceful shutdown handling`,
     responses: [
       {
         model: "Claude Opus 4",
@@ -365,19 +370,26 @@ spec:
     problem: "// Authentication system with security flaws",
     code: `import hashlib
 import jwt
+from datetime import datetime
 
 class AuthHandler:
     def __init__(self):
-        self.secret = "mysecret123"  # Hardcoded secret
+        self.secret = "mysecret123"  # Hardcoded secret - security risk
+        self.failed_attempts = {}
 
     def login(self, username, password):
+        # No rate limiting - brute force vulnerable
         # SQL injection vulnerable
         query = f"SELECT * FROM users WHERE username='{username}' AND password='{hashlib.md5(password.encode()).hexdigest()}'"
         user = db.execute(query)
 
         if user:
-            token = jwt.encode({"user_id": user.id}, self.secret, algorithm="HS256")
-            return {"token": token}
+            # Weak JWT implementation
+            token = jwt.encode({
+                "user_id": user.id,
+                "role": user.role
+            }, self.secret, algorithm="HS256")
+            return {"token": token, "user": user.username}
         return None`,
     responses: [
       {
