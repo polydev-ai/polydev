@@ -3,6 +3,7 @@ import { createClient } from '@/app/utils/supabase/server'
 
 export async function GET(request: Request) {
   try {
+    // Force deployment refresh - showing 4 users not 1
     const supabase = await createClient()
 
     // Check if user is admin
