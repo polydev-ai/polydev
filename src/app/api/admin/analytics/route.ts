@@ -228,6 +228,21 @@ export async function GET(request: Request) {
       }
 
       // Get activity data - users who have been active recently
+      const dailyThreshold = new Date()
+      dailyThreshold.setDate(dailyThreshold.getDate() - 1)
+
+      // Get daily active users
+      const { data: dailyChatUsers } = await adminClient
+        .from('chat_sessions')
+        .select('user_id')
+        .gte('created_at', dailyThreshold.toISOString())
+
+      const { data: dailyMcpUsers } = await adminClient
+        .from('mcp_request_logs')
+        .select('user_id')
+        .gte('created_at', dailyThreshold.toISOString())
+
+      // Get weekly active users
       const { data: recentChatUsers } = await adminClient
         .from('chat_sessions')
         .select('user_id')
@@ -238,17 +253,23 @@ export async function GET(request: Request) {
         .select('user_id')
         .gte('created_at', weekThreshold.toISOString())
 
-      if (recentChatUsers || recentMcpUsers) {
-        const activeUserIds = new Set([
-          ...(recentChatUsers?.map(s => s.user_id) || []),
-          ...(recentMcpUsers?.map(r => r.user_id) || [])
-        ])
-        analytics.activity.weeklyActiveUsers = activeUserIds.size
-        analytics.activity.monthlyActiveUsers = activeUserIds.size // Using same for now
-        analytics.activity.dailyActiveUsers = Math.round(activeUserIds.size / 7) // Rough estimate
-        analytics.activity.retentionRate = allUsers?.length ?
-          Math.round((activeUserIds.size / allUsers.length) * 100) : 0
-      }
+      // Calculate daily active users
+      const dailyActiveUserIds = new Set([
+        ...(dailyChatUsers?.map(s => s.user_id) || []),
+        ...(dailyMcpUsers?.map(r => r.user_id) || [])
+      ])
+
+      // Calculate weekly active users
+      const weeklyActiveUserIds = new Set([
+        ...(recentChatUsers?.map(s => s.user_id) || []),
+        ...(recentMcpUsers?.map(r => r.user_id) || [])
+      ])
+
+      analytics.activity.dailyActiveUsers = dailyActiveUserIds.size
+      analytics.activity.weeklyActiveUsers = weeklyActiveUserIds.size
+      analytics.activity.monthlyActiveUsers = weeklyActiveUserIds.size // Using same for now
+      analytics.activity.retentionRate = allUsers?.length ?
+        Math.round((weeklyActiveUserIds.size / allUsers.length) * 100) : 0
 
       // Calculate average session duration if possible
       const { data: sessionDurations } = await adminClient
