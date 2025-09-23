@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { ArrowLeft, Plus, Copy, Trash2, Gift, Calendar, Users, Check } from 'lucide-react'
+import { ArrowLeft, Plus, Copy, Trash2, Gift, Calendar, Users, Check, CreditCard } from 'lucide-react'
 
 interface CouponCode {
   id: string
