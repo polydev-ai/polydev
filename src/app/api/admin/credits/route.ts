@@ -26,10 +26,18 @@ export async function GET() {
     // Get all data using admin client to bypass RLS
     const adminClient = createAdminClient()
 
-    // Get users with their current credits
+    // Get users with their current credits from user_credits table
     const { data: users, error: usersError } = await adminClient
       .from('profiles')
-      .select('id, email, credits, created_at')
+      .select(`
+        id,
+        email,
+        created_at,
+        user_credits (
+          balance,
+          promotional_balance
+        )
+      `)
       .order('email')
 
     if (usersError) {
@@ -40,12 +48,27 @@ export async function GET() {
       }, { status: 500 })
     }
 
+    // Transform users data to include calculated credits
+    const transformedUsers = (users || []).map(user => ({
+      id: user.id,
+      email: user.email,
+      created_at: user.created_at,
+      credits: user.user_credits && user.user_credits.length > 0
+        ? (parseFloat(user.user_credits[0].balance) + parseFloat(user.user_credits[0].promotional_balance))
+        : 0
+    }))
+
     // Get credit adjustments with user info
     const { data: adjustments, error: adjustmentsError } = await adminClient
       .from('admin_credit_adjustments')
       .select(`
-        *,
-        user:profiles(id, email)
+        id,
+        user_id,
+        amount,
+        reason,
+        created_at,
+        admin_id,
+        profiles!admin_credit_adjustments_admin_id_fkey(email)
       `)
       .order('created_at', { ascending: false })
 
@@ -53,12 +76,30 @@ export async function GET() {
       console.log('Credit adjustments table not available:', adjustmentsError)
     }
 
-    console.log(`📊 Admin Credits API: Found ${users?.length || 0} users and ${adjustments?.length || 0} adjustments`)
+    // Transform adjustments to match expected format
+    const transformedAdjustments = (adjustments || []).map(adj => {
+      const adminEmail = adj.profiles?.email || 'Unknown Admin'
+      const userEmail = transformedUsers.find(u => u.id === adj.user_id)?.email || 'Unknown User'
+
+      return {
+        id: adj.id,
+        user_id: adj.user_id,
+        amount: parseFloat(adj.amount),
+        reason: adj.reason,
+        created_at: adj.created_at,
+        admin_email: adminEmail,
+        user: {
+          email: userEmail
+        }
+      }
+    })
+
+    console.log(`📊 Admin Credits API: Found ${transformedUsers?.length || 0} users and ${transformedAdjustments?.length || 0} adjustments`)
 
     return NextResponse.json({
       success: true,
-      users: users || [],
-      adjustments: adjustments || [],
+      users: transformedUsers,
+      adjustments: transformedAdjustments,
       timestamp: new Date().toISOString()
     })
 
@@ -101,14 +142,44 @@ export async function POST(request: Request) {
 
     const adminClient = createAdminClient()
 
+    // Get current user credits
+    const { data: currentUserCredits } = await adminClient
+      .from('user_credits')
+      .select('balance, promotional_balance')
+      .eq('user_id', userId)
+      .single()
+
+    const currentBalance = parseFloat(currentUserCredits?.balance || '0')
+    const currentPromoBalance = parseFloat(currentUserCredits?.promotional_balance || '0')
+
+    // Calculate new balances - add to promotional balance for positive adjustments
+    let newBalance = currentBalance
+    let newPromoBalance = currentPromoBalance
+
+    if (amount > 0) {
+      newPromoBalance = currentPromoBalance + amount
+    } else {
+      // For negative adjustments, deduct from promotional balance first, then regular balance
+      const totalDeduction = Math.abs(amount)
+      if (currentPromoBalance >= totalDeduction) {
+        newPromoBalance = currentPromoBalance - totalDeduction
+      } else {
+        newPromoBalance = 0
+        newBalance = Math.max(0, currentBalance - (totalDeduction - currentPromoBalance))
+      }
+    }
+
     // Add credit adjustment record
     const { error: adjustmentError } = await adminClient
       .from('admin_credit_adjustments')
       .insert([{
         user_id: userId,
-        amount,
+        admin_id: user.id,
+        adjustment_type: amount > 0 ? 'add' : 'subtract',
+        amount: Math.abs(amount),
         reason,
-        admin_email: user.email
+        previous_balance: currentBalance + currentPromoBalance,
+        new_balance: newBalance + newPromoBalance
       }])
 
     if (adjustmentError) {
@@ -119,19 +190,15 @@ export async function POST(request: Request) {
       }, { status: 500 })
     }
 
-    // Update user credits
-    const { data: currentUser } = await adminClient
-      .from('profiles')
-      .select('credits')
-      .eq('id', userId)
-      .single()
-
-    const newCredits = (currentUser?.credits || 0) + amount
-
+    // Update user credits in user_credits table
     const { error: updateError } = await adminClient
-      .from('profiles')
-      .update({ credits: newCredits })
-      .eq('id', userId)
+      .from('user_credits')
+      .update({
+        balance: newBalance.toString(),
+        promotional_balance: newPromoBalance.toString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
 
     if (updateError) {
       console.error('Error updating user credits:', updateError)
@@ -146,9 +213,17 @@ export async function POST(request: Request) {
       await adminClient
         .from('admin_activity_log')
         .insert([{
-          admin_email: user.email,
-          action: 'credit_adjustment',
-          details: `Adjusted credits for user ${userId}: ${amount > 0 ? '+' : ''}${amount} (${reason})`
+          admin_id: user.id,
+          action_type: 'credit_adjustment',
+          target_type: 'user',
+          target_id: userId,
+          details: {
+            amount: amount,
+            reason: reason,
+            admin_email: user.email,
+            previous_balance: currentBalance + currentPromoBalance,
+            new_balance: newBalance + newPromoBalance
+          }
         }])
     } catch (error) {
       console.log('Error logging activity:', error)
