@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { ArrowLeft, Search, Eye, Brain, Zap, Image, Settings, DollarSign, Edit, Plus } from 'lucide-react'
+import { ArrowLeft, Search, Eye, Brain, Zap, Image, Settings, DollarSign, Edit, Plus, X } from 'lucide-react'
 
 interface ModelRegistryEntry {
   id: string
@@ -301,6 +301,25 @@ export default function ModelsManagement() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Create Model Form - Inline */}
+        {showCreateForm && (
+          <div className="mb-8 bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Create New Model</h2>
+              <button
+                onClick={() => setShowCreateForm(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <ModelCreateForm
+              onSave={createModel}
+              onCancel={() => setShowCreateForm(false)}
+            />
+          </div>
+        )}
+
         {/* Filters and Search */}
         <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -517,13 +536,6 @@ export default function ModelsManagement() {
         />
       )}
 
-      {/* Model Create Form Modal */}
-      {showCreateForm && (
-        <ModelCreateForm
-          onSave={createModel}
-          onCancel={() => setShowCreateForm(false)}
-        />
-      )}
     </div>
   )
 }
@@ -825,12 +837,7 @@ function ModelCreateForm({ onSave, onCancel }: {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New Model</h2>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
             <div>
               <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
@@ -839,14 +846,58 @@ function ModelCreateForm({ onSave, onCancel }: {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Provider ID *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.provider_id}
                     onChange={(e) => setFormData(prev => ({ ...prev, provider_id: e.target.value }))}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="openai, anthropic, google, etc."
                     required
-                  />
+                  >
+                    <option value="">Select a provider...</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="google">Google</option>
+                    <option value="google-vertex">Google Vertex AI</option>
+                    <option value="mistral">Mistral</option>
+                    <option value="groq">Groq</option>
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="xai">xAI</option>
+                    <option value="openrouter">OpenRouter</option>
+                    <option value="fireworks-ai">Fireworks AI</option>
+                    <option value="togetherai">Together AI</option>
+                    <option value="huggingface">Hugging Face</option>
+                    <option value="nvidia">NVIDIA</option>
+                    <option value="amazon-bedrock">Amazon Bedrock</option>
+                    <option value="azure">Azure OpenAI</option>
+                    <option value="cerebras">Cerebras</option>
+                    <option value="deepinfra">DeepInfra</option>
+                    <option value="alibaba">Alibaba</option>
+                    <option value="baseten">Baseten</option>
+                    <option value="chutes">Chutes</option>
+                    <option value="cloudflare-workers-ai">Cloudflare Workers AI</option>
+                    <option value="fastrouter">FastRouter</option>
+                    <option value="github-copilot">GitHub Copilot</option>
+                    <option value="github-models">GitHub Models</option>
+                    <option value="google-vertex-anthropic">Google Vertex Anthropic</option>
+                    <option value="inception">Inception</option>
+                    <option value="inference">Inference</option>
+                    <option value="llama">Llama</option>
+                    <option value="lmstudio">LM Studio</option>
+                    <option value="modelscope">ModelScope</option>
+                    <option value="moonshotai">Moonshot AI</option>
+                    <option value="moonshotai-cn">Moonshot AI (CN)</option>
+                    <option value="morph">Morph</option>
+                    <option value="opencode">OpenCode</option>
+                    <option value="requesty">Requesty</option>
+                    <option value="submodel">Submodel</option>
+                    <option value="synthetic">Synthetic</option>
+                    <option value="upstage">Upstage</option>
+                    <option value="v0">V0</option>
+                    <option value="venice">Venice</option>
+                    <option value="vercel">Vercel</option>
+                    <option value="wandb">Weights & Biases</option>
+                    <option value="zai">ZAI</option>
+                    <option value="zhipuai">Zhipu AI</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1112,9 +1163,6 @@ function ModelCreateForm({ onSave, onCancel }: {
                 Create Model
               </button>
             </div>
-          </form>
-        </div>
-      </div>
-    </div>
+    </form>
   )
 }

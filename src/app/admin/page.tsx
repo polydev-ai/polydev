@@ -97,7 +97,7 @@ export default function AdminDashboard() {
 
   async function loadAdminData() {
     try {
-      // Get REAL comprehensive stats using direct Supabase queries
+      // Get REAL comprehensive stats using direct Supabase queries with explicit count
       const [
         usersResult,
         subscriptionsResult,
@@ -109,13 +109,13 @@ export default function AdminDashboard() {
         revenueResult,
         creditsResult
       ] = await Promise.allSettled([
-        supabase.from('profiles').select('id'),
-        supabase.from('user_subscriptions').select('id').eq('status', 'active'),
-        supabase.from('models_registry').select('id').eq('is_active', true),
-        supabase.from('mcp_request_logs').select('id'),
-        supabase.from('chat_sessions').select('id'),
-        supabase.from('chat_messages').select('id'),
-        supabase.from('usage_sessions').select('id'),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('user_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('models_registry').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('mcp_request_logs').select('*', { count: 'exact', head: true }),
+        supabase.from('chat_sessions').select('*', { count: 'exact', head: true }),
+        supabase.from('chat_messages').select('*', { count: 'exact', head: true }),
+        supabase.from('usage_sessions').select('*', { count: 'exact', head: true }),
         supabase.from('purchase_history').select('amount_paid').eq('status', 'completed'),
         supabase.from('admin_credit_adjustments').select('amount')
       ])
@@ -129,22 +129,22 @@ export default function AdminDashboard() {
       const totalCreditsIssued = creditsData.reduce((sum: number, r: any) => sum + (parseFloat(r.amount) || 0), 0)
 
       setStats({
-        totalUsers: usersResult.status === 'fulfilled' ? (usersResult.value as any).data?.length || 0 : 0,
-        activeSubscriptions: subscriptionsResult.status === 'fulfilled' ? (subscriptionsResult.value as any).data?.length || 0 : 0,
-        activeModels: modelsResult.status === 'fulfilled' ? (modelsResult.value as any).data?.length || 0 : 0,
-        totalApiCalls: mcpRequestsResult.status === 'fulfilled' ? (mcpRequestsResult.value as any).data?.length || 0 : 0,
+        totalUsers: usersResult.status === 'fulfilled' ? (usersResult.value as any).count || 0 : 0,
+        activeSubscriptions: subscriptionsResult.status === 'fulfilled' ? (subscriptionsResult.value as any).count || 0 : 0,
+        activeModels: modelsResult.status === 'fulfilled' ? (modelsResult.value as any).count || 0 : 0,
+        totalApiCalls: mcpRequestsResult.status === 'fulfilled' ? (mcpRequestsResult.value as any).count || 0 : 0,
         totalCreditsIssued,
         revenue: totalRevenue
       })
 
       console.log('📊 Real Admin Stats Loaded:', {
-        totalUsers: usersResult.status === 'fulfilled' ? (usersResult.value as any).data?.length : 'failed',
-        activeSubscriptions: subscriptionsResult.status === 'fulfilled' ? (subscriptionsResult.value as any).data?.length : 'failed',
-        activeModels: modelsResult.status === 'fulfilled' ? (modelsResult.value as any).data?.length : 'failed',
-        totalApiCalls: mcpRequestsResult.status === 'fulfilled' ? (mcpRequestsResult.value as any).data?.length : 'failed',
-        chatSessions: chatSessionsResult.status === 'fulfilled' ? (chatSessionsResult.value as any).data?.length : 'failed',
-        chatMessages: chatMessagesResult.status === 'fulfilled' ? (chatMessagesResult.value as any).data?.length : 'failed',
-        usageSessions: usageSessionsResult.status === 'fulfilled' ? (usageSessionsResult.value as any).data?.length : 'failed',
+        totalUsers: usersResult.status === 'fulfilled' ? (usersResult.value as any).count : 'failed',
+        activeSubscriptions: subscriptionsResult.status === 'fulfilled' ? (subscriptionsResult.value as any).count : 'failed',
+        activeModels: modelsResult.status === 'fulfilled' ? (modelsResult.value as any).count : 'failed',
+        totalApiCalls: mcpRequestsResult.status === 'fulfilled' ? (mcpRequestsResult.value as any).count : 'failed',
+        chatSessions: chatSessionsResult.status === 'fulfilled' ? (chatSessionsResult.value as any).count : 'failed',
+        chatMessages: chatMessagesResult.status === 'fulfilled' ? (chatMessagesResult.value as any).count : 'failed',
+        usageSessions: usageSessionsResult.status === 'fulfilled' ? (usageSessionsResult.value as any).count : 'failed',
         revenue: totalRevenue,
         creditsIssued: totalCreditsIssued,
         usersRawResult: usersResult.status === 'fulfilled' ? usersResult.value : 'error'
