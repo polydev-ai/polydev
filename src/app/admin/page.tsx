@@ -107,7 +107,7 @@ export default function AdminDashboard() {
       const originalAddEventListener = window.addEventListener
       window.addEventListener = function(type: any, handler: any, opts?: any) {
         if (type === 'message' && typeof handler === 'function') {
-          const wrapped = function(ev: any) {
+          const wrapped = function(this: any, ev: any) {
             try {
               const d = ev && ev.data
               if (d && typeof d === 'object' && 'test' in d && 'timestamp' in d) {
