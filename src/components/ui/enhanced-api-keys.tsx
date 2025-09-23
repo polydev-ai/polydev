@@ -137,6 +137,7 @@ export default function EnhancedApiKeysPage() {
   const [expandedProviders, setExpandedProviders] = useState<{[provider: string]: boolean}>({})
   const [expandedAvailableProviders, setExpandedAvailableProviders] = useState<{[provider: string]: boolean}>({})
   const [updateApiKey, setUpdateApiKey] = useState(false)
+  const [syncingModels, setSyncingModels] = useState(false)
   
   // CLI Status State  
   const [cliStatuses, setCliStatuses] = useState<CLIConfig[]>([])
@@ -485,8 +486,14 @@ export default function EnhancedApiKeysPage() {
   }
 
   // Auto-sync existing API key models to preferences
-  const syncExistingModelsToPreferences = async () => {
+  const syncExistingModelsToPreferences = useCallback(async () => {
+    if (syncingModels) {
+      console.log('[EnhancedApiKeys] Sync already in progress, skipping')
+      return
+    }
+
     try {
+      setSyncingModels(true)
       console.log('[EnhancedApiKeys] Calling model sync endpoint...')
 
       const response = await fetch('/api/sync-models', {
@@ -512,8 +519,10 @@ export default function EnhancedApiKeysPage() {
       }
     } catch (error) {
       console.error('[EnhancedApiKeys] Error during sync:', error)
+    } finally {
+      setSyncingModels(false)
     }
-  }
+  }, [syncingModels, refetchPreferences])
 
   useEffect(() => {
     if (user && !preferencesLoading) {
@@ -528,16 +537,17 @@ export default function EnhancedApiKeysPage() {
       apiKeysLength: apiKeys.length,
       hasPreferences: !!preferences,
       preferencesLoading,
-      user: !!user
+      user: !!user,
+      syncingModels
     })
 
-    if (apiKeys.length > 0 && preferences && !preferencesLoading) {
+    if (apiKeys.length > 0 && preferences && !preferencesLoading && !syncingModels && user) {
       console.log('[EnhancedApiKeys] Conditions met, calling syncExistingModelsToPreferences')
       syncExistingModelsToPreferences()
     } else {
       console.log('[EnhancedApiKeys] Conditions not met for auto-sync')
     }
-  }, [apiKeys, preferences, preferencesLoading, user])
+  }, [apiKeys, preferencesLoading, user, syncExistingModelsToPreferences, syncingModels])
 
   // Preload models for existing providers in parallel
   useEffect(() => {
