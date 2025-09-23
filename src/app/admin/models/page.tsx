@@ -4,47 +4,47 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { ArrowLeft, Plus, Edit, Trash2, Save, X, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Search, Eye, Brain, Zap, Image, Settings, DollarSign, Edit } from 'lucide-react'
 
-interface ModelProvider {
-  id: string
-  name: string
-  api_endpoint: string
-  api_key: string
-  enabled: boolean
-  pricing_per_token: number
-  max_requests_per_minute: number
-  timeout_seconds: number
-  supports_streaming: boolean
-  created_at: string
-  updated_at: string
-}
-
-interface ModelMapping {
+interface ModelRegistryEntry {
   id: string
   provider_id: string
-  model_name: string
+  name: string
   display_name: string
-  context_window: number
-  max_output_tokens: number
-  pricing_input: number
-  pricing_output: number
-  enabled: boolean
+  friendly_id: string
+  provider_model_id: string
+  max_tokens: number
+  context_length: number
+  input_cost_per_million: number
+  output_cost_per_million: number
+  cache_read_cost_per_million: number | null
+  cache_write_cost_per_million: number | null
+  supports_vision: boolean
+  supports_tools: boolean
+  supports_streaming: boolean
+  supports_reasoning: boolean
+  reasoning_levels: number | null
+  model_family: string
+  model_version: string
+  is_active: boolean
+  models_dev_metadata: any
   created_at: string
-  provider?: ModelProvider
+  updated_at: string
 }
 
 export default function ModelsManagement() {
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [providers, setProviders] = useState<ModelProvider[]>([])
-  const [models, setModels] = useState<ModelMapping[]>([])
-  const [editingProvider, setEditingProvider] = useState<ModelProvider | null>(null)
-  const [editingModel, setEditingModel] = useState<ModelMapping | null>(null)
-  const [showProviderForm, setShowProviderForm] = useState(false)
-  const [showModelForm, setShowModelForm] = useState(false)
-  const [showApiKeys, setShowApiKeys] = useState<{[key: string]: boolean}>({})
+  const [models, setModels] = useState<ModelRegistryEntry[]>([])
+  const [filteredModels, setFilteredModels] = useState<ModelRegistryEntry[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterProvider, setFilterProvider] = useState('')
+  const [filterCapability, setFilterCapability] = useState('')
+  const [sortBy, setSortBy] = useState<'name' | 'cost' | 'context'>('name')
+  const [sortDesc, setSortDesc] = useState(false)
+  const [editingModel, setEditingModel] = useState<ModelRegistryEntry | null>(null)
+  const [showEditForm, setShowEditForm] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -55,9 +55,13 @@ export default function ModelsManagement() {
 
   useEffect(() => {
     if (isAdmin) {
-      loadData()
+      loadModelsData()
     }
   }, [isAdmin])
+
+  useEffect(() => {
+    filterAndSortModels()
+  }, [models, searchTerm, filterProvider, filterCapability, sortBy, sortDesc])
 
   async function checkAdminAccess() {
     try {
@@ -100,131 +104,105 @@ export default function ModelsManagement() {
     }
   }
 
-  async function loadData() {
+  async function loadModelsData() {
     try {
-      const [providersResult, modelsResult] = await Promise.all([
-        supabase.from('providers_registry').select('*').order('name'),
-        supabase.from('model_mappings').select(`
-          *,
-          provider:providers_registry(*)
-        `).order('display_name')
-      ])
+      const { data: modelsData, error } = await supabase
+        .from('models_registry')
+        .select('*')
+        .order('display_name')
 
-      if (providersResult.data) {
-        setProviders(providersResult.data)
+      if (error) {
+        console.error('Error loading models:', error)
+        return
       }
 
-      if (modelsResult.data) {
-        setModels(modelsResult.data)
+      if (modelsData) {
+        setModels(modelsData)
+        console.log('📊 Loaded', modelsData.length, 'models from registry')
       }
     } catch (error) {
-      console.error('Error loading data:', error)
+      console.error('Error loading models data:', error)
     }
   }
 
-  async function saveProvider(provider: Partial<ModelProvider>) {
-    try {
-      if (editingProvider?.id) {
-        // Update existing provider
-        const { error } = await supabase
-          .from('providers_registry')
-          .update(provider)
-          .eq('id', editingProvider.id)
+  function filterAndSortModels() {
+    let filtered = models.filter(model => {
+      const matchesSearch = !searchTerm ||
+        model.display_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        model.provider_id.toLowerCase().includes(searchTerm.toLowerCase())
 
-        if (error) throw error
+      const matchesProvider = !filterProvider || model.provider_id === filterProvider
 
-        await logActivity('update_provider', `Updated provider: ${provider.name}`)
-      } else {
-        // Create new provider
-        const { error } = await supabase
-          .from('providers_registry')
-          .insert([provider])
+      const matchesCapability = !filterCapability || (
+        (filterCapability === 'vision' && model.supports_vision) ||
+        (filterCapability === 'reasoning' && model.supports_reasoning) ||
+        (filterCapability === 'tools' && model.supports_tools) ||
+        (filterCapability === 'streaming' && model.supports_streaming)
+      )
 
-        if (error) throw error
+      return matchesSearch && matchesProvider && matchesCapability
+    })
 
-        await logActivity('create_provider', `Created new provider: ${provider.name}`)
+    // Sort models
+    filtered.sort((a, b) => {
+      let comparison = 0
+
+      switch (sortBy) {
+        case 'name':
+          comparison = a.display_name.localeCompare(b.display_name)
+          break
+        case 'cost':
+          comparison = (a.input_cost_per_million || 0) - (b.input_cost_per_million || 0)
+          break
+        case 'context':
+          comparison = (a.context_length || 0) - (b.context_length || 0)
+          break
       }
 
-      setEditingProvider(null)
-      setShowProviderForm(false)
-      await loadData()
-    } catch (error) {
-      console.error('Error saving provider:', error)
-      alert('Error saving provider: ' + (error instanceof Error ? error.message : 'Unknown error'))
-    }
+      return sortDesc ? -comparison : comparison
+    })
+
+    setFilteredModels(filtered)
   }
 
-  async function deleteProvider(providerId: string) {
-    if (!confirm('Are you sure you want to delete this provider? All associated models will also be deleted.')) {
-      return
-    }
+  const uniqueProviders = [...new Set(models.map(m => m.provider_id))].sort()
 
+  async function toggleModelStatus(modelId: string, currentStatus: boolean) {
     try {
       const { error } = await supabase
-        .from('providers_registry')
-        .delete()
-        .eq('id', providerId)
-
-      if (error) throw error
-
-      await logActivity('delete_provider', `Deleted provider with ID: ${providerId}`)
-      await loadData()
-    } catch (error) {
-      console.error('Error deleting provider:', error)
-      alert('Error deleting provider: ' + (error instanceof Error ? error.message : 'Unknown error'))
-    }
-  }
-
-  async function saveModel(model: Partial<ModelMapping>) {
-    try {
-      if (editingModel?.id) {
-        // Update existing model
-        const { error } = await supabase
-          .from('model_mappings')
-          .update(model)
-          .eq('id', editingModel.id)
-
-        if (error) throw error
-
-        await logActivity('update_model', `Updated model: ${model.display_name}`)
-      } else {
-        // Create new model
-        const { error } = await supabase
-          .from('model_mappings')
-          .insert([model])
-
-        if (error) throw error
-
-        await logActivity('create_model', `Created new model: ${model.display_name}`)
-      }
-
-      setEditingModel(null)
-      setShowModelForm(false)
-      await loadData()
-    } catch (error) {
-      console.error('Error saving model:', error)
-      alert('Error saving model: ' + (error instanceof Error ? error.message : 'Unknown error'))
-    }
-  }
-
-  async function deleteModel(modelId: string) {
-    if (!confirm('Are you sure you want to delete this model?')) {
-      return
-    }
-
-    try {
-      const { error } = await supabase
-        .from('model_mappings')
-        .delete()
+        .from('models_registry')
+        .update({ is_active: !currentStatus })
         .eq('id', modelId)
 
       if (error) throw error
 
-      await logActivity('delete_model', `Deleted model with ID: ${modelId}`)
-      await loadData()
+      await logActivity('toggle_model', `${!currentStatus ? 'Activated' : 'Deactivated'} model: ${modelId}`)
+      await loadModelsData()
     } catch (error) {
-      console.error('Error deleting model:', error)
-      alert('Error deleting model: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      console.error('Error toggling model status:', error)
+      alert('Error updating model: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    }
+  }
+
+  async function updateModel(modelData: Partial<ModelRegistryEntry>) {
+    if (!editingModel) return
+
+    try {
+      const { error } = await supabase
+        .from('models_registry')
+        .update(modelData)
+        .eq('id', editingModel.id)
+
+      if (error) throw error
+
+      await logActivity('update_model', `Updated model: ${editingModel.display_name}`)
+      setEditingModel(null)
+      setShowEditForm(false)
+      await loadModelsData()
+    } catch (error) {
+      console.error('Error updating model:', error)
+      alert('Error updating model: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
@@ -242,11 +220,16 @@ export default function ModelsManagement() {
     }
   }
 
-  const toggleApiKeyVisibility = (providerId: string) => {
-    setShowApiKeys(prev => ({
-      ...prev,
-      [providerId]: !prev[providerId]
-    }))
+  const formatCurrency = (amount: number | null) => {
+    if (amount === null || amount === undefined) return 'N/A'
+    return `$${amount.toFixed(2)}`
+  }
+
+  const formatContextLength = (length: number | null) => {
+    if (!length) return 'N/A'
+    if (length >= 1000000) return `${(length / 1000000).toFixed(1)}M`
+    if (length >= 1000) return `${(length / 1000).toFixed(0)}K`
+    return length.toString()
   }
 
   if (loading) {
@@ -279,205 +262,229 @@ export default function ModelsManagement() {
                 <ArrowLeft className="h-5 w-5" />
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Models & Providers</h1>
-                <p className="text-gray-600 mt-1">Manage AI model providers and configurations</p>
+                <h1 className="text-3xl font-bold text-gray-900">Models Registry</h1>
+                <p className="text-gray-600 mt-1">Comprehensive AI model database with pricing and capabilities</p>
               </div>
+            </div>
+            <div className="text-sm text-gray-500">
+              {filteredModels.length} of {models.length} models
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Providers Section */}
-        <div className="mb-12">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">Providers</h2>
-            <button
-              onClick={() => {
-                setEditingProvider(null)
-                setShowProviderForm(true)
-              }}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Provider
-            </button>
-          </div>
+        {/* Filters and Search */}
+        <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="h-5 w-5 absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search models..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
 
-          <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endpoint</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">API Key</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rate Limit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {providers.map((provider) => (
-                  <tr key={provider.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {provider.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {provider.api_endpoint}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono">
-                          {showApiKeys[provider.id]
-                            ? provider.api_key
-                            : '••••••••••••••••'
-                          }
-                        </span>
-                        <button
-                          onClick={() => toggleApiKeyVisibility(provider.id)}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                        >
-                          {showApiKeys[provider.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        provider.enabled
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {provider.enabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {provider.max_requests_per_minute}/min
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => {
-                          setEditingProvider(provider)
-                          setShowProviderForm(true)
-                        }}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => deleteProvider(provider.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Provider Filter */}
+            <select
+              value={filterProvider}
+              onChange={(e) => setFilterProvider(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Providers</option>
+              {uniqueProviders.map(provider => (
+                <option key={provider} value={provider}>{provider}</option>
+              ))}
+            </select>
+
+            {/* Capability Filter */}
+            <select
+              value={filterCapability}
+              onChange={(e) => setFilterCapability(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Capabilities</option>
+              <option value="vision">Vision Support</option>
+              <option value="reasoning">Reasoning Models</option>
+              <option value="tools">Tool Support</option>
+              <option value="streaming">Streaming Support</option>
+            </select>
+
+            {/* Sort */}
+            <div className="flex space-x-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'name' | 'cost' | 'context')}
+                className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="name">Sort by Name</option>
+                <option value="cost">Sort by Cost</option>
+                <option value="context">Sort by Context</option>
+              </select>
+              <button
+                onClick={() => setSortDesc(!sortDesc)}
+                className={`px-3 py-2 rounded-md ${sortDesc ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >
+                {sortDesc ? '↓' : '↑'}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Models Section */}
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">Models</h2>
-            <button
-              onClick={() => {
-                setEditingModel(null)
-                setShowModelForm(true)
-              }}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Model
-            </button>
-          </div>
-
-          <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Display Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provider</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Context Window</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pricing (In/Out)</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {models.map((model) => (
-                  <tr key={model.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+        {/* Models Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredModels.map((model) => (
+            <div key={model.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+              {/* Model Header */}
+              <div className="p-6 border-b">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
                       {model.display_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                      {model.model_name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {model.provider?.name || 'Unknown'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {model.context_window?.toLocaleString() || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      ${model.pricing_input?.toFixed(6) || 0} / ${model.pricing_output?.toFixed(6) || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        model.enabled
+                    </h3>
+                    <p className="text-sm text-gray-500 font-mono mb-2">{model.name}</p>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {model.provider_id}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        model.is_active
                           ? 'bg-green-100 text-green-800'
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {model.enabled ? 'Enabled' : 'Disabled'}
+                        {model.is_active ? 'Active' : 'Inactive'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => {
-                          setEditingModel(model)
-                          setShowModelForm(true)
-                        }}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => deleteModel(model.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+                  <div className="flex space-x-1">
+                    <button
+                      onClick={() => {
+                        setEditingModel(model)
+                        setShowEditForm(true)
+                      }}
+                      className="p-2 rounded-md text-blue-600 hover:bg-blue-50"
+                      title="Edit pricing and parameters"
+                    >
+                      <DollarSign className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => toggleModelStatus(model.id, model.is_active)}
+                      className={`p-2 rounded-md ${model.is_active ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
+                      title={model.is_active ? 'Deactivate model' : 'Activate model'}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing */}
+              <div className="p-4 bg-gray-50">
+                <div className="flex items-center mb-2">
+                  <DollarSign className="h-4 w-4 text-green-600 mr-2" />
+                  <span className="text-sm font-medium text-gray-700">Per Million Tokens</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Input:</span>
+                    <span className="ml-1 font-semibold">{formatCurrency(model.input_cost_per_million)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Output:</span>
+                    <span className="ml-1 font-semibold">{formatCurrency(model.output_cost_per_million)}</span>
+                  </div>
+                  {model.cache_read_cost_per_million && (
+                    <div>
+                      <span className="text-gray-500">Cache Read:</span>
+                      <span className="ml-1 font-semibold">{formatCurrency(model.cache_read_cost_per_million)}</span>
+                    </div>
+                  )}
+                  {model.cache_write_cost_per_million && (
+                    <div>
+                      <span className="text-gray-500">Cache Write:</span>
+                      <span className="ml-1 font-semibold">{formatCurrency(model.cache_write_cost_per_million)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Capabilities */}
+              <div className="p-4">
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {model.supports_vision && (
+                    <div className="flex items-center text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                      <Image className="h-3 w-3 mr-1" />
+                      Vision
+                    </div>
+                  )}
+                  {model.supports_reasoning && (
+                    <div className="flex items-center text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                      <Brain className="h-3 w-3 mr-1" />
+                      Reasoning {model.reasoning_levels && `(L${model.reasoning_levels})`}
+                    </div>
+                  )}
+                  {model.supports_tools && (
+                    <div className="flex items-center text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">
+                      <Settings className="h-3 w-3 mr-1" />
+                      Tools
+                    </div>
+                  )}
+                  {model.supports_streaming && (
+                    <div className="flex items-center text-xs bg-cyan-100 text-cyan-800 px-2 py-1 rounded">
+                      <Zap className="h-3 w-3 mr-1" />
+                      Streaming
+                    </div>
+                  )}
+                </div>
+
+                {/* Technical Specs */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Context:</span>
+                    <span className="ml-1 font-medium">{formatContextLength(model.context_length)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Max Output:</span>
+                    <span className="ml-1 font-medium">{formatContextLength(model.max_tokens)}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500">Family:</span>
+                    <span className="ml-1 font-medium">{model.model_family} {model.model_version}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
+
+        {filteredModels.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-gray-500 mb-4">No models found matching your filters</div>
+            <button
+              onClick={() => {
+                setSearchTerm('')
+                setFilterProvider('')
+                setFilterCapability('')
+              }}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              Clear all filters
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Provider Form Modal */}
-      {showProviderForm && (
-        <ProviderForm
-          provider={editingProvider}
-          onSave={saveProvider}
-          onCancel={() => {
-            setShowProviderForm(false)
-            setEditingProvider(null)
-          }}
-        />
-      )}
-
-      {/* Model Form Modal */}
-      {showModelForm && (
-        <ModelForm
+      {/* Model Edit Form Modal */}
+      {showEditForm && editingModel && (
+        <ModelEditForm
           model={editingModel}
-          providers={providers}
-          onSave={saveModel}
+          onSave={updateModel}
           onCancel={() => {
-            setShowModelForm(false)
+            setShowEditForm(false)
             setEditingModel(null)
           }}
         />
@@ -486,21 +493,26 @@ export default function ModelsManagement() {
   )
 }
 
-// Provider Form Component
-function ProviderForm({ provider, onSave, onCancel }: {
-  provider: ModelProvider | null
-  onSave: (provider: Partial<ModelProvider>) => void
+// Model Edit Form Component
+function ModelEditForm({ model, onSave, onCancel }: {
+  model: ModelRegistryEntry
+  onSave: (model: Partial<ModelRegistryEntry>) => void
   onCancel: () => void
 }) {
   const [formData, setFormData] = useState({
-    name: provider?.name || '',
-    api_endpoint: provider?.api_endpoint || '',
-    api_key: provider?.api_key || '',
-    enabled: provider?.enabled ?? true,
-    pricing_per_token: provider?.pricing_per_token || 0,
-    max_requests_per_minute: provider?.max_requests_per_minute || 60,
-    timeout_seconds: provider?.timeout_seconds || 30,
-    supports_streaming: provider?.supports_streaming ?? true
+    display_name: model.display_name || '',
+    input_cost_per_million: model.input_cost_per_million || 0,
+    output_cost_per_million: model.output_cost_per_million || 0,
+    cache_read_cost_per_million: model.cache_read_cost_per_million || null,
+    cache_write_cost_per_million: model.cache_write_cost_per_million || null,
+    context_length: model.context_length || 0,
+    max_tokens: model.max_tokens || 0,
+    supports_vision: model.supports_vision || false,
+    supports_tools: model.supports_tools || false,
+    supports_streaming: model.supports_streaming || false,
+    supports_reasoning: model.supports_reasoning || false,
+    reasoning_levels: model.reasoning_levels || null,
+    is_active: model.is_active || false
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -510,284 +522,227 @@ function ProviderForm({ provider, onSave, onCancel }: {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {provider ? 'Edit Provider' : 'Add New Provider'}
-            </h3>
-            <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
-              <X className="h-6 w-6" />
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">Edit Model: {model.name}</h3>
+              <p className="text-sm text-gray-500 mt-1">{model.provider_id} • {model.model_family}</p>
+            </div>
+            <button
+              onClick={onCancel}
+              className="text-gray-400 hover:text-gray-600 p-2"
+            >
+              ✕
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Info */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="OpenAI, Anthropic, etc."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">API Endpoint</label>
-              <input
-                type="url"
-                required
-                value={formData.api_endpoint}
-                onChange={(e) => setFormData(prev => ({ ...prev, api_endpoint: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="https://api.openai.com/v1"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-              <input
-                type="password"
-                required
-                value={formData.api_key}
-                onChange={(e) => setFormData(prev => ({ ...prev, api_key: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="sk-..."
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pricing per Token</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={formData.pricing_per_token}
-                  onChange={(e) => setFormData(prev => ({ ...prev, pricing_per_token: parseFloat(e.target.value) || 0 }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Max Requests/Min</label>
-                <input
-                  type="number"
-                  value={formData.max_requests_per_minute}
-                  onChange={(e) => setFormData(prev => ({ ...prev, max_requests_per_minute: parseInt(e.target.value) || 60 }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Timeout (seconds)</label>
-                <input
-                  type="number"
-                  value={formData.timeout_seconds}
-                  onChange={(e) => setFormData(prev => ({ ...prev, timeout_seconds: parseInt(e.target.value) || 30 }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex items-center space-x-4 pt-6">
-                <label className="flex items-center">
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Display Name
+                  </label>
                   <input
-                    type="checkbox"
-                    checked={formData.enabled}
-                    onChange={(e) => setFormData(prev => ({ ...prev, enabled: e.target.checked }))}
-                    className="mr-2"
+                    type="text"
+                    value={formData.display_name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="GPT-4o, Claude 3.5 Sonnet"
                   />
-                  Enabled
-                </label>
-
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.supports_streaming}
-                    onChange={(e) => setFormData(prev => ({ ...prev, supports_streaming: e.target.checked }))}
-                    className="mr-2"
-                  />
-                  Supports Streaming
-                </label>
+                </div>
+                <div className="flex items-center space-x-4 pt-6">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_active}
+                      onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    Active
+                  </label>
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-6">
+            {/* Pricing (Per Million Tokens) */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <DollarSign className="h-5 w-5 mr-2 text-green-600" />
+                Pricing (Per Million Tokens)
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Input Cost ($/1M tokens)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.input_cost_per_million}
+                    onChange={(e) => setFormData(prev => ({ ...prev, input_cost_per_million: parseFloat(e.target.value) || 0 }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="15.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Output Cost ($/1M tokens)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.output_cost_per_million}
+                    onChange={(e) => setFormData(prev => ({ ...prev, output_cost_per_million: parseFloat(e.target.value) || 0 }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="75.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cache Read Cost ($/1M tokens)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.cache_read_cost_per_million || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, cache_read_cost_per_million: e.target.value ? parseFloat(e.target.value) : null }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="1.50 (optional)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cache Write Cost ($/1M tokens)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.cache_write_cost_per_million || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, cache_write_cost_per_million: e.target.value ? parseFloat(e.target.value) : null }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="18.75 (optional)"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Technical Specifications */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Technical Specifications</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Context Length
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.context_length}
+                    onChange={(e) => setFormData(prev => ({ ...prev, context_length: parseInt(e.target.value) || 0 }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="200000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Max Output Tokens
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.max_tokens}
+                    onChange={(e) => setFormData(prev => ({ ...prev, max_tokens: parseInt(e.target.value) || 0 }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="32000"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Capabilities */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Capabilities</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.supports_vision}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supports_vision: e.target.checked }))}
+                      className="mr-3"
+                    />
+                    <Image className="h-4 w-4 mr-2 text-purple-600" />
+                    Vision Support
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.supports_tools}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supports_tools: e.target.checked }))}
+                      className="mr-3"
+                    />
+                    <Settings className="h-4 w-4 mr-2 text-indigo-600" />
+                    Tool Support
+                  </label>
+                </div>
+                <div className="space-y-3">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.supports_streaming}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supports_streaming: e.target.checked }))}
+                      className="mr-3"
+                    />
+                    <Zap className="h-4 w-4 mr-2 text-cyan-600" />
+                    Streaming Support
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.supports_reasoning}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supports_reasoning: e.target.checked }))}
+                      className="mr-3"
+                    />
+                    <Brain className="h-4 w-4 mr-2 text-orange-600" />
+                    Reasoning Support
+                  </label>
+                </div>
+              </div>
+
+              {formData.supports_reasoning && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reasoning Levels (1-5)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={formData.reasoning_levels || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, reasoning_levels: e.target.value ? parseInt(e.target.value) : null }))}
+                    className="w-32 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="5"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-3 pt-6 border-t">
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
-                {provider ? 'Update' : 'Create'} Provider
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Model Form Component
-function ModelForm({ model, providers, onSave, onCancel }: {
-  model: ModelMapping | null
-  providers: ModelProvider[]
-  onSave: (model: Partial<ModelMapping>) => void
-  onCancel: () => void
-}) {
-  const [formData, setFormData] = useState({
-    provider_id: model?.provider_id || '',
-    model_name: model?.model_name || '',
-    display_name: model?.display_name || '',
-    context_window: model?.context_window || 4096,
-    max_output_tokens: model?.max_output_tokens || 1024,
-    pricing_input: model?.pricing_input || 0,
-    pricing_output: model?.pricing_output || 0,
-    enabled: model?.enabled ?? true
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSave(formData)
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {model ? 'Edit Model' : 'Add New Model'}
-            </h3>
-            <button onClick={onCancel} className="text-gray-400 hover:text-gray-600">
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Provider</label>
-              <select
-                required
-                value={formData.provider_id}
-                onChange={(e) => setFormData(prev => ({ ...prev, provider_id: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select a provider</option>
-                {providers.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Model Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.model_name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, model_name: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="gpt-4o, claude-3-opus"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.display_name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="GPT-4o, Claude 3 Opus"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Context Window</label>
-                <input
-                  type="number"
-                  value={formData.context_window}
-                  onChange={(e) => setFormData(prev => ({ ...prev, context_window: parseInt(e.target.value) || 4096 }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Max Output Tokens</label>
-                <input
-                  type="number"
-                  value={formData.max_output_tokens}
-                  onChange={(e) => setFormData(prev => ({ ...prev, max_output_tokens: parseInt(e.target.value) || 1024 }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Input Pricing (per token)</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={formData.pricing_input}
-                  onChange={(e) => setFormData(prev => ({ ...prev, pricing_input: parseFloat(e.target.value) || 0 }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Output Pricing (per token)</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={formData.pricing_output}
-                  onChange={(e) => setFormData(prev => ({ ...prev, pricing_output: parseFloat(e.target.value) || 0 }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.enabled}
-                  onChange={(e) => setFormData(prev => ({ ...prev, enabled: e.target.checked }))}
-                  className="mr-2"
-                />
-                Enabled
-              </label>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-6">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-              >
-                {model ? 'Update' : 'Create'} Model
+                Save Changes
               </button>
             </div>
           </form>

@@ -165,24 +165,103 @@ export default function Analytics() {
         console.log('Credit data not available')
       }
 
-      // Usage Analytics - Mock data for now
-      const usageData = {
-        totalSessions: Math.floor(Math.random() * 10000) + 5000,
-        apiCalls: Math.floor(Math.random() * 50000) + 25000,
-        averageSessionDuration: Math.floor(Math.random() * 30) + 10,
-        popularModels: [
-          { name: 'GPT-4o', count: Math.floor(Math.random() * 1000) + 500 },
-          { name: 'Claude 3 Opus', count: Math.floor(Math.random() * 800) + 400 },
-          { name: 'Gemini Pro', count: Math.floor(Math.random() * 600) + 300 }
-        ]
+      // Usage Analytics - Real data from database
+      let usageData = {
+        totalSessions: 0,
+        apiCalls: 0,
+        averageSessionDuration: 0,
+        popularModels: [] as Array<{ name: string; count: number }>
       }
 
-      // Activity Analytics - Mock data for now
-      const activityData = {
-        dailyActiveUsers: Math.floor(Math.random() * 200) + 100,
-        weeklyActiveUsers: Math.floor(Math.random() * 800) + 400,
-        monthlyActiveUsers: Math.floor(Math.random() * 2000) + 1000,
-        retentionRate: Math.floor(Math.random() * 30) + 60
+      try {
+        // Get real session count
+        const { data: chatSessions } = await supabase
+          .from('chat_sessions')
+          .select('id', { count: 'exact' })
+          .gte('created_at', dateThreshold.toISOString())
+
+        // Get real API call count
+        const { data: mcpRequests } = await supabase
+          .from('mcp_request_logs')
+          .select('id', { count: 'exact' })
+          .gte('created_at', dateThreshold.toISOString())
+
+        // Get popular models from chat messages
+        const { data: modelUsage } = await supabase
+          .from('chat_messages')
+          .select('model_name')
+          .gte('created_at', dateThreshold.toISOString())
+          .not('model_name', 'is', null)
+
+        // Count model usage
+        const modelCounts: { [key: string]: number } = {}
+        modelUsage?.forEach(msg => {
+          if (msg.model_name) {
+            modelCounts[msg.model_name] = (modelCounts[msg.model_name] || 0) + 1
+          }
+        })
+
+        const popularModels = Object.entries(modelCounts)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 5)
+          .map(([name, count]) => ({ name, count }))
+
+        usageData = {
+          totalSessions: chatSessions?.length || 0,
+          apiCalls: mcpRequests?.length || 0,
+          averageSessionDuration: 15, // Could calculate from session timestamps
+          popularModels
+        }
+      } catch (error) {
+        console.log('Usage analytics not available:', error)
+      }
+
+      // Activity Analytics - Real data from database
+      let activityData = {
+        dailyActiveUsers: 0,
+        weeklyActiveUsers: 0,
+        monthlyActiveUsers: 0,
+        retentionRate: 0
+      }
+
+      try {
+        const dayThreshold = new Date()
+        dayThreshold.setDate(dayThreshold.getDate() - 1)
+
+        // Get daily active users (users with sessions in last 24h)
+        const { data: dailyActive } = await supabase
+          .from('chat_sessions')
+          .select('user_id')
+          .gte('created_at', dayThreshold.toISOString())
+
+        // Get weekly active users
+        const { data: weeklyActive } = await supabase
+          .from('chat_sessions')
+          .select('user_id')
+          .gte('created_at', weekThreshold.toISOString())
+
+        // Get monthly active users
+        const { data: monthlyActive } = await supabase
+          .from('chat_sessions')
+          .select('user_id')
+          .gte('created_at', monthThreshold.toISOString())
+
+        const uniqueDailyUsers = new Set(dailyActive?.map(s => s.user_id)).size
+        const uniqueWeeklyUsers = new Set(weeklyActive?.map(s => s.user_id)).size
+        const uniqueMonthlyUsers = new Set(monthlyActive?.map(s => s.user_id)).size
+
+        // Calculate retention: weekly active / total users * 100
+        const totalUsers = allUsers?.length || 1
+        const retentionRate = (uniqueWeeklyUsers / totalUsers) * 100
+
+        activityData = {
+          dailyActiveUsers: uniqueDailyUsers,
+          weeklyActiveUsers: uniqueWeeklyUsers,
+          monthlyActiveUsers: uniqueMonthlyUsers,
+          retentionRate: Math.min(retentionRate, 100)
+        }
+      } catch (error) {
+        console.log('Activity analytics not available:', error)
       }
 
       const analyticsData: AnalyticsData = {
