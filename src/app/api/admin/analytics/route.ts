@@ -55,7 +55,7 @@ export async function GET(request: Request) {
         totalSessions: 0,
         apiCalls: 0,
         averageSessionDuration: 0,
-        popularModels: []
+        popularModels: [] as Array<{name: string, count: number}>
       },
       credits: {
         totalIssued: 0,
