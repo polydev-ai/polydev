@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/app/utils/supabase/server'
+import { createClient, createAdminClient } from '@/app/utils/supabase/server'
 
 export async function GET(request: Request) {
   try {
@@ -88,19 +88,20 @@ export async function GET(request: Request) {
       }
     }
 
-    // Try to get more accurate data from database
+    // Get accurate data from database using admin client to bypass RLS
+    const adminClient = createAdminClient()
     try {
-      // Get real user growth data
-      const { data: allUsers } = await supabase
+      // Get real user growth data using admin client
+      const { data: allUsers } = await adminClient
         .from('profiles')
         .select('created_at')
 
-      const { data: weekUsers } = await supabase
+      const { data: weekUsers } = await adminClient
         .from('profiles')
         .select('created_at')
         .gte('created_at', weekThreshold.toISOString())
 
-      const { data: monthUsers } = await supabase
+      const { data: monthUsers } = await adminClient
         .from('profiles')
         .select('created_at')
         .gte('created_at', monthThreshold.toISOString())
@@ -114,8 +115,8 @@ export async function GET(request: Request) {
         }
       }
 
-      // Get real subscription data
-      const { data: activeSubscriptions } = await supabase
+      // Get real subscription data using admin client
+      const { data: activeSubscriptions } = await adminClient
         .from('user_subscriptions')
         .select('*')
         .eq('status', 'active')
@@ -126,13 +127,13 @@ export async function GET(request: Request) {
         analytics.subscription.conversionRate = allUsers ? Math.round((activeSubscriptions.length / allUsers.length) * 100) : 0
       }
 
-      // Get real usage data
-      const { data: chatSessions } = await supabase
+      // Get real usage data using admin client
+      const { data: chatSessions } = await adminClient
         .from('chat_sessions')
         .select('id')
         .gte('created_at', dateThreshold.toISOString())
 
-      const { data: mcpRequests } = await supabase
+      const { data: mcpRequests } = await adminClient
         .from('mcp_request_logs')
         .select('id')
         .gte('created_at', dateThreshold.toISOString())
@@ -142,8 +143,8 @@ export async function GET(request: Request) {
         analytics.usage.apiCalls = mcpRequests.length
       }
 
-      // Get credits data
-      const { data: creditAdjustments } = await supabase
+      // Get credits data using admin client
+      const { data: creditAdjustments } = await adminClient
         .from('admin_credit_adjustments')
         .select('amount')
 

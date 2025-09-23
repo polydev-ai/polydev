@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/app/utils/supabase/server'
+import { createClient, createAdminClient } from '@/app/utils/supabase/server'
 
 export async function GET() {
   try {
@@ -23,8 +23,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get all user data using service role to bypass RLS
-    const { data: users, error: usersError } = await supabase
+    // Get all user data using admin client to bypass RLS
+    const adminClient = createAdminClient()
+    const { data: users, error: usersError } = await adminClient
       .from('profiles')
       .select(`
         id,
@@ -47,13 +48,13 @@ export async function GET() {
       }, { status: 500 })
     }
 
-    // Get subscription data for each user
-    const { data: subscriptions } = await supabase
+    // Get subscription data for each user using admin client
+    const { data: subscriptions } = await adminClient
       .from('user_subscriptions')
       .select('user_id, tier, status')
 
-    // Get user credits
-    const { data: credits } = await supabase
+    // Get user credits using admin client
+    const { data: credits } = await adminClient
       .from('user_credits')
       .select('user_id, balance, promotional_balance')
 
@@ -130,7 +131,8 @@ export async function PATCH(request: Request) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    const { error: updateError } = await supabase
+    const adminClient = createAdminClient()
+    const { error: updateError } = await adminClient
       .from('profiles')
       .update(updateData)
       .eq('id', userId)
