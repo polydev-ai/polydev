@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { ArrowLeft, Search, Eye, Brain, Zap, Image, Settings, DollarSign, Edit } from 'lucide-react'
+import { ArrowLeft, Search, Eye, Brain, Zap, Image, Settings, DollarSign, Edit, Plus } from 'lucide-react'
 
 interface ModelRegistryEntry {
   id: string
@@ -45,6 +45,7 @@ export default function ModelsManagement() {
   const [sortDesc, setSortDesc] = useState(false)
   const [editingModel, setEditingModel] = useState<ModelRegistryEntry | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -206,6 +207,23 @@ export default function ModelsManagement() {
     }
   }
 
+  async function createModel(modelData: Omit<ModelRegistryEntry, 'id' | 'created_at' | 'updated_at'>) {
+    try {
+      const { error } = await supabase
+        .from('models_registry')
+        .insert([modelData])
+
+      if (error) throw error
+
+      await logActivity('create_model', `Created new model: ${modelData.display_name}`)
+      setShowCreateForm(false)
+      await loadModelsData()
+    } catch (error) {
+      console.error('Error creating model:', error)
+      alert('Error creating model: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    }
+  }
+
   async function logActivity(action: string, details: string) {
     try {
       await supabase
@@ -266,8 +284,17 @@ export default function ModelsManagement() {
                 <p className="text-gray-600 mt-1">Comprehensive AI model database with pricing and capabilities</p>
               </div>
             </div>
-            <div className="text-sm text-gray-500">
-              {filteredModels.length} of {models.length} models
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-500">
+                {filteredModels.length} of {models.length} models
+              </div>
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Model
+              </button>
             </div>
           </div>
         </div>
@@ -487,6 +514,14 @@ export default function ModelsManagement() {
             setShowEditForm(false)
             setEditingModel(null)
           }}
+        />
+      )}
+
+      {/* Model Create Form Modal */}
+      {showCreateForm && (
+        <ModelCreateForm
+          onSave={createModel}
+          onCancel={() => setShowCreateForm(false)}
         />
       )}
     </div>
@@ -743,6 +778,338 @@ function ModelEditForm({ model, onSave, onCancel }: {
                 className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Model Create Form Component
+function ModelCreateForm({ onSave, onCancel }: {
+  onSave: (model: Omit<ModelRegistryEntry, 'id' | 'created_at' | 'updated_at'>) => void
+  onCancel: () => void
+}) {
+  const [formData, setFormData] = useState({
+    provider_id: '',
+    name: '',
+    display_name: '',
+    friendly_id: '',
+    provider_model_id: '',
+    max_tokens: 4096,
+    context_length: 8192,
+    input_cost_per_million: 0,
+    output_cost_per_million: 0,
+    cache_read_cost_per_million: null as number | null,
+    cache_write_cost_per_million: null as number | null,
+    supports_vision: false,
+    supports_tools: false,
+    supports_streaming: false,
+    supports_reasoning: false,
+    reasoning_levels: null as number | null,
+    model_family: '',
+    model_version: '',
+    is_active: true,
+    models_dev_metadata: {}
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.provider_id || !formData.name || !formData.display_name) {
+      alert('Please fill in required fields: Provider ID, Name, and Display Name')
+      return
+    }
+    onSave(formData)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Create New Model</h2>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Basic Information */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Provider ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.provider_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, provider_id: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="openai, anthropic, google, etc."
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Model Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="gpt-4, claude-3-opus, etc."
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Display Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.display_name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="GPT-4, Claude 3 Opus, etc."
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Friendly ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.friendly_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, friendly_id: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="gpt4, claude3opus, etc."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Provider Model ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.provider_model_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, provider_model_id: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Provider-specific model identifier"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Model Family
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.model_family}
+                    onChange={(e) => setFormData(prev => ({ ...prev, model_family: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="GPT, Claude, Gemini, etc."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Model Version
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.model_version}
+                    onChange={(e) => setFormData(prev => ({ ...prev, model_version: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="v1, turbo, pro, etc."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing Information */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Pricing (per million tokens)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Input Cost per Million Tokens ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.input_cost_per_million}
+                    onChange={(e) => setFormData(prev => ({ ...prev, input_cost_per_million: parseFloat(e.target.value) || 0 }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Output Cost per Million Tokens ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.output_cost_per_million}
+                    onChange={(e) => setFormData(prev => ({ ...prev, output_cost_per_million: parseFloat(e.target.value) || 0 }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cache Read Cost per Million Tokens ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.cache_read_cost_per_million || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, cache_read_cost_per_million: e.target.value ? parseFloat(e.target.value) : null }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Optional"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cache Write Cost per Million Tokens ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.cache_write_cost_per_million || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, cache_write_cost_per_million: e.target.value ? parseFloat(e.target.value) : null }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Model Specifications */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Model Specifications</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Context Length (tokens)
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.context_length}
+                    onChange={(e) => setFormData(prev => ({ ...prev, context_length: parseInt(e.target.value) || 0 }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="8192"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Max Output Tokens
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.max_tokens}
+                    onChange={(e) => setFormData(prev => ({ ...prev, max_tokens: parseInt(e.target.value) || 0 }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="4096"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Capabilities */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-4">Capabilities</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.supports_vision}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supports_vision: e.target.checked }))}
+                      className="mr-3"
+                    />
+                    <Image className="h-4 w-4 mr-2 text-purple-600" />
+                    Vision Support
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.supports_tools}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supports_tools: e.target.checked }))}
+                      className="mr-3"
+                    />
+                    <Settings className="h-4 w-4 mr-2 text-indigo-600" />
+                    Tool Support
+                  </label>
+                </div>
+                <div className="space-y-3">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.supports_streaming}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supports_streaming: e.target.checked }))}
+                      className="mr-3"
+                    />
+                    <Zap className="h-4 w-4 mr-2 text-cyan-600" />
+                    Streaming Support
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.supports_reasoning}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supports_reasoning: e.target.checked }))}
+                      className="mr-3"
+                    />
+                    <Brain className="h-4 w-4 mr-2 text-orange-600" />
+                    Reasoning Support
+                  </label>
+                </div>
+              </div>
+
+              {formData.supports_reasoning && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reasoning Levels (1-5)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={formData.reasoning_levels || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, reasoning_levels: e.target.value ? parseInt(e.target.value) : null }))}
+                    className="w-32 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="5"
+                  />
+                </div>
+              )}
+
+              <div className="mt-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                    className="mr-3"
+                  />
+                  <Eye className="h-4 w-4 mr-2 text-green-600" />
+                  Active (Available for use)
+                </label>
+              </div>
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end space-x-3 pt-6 border-t">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Create Model
               </button>
             </div>
           </form>

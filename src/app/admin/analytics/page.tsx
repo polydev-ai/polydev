@@ -177,13 +177,13 @@ export default function Analytics() {
         // Get real session count
         const { data: chatSessions } = await supabase
           .from('chat_sessions')
-          .select('id', { count: 'exact' })
+          .select('id')
           .gte('created_at', dateThreshold.toISOString())
 
         // Get real API call count
         const { data: mcpRequests } = await supabase
           .from('mcp_request_logs')
-          .select('id', { count: 'exact' })
+          .select('id')
           .gte('created_at', dateThreshold.toISOString())
 
         // Get popular models from chat messages
