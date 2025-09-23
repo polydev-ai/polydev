@@ -97,57 +97,43 @@ export default function AdminDashboard() {
 
   async function loadAdminData() {
     try {
-      // Get REAL comprehensive stats using direct Supabase queries with explicit count
-      const [
-        usersResult,
-        subscriptionsResult,
-        modelsResult,
-        mcpRequestsResult,
-        chatSessionsResult,
-        chatMessagesResult,
-        usageSessionsResult,
-        revenueResult,
-        creditsResult
-      ] = await Promise.allSettled([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('user_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-        supabase.from('models_registry').select('*', { count: 'exact', head: true }).eq('is_active', true),
-        supabase.from('mcp_request_logs').select('*', { count: 'exact', head: true }),
-        supabase.from('chat_sessions').select('*', { count: 'exact', head: true }),
-        supabase.from('chat_messages').select('*', { count: 'exact', head: true }),
-        supabase.from('usage_sessions').select('*', { count: 'exact', head: true }),
-        supabase.from('purchase_history').select('amount_paid').eq('status', 'completed'),
-        supabase.from('admin_credit_adjustments').select('amount')
-      ])
+      console.log('📊 Loading admin data from dedicated API...')
 
-      // Calculate revenue
-      const revenueData = revenueResult.status === 'fulfilled' ? (revenueResult.value as any).data || [] : []
-      const totalRevenue = revenueData.reduce((sum: number, r: any) => sum + (parseFloat(r.amount_paid) || 0), 0)
+      // Use dedicated admin stats API that bypasses RLS
+      const response = await fetch('/api/admin/stats')
 
-      // Calculate credits issued
-      const creditsData = creditsResult.status === 'fulfilled' ? (creditsResult.value as any).data || [] : []
-      const totalCreditsIssued = creditsData.reduce((sum: number, r: any) => sum + (parseFloat(r.amount) || 0), 0)
+      if (!response.ok) {
+        throw new Error(`Admin stats API failed: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load admin stats')
+      }
+
+      const adminStats = data.stats
+      console.log('📊 Admin Stats API Response:', adminStats)
 
       setStats({
-        totalUsers: usersResult.status === 'fulfilled' ? (usersResult.value as any).count || 0 : 0,
-        activeSubscriptions: subscriptionsResult.status === 'fulfilled' ? (subscriptionsResult.value as any).count || 0 : 0,
-        activeModels: modelsResult.status === 'fulfilled' ? (modelsResult.value as any).count || 0 : 0,
-        totalApiCalls: mcpRequestsResult.status === 'fulfilled' ? (mcpRequestsResult.value as any).count || 0 : 0,
-        totalCreditsIssued,
-        revenue: totalRevenue
+        totalUsers: adminStats.totalUsers || 0,
+        activeSubscriptions: adminStats.activeSubscriptions || 0,
+        activeModels: adminStats.activeModels || 0,
+        totalApiCalls: adminStats.totalApiCalls || 0,
+        totalCreditsIssued: adminStats.totalCreditsIssued || 0,
+        revenue: adminStats.revenue || 0
       })
 
-      console.log('📊 Real Admin Stats Loaded:', {
-        totalUsers: usersResult.status === 'fulfilled' ? (usersResult.value as any).count : 'failed',
-        activeSubscriptions: subscriptionsResult.status === 'fulfilled' ? (subscriptionsResult.value as any).count : 'failed',
-        activeModels: modelsResult.status === 'fulfilled' ? (modelsResult.value as any).count : 'failed',
-        totalApiCalls: mcpRequestsResult.status === 'fulfilled' ? (mcpRequestsResult.value as any).count : 'failed',
-        chatSessions: chatSessionsResult.status === 'fulfilled' ? (chatSessionsResult.value as any).count : 'failed',
-        chatMessages: chatMessagesResult.status === 'fulfilled' ? (chatMessagesResult.value as any).count : 'failed',
-        usageSessions: usageSessionsResult.status === 'fulfilled' ? (usageSessionsResult.value as any).count : 'failed',
-        revenue: totalRevenue,
-        creditsIssued: totalCreditsIssued,
-        usersRawResult: usersResult.status === 'fulfilled' ? usersResult.value : 'error'
+      console.log('✅ Admin Dashboard Stats Updated Successfully:', {
+        totalUsers: adminStats.totalUsers,
+        activeSubscriptions: adminStats.activeSubscriptions,
+        activeModels: adminStats.activeModels,
+        totalApiCalls: adminStats.totalApiCalls,
+        chatSessions: adminStats.chatSessions,
+        chatMessages: adminStats.chatMessages,
+        usageSessions: adminStats.usageSessions,
+        revenue: adminStats.revenue,
+        creditsIssued: adminStats.totalCreditsIssued
       })
 
       // Get recent activity with proper error handling
