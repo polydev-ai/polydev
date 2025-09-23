@@ -85,7 +85,7 @@ export async function GET(request: Request) {
       // Get real user growth data using admin client
       const { data: allUsers } = await adminClient
         .from('profiles')
-        .select('created_at')
+        .select('id, created_at')
 
       const { data: weekUsers } = await adminClient
         .from('profiles')
