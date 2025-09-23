@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { ArrowLeft, Plus, Search, Download, Filter, CreditCard } from 'lucide-react'
 
@@ -40,6 +40,7 @@ export default function CreditManagement() {
   const [bulkReason, setBulkReason] = useState('')
 
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
   useEffect(() => {
@@ -51,6 +52,18 @@ export default function CreditManagement() {
       loadData()
     }
   }, [isAdmin])
+
+  // Handle URL user parameter
+  useEffect(() => {
+    const userParam = searchParams.get('user')
+    if (userParam && users.length > 0) {
+      const foundUser = users.find(u => u.id === userParam)
+      if (foundUser) {
+        setSelectedUserId(userParam)
+        setSearchTerm(foundUser.email) // Filter to show this user
+      }
+    }
+  }, [searchParams, users])
 
   async function checkAdminAccess() {
     try {
@@ -95,81 +108,53 @@ export default function CreditManagement() {
 
   async function loadData() {
     try {
-      // Get users with credits - handle case where credits column might not exist
-      const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select('id, email, credits, created_at')
-        .order('email')
+      console.log('📊 Loading credits data from dedicated admin API...')
 
-      if (usersError) {
-        console.error('Error loading users:', usersError)
-        // If credits column doesn't exist, load users without credits
-        const { data: fallbackUsers } = await supabase
-          .from('profiles')
-          .select('id, email, created_at')
-          .order('email')
+      // Use dedicated admin credits API that bypasses RLS
+      const response = await fetch('/api/admin/credits')
 
-        setUsers((fallbackUsers || []).map(u => ({ ...u, credits: 0 })))
-      } else {
-        setUsers(usersData || [])
+      if (!response.ok) {
+        throw new Error(`Admin credits API failed: ${response.statusText}`)
       }
 
-      // Get credit adjustments
-      const { data: adjustmentsData, error: adjustmentsError } = await supabase
-        .from('admin_credit_adjustments')
-        .select(`
-          *,
-          user:profiles(id, email)
-        `)
-        .order('created_at', { ascending: false })
+      const data = await response.json()
 
-      if (!adjustmentsError && adjustmentsData) {
-        setAdjustments(adjustmentsData)
-      } else {
-        console.log('Credit adjustments table not available yet')
-        setAdjustments([])
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load credits data')
       }
+
+      console.log(`✅ Admin Credits API: Loaded ${data.users.length} users and ${data.adjustments.length} adjustments`)
+      setUsers(data.users || [])
+      setAdjustments(data.adjustments || [])
     } catch (error) {
       console.error('Error loading data:', error)
+      // Fallback to empty arrays
+      setUsers([])
+      setAdjustments([])
     }
   }
 
   async function adjustUserCredits(userId: string, amount: number, reason: string) {
     try {
-      // Add credit adjustment record
-      const { error: adjustmentError } = await supabase
-        .from('admin_credit_adjustments')
-        .insert([{
-          user_id: userId,
+      // Use admin credits API for credit adjustment
+      const response = await fetch('/api/admin/credits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId,
           amount,
-          reason,
-          admin_email: user?.email
-        }])
+          reason
+        })
+      })
 
-      if (adjustmentError) throw adjustmentError
+      const data = await response.json()
 
-      // Update user credits - handle case where credits column might not exist
-      try {
-        const { data: currentUser } = await supabase
-          .from('profiles')
-          .select('credits')
-          .eq('id', userId)
-          .single()
-
-        const newCredits = (currentUser?.credits || 0) + amount
-
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ credits: newCredits })
-          .eq('id', userId)
-
-        if (updateError) throw updateError
-      } catch (creditsError) {
-        console.log('Credits column may not exist, creating it...')
-        // Could add migration logic here if needed
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to adjust credits')
       }
 
-      await logActivity('credit_adjustment', `Adjusted credits for user ${userId}: ${amount > 0 ? '+' : ''}${amount} (${reason})`)
       await loadData()
 
       // Reset form
@@ -220,19 +205,6 @@ export default function CreditManagement() {
     }
   }
 
-  async function logActivity(action: string, details: string) {
-    try {
-      await supabase
-        .from('admin_activity_log')
-        .insert([{
-          admin_email: user?.email,
-          action,
-          details
-        }])
-    } catch (error) {
-      console.error('Error logging activity:', error)
-    }
-  }
 
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -428,27 +400,39 @@ export default function CreditManagement() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredUsers.map((user) => (
-                      <tr key={user.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {user.credits || 0}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => {
-                              setSelectedUserId(user.id)
-                              setShowAdjustmentForm(true)
-                            }}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            Adjust
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredUsers.map((user) => {
+                      const isSelected = selectedUserId === user.id
+                      return (
+                        <tr key={user.id} className={isSelected ? 'bg-blue-50 border-blue-200' : ''}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {user.email}
+                            {isSelected && (
+                              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                Selected
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {user.credits || 0}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => {
+                                setSelectedUserId(user.id)
+                                setShowAdjustmentForm(true)
+                              }}
+                              className={`${
+                                isSelected
+                                  ? 'text-blue-800 hover:text-blue-900 font-semibold'
+                                  : 'text-blue-600 hover:text-blue-900'
+                              }`}
+                            >
+                              Adjust
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
