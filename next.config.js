@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   productionBrowserSourceMaps: true,
+  // Note: Vercel Speed Insights disabled via environment variables
   images: {
     domains: ['models.dev'],
     remotePatterns: [

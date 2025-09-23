@@ -6,6 +6,7 @@ import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { Users, CreditCard, Code, BarChart3, Settings, Plus, Search, Activity } from 'lucide-react'
 import { SafeText, renderSafely } from '@/components/SafeText'
+import ReactDebugPatch from '@/components/ReactDebugPatch'
 
 // Extend window to include React for debugging
 declare global {
@@ -303,6 +304,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ReactDebugPatch />
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
