@@ -78,7 +78,7 @@ export async function GET() {
 
     // Transform adjustments to match expected format
     const transformedAdjustments = (adjustments || []).map(adj => {
-      const adminEmail = adj.profiles?.email || 'Unknown Admin'
+      const adminEmail = Array.isArray(adj.profiles) ? adj.profiles[0]?.email : adj.profiles?.email || 'Unknown Admin'
       const userEmail = transformedUsers.find(u => u.id === adj.user_id)?.email || 'Unknown User'
 
       return {
