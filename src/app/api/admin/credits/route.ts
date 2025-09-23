@@ -32,11 +32,7 @@ export async function GET() {
       .select(`
         id,
         email,
-        created_at,
-        user_credits (
-          balance,
-          promotional_balance
-        )
+        created_at
       `)
       .order('email')
 
@@ -48,17 +44,27 @@ export async function GET() {
       }, { status: 500 })
     }
 
-    // Transform users data to include calculated credits
-    const transformedUsers = (users || []).map(user => ({
-      id: user.id,
-      email: user.email,
-      created_at: user.created_at,
-      credits: user.user_credits && user.user_credits.length > 0
-        ? (parseFloat(user.user_credits[0].balance) + parseFloat(user.user_credits[0].promotional_balance))
-        : 0
-    }))
+    // Get user credits separately
+    const { data: userCredits, error: creditsError } = await adminClient
+      .from('user_credits')
+      .select('user_id, balance, promotional_balance')
 
-    // Get credit adjustments with user info
+    if (creditsError) {
+      console.error('Error loading user credits:', creditsError)
+    }
+
+    // Transform users data to include calculated credits
+    const transformedUsers = (users || []).map(user => {
+      const credit = userCredits?.find(cred => cred.user_id === user.id)
+      return {
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        credits: credit ? (parseFloat(credit.balance) + parseFloat(credit.promotional_balance)) : 0
+      }
+    })
+
+    // Get credit adjustments
     const { data: adjustments, error: adjustmentsError } = await adminClient
       .from('admin_credit_adjustments')
       .select(`
@@ -67,10 +73,16 @@ export async function GET() {
         amount,
         reason,
         created_at,
-        admin_id,
-        profiles!admin_credit_adjustments_admin_id_fkey(email)
+        admin_id
       `)
       .order('created_at', { ascending: false })
+
+    // Get admin profiles separately for adjustments
+    const adminIds = [...new Set((adjustments || []).map(adj => adj.admin_id).filter(Boolean))]
+    const { data: adminProfiles } = await adminClient
+      .from('profiles')
+      .select('id, email')
+      .in('id', adminIds)
 
     if (adjustmentsError) {
       console.log('Credit adjustments table not available:', adjustmentsError)
@@ -78,7 +90,8 @@ export async function GET() {
 
     // Transform adjustments to match expected format
     const transformedAdjustments = (adjustments || []).map(adj => {
-      const adminEmail = Array.isArray(adj.profiles) ? adj.profiles[0]?.email : (adj.profiles as any)?.email || 'Unknown Admin'
+      const adminProfile = adminProfiles?.find(admin => admin.id === adj.admin_id)
+      const adminEmail = adminProfile?.email || 'Unknown Admin'
       const userEmail = transformedUsers.find(u => u.id === adj.user_id)?.email || 'Unknown User'
 
       return {
