@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
@@ -23,7 +23,7 @@ interface CreditAdjustment {
   user?: User
 }
 
-export default function CreditManagement() {
+function CreditManagementContent() {
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -567,5 +567,17 @@ export default function CreditManagement() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function CreditManagement() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg">Loading credit management...</div>
+      </div>
+    }>
+      <CreditManagementContent />
+    </Suspense>
   )
 }
