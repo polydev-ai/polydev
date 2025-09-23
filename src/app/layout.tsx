@@ -3,6 +3,7 @@ import './globals.css'
 import '@/lib/crypto-polyfill'
 import { PostHogProvider } from '@/components/posthog-provider'
 import Navigation from '../components/Navigation'
+import ServiceWorkerMessageFilter from '@/components/ServiceWorkerMessageFilter'
 
 export const viewport = 'width=device-width, initial-scale=1'
 
@@ -33,6 +34,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="antialiased font-sans text-slate-900 bg-white selection:bg-violet-100 selection:text-violet-900">
+        <ServiceWorkerMessageFilter />
         <PostHogProvider>
           <Navigation />
           <main>

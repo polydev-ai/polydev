@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { Users, CreditCard, Code, BarChart3, Settings, Plus, Search, Activity } from 'lucide-react'
+import { SafeText, renderSafely } from '@/components/SafeText'
 
 // Extend window to include React for debugging
 declare global {
@@ -457,7 +458,7 @@ export default function AdminDashboard() {
               </p>
               {backfillResult && (
                 <pre className={`text-sm p-3 rounded bg-gray-50 overflow-x-auto ${backfillResult.ok ? 'text-gray-800' : 'text-red-600'}`}>
-                  {backfillResult ? JSON.stringify(backfillResult, null, 2) : 'No result yet'}
+                  <SafeText value={backfillResult} fallback="No result yet" />
                 </pre>
               )}
             </div>
@@ -480,12 +481,12 @@ export default function AdminDashboard() {
               <div className="space-y-2">
                 <div>
                   <h4 className="text-sm font-medium text-gray-900">Status</h4>
-                  <pre className="text-xs p-2 rounded bg-gray-50 overflow-x-auto">{syncStatus ? JSON.stringify(syncStatus, null, 2) : 'Loading...'}</pre>
+                  <pre className="text-xs p-2 rounded bg-gray-50 overflow-x-auto"><SafeText value={syncStatus} fallback="Loading..." /></pre>
                 </div>
                 {syncResult && (
                   <div>
                     <h4 className="text-sm font-medium text-gray-900">Last Result</h4>
-                    <pre className="text-xs p-2 rounded bg-gray-50 overflow-x-auto">{syncResult ? JSON.stringify(syncResult, null, 2) : 'No result yet'}</pre>
+                    <pre className="text-xs p-2 rounded bg-gray-50 overflow-x-auto"><SafeText value={syncResult} fallback="No result yet" /></pre>
                   </div>
                 )}
               </div>
