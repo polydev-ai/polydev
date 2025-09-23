@@ -6,6 +6,13 @@ import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { Users, CreditCard, Code, BarChart3, Settings, Plus, Search, Activity } from 'lucide-react'
 
+// Extend window to include React for debugging
+declare global {
+  interface Window {
+    React: any
+  }
+}
+
 interface AdminStats {
   totalUsers: number
   activeSubscriptions: number
@@ -48,6 +55,16 @@ export default function AdminDashboard() {
   // Debug effect to catch objects with test and timestamp
   useEffect(() => {
     const debugObjects = () => {
+      // Check URL params first (most likely culprit according to AI)
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search)
+        const paramsObj = Object.fromEntries(urlParams.entries())
+        console.log('URL Search Params:', paramsObj)
+        if (paramsObj.test && paramsObj.timestamp) {
+          console.error('🚨 FOUND test,timestamp in URL PARAMS:', paramsObj)
+        }
+      }
+
       // Log all state variables to see if any have {test, timestamp} structure
       console.log('DEBUG: Checking for objects with test/timestamp keys')
       console.log('stats:', stats)
@@ -72,6 +89,36 @@ export default function AdminDashboard() {
 
     debugObjects()
   }, [stats, recentActivity, backfillResult, syncStatus, syncResult])
+
+  // React.createElement patch to identify exact component (suggested by AI)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.React) {
+      const origCreateElement = window.React.createElement
+      window.React.createElement = function patchedCreateElement(type: any, props: any, ...children: any[]) {
+        const flat = children.flat ? children.flat(Infinity) : children
+        for (const child of flat) {
+          if (child && typeof child === 'object' && !Array.isArray(child) && !window.React.isValidElement(child)) {
+            const keys = Object.keys(child)
+            if (keys.length && keys.includes('test') && keys.includes('timestamp')) {
+              try { throw new Error('Invalid React child') } catch (e: any) {
+                console.error('🚨 FOUND THE PROBLEMATIC COMPONENT:', {
+                  component: type?.displayName || type?.name || type,
+                  childKeys: keys,
+                  child: child,
+                  stack: e.stack
+                })
+              }
+            }
+          }
+        }
+        return origCreateElement(type, props, ...children)
+      }
+
+      return () => {
+        window.React.createElement = origCreateElement
+      }
+    }
+  }, [])
 
   async function checkAdminAccess() {
     try {
