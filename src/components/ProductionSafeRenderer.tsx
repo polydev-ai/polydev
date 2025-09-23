@@ -12,6 +12,11 @@ export default function ProductionSafeRenderer() {
           return child
         }
 
+        // Allow functions (for render props patterns like drag-and-drop)
+        if (typeof child === 'function') {
+          return child
+        }
+
         // Check if it's a valid React element first
         if (child && typeof child === 'object' && child.$$typeof) {
           return child
