@@ -101,6 +101,9 @@ export async function POST(request: NextRequest) {
             saved_chat_models: newSavedChatModels
           },
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
         })
 
       if (updateError) {
