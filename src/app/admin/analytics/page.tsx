@@ -103,193 +103,33 @@ export default function Analytics() {
 
   async function loadAnalytics() {
     try {
-      const dateThreshold = new Date()
-      dateThreshold.setDate(dateThreshold.getDate() - parseInt(dateRange))
+      console.log('📊 Loading analytics from dedicated admin API...')
 
-      // User Growth Analytics
-      const { data: allUsers } = await supabase.from('profiles').select('created_at')
-      const { data: recentUsers } = await supabase
-        .from('profiles')
-        .select('created_at')
-        .gte('created_at', dateThreshold.toISOString())
+      // Use dedicated admin analytics API that bypasses RLS
+      const response = await fetch(`/api/admin/analytics?days=${dateRange}`)
 
-      const weekThreshold = new Date()
-      weekThreshold.setDate(weekThreshold.getDate() - 7)
-      const { data: weekUsers } = await supabase
-        .from('profiles')
-        .select('created_at')
-        .gte('created_at', weekThreshold.toISOString())
-
-      const monthThreshold = new Date()
-      monthThreshold.setDate(monthThreshold.getDate() - 30)
-      const { data: monthUsers } = await supabase
-        .from('profiles')
-        .select('created_at')
-        .gte('created_at', monthThreshold.toISOString())
-
-      // Subscription Analytics
-      let subscriptionData = { active: 0, revenue: 0 }
-      try {
-        const { data: activeSubscriptions } = await supabase
-          .from('user_subscriptions')
-          .select('*')
-          .eq('status', 'active')
-
-        subscriptionData.active = activeSubscriptions?.length || 0
-        subscriptionData.revenue = (activeSubscriptions?.length || 0) * 10 // Assuming $10/month
-      } catch (error) {
-        console.log('Subscriptions table not available')
+      if (!response.ok) {
+        throw new Error(`Admin analytics API failed: ${response.statusText}`)
       }
 
-      // Credit Analytics
-      let creditData: { totalIssued: number; topUsers: Array<{ email: string; credits: number }> } = {
-        totalIssued: 0,
-        topUsers: []
-      }
-      try {
-        const { data: creditAdjustments } = await supabase
-          .from('admin_credit_adjustments')
-          .select('amount, user_id')
+      const data = await response.json()
 
-        creditData.totalIssued = creditAdjustments?.reduce((sum, adj) => sum + adj.amount, 0) || 0
-
-        // Get top credit users
-        const { data: userCredits } = await supabase
-          .from('profiles')
-          .select('email, credits')
-          .order('credits', { ascending: false })
-          .limit(5)
-
-        creditData.topUsers = userCredits?.map(u => ({ email: u.email, credits: u.credits || 0 })) || []
-      } catch (error) {
-        console.log('Credit data not available')
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load analytics')
       }
 
-      // Usage Analytics - Real data from database
-      let usageData = {
-        totalSessions: 0,
-        apiCalls: 0,
-        averageSessionDuration: 0,
-        popularModels: [] as Array<{ name: string; count: number }>
-      }
-
-      try {
-        // Get real session count
-        const { data: chatSessions } = await supabase
-          .from('chat_sessions')
-          .select('id')
-          .gte('created_at', dateThreshold.toISOString())
-
-        // Get real API call count
-        const { data: mcpRequests } = await supabase
-          .from('mcp_request_logs')
-          .select('id')
-          .gte('created_at', dateThreshold.toISOString())
-
-        // Get popular models from chat messages
-        const { data: modelUsage } = await supabase
-          .from('chat_messages')
-          .select('model_name')
-          .gte('created_at', dateThreshold.toISOString())
-          .not('model_name', 'is', null)
-
-        // Count model usage
-        const modelCounts: { [key: string]: number } = {}
-        modelUsage?.forEach(msg => {
-          if (msg.model_name) {
-            modelCounts[msg.model_name] = (modelCounts[msg.model_name] || 0) + 1
-          }
-        })
-
-        const popularModels = Object.entries(modelCounts)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-          .map(([name, count]) => ({ name, count }))
-
-        usageData = {
-          totalSessions: chatSessions?.length || 0,
-          apiCalls: mcpRequests?.length || 0,
-          averageSessionDuration: 15, // Could calculate from session timestamps
-          popularModels
-        }
-      } catch (error) {
-        console.log('Usage analytics not available:', error)
-      }
-
-      // Activity Analytics - Real data from database
-      let activityData = {
-        dailyActiveUsers: 0,
-        weeklyActiveUsers: 0,
-        monthlyActiveUsers: 0,
-        retentionRate: 0
-      }
-
-      try {
-        const dayThreshold = new Date()
-        dayThreshold.setDate(dayThreshold.getDate() - 1)
-
-        // Get daily active users (users with sessions in last 24h)
-        const { data: dailyActive } = await supabase
-          .from('chat_sessions')
-          .select('user_id')
-          .gte('created_at', dayThreshold.toISOString())
-
-        // Get weekly active users
-        const { data: weeklyActive } = await supabase
-          .from('chat_sessions')
-          .select('user_id')
-          .gte('created_at', weekThreshold.toISOString())
-
-        // Get monthly active users
-        const { data: monthlyActive } = await supabase
-          .from('chat_sessions')
-          .select('user_id')
-          .gte('created_at', monthThreshold.toISOString())
-
-        const uniqueDailyUsers = new Set(dailyActive?.map(s => s.user_id)).size
-        const uniqueWeeklyUsers = new Set(weeklyActive?.map(s => s.user_id)).size
-        const uniqueMonthlyUsers = new Set(monthlyActive?.map(s => s.user_id)).size
-
-        // Calculate retention: weekly active / total users * 100
-        const totalUsers = allUsers?.length || 1
-        const retentionRate = (uniqueWeeklyUsers / totalUsers) * 100
-
-        activityData = {
-          dailyActiveUsers: uniqueDailyUsers,
-          weeklyActiveUsers: uniqueWeeklyUsers,
-          monthlyActiveUsers: uniqueMonthlyUsers,
-          retentionRate: Math.min(retentionRate, 100)
-        }
-      } catch (error) {
-        console.log('Activity analytics not available:', error)
-      }
-
-      const analyticsData: AnalyticsData = {
-        userGrowth: {
-          total: allUsers?.length || 0,
-          thisWeek: weekUsers?.length || 0,
-          thisMonth: monthUsers?.length || 0,
-          growth: ((recentUsers?.length || 0) / Math.max(1, (allUsers?.length || 1) - (recentUsers?.length || 0))) * 100
-        },
-        subscription: {
-          active: subscriptionData.active,
-          revenue: subscriptionData.revenue,
-          conversionRate: subscriptionData.active > 0 ? (subscriptionData.active / (allUsers?.length || 1)) * 100 : 0,
-          churnRate: Math.floor(Math.random() * 10) + 2
-        },
-        usage: usageData,
-        credits: {
-          totalIssued: creditData.totalIssued,
-          totalUsed: Math.floor(creditData.totalIssued * 0.7),
-          averagePerUser: creditData.totalIssued / Math.max(1, allUsers?.length || 1),
-          topUsers: creditData.topUsers
-        },
-        activity: activityData
-      }
-
-      setAnalytics(analyticsData)
+      console.log('✅ Admin Analytics API Response:', data.analytics)
+      setAnalytics(data.analytics)
     } catch (error) {
       console.error('Error loading analytics:', error)
+      // Fallback to empty analytics
+      setAnalytics({
+        userGrowth: { total: 0, thisWeek: 0, thisMonth: 0, growth: 0 },
+        subscription: { active: 0, revenue: 0, conversionRate: 0, churnRate: 0 },
+        usage: { totalSessions: 0, apiCalls: 0, averageSessionDuration: 0, popularModels: [] },
+        credits: { totalIssued: 0, totalUsed: 0, averagePerUser: 0, topUsers: [] },
+        activity: { dailyActiveUsers: 0, weeklyActiveUsers: 0, monthlyActiveUsers: 0, retentionRate: 0 }
+      })
     }
   }
 

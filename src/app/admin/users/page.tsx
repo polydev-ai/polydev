@@ -82,41 +82,27 @@ export default function UserManagement() {
 
   async function loadUsers() {
     try {
-      // Get user profiles
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email, credits, is_admin, created_at')
-        .order('created_at', { ascending: false })
+      console.log('📊 Loading users from dedicated admin API...')
 
-      if (profilesError) {
-        console.error('Error loading profiles:', profilesError)
-        return
+      // Use dedicated admin users API that bypasses RLS
+      const response = await fetch('/api/admin/users')
+
+      if (!response.ok) {
+        throw new Error(`Admin users API failed: ${response.statusText}`)
       }
 
-      // Try to get subscription data if table exists
-      let subscriptionData: any[] = []
-      try {
-        const { data: subData } = await supabase
-          .from('user_subscriptions')
-          .select('user_id, status')
-          .eq('status', 'active')
+      const data = await response.json()
 
-        subscriptionData = subData || []
-      } catch (error) {
-        console.log('Subscriptions table not available')
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load users')
       }
 
-      // Combine the data
-      const combinedUsers = (profilesData || []).map(profile => ({
-        ...profile,
-        credits: profile.credits || 0,
-        is_admin: profile.is_admin || false,
-        subscription_status: subscriptionData.find(sub => sub.user_id === profile.id)?.status || 'none'
-      }))
-
-      setUsers(combinedUsers)
+      console.log(`✅ Admin Users API: Loaded ${data.count} users`)
+      setUsers(data.users || [])
     } catch (error) {
       console.error('Error loading users:', error)
+      // Fallback to empty array
+      setUsers([])
     }
   }
 
@@ -126,12 +112,23 @@ export default function UserManagement() {
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: !currentAdminStatus })
-        .eq('id', userId)
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId,
+          action: 'toggle_admin',
+          value: !currentAdminStatus
+        })
+      })
 
-      if (error) throw error
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update user role')
+      }
 
       await logActivity(
         'toggle_admin_role',
