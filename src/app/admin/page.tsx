@@ -90,6 +90,39 @@ export default function AdminDashboard() {
     debugObjects()
   }, [stats, recentActivity, backfillResult, syncStatus, syncResult])
 
+  // MessagePort/ServiceWorker debugging (suggested by AI - most likely cause)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Debug Service Worker messages
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          console.log('🔍 Service Worker Message:', event.data)
+          if (event.data && typeof event.data === 'object' && 'test' in event.data && 'timestamp' in event.data) {
+            console.error('🚨 FOUND test,timestamp in SERVICE WORKER MESSAGE:', event.data)
+          }
+        })
+      }
+
+      // Debug all MessagePort messages
+      const originalAddEventListener = window.addEventListener
+      window.addEventListener = function(type: any, handler: any, opts?: any) {
+        if (type === 'message' && typeof handler === 'function') {
+          const wrapped = function(ev: any) {
+            try {
+              const d = ev && ev.data
+              if (d && typeof d === 'object' && 'test' in d && 'timestamp' in d) {
+                console.error('🚨 FOUND test,timestamp in WINDOW MESSAGE:', { data: d, origin: ev.origin })
+              }
+            } catch (e) {}
+            return handler.apply(this, arguments)
+          }
+          return originalAddEventListener.call(this, type, wrapped, opts)
+        }
+        return originalAddEventListener.call(this, type, handler, opts)
+      }
+    }
+  }, [])
+
   // React.createElement patch to identify exact component (suggested by AI)
   useEffect(() => {
     if (typeof window !== 'undefined' && window.React) {
