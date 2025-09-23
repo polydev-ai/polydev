@@ -209,9 +209,17 @@ export default function ModelsManagement() {
 
   async function createModel(modelData: Omit<ModelRegistryEntry, 'id' | 'created_at' | 'updated_at'>) {
     try {
+      // Generate ID based on provider_id/name pattern
+      const id = `${modelData.provider_id}/${modelData.name}`
+
+      const modelWithId = {
+        ...modelData,
+        id
+      }
+
       const { error } = await supabase
         .from('models_registry')
-        .insert([modelData])
+        .insert([modelWithId])
 
       if (error) throw error
 
