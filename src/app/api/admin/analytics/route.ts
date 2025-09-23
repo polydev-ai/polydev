@@ -61,7 +61,7 @@ export async function GET(request: Request) {
         totalIssued: 0,
         totalUsed: 0,
         averagePerUser: 0,
-        topUsers: []
+        topUsers: [] as Array<{email: string, credits: number}>
       },
       activity: {
         dailyActiveUsers: 0,
