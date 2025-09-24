@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '../../../utils/supabase/server'
+import { subscriptionManager } from '@/lib/subscriptionManager'
 
 export async function GET(request: NextRequest) {
   try {
@@ -151,11 +152,12 @@ export async function GET(request: NextRequest) {
 
     console.log('[Dashboard Stats] Chat messages:', { count: chatMessages?.length, error: chatMessagesError })
 
-    // Count MCP client calls (messages from MCP clients)
-    const mcpClientCalls = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
+    // Get official message count from subscription manager (same source as subscription page)
+    const messageUsage = await subscriptionManager.getUserMessageUsage(user.id, true)
+    const totalMessages = messageUsage.messages_sent
 
-    // Total messages = chat messages + MCP client calls
-    const totalMessages = (chatMessages?.length || 0) + mcpClientCalls
+    // Count MCP client calls (messages from MCP clients) for reference
+    const mcpClientCalls = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
 
     // Calculate real API requests from primary data source (these are actual model API calls)
     const totalApiCalls = primaryDataSource.length || 0
