@@ -190,8 +190,25 @@ export async function GET(request: NextRequest) {
       ? Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length)
       : 0
 
-    // Calculate uptime based on success rate
-    const successfulRequests = primaryDataSource.filter(log => (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)).length
+    // Calculate uptime based on success rate - improved criteria for realistic health metrics
+    const successfulRequests = primaryDataSource.filter(log => {
+      // Explicit success status
+      if ((log as any).status === 'success') return true
+
+      // Explicit failure status
+      if ((log as any).status === 'failed' || (log as any).status === 'error') return false
+
+      // For logs without explicit status, consider successful if:
+      // 1. Has tokens (successful API response)
+      // 2. Has cost (successful billable request)
+      // 3. Chat logs (assume success if entry exists)
+      const hasTokens = log.total_tokens && log.total_tokens > 0
+      const hasCost = log.total_cost && log.total_cost > 0
+      const isChatLog = dataSourceName === 'chat logs'
+
+      return hasTokens || hasCost || isChatLog
+    }).length
+
     const systemUptime = totalApiCalls > 0 ? `${((successfulRequests / totalApiCalls) * 100).toFixed(1)}%` : '99.9%'
 
     // Get provider breakdown based on actual user API keys and usage
