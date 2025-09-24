@@ -92,7 +92,7 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json()
         setRealTimeData({
-          totalRequests: data.totalRequests || 0,
+          totalRequests: data.totalMessages || 0,
           totalCost: data.totalCost || 0,
           activeConnections: data.activeConnections || 0,
           uptime: data.uptime || '99.9%',
@@ -457,7 +457,7 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Total Requests</p>
+                <p className="text-sm font-medium text-gray-500">Total Messages</p>
                 <p className="text-2xl font-bold text-gray-900">{realTimeData.totalRequests.toLocaleString()}</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-full">
