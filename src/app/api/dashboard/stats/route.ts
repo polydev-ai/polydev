@@ -190,7 +190,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate uptime based on success rate
     const successfulRequests = primaryDataSource.filter(log => (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)).length
-    const systemUptime = totalRequests > 0 ? `${((successfulRequests / totalRequests) * 100).toFixed(1)}%` : '99.9%'
+    const systemUptime = totalApiCalls > 0 ? `${((successfulRequests / totalApiCalls) * 100).toFixed(1)}%` : '99.9%'
 
     // Get provider breakdown based on actual user API keys and usage
     const providerStats = apiKeys?.map(apiKey => {

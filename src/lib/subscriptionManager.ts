@@ -348,7 +348,7 @@ export class SubscriptionManager {
     } catch (error) {
       console.error('Error incrementing message count:', error)
       // Don't throw error for logging failures, but do throw for the main counter
-      if (error.message && error.message.includes('increment_message_count')) {
+      if (error instanceof Error && error.message && error.message.includes('increment_message_count')) {
         throw error
       }
     }

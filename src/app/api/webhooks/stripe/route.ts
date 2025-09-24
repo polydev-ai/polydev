@@ -3,6 +3,13 @@ import { headers } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 import { emailTemplates } from '@/lib/emailTemplates'
+import {
+  sendCreditPurchaseEmail,
+  sendSubscriptionCreatedEmail,
+  sendSubscriptionCancelledEmail,
+  sendPaymentFailedEmail,
+  sendPaymentSucceededEmail
+} from '@/lib/resendService'
 import OpenRouterClient from '@/lib/openrouter'
 import CreditManager from '@/lib/creditManager'
 

@@ -20,7 +20,7 @@ interface StripePrice {
   type: 'one_time' | 'recurring'
   recurring?: {
     interval: string
-    interval_count: number
+    interval_count?: number
   }
 }
 
