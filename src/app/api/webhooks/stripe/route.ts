@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
-import { 
-  sendSubscriptionCreatedEmail, 
-  sendSubscriptionCancelledEmail, 
-  sendPaymentFailedEmail, 
-  sendPaymentSucceededEmail,
-  sendCreditPurchaseEmail
-} from '@/lib/resendService'
+import { emailTemplates } from '@/lib/emailTemplates'
 import OpenRouterClient from '@/lib/openrouter'
 import CreditManager from '@/lib/creditManager'
 
@@ -320,9 +314,27 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
         })
     }
 
-    // Send welcome email
+    // Send welcome email using Resend MCP
     try {
-      await sendSubscriptionCreatedEmail(customerEmail, 'Pro')
+      const template = emailTemplates.subscriptionCreated(customerEmail, 'Pro')
+
+      // Call MCP function directly (available in API route context)
+      const emailResult = await fetch('/api/internal/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: customerEmail,
+          from: 'noreply@polydev.ai',
+          subject: template.subject,
+          html: template.html,
+          text: template.text
+        })
+      })
+
+      if (!emailResult.ok) {
+        throw new Error(`Email API failed: ${emailResult.statusText}`)
+      }
+
       console.log(`[Stripe Webhook] Welcome email sent to ${customerEmail}`)
     } catch (emailError) {
       console.error('[Stripe Webhook] Failed to send welcome email:', emailError)

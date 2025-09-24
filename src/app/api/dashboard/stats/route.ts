@@ -30,6 +30,19 @@ export async function GET(request: NextRequest) {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
+    // 0. Get user's current credits from user_credits table
+    const { data: userCredits, error: userCreditsError } = await supabase
+      .from('user_credits')
+      .select('balance, promotional_balance')
+      .eq('user_id', user.id)
+      .single()
+
+    console.log('[Dashboard Stats] User credits:', { credits: userCredits, error: userCreditsError })
+
+    const currentBalance = parseFloat(userCredits?.balance || '0')
+    const currentPromoBalance = parseFloat(userCredits?.promotional_balance || '0')
+    const totalUserCredits = currentBalance + currentPromoBalance
+
     // 1. Get MCP access tokens and usage stats
     const { data: mcpTokens, error: mcpError } = await supabase
       .from('mcp_access_tokens')
@@ -128,8 +141,24 @@ export async function GET(request: NextRequest) {
     const totalTokens = (allTokens?.length || 0) + (userTokens?.length || 0)
     const activeConnections = activeTokens.length
 
-    // Calculate real API requests from primary data source
-    const totalRequests = primaryDataSource.length || 0
+    // Calculate messages vs API calls distinction
+    // Messages = chat_logs entries (chat messages) + MCP token usage (MCP client calls)
+    const { data: chatMessages, error: chatMessagesError } = await supabase
+      .from('chat_logs')
+      .select('id, created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', monthStart.toISOString())
+
+    console.log('[Dashboard Stats] Chat messages:', { count: chatMessages?.length, error: chatMessagesError })
+
+    // Count MCP client calls (messages from MCP clients)
+    const mcpClientCalls = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
+
+    // Total messages = chat messages + MCP client calls
+    const totalMessages = (chatMessages?.length || 0) + mcpClientCalls
+
+    // Calculate real API requests from primary data source (these are actual model API calls)
+    const totalApiCalls = primaryDataSource.length || 0
     const totalUsageTokens = primaryDataSource.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
 
     // Calculate total cost from primary source only to avoid duplication
@@ -145,14 +174,19 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Dashboard Stats] Calculated total cost: $${totalCostFromLogs.toFixed(4)} from ${totalRequests} requests`)
 
-    // Calculate average response time from actual data
+    // Calculate average response time from actual data - only from successful requests
     const responseTimes = primaryDataSource
-      .filter(log => 'response_time_ms' in log && log.response_time_ms && log.response_time_ms > 0)
+      .filter(log => {
+        const hasResponseTime = 'response_time_ms' in log && log.response_time_ms && log.response_time_ms > 0
+        const isSuccessful = (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)
+        const isReasonableTime = log.response_time_ms < 60000 // Less than 60 seconds
+        return hasResponseTime && isSuccessful && isReasonableTime
+      })
       .map(log => (log as any).response_time_ms)
 
     const avgResponseTime = responseTimes.length > 0
       ? Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length)
-      : 245
+      : 0
 
     // Calculate uptime based on success rate
     const successfulRequests = primaryDataSource.filter(log => (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)).length
@@ -273,13 +307,26 @@ export async function GET(request: NextRequest) {
 
     // Prepare real statistics response
     const stats = {
-      totalRequests: totalRequests,
+      // User's credits balance
+      creditsBalance: parseFloat(totalUserCredits.toFixed(2)),
+
+      // Messages vs API calls distinction
+      totalMessages: totalMessages, // Chat messages + MCP client calls
+      totalApiCalls: totalApiCalls, // Actual model API requests
+
+      // Legacy fields for backward compatibility
+      totalRequests: totalApiCalls,
       totalCost: parseFloat(totalCost.toFixed(4)),
       activeConnections: activeConnections,
       uptime: systemUptime,
       responseTime: avgResponseTime,
 
       // Additional detailed stats - calculate today's usage from actual data
+      messagesThisMonth: totalMessages,
+      apiCallsToday: primaryDataSource.filter(log => {
+        const logDate = new Date(log.created_at)
+        return logDate >= todayStart
+      }).length || 0,
       requestsToday: primaryDataSource.filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
@@ -318,9 +365,12 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('[Dashboard Stats] Returning real statistics:', {
-      totalRequests: stats.totalRequests,
+      creditsBalance: stats.creditsBalance,
+      totalMessages: stats.totalMessages,
+      totalApiCalls: stats.totalApiCalls,
       activeConnections: stats.activeConnections,
       totalCost: stats.totalCost,
+      avgResponseTime: stats.responseTime,
       totalApiKeys: stats.totalApiKeys,
       providersCount: stats.providerStats.length
     })

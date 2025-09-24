@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { Users, CreditCard, Code, BarChart3, Settings, Plus, Search, Activity } from 'lucide-react'
+import { Users, CreditCard, Code, BarChart3, Settings, Plus, Search, Activity, DollarSign } from 'lucide-react'
 import { SafeText, renderSafely } from '@/components/SafeText'
 
 
@@ -357,6 +357,17 @@ export default function AdminDashboard() {
               <h3 className="ml-3 text-lg font-semibold text-gray-900">Settings</h3>
             </div>
             <p className="text-gray-600">Platform configuration and settings</p>
+          </button>
+
+          <button
+            onClick={() => router.push('/admin/pricing')}
+            className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow text-left"
+          >
+            <div className="flex items-center mb-3">
+              <DollarSign className="h-6 w-6 text-green-600" />
+              <h3 className="ml-3 text-lg font-semibold text-gray-900">Pricing</h3>
+            </div>
+            <p className="text-gray-600">Manage subscription tiers and credit packages</p>
           </button>
         </div>
 

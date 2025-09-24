@@ -2122,7 +2122,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
         // Increment message count for successful requests
         try {
-          await subscriptionManager.incrementMessageCount(user.id)
+          await subscriptionManager.incrementMessageCount(user.id, false, 'mcp')
         } catch (messageError) {
           console.warn('[MCP] Failed to increment message count:', messageError)
         }

@@ -50,6 +50,30 @@ export class SubscriptionManager {
     return await createClient()
   }
 
+  private async getPricingConfig(useServiceRole: boolean = false): Promise<any> {
+    try {
+      const supabase = await this.getSupabase(useServiceRole)
+      const { data: configs, error } = await supabase
+        .from('admin_pricing_config')
+        .select('config_key, config_value')
+
+      if (error) {
+        console.warn('Failed to fetch pricing config, using defaults:', error)
+        return null
+      }
+
+      const configObj: any = {}
+      configs?.forEach(item => {
+        configObj[item.config_key] = item.config_value
+      })
+
+      return configObj
+    } catch (error) {
+      console.warn('Error fetching pricing config:', error)
+      return null
+    }
+  }
+
   // Get user subscription status
   async getUserSubscription(userId: string, useServiceRole: boolean = false, createIfMissing: boolean = true): Promise<UserSubscription | null> {
     try {
@@ -154,8 +178,12 @@ export class SubscriptionManager {
         const subscription = await this.getUserSubscription(userId, useServiceRole)
         const isPro = subscription?.tier === 'pro' && subscription?.status === 'active'
         
-        // Get base limit (1000 free) + referral bonuses
-        const baseLimit = isPro ? 999999 : 1000 // Unlimited for pro users
+        // Get dynamic limits from pricing config
+        const pricingConfig = await this.getPricingConfig(useServiceRole)
+        const freeMessageLimit = pricingConfig?.subscription_pricing?.free_tier?.message_limit || 1000
+
+        // Get base limit from config + referral bonuses
+        const baseLimit = isPro ? 999999 : freeMessageLimit // Unlimited for pro users
         const referralBonus = await this.getReferralBonus(userId, useServiceRole)
         
         const { data: newUsage, error: createError } = await supabase
@@ -195,12 +223,16 @@ export class SubscriptionManager {
           console.log(`[SubscriptionManager] User ${userId} is pro, upgrading to unlimited messages`)
         } else if (!isPro && usage.messages_limit === 999999) {
           // User is not pro but has unlimited messages - downgrade them
-          newLimit = 1000 + referralBonus
+          const pricingConfig = await this.getPricingConfig(useServiceRole)
+          const freeMessageLimit = pricingConfig?.subscription_pricing?.free_tier?.message_limit || 1000
+          newLimit = freeMessageLimit + referralBonus
           shouldUpdate = true
           console.log(`[SubscriptionManager] User ${userId} is not pro, downgrading from unlimited to ${newLimit} messages`)
-        } else if (!isPro && (usage.messages_limit === 50 || usage.messages_limit === 200)) {
-          // Free user with old limit (50 or 200) - upgrade to new free limit (1000)
-          newLimit = 1000 + referralBonus
+        } else if (!isPro && (usage.messages_limit === 50 || usage.messages_limit === 200 || usage.messages_limit === 1000)) {
+          // Free user with old limit - upgrade to new free limit from config
+          const pricingConfig = await this.getPricingConfig(useServiceRole)
+          const freeMessageLimit = pricingConfig?.subscription_pricing?.free_tier?.message_limit || 1000
+          newLimit = freeMessageLimit + referralBonus
           shouldUpdate = true
           console.log(`[SubscriptionManager] User ${userId} is free, upgrading from ${usage.messages_limit} to ${newLimit} messages`)
         }
@@ -293,19 +325,84 @@ export class SubscriptionManager {
     }
   }
 
-  // Increment message count
-  async incrementMessageCount(userId: string, useServiceRole: boolean = false): Promise<void> {
+  // Increment message count (for both chat messages and MCP client calls)
+  async incrementMessageCount(userId: string, useServiceRole: boolean = false, messageType: 'chat' | 'mcp' = 'chat'): Promise<void> {
     try {
       const supabase = await this.getSupabase(useServiceRole)
       const currentMonth = new Date().toISOString().substring(0, 7)
-      
+
+      // Increment the user_message_usage counter (this is what counts toward the limit)
       await supabase.rpc('increment_message_count', {
         p_user_id: userId,
         p_month_year: currentMonth
       })
+
+      // Also log the specific message for analytics
+      await supabase
+        .from('user_message_logs')
+        .insert({
+          user_id: userId,
+          message_type: messageType,
+          created_at: new Date().toISOString()
+        })
     } catch (error) {
       console.error('Error incrementing message count:', error)
-      throw error
+      // Don't throw error for logging failures, but do throw for the main counter
+      if (error.message && error.message.includes('increment_message_count')) {
+        throw error
+      }
+    }
+  }
+
+  // Get total messages this month (chat + MCP) vs API calls
+  async getMessageVsApiStats(userId: string, useServiceRole: boolean = false): Promise<{
+    totalMessages: number
+    chatMessages: number
+    mcpMessages: number
+    totalApiCalls: number
+  }> {
+    try {
+      const supabase = await this.getSupabase(useServiceRole)
+      const currentMonth = new Date().toISOString().substring(0, 7)
+      const monthStart = new Date().toISOString().substring(0, 7) + '-01'
+
+      // Get message usage from user_message_usage table
+      const usage = await this.getUserMessageUsage(userId, useServiceRole)
+      const totalMessages = usage.messages_sent
+
+      // Get breakdown from message logs if available
+      const { data: messageLogs } = await supabase
+        .from('user_message_logs')
+        .select('message_type')
+        .eq('user_id', userId)
+        .gte('created_at', monthStart)
+
+      const chatMessages = messageLogs?.filter(log => log.message_type === 'chat').length || 0
+      const mcpMessages = messageLogs?.filter(log => log.message_type === 'mcp').length || 0
+
+      // Get API calls from request logs
+      const { data: apiLogs } = await supabase
+        .from('mcp_request_logs')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('created_at', monthStart)
+
+      const totalApiCalls = apiLogs?.length || 0
+
+      return {
+        totalMessages,
+        chatMessages,
+        mcpMessages,
+        totalApiCalls
+      }
+    } catch (error) {
+      console.error('Error getting message vs API stats:', error)
+      return {
+        totalMessages: 0,
+        chatMessages: 0,
+        mcpMessages: 0,
+        totalApiCalls: 0
+      }
     }
   }
 

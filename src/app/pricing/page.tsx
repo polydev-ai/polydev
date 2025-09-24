@@ -1,25 +1,79 @@
 'use client'
 
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+
+interface PricingConfig {
+  subscription_pricing: {
+    free_tier: {
+      name: string
+      price_display: string
+      message_limit: number
+      features: string[]
+      limitations: string[]
+    }
+    pro_tier: {
+      name: string
+      price_display: string
+      billing_interval: string
+      features: string[]
+    }
+  }
+  credit_packages: {
+    packages: Array<{
+      name: string
+      credits: number
+      price_display: string
+    }>
+  }
+}
 
 export default function Pricing() {
   const { isAuthenticated } = useAuth()
+  const [config, setConfig] = useState<PricingConfig | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchPricingConfig()
+  }, [])
+
+  const fetchPricingConfig = async () => {
+    try {
+      const response = await fetch('/api/pricing/config')
+      if (response.ok) {
+        const { config } = await response.json()
+        setConfig(config)
+      }
+    } catch (error) {
+      console.error('Failed to fetch pricing config:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading pricing...</div>
+      </div>
+    )
+  }
 
   const plans = [
     {
-      name: 'Free',
-      price: '$0',
+      name: config?.subscription_pricing.free_tier.name || 'Free',
+      price: config?.subscription_pricing.free_tier.price_display || '$0',
       period: 'forever',
       description: 'Perfect for trying out multiple AI models',
-      features: [
-        '100 free runs to get started',
+      features: config?.subscription_pricing.free_tier.features || [
+        '1000 free messages to get started',
         'Query GPT-5, Claude Opus 4, Gemini 2.5 Pro',
         'Compare responses side-by-side',
-        'Works with Cursor, Claude Code, Continue',
-        'Basic project memory',
-        'Community support'
+        'Works with Cursor, Claude Code, Continue'
       ],
+      limitations: config?.subscription_pricing.free_tier.limitations || ['Limited to 3 models'],
+      messageLimit: config?.subscription_pricing.free_tier.message_limit || 1000,
       cta: 'Start Free',
       highlighted: false,
       icon: (
@@ -31,19 +85,17 @@ export default function Pricing() {
       )
     },
     {
-      name: 'Pro',
-      price: '$20',
-      period: '/month',
+      name: config?.subscription_pricing.pro_tier.name || 'Pro',
+      price: config?.subscription_pricing.pro_tier.price_display || '$20',
+      period: `/${config?.subscription_pricing.pro_tier.billing_interval || 'month'}`,
       description: 'For developers who want unlimited access',
-      features: [
-        'Unlimited runs',
+      features: config?.subscription_pricing.pro_tier.features || [
+        'Unlimited messages',
         '340+ models from 37+ providers',
         'Advanced project memory with encryption',
         'Priority model access (GPT-5, Claude Opus 4)',
         'Cost optimization routing',
-        'Usage analytics and insights',
-        'Priority support',
-        'Team collaboration features'
+        'Priority support & team features'
       ],
       cta: 'Upgrade to Pro',
       highlighted: true,
@@ -61,7 +113,7 @@ export default function Pricing() {
     {
       category: 'Usage & Access',
       items: [
-        { name: 'Monthly runs', free: '100 free runs', pro: 'Unlimited' },
+        { name: 'Monthly messages', free: '1000 free messages', pro: 'Unlimited' },
         { name: 'Model access', free: 'Top 3 models', pro: '340+ models from 37 providers' },
         { name: 'Response comparison', free: true, pro: true },
         { name: 'Priority model access', free: false, pro: true }
@@ -112,7 +164,7 @@ export default function Pricing() {
               <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">No surprises.</span>
             </h1>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-12 leading-relaxed">
-              Try for free with 100 runs, then upgrade to unlimited access for just $20/month.
+              Try for free with 1000 messages, then upgrade to unlimited access for just $20/month.
               Get answers from 340+ AI models without the complexity of managing multiple APIs.
             </p>
           </div>
@@ -267,7 +319,7 @@ export default function Pricing() {
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
               <h3 className="text-xl font-bold text-slate-900 mb-4">
-                What happens after my 100 free runs?
+                What happens after my 1000 free messages?
               </h3>
               <p className="text-slate-600 leading-relaxed">
                 You'll be prompted to upgrade to Pro for unlimited access. No credit card required to start,
@@ -335,7 +387,7 @@ export default function Pricing() {
             Ready to get unstuck faster?
           </h2>
           <p className="text-xl text-orange-100 max-w-3xl mx-auto mb-12">
-            Start with 100 free runs and see how multiple AI models can help you
+            Start with 1000 free messages and see how multiple AI models can help you
             debug better, design smarter, and code more efficiently.
           </p>
 
@@ -355,7 +407,7 @@ export default function Pricing() {
           </div>
 
           <div className="text-orange-100 text-sm">
-            ✓ 100 free runs  ✓ No credit card required  ✓ Cancel anytime
+            ✓ 1000 free messages  ✓ No credit card required  ✓ Cancel anytime
           </div>
         </div>
       </section>

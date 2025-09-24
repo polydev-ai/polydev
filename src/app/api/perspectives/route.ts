@@ -549,7 +549,7 @@ export async function POST(request: NextRequest) {
     // Increment message count for successful requests (only if user is tracked)
     if (userId) {
       try {
-        await subscriptionManager.incrementMessageCount(userId, true)
+        await subscriptionManager.incrementMessageCount(userId, true, 'chat')
       } catch (error) {
         console.error('Failed to increment message count:', error)
         // Don't fail the request, just log the error

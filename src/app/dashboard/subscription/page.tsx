@@ -340,7 +340,7 @@ export default function SubscriptionPage() {
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                100 free runs to get started
+                1000 free messages to get started
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
@@ -378,7 +378,7 @@ export default function SubscriptionPage() {
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Unlimited runs
+                Unlimited messages
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
