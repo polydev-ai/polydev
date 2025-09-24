@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '../../../utils/supabase/server'
+import { subscriptionManager } from '@/lib/subscriptionManager'
 
 export async function GET(request: NextRequest) {
   try {
@@ -85,8 +86,9 @@ export async function GET(request: NextRequest) {
       using: 'comprehensive'
     })
 
-    // Calculate real statistics from all sources
-    const totalChats = (chatSessions?.length || 0) + (regularSessions?.length || 0)
+    // Get official message count from subscription manager (same source as dashboard/subscription pages)
+    const messageUsage = await subscriptionManager.getUserMessageUsage(user.id, true)
+    const totalChats = messageUsage.messages_sent
 
     // Calculate total tokens from all sources
     let totalTokens = 0
