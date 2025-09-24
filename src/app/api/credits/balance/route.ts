@@ -253,6 +253,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
+    // Force deployment refresh to clear caches - v1.1
     console.error('[Credits Balance] Error fetching balance:', error)
     return NextResponse.json(
       { error: 'Failed to fetch credit balance' },
