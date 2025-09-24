@@ -22,7 +22,7 @@ import { formatDistanceToNow, isValid, parseISO } from 'date-fns'
 
 interface CreditBalance {
   balance: number
-  promotional_balance: number
+  promotionalBalance: number
   totalPurchased: number
   totalSpent: number
   hasOpenRouterKey: boolean
@@ -389,13 +389,13 @@ export default function CreditsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${((creditBalance?.balance || 0) + (creditBalance?.promotional_balance || 0)).toFixed(2)}</div>
+            <div className="text-2xl font-bold">${((creditBalance?.balance || 0) + (creditBalance?.promotionalBalance || 0)).toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Available credits
             </p>
-            {creditBalance?.promotional_balance && creditBalance.promotional_balance > 0 && (
+            {creditBalance?.promotionalBalance && creditBalance.promotionalBalance > 0 && (
               <p className="text-xs text-muted-foreground mt-1">
-                ${(creditBalance?.balance || 0).toFixed(2)} regular + ${creditBalance.promotional_balance.toFixed(2)} promotional
+                ${(creditBalance?.balance || 0).toFixed(2)} regular + ${creditBalance.promotionalBalance.toFixed(2)} promotional
               </p>
             )}
           </CardContent>
