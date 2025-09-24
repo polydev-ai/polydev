@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
       return sum + cost
     }, 0) || 0
 
-    console.log(`[Dashboard Stats] Calculated total cost: $${totalCostFromLogs.toFixed(4)} from ${totalRequests} requests`)
+    console.log(`[Dashboard Stats] Calculated total cost: $${totalCostFromLogs.toFixed(4)} from ${totalApiCalls} requests`)
 
     // Calculate average response time from actual data - only from successful requests
     const responseTimes = primaryDataSource
