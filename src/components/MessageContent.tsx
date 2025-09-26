@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import CodeBlock from './CodeBlock'
 
 interface MessageContentProps {
@@ -111,7 +111,7 @@ const formatTextContent = (text: string): string => {
   return formatted
 }
 
-export default function MessageContent({ content, className = '' }: MessageContentProps) {
+function MessageContent({ content, className = '' }: MessageContentProps) {
   const parsedContent = useMemo(() => parseMessageContent(content), [content])
   
   return (
@@ -140,3 +140,5 @@ export default function MessageContent({ content, className = '' }: MessageConte
     </div>
   )
 }
+
+export default memo(MessageContent)

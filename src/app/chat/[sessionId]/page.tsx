@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense, useMemo, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '../../../hooks/useAuth'
 import { useDashboardModels, type DashboardModel } from '../../../hooks/useDashboardModels'
@@ -77,7 +77,6 @@ export default function Chat() {
         )
 
         if (validSavedModels.length > 0) {
-          console.log('[Chat] Loading saved model selections from preferences:', validSavedModels)
           setSelectedModels(validSavedModels)
           return
         }
@@ -86,8 +85,6 @@ export default function Chat() {
       // Fallback: Get all configured API key models (same logic as models page)
       const configuredModels = dashboardModels.filter(model => model.isConfigured)
       const modelIds = configuredModels.map(m => m.id)
-
-      console.log('[Chat] No saved selections, loading all configured models:', modelIds)
       setSelectedModels(modelIds)
     }
   }, [dashboardModels, preferences])
@@ -102,22 +99,35 @@ export default function Chat() {
 
   // Refresh models when page becomes visible (e.g., user switches back from models page)
   useEffect(() => {
+    let throttleTimeout: NodeJS.Timeout | null = null
+
     const handleVisibilityChange = async () => {
-      if (!document.hidden) {
-        console.log('[Chat] Page became visible, refreshing models...')
-        // Refresh models when returning to chat to pick up any changes from models page
-        if (refreshModels) {
+      if (!document.hidden && refreshModels) {
+        // Throttle to prevent excessive calls
+        if (throttleTimeout) return
+
+        throttleTimeout = setTimeout(() => {
+          throttleTimeout = null
+        }, 1000)
+
+        // Only refresh if models were actually changed (avoid unnecessary API calls)
+        const lastUpdate = localStorage.getItem('models_last_update')
+        const currentModelsCount = localStorage.getItem('models_count')
+        const actualModelsCount = dashboardModels.length.toString()
+
+        if (lastUpdate && currentModelsCount !== actualModelsCount) {
           await refreshModels()
+          localStorage.setItem('models_count', actualModelsCount)
         }
       }
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (throttleTimeout) clearTimeout(throttleTimeout)
     }
-  }, [refreshModels])
+  }, [refreshModels, dashboardModels.length])
 
   // Load specific session based on sessionId parameter
   useEffect(() => {
@@ -166,7 +176,7 @@ export default function Chat() {
     loadSpecificSession()
   }, [sessionId, sessions, sessionsLoading, currentSession?.id, isCreatingSession])
 
-  const convertChatMessage = (chatMsg: ChatMessage): Message => ({
+  const convertChatMessage = useCallback((chatMsg: ChatMessage): Message => ({
     id: chatMsg.id,
     role: chatMsg.role,
     content: chatMsg.content,
@@ -177,7 +187,7 @@ export default function Chat() {
     costInfo: chatMsg.cost_info,
     fallbackMethod: (chatMsg.metadata as any)?.fallback_method || (chatMsg.provider_info as any)?.fallback_method,
     creditsUsed: chatMsg.metadata?.credits_used
-  })
+  }), [])
 
   const loadSession = async (session: ChatSession) => {
     const sessionWithMessages = await getSessionWithMessages(session.id)
@@ -349,7 +359,7 @@ export default function Chat() {
                   })
                 }
               } catch (parseError) {
-                console.warn('Error parsing streaming data:', parseError)
+                // Silently handle parsing errors
               }
             }
           }
@@ -394,7 +404,6 @@ export default function Chat() {
           }
         })
       } catch (error) {
-        console.error('Failed to save model preferences:', error)
         // Continue silently - user can still use the interface
       }
     }
@@ -467,11 +476,11 @@ export default function Chat() {
     )
   }
 
-  const clearChat = () => {
+  const clearChat = useCallback(() => {
     startNewSession()
-  }
+  }, [startNewSession])
 
-  const toggleReasoning = (messageId: string) => {
+  const toggleReasoning = useCallback((messageId: string) => {
     const newExpanded = new Set(expandedReasoning)
     if (newExpanded.has(messageId)) {
       newExpanded.delete(messageId)
@@ -479,38 +488,38 @@ export default function Chat() {
       newExpanded.add(messageId)
     }
     setExpandedReasoning(newExpanded)
-  }
+  }, [expandedReasoning])
 
   // Group messages by conversation turns for split view
-  const groupMessagesByTurns = () => {
+  const groupedMessageTurns = useMemo(() => {
     const turns: Array<{
       userMessage: Message
       assistantMessages: Message[]
     }> = []
-    
+
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i]
       if (message.role === 'user') {
         const assistantMessages: Message[] = []
         let j = i + 1
-        
+
         // Collect all assistant messages that follow this user message
         while (j < messages.length && messages[j].role === 'assistant') {
           assistantMessages.push(messages[j])
           j++
         }
-        
+
         turns.push({
           userMessage: message,
           assistantMessages
         })
-        
+
         i = j - 1 // Skip the assistant messages we just processed
       }
     }
-    
+
     return turns
-  }
+  }, [messages])
 
   if (loading || modelsLoading || sessionsLoading) {
     return (
@@ -855,13 +864,6 @@ export default function Chat() {
                                 const model = dashboardModels.find(m => m.id === message.model || m.name === message.model)
                                 const providerName = model?.providerName || (message.provider?.replace(/\s+\(.+\)/, '') || 'AI')
                                 
-                                // Debug logging for Claude models
-                                if (message.model && message.model.toLowerCase().includes('claude')) {
-                                  console.log(`[Logo Debug Message] Claude model found: ${message.model}`)
-                                  console.log(`[Logo Debug Message] Model object:`, model)
-                                  console.log(`[Logo Debug Message] Provider logo URL:`, model?.providerLogo)
-                                  console.log(`[Logo Debug Message] Provider name:`, providerName)
-                                }
                                 
                                 return (
                                   <div className="flex items-center space-x-2">
@@ -870,34 +872,8 @@ export default function Chat() {
                                         src={model.providerLogo} 
                                         alt={providerName}
                                         className="w-6 h-6 rounded-lg flex-shrink-0 object-contain"
-                                        onLoad={(e) => {
-                                          const img = e.currentTarget as HTMLImageElement
-                                          console.log(`[Logo Success] Successfully loaded logo: ${img.src}`)
-                                          console.log(`[Logo Success] Model: ${message.model}, Dimensions: ${img.naturalWidth}x${img.naturalHeight}`)
-                                        }}
                                         onError={(e) => {
-                                          // Debug logging for logo loading failures
                                           const img = e.currentTarget as HTMLImageElement
-                                          console.error(`[Logo Error] Failed to load logo: ${img.src}`)
-                                          console.error(`[Logo Error] Model: ${message.model}, Provider: ${providerName}`)
-                                          console.error(`[Logo Error] Error event:`, e)
-                                          
-                                          // Check if this is a Claude model logo failing
-                                          if (img.src.includes('anthropic.svg')) {
-                                            console.error(`[Logo Error] Anthropic logo failed to load, testing direct access...`)
-                                            
-                                            // Test if the URL is accessible
-                                            fetch(img.src, { method: 'HEAD' })
-                                              .then(response => {
-                                                console.log(`[Logo Error] Direct fetch test - Status: ${response.status}`)
-                                                console.log(`[Logo Error] Response headers:`, Object.fromEntries(response.headers.entries()))
-                                              })
-                                              .catch(err => {
-                                                console.error(`[Logo Error] Direct fetch failed:`, err)
-                                              })
-                                          }
-                                          
-                                          // Hide image and show fallback on error
                                           const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
                                           img.style.display = 'none'
                                           if (fallback) fallback.classList.remove('hidden')
@@ -1016,7 +992,7 @@ export default function Chat() {
                 ))
               ) : (
                 // Split view - organize by conversation turns and show models side by side
-                groupMessagesByTurns().map((turn, turnIndex) => (
+                groupedMessageTurns.map((turn, turnIndex) => (
                   <div key={turnIndex} className="space-y-4">
                     {/* User message */}
                     <div className="flex justify-end">
@@ -1057,28 +1033,7 @@ export default function Chat() {
                                             alt={providerName}
                                             className="w-6 h-6 rounded-lg flex-shrink-0 object-contain"
                                             onError={(e) => {
-                                              // Debug logging for logo loading failures
                                               const img = e.currentTarget as HTMLImageElement
-                                              console.error(`[Logo Error Grid] Failed to load logo: ${img.src}`)
-                                              console.error(`[Logo Error Grid] Model: ${message.model}, Provider: ${providerName}`)
-                                              console.error(`[Logo Error Grid] Error event:`, e)
-                                              
-                                              // Check if this is a Claude model logo failing
-                                              if (img.src.includes('anthropic.svg')) {
-                                                console.error(`[Logo Error Grid] Anthropic logo failed to load, testing direct access...`)
-                                                
-                                                // Test if the URL is accessible
-                                                fetch(img.src, { method: 'HEAD' })
-                                                  .then(response => {
-                                                    console.log(`[Logo Error Grid] Direct fetch test - Status: ${response.status}`)
-                                                    console.log(`[Logo Error Grid] Response headers:`, Object.fromEntries(response.headers.entries()))
-                                                  })
-                                                  .catch(err => {
-                                                    console.error(`[Logo Error Grid] Direct fetch failed:`, err)
-                                                  })
-                                              }
-                                              
-                                              // Hide image and show fallback on error
                                               const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
                                               img.style.display = 'none'
                                               if (fallback) fallback.classList.remove('hidden')
@@ -1210,28 +1165,7 @@ export default function Chat() {
                                   alt={model.providerName}
                                   className="w-8 h-8 rounded-lg flex-shrink-0 object-contain"
                                   onError={(e) => {
-                                    // Debug logging for logo loading failures
                                     const img = e.currentTarget as HTMLImageElement
-                                    console.error(`[Logo Error Selection] Failed to load logo: ${img.src}`)
-                                    console.error(`[Logo Error Selection] Model: ${model.name}, Provider: ${model.providerName}`)
-                                    console.error(`[Logo Error Selection] Error event:`, e)
-                                    
-                                    // Check if this is a Claude model logo failing
-                                    if (img.src.includes('anthropic.svg')) {
-                                      console.error(`[Logo Error Selection] Anthropic logo failed to load, testing direct access...`)
-                                      
-                                      // Test if the URL is accessible
-                                      fetch(img.src, { method: 'HEAD' })
-                                        .then(response => {
-                                          console.log(`[Logo Error Selection] Direct fetch test - Status: ${response.status}`)
-                                          console.log(`[Logo Error Selection] Response headers:`, Object.fromEntries(response.headers.entries()))
-                                        })
-                                        .catch(err => {
-                                          console.error(`[Logo Error Selection] Direct fetch failed:`, err)
-                                        })
-                                    }
-                                    
-                                    // Hide image and show fallback on error
                                     const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
                                     img.style.display = 'none'
                                     if (fallback) fallback.classList.remove('hidden')

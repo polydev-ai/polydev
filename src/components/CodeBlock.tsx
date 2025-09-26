@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import { Copy, Check } from 'lucide-react'
 
 // Import Prism for syntax highlighting
@@ -37,7 +37,7 @@ const detectLanguage = (code: string): string => {
   return 'text'
 }
 
-export default function CodeBlock({ code, language }: CodeBlockProps) {
+function CodeBlock({ code, language }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
   const [highlightedCode, setHighlightedCode] = useState(code)
   const codeRef = useRef<HTMLElement>(null)
@@ -106,3 +106,5 @@ export default function CodeBlock({ code, language }: CodeBlockProps) {
     </div>
   )
 }
+
+export default memo(CodeBlock)
