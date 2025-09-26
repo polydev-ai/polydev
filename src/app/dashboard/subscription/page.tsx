@@ -30,6 +30,11 @@ interface MessageUsage {
   messages_sent: number
   messages_limit: number
   month_year: string
+  actual_messages_sent?: number
+  breakdown?: {
+    chat_messages: number
+    mcp_calls: number
+  }
 }
 
 interface ProfileStats {
@@ -151,8 +156,9 @@ export default function SubscriptionPage() {
     )
   }
 
-  const messageUsagePercentage = messageUsage 
-    ? Math.min((messageUsage.messages_sent / messageUsage.messages_limit) * 100, 100)
+  const actualMessagesSent = messageUsage?.actual_messages_sent ?? messageUsage?.messages_sent ?? 0
+  const messageUsagePercentage = messageUsage
+    ? Math.min((actualMessagesSent / messageUsage.messages_limit) * 100, 100)
     : 0
 
   const isPro = subscription?.tier === 'pro'
@@ -257,11 +263,20 @@ export default function SubscriptionPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {messageUsage?.messages_sent || 0}
+              {actualMessagesSent}
               {!isPro && ` / ${messageUsage?.messages_limit || 200}`}
             </div>
             <p className="text-xs text-muted-foreground">
               {isPro ? 'Messages sent this month' : 'Messages this month'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Includes web chat + MCP client calls
+              {messageUsage?.breakdown && (
+                <>
+                  <br />
+                  ({messageUsage.breakdown.chat_messages} chat, {messageUsage.breakdown.mcp_calls} MCP)
+                </>
+              )}
             </p>
             {!isPro && messageUsage && (
               <Progress value={messageUsagePercentage} className="mt-2" />
@@ -298,10 +313,10 @@ export default function SubscriptionPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {profileStats?.totalChats || 0}
+              {messageUsage?.breakdown?.chat_messages || profileStats?.totalChats || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              Total chat sessions created
+              Web chat sessions only
             </p>
           </CardContent>
         </Card>
