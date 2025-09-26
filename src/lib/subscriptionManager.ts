@@ -354,6 +354,46 @@ export class SubscriptionManager {
     }
   }
 
+  // Get actual total message count (chat logs + MCP client calls) - consistent across all pages
+  async getActualMessageCount(userId: string, useServiceRole: boolean = false): Promise<{
+    totalMessages: number
+    chatMessages: number
+    mcpCalls: number
+  }> {
+    try {
+      const supabase = await this.getSupabase(useServiceRole)
+
+      // 1. Count chat messages
+      const { data: chatLogs, error: chatError } = await supabase
+        .from('chat_logs')
+        .select('id, created_at')
+        .eq('user_id', userId)
+
+      // 2. Count MCP client calls from request logs
+      const { data: mcpCalls, error: mcpError } = await supabase
+        .from('mcp_request_logs')
+        .select('id, created_at')
+        .eq('user_id', userId)
+
+      const totalChatMessages = chatLogs?.length || 0
+      const totalMcpCalls = mcpCalls?.length || 0
+      const totalMessages = totalChatMessages + totalMcpCalls
+
+      return {
+        totalMessages,
+        chatMessages: totalChatMessages,
+        mcpCalls: totalMcpCalls
+      }
+    } catch (error) {
+      console.error('Error getting actual message count:', error)
+      return {
+        totalMessages: 0,
+        chatMessages: 0,
+        mcpCalls: 0
+      }
+    }
+  }
+
   // Get total messages this month (chat + MCP) vs API calls
   async getMessageVsApiStats(userId: string, useServiceRole: boolean = false): Promise<{
     totalMessages: number

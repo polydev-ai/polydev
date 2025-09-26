@@ -265,14 +265,100 @@ export default function RequestLogsSection({
                 </div>
               </div>
 
-              {/* Full Prompt */}
+              {/* Full Prompt or Conversation */}
               <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Full Prompt</h4>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
-                    {(selectedLog as any).fullPrompt || 'No prompt available'}
-                  </pre>
-                </div>
+                <h4 className="text-sm font-medium text-gray-900 mb-3">
+                  {(selectedLog as any).source === 'chat' && (selectedLog as any).fullConversation
+                    ? 'Full Conversation'
+                    : 'Full Prompt'}
+                </h4>
+
+                {/* Chat conversation display */}
+                {(selectedLog as any).source === 'chat' && (selectedLog as any).fullConversation ? (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="text-sm font-medium text-blue-900">
+                        Chat Session: "{(selectedLog as any).sessionTitle}"
+                      </p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        {(selectedLog as any).fullConversation.length} messages in conversation
+                      </p>
+                    </div>
+
+                    <div className="max-h-96 overflow-y-auto space-y-3">
+                      {(selectedLog as any).fullConversation.map((message: any, index: number) => (
+                        <div key={index} className={`p-4 rounded-lg ${
+                          message.role === 'user'
+                            ? 'bg-blue-50 border border-blue-200'
+                            : 'bg-gray-50 border border-gray-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                message.role === 'user'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {message.role === 'user' ? 'User' : 'Assistant'}
+                              </span>
+                              {message.model_id && (
+                                <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                  {message.model_id}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {new Date(message.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+
+                          <div className="prose prose-sm max-w-none">
+                            <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono bg-white p-3 rounded border">
+                              {message.content}
+                            </pre>
+                          </div>
+
+                          {/* Show usage and cost info for assistant messages */}
+                          {message.role === 'assistant' && (message.usage_info || message.cost_info) && (
+                            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                              {message.usage_info?.total_tokens && (
+                                <div className="bg-white p-2 rounded border">
+                                  <p className="text-gray-500">Tokens</p>
+                                  <p className="font-medium">{message.usage_info.total_tokens}</p>
+                                </div>
+                              )}
+                              {message.cost_info?.total_cost && (
+                                <div className="bg-white p-2 rounded border">
+                                  <p className="text-gray-500">Cost</p>
+                                  <p className="font-medium">${parseFloat(message.cost_info.total_cost).toFixed(4)}</p>
+                                </div>
+                              )}
+                              {message.usage_info?.prompt_tokens && (
+                                <div className="bg-white p-2 rounded border">
+                                  <p className="text-gray-500">Input</p>
+                                  <p className="font-medium">{message.usage_info.prompt_tokens}</p>
+                                </div>
+                              )}
+                              {message.usage_info?.completion_tokens && (
+                                <div className="bg-white p-2 rounded border">
+                                  <p className="text-gray-500">Output</p>
+                                  <p className="font-medium">{message.usage_info.completion_tokens}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* Regular prompt display for MCP requests */
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
+                      {(selectedLog as any).fullPrompt || (selectedLog as any).fullPromptContent || 'No prompt available'}
+                    </pre>
+                  </div>
+                )}
               </div>
 
               {/* Provider Breakdown */}

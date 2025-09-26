@@ -86,9 +86,11 @@ export async function GET(request: NextRequest) {
       using: 'comprehensive'
     })
 
-    // Get official message count from subscription manager (same source as dashboard/subscription pages)
-    const messageUsage = await subscriptionManager.getUserMessageUsage(user.id, true)
-    const totalChats = messageUsage.messages_sent
+    // Get actual message count using consistent function across all pages (same as dashboard)
+    const actualMessageCount = await subscriptionManager.getActualMessageCount(user.id, true)
+    const totalChats = actualMessageCount.totalMessages
+
+    console.log('[Profile Stats] Actual message count:', actualMessageCount)
 
     // Calculate total tokens from all sources
     let totalTokens = 0

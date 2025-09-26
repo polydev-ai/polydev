@@ -152,33 +152,11 @@ export async function GET(request: NextRequest) {
 
     console.log('[Dashboard Stats] Chat messages:', { count: chatMessages?.length, error: chatMessagesError })
 
-    // Get actual message count from both chat logs and MCP client calls
-    // 1. Count chat messages
-    const { data: actualChatMessages, error: chatCountError } = await supabase
-      .from('chat_logs')
-      .select('id, created_at')
-      .eq('user_id', user.id)
+    // Get actual message count using consistent function across all pages
+    const actualMessageCount = await subscriptionManager.getActualMessageCount(user.id, true)
+    const totalMessages = actualMessageCount.totalMessages
 
-    console.log('[Dashboard Stats] Actual chat messages:', { count: actualChatMessages?.length, error: chatCountError })
-
-    // 2. Count MCP client calls from request logs
-    const { data: mcpClientCalls, error: mcpCountError } = await supabase
-      .from('mcp_request_logs')
-      .select('id, created_at')
-      .eq('user_id', user.id)
-
-    console.log('[Dashboard Stats] MCP client calls:', { count: mcpClientCalls?.length, error: mcpCountError })
-
-    // Total messages = chat messages + MCP client calls
-    const totalChatMessages = actualChatMessages?.length || 0
-    const totalMcpCalls = mcpClientCalls?.length || 0
-    const totalMessages = totalChatMessages + totalMcpCalls
-
-    console.log('[Dashboard Stats] Total message calculation:', {
-      chatMessages: totalChatMessages,
-      mcpCalls: totalMcpCalls,
-      total: totalMessages
-    })
+    console.log('[Dashboard Stats] Actual message count:', actualMessageCount)
 
     // Count MCP token usage for reference (not the same as client calls)
     const mcpTokenUsage = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)

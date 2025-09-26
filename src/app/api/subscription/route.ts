@@ -14,11 +14,20 @@ export async function GET(request: NextRequest) {
     // Get subscription data
     const subscription = await subscriptionManager.getUserSubscription(user.id)
     const messageUsage = await subscriptionManager.getUserMessageUsage(user.id)
+    const actualMessageCount = await subscriptionManager.getActualMessageCount(user.id, true)
     const credits = await subscriptionManager.getUserCredits(user.id)
 
     return NextResponse.json({
       subscription,
-      messageUsage,
+      messageUsage: {
+        ...messageUsage,
+        // Override with actual count for display consistency across pages
+        actual_messages_sent: actualMessageCount.totalMessages,
+        breakdown: {
+          chat_messages: actualMessageCount.chatMessages,
+          mcp_calls: actualMessageCount.mcpCalls
+        }
+      },
       credits: credits || {
         balance: 0,
         promotional_balance: 0,
