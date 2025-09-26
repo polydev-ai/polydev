@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       mcpQuery = mcpQuery.lte('created_at', dateTo)
     }
 
-    // Fetch chat logs (web chat requests)
+    // Fetch chat logs (web chat requests) with session and message details
     let chatQuery = supabase
       .from('chat_logs')
       .select(`
@@ -78,7 +78,22 @@ export async function GET(request: NextRequest) {
         message_count,
         total_tokens,
         total_cost,
-        created_at
+        created_at,
+        chat_sessions!inner (
+          id,
+          title,
+          chat_messages (
+            id,
+            role,
+            content,
+            model_id,
+            provider_info,
+            usage_info,
+            cost_info,
+            metadata,
+            created_at
+          )
+        )
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
@@ -126,7 +141,7 @@ export async function GET(request: NextRequest) {
       maxTokens: log.max_tokens_requested,
       source: 'mcp',
 
-      // Provider breakdown
+      // Provider breakdown with full response content
       providers: Object.entries(log.provider_costs || {}).map(([key, cost]) => {
         const [provider, model] = key.split(':')
         const latency = log.provider_latencies?.[key] || 0
@@ -183,9 +198,14 @@ export async function GET(request: NextRequest) {
           latency,
           tokens: response?.tokens_used || 0,
           success: !!response,
-          response: response?.content || null
+          response: response?.content || null,
+          fullResponse: response || null // Include full response object for detailed view
         }
       }),
+
+      // Include full prompt and provider responses for detailed view
+      fullPromptContent: log.prompt,
+      allProviderResponses: log.provider_responses || {},
 
       // Overall metrics
       avgLatency: Object.values(log.provider_latencies || {}).length > 0
@@ -198,66 +218,96 @@ export async function GET(request: NextRequest) {
     })) || []
 
     // Transform chat logs to unified format
-    const transformedChatLogs = chatLogs?.map(log => ({
-      id: log.id,
-      timestamp: log.created_at,
-      prompt: 'Web Chat Session',
-      fullPrompt: `Chat session with ${log.message_count} messages`,
-      models: log.models_used || [],
-      totalTokens: log.total_tokens || 0,
-      cost: parseFloat(log.total_cost || '0'),
-      speed: '0', // Chat logs don't have response time per message
-      responseTime: null,
-      status: 'success', // Assume success for completed chat logs
-      successfulProviders: 1,
-      failedProviders: 0,
-      client: 'Web Chat',
-      temperature: null,
-      maxTokens: null,
-      source: 'chat',
+    const transformedChatLogs = chatLogs?.map(log => {
+      // Get conversation details from chat_messages
+      const chatMessages = log.chat_sessions?.chat_messages || []
+      const sortedMessages = chatMessages.sort((a: any, b: any) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      )
 
-      // Provider breakdown - reconstruct from models_used
-      providers: (log.models_used || []).map((model: string) => {
-        const getProviderFromModel = (modelName: string) => {
-          const normalizedModel = modelName.toLowerCase()
+      // Build conversation preview and full conversation
+      const userMessages = sortedMessages.filter((msg: any) => msg.role === 'user')
+      const assistantMessages = sortedMessages.filter((msg: any) => msg.role === 'assistant')
 
-          if (normalizedModel.includes('gpt') || normalizedModel.includes('openai')) return 'OpenAI'
-          if (normalizedModel.includes('claude') || normalizedModel.includes('anthropic')) return 'Anthropic'
-          if (normalizedModel.includes('gemini') || normalizedModel.includes('google')) return 'Google'
-          if (normalizedModel.includes('mistral')) return 'Mistral'
-          if (normalizedModel.includes('together')) return 'Together AI'
-          if (normalizedModel.includes('cerebras')) return 'Cerebras'
-          if (normalizedModel.includes('xai') || normalizedModel.includes('x-ai')) return 'xAI'
-          if (normalizedModel.includes('perplexity')) return 'Perplexity'
-          if (normalizedModel.includes('cohere')) return 'Cohere'
-          if (normalizedModel.includes('huggingface') || normalizedModel.includes('hugging-face')) return 'Hugging Face'
-          if (normalizedModel.includes('deepseek')) return 'DeepSeek'
+      const firstUserMessage = userMessages[0]?.content || 'No user message found'
+      const conversationPreview = firstUserMessage.length > 200
+        ? firstUserMessage.substring(0, 200) + '...'
+        : firstUserMessage
 
-          // If model is in format "provider/model", extract provider
-          if (model.includes('/')) {
-            const provider = model.split('/')[0]
-            return provider.charAt(0).toUpperCase() + provider.slice(1)
+      // Build full conversation for details view
+      const fullConversation = sortedMessages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+        model_id: msg.model_id,
+        provider_info: msg.provider_info,
+        usage_info: msg.usage_info,
+        cost_info: msg.cost_info,
+        timestamp: msg.created_at
+      }))
+
+      return {
+        id: log.id,
+        timestamp: log.created_at,
+        prompt: conversationPreview,
+        fullPrompt: `Chat Session: "${log.chat_sessions?.title || 'Untitled'}"`,
+        fullConversation: fullConversation, // Full conversation for detailed view
+        models: log.models_used || [],
+        totalTokens: log.total_tokens || 0,
+        cost: parseFloat(log.total_cost || '0'),
+        speed: '0', // Chat logs don't have response time per message
+        responseTime: null,
+        status: 'success', // Assume success for completed chat logs
+        successfulProviders: 1,
+        failedProviders: 0,
+        client: 'Web Chat',
+        temperature: null,
+        maxTokens: null,
+        source: 'chat',
+        sessionTitle: log.chat_sessions?.title || 'Untitled Session',
+
+        // Provider breakdown - reconstruct from models_used
+        providers: (log.models_used || []).map((model: string) => {
+          const getProviderFromModel = (modelName: string) => {
+            const normalizedModel = modelName.toLowerCase()
+
+            if (normalizedModel.includes('gpt') || normalizedModel.includes('openai')) return 'OpenAI'
+            if (normalizedModel.includes('claude') || normalizedModel.includes('anthropic')) return 'Anthropic'
+            if (normalizedModel.includes('gemini') || normalizedModel.includes('google')) return 'Google'
+            if (normalizedModel.includes('mistral')) return 'Mistral'
+            if (normalizedModel.includes('together')) return 'Together AI'
+            if (normalizedModel.includes('cerebras')) return 'Cerebras'
+            if (normalizedModel.includes('xai') || normalizedModel.includes('x-ai')) return 'xAI'
+            if (normalizedModel.includes('perplexity')) return 'Perplexity'
+            if (normalizedModel.includes('cohere')) return 'Cohere'
+            if (normalizedModel.includes('huggingface') || normalizedModel.includes('hugging-face')) return 'Hugging Face'
+            if (normalizedModel.includes('deepseek')) return 'DeepSeek'
+
+            // If model is in format "provider/model", extract provider
+            if (model.includes('/')) {
+              const provider = model.split('/')[0]
+              return provider.charAt(0).toUpperCase() + provider.slice(1)
+            }
+
+            return 'Unknown Provider'
           }
 
-          return 'Unknown Provider'
-        }
+          return {
+            provider: getProviderFromModel(model),
+            model: model.includes('/') ? model.split('/')[1] : model,
+            cost: parseFloat(log.total_cost || '0') / (log.models_used?.length || 1),
+            latency: 0,
+            tokens: Math.round((log.total_tokens || 0) / (log.models_used?.length || 1)),
+            success: true,
+            response: null
+          }
+        }),
 
-        return {
-          provider: getProviderFromModel(model),
-          model: model.includes('/') ? model.split('/')[1] : model,
-          cost: parseFloat(log.total_cost || '0') / (log.models_used?.length || 1),
-          latency: 0,
-          tokens: Math.round((log.total_tokens || 0) / (log.models_used?.length || 1)),
-          success: true,
-          response: null
-        }
-      }),
-
-      // Overall metrics
-      avgLatency: 0,
-      tokensPerSecond: 0,
-      messageCount: log.message_count
-    })) || []
+        // Overall metrics
+        avgLatency: 0,
+        tokensPerSecond: 0,
+        messageCount: log.message_count
+      }
+    }) || []
 
     // Combine and sort all logs by timestamp
     const allLogs = [...transformedMcpLogs, ...transformedChatLogs]
