@@ -220,7 +220,8 @@ export async function GET(request: NextRequest) {
     // Transform chat logs to unified format
     const transformedChatLogs = chatLogs?.map(log => {
       // Get conversation details from chat_messages
-      const chatMessages = log.chat_sessions?.chat_messages || []
+      const chatSession = Array.isArray(log.chat_sessions) ? log.chat_sessions[0] : log.chat_sessions
+      const chatMessages = chatSession?.chat_messages || []
       const sortedMessages = chatMessages.sort((a: any, b: any) =>
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )
@@ -249,7 +250,7 @@ export async function GET(request: NextRequest) {
         id: log.id,
         timestamp: log.created_at,
         prompt: conversationPreview,
-        fullPrompt: `Chat Session: "${log.chat_sessions?.title || 'Untitled'}"`,
+        fullPrompt: `Chat Session: "${chatSession?.title || 'Untitled'}"`,
         fullConversation: fullConversation, // Full conversation for detailed view
         models: log.models_used || [],
         totalTokens: log.total_tokens || 0,
@@ -263,7 +264,7 @@ export async function GET(request: NextRequest) {
         temperature: null,
         maxTokens: null,
         source: 'chat',
-        sessionTitle: log.chat_sessions?.title || 'Untitled Session',
+        sessionTitle: chatSession?.title || 'Untitled Session',
 
         // Provider breakdown - reconstruct from models_used
         providers: (log.models_used || []).map((model: string) => {
