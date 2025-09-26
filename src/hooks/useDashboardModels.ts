@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { modelsDevClientService } from '../lib/models-dev-client'
 
 export interface DashboardModel {
@@ -24,14 +24,48 @@ export interface DashboardModel {
   description?: string
 }
 
+// Cache for models to prevent duplicate fetching
+const modelsCache = {
+  models: [] as DashboardModel[],
+  timestamp: 0,
+  loading: false,
+  CACHE_DURATION: 5 * 60 * 1000 // 5 minutes
+}
+
+let activeRequest: Promise<void> | null = null
+
 export function useDashboardModels() {
   const [models, setModels] = useState<DashboardModel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const isMountedRef = useRef(true)
 
   useEffect(() => {
+    isMountedRef.current = true
+
     const fetchDashboardModels = async () => {
+      // Check cache first
+      const now = Date.now()
+      if (modelsCache.models.length > 0 && (now - modelsCache.timestamp) < modelsCache.CACHE_DURATION) {
+        setModels(modelsCache.models)
+        setLoading(false)
+        setError(null)
+        return
+      }
+
+      // Prevent duplicate requests
+      if (activeRequest) {
+        await activeRequest
+        if (isMountedRef.current && modelsCache.models.length > 0) {
+          setModels(modelsCache.models)
+          setLoading(false)
+          setError(null)
+        }
+        return
+      }
+
+      activeRequest = (async () => {
       try {
         setLoading(true)
 
@@ -42,11 +76,12 @@ export function useDashboardModels() {
         }
 
         const { apiKeys } = await response.json()
-        console.log('[useDashboardModels] Fetched API keys:', apiKeys)
+        // Remove excessive logging
+        // console.log('[useDashboardModels] Fetched API keys:', apiKeys)
 
         // If no API keys configured, show no models
         if (!apiKeys || apiKeys.length === 0) {
-          console.log('[useDashboardModels] No API keys found')
+          // console.log('[useDashboardModels] No API keys found')
           setModels([])
           setError(null)
           return
@@ -57,6 +92,46 @@ export function useDashboardModels() {
         // Normalize certain provider IDs to avoid duplicates and missing data
         const normalizeProviderId = (pid: string) => pid === 'xai' ? 'x-ai' : pid
 
+        // Batch provider data fetching to prevent duplicate requests
+        const providerDataCache = new Map<string, any>()
+        const uniqueProviders = [...new Set(apiKeys.map((key: any) => normalizeProviderId(key.provider)))]
+
+        // Pre-fetch all provider data in parallel
+        await Promise.allSettled(
+          uniqueProviders.map(async (providerId) => {
+            try {
+              const richResp = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(providerId)}&rich=true`)
+              if (richResp.ok) {
+                const richData = await richResp.json()
+                const rich = Array.isArray(richData) ? richData[0] : richData
+                if (rich && Array.isArray(rich.models)) {
+                  providerDataCache.set(providerId, {
+                    name: rich.name || providerId,
+                    logo: rich.logo || rich.logo_url,
+                    models: rich.models.map((m: any) => ({
+                      friendly_id: m.id,
+                      id: m.id,
+                      name: m.name,
+                      display_name: m.name,
+                      context_length: m.contextWindow,
+                      max_tokens: m.maxTokens,
+                      input_cost_per_million: m.pricing?.input,
+                      output_cost_per_million: m.pricing?.output,
+                      supports_vision: m.supportsVision,
+                      supports_tools: m.supportsTools,
+                      supports_streaming: m.supportsStreaming,
+                      supports_reasoning: m.supportsReasoning,
+                      description: m.description,
+                    }))
+                  })
+                }
+              }
+            } catch (e) {
+              // Ignore individual provider failures
+            }
+          })
+        )
+
         // Process each API key to create models
         for (const apiKey of apiKeys) {
           const providerId = normalizeProviderId(apiKey.provider)
@@ -65,45 +140,26 @@ export function useDashboardModels() {
           if (!defaultModel) continue
 
           try {
-            // Prefer rich provider data for accurate logos and pricing
+            // Use cached provider data
             let providerName = providerId
             let providerLogo: string | undefined
             let providerModels: any[] = []
 
-            try {
-              const richResp = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(providerId)}&rich=true`)
-              if (richResp.ok) {
-                const richData = await richResp.json()
-                const rich = Array.isArray(richData) ? richData[0] : richData
-                if (Array.isArray(rich.models)) {
-                  providerModels = rich.models.map((m: any) => ({
-                    friendly_id: m.id,
-                    id: m.id,
-                    name: m.name,
-                    display_name: m.name,
-                    context_length: m.contextWindow,
-                    max_tokens: m.maxTokens,
-                    input_cost_per_million: m.pricing?.input,
-                    output_cost_per_million: m.pricing?.output,
-                    supports_vision: m.supportsVision,
-                    supports_tools: m.supportsTools,
-                    supports_streaming: m.supportsStreaming,
-                    supports_reasoning: m.supportsReasoning,
-                    description: m.description,
-                  }))
-                }
-                providerName = rich.name || providerId
-                providerLogo = rich.logo || rich.logo_url
+            const cachedData = providerDataCache.get(providerId)
+            if (cachedData) {
+              providerName = cachedData.name
+              providerLogo = cachedData.logo
+              providerModels = cachedData.models
+            } else {
+              // Fallback to registry-based API only if cache miss
+              try {
+                const { provider, models } = await modelsDevClientService.getProviderWithModels(providerId)
+                providerModels = models || []
+                providerName = (provider as any)?.display_name || (provider as any)?.name || providerId
+                providerLogo = (provider as any)?.logo || (provider as any)?.logo_url
+              } catch (e) {
+                console.warn(`[useDashboardModels] Failed to fetch fallback for ${providerId}:`, e)
               }
-            } catch (e) {
-              // Ignore and fallback to registry-based API
-            }
-
-            if (providerModels.length === 0) {
-              const { provider, models } = await modelsDevClientService.getProviderWithModels(providerId)
-              providerModels = models || []
-              providerName = (provider as any)?.display_name || (provider as any)?.name || providerId
-              providerLogo = (provider as any)?.logo || (provider as any)?.logo_url
             }
 
             // Build a lookup with friendly and normalized keys for robust matching
@@ -168,13 +224,8 @@ export function useDashboardModels() {
                     ? { input: Number(mappingPricing.input), output: Number(mappingPricing.output) }
                     : undefined)
 
-              // Debug pricing
-              console.log(`[useDashboardModels] ${mId} pricing debug:`, {
-                input_raw: modelData.input_cost_per_million,
-                output_raw: modelData.output_cost_per_million,
-                price_final: price,
-                provider: providerId
-              })
+              // Remove excessive debug logging
+              // console.log(`[useDashboardModels] ${mId} pricing debug:`, price)
 
               const modelEntry = {
                 id: modelData.friendly_id || modelData.id,
@@ -227,21 +278,42 @@ export function useDashboardModels() {
           return a.name.localeCompare(b.name)
         })
 
-        setModels(dashboardModels)
-        setError(null)
+        // Update cache
+        modelsCache.models = dashboardModels
+        modelsCache.timestamp = Date.now()
+
+        if (isMountedRef.current) {
+          setModels(dashboardModels)
+          setError(null)
+        }
       } catch (err) {
         console.error('Error fetching dashboard models:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch dashboard models')
-        setModels([])
+        if (isMountedRef.current) {
+          setError(err instanceof Error ? err.message : 'Failed to fetch dashboard models')
+          setModels([])
+        }
       } finally {
-        setLoading(false)
+        if (isMountedRef.current) {
+          setLoading(false)
+        }
+        activeRequest = null
       }
+      })()
+
+      await activeRequest
     }
 
     fetchDashboardModels()
+
+    return () => {
+      isMountedRef.current = false
+    }
   }, [refreshTrigger])
 
   const refresh = async () => {
+    // Clear cache on manual refresh
+    modelsCache.models = []
+    modelsCache.timestamp = 0
     setRefreshTrigger(prev => prev + 1)
   }
 
