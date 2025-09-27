@@ -39,6 +39,8 @@ export default function RequestLogsSection({
             <option value="success">Successful Only</option>
             <option value="error">Errors Only</option>
             <option value="partial_success">Partial Success</option>
+            <option value="credits">Credits Only</option>
+            <option value="api_key">API Keys Only</option>
           </select>
           
           {/* Refresh Button */}
@@ -70,6 +72,7 @@ export default function RequestLogsSection({
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prompt</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Models</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
@@ -94,7 +97,7 @@ export default function RequestLogsSection({
                       <div className="flex flex-wrap gap-1">
                         {log.providers && log.providers.length > 0 ? (
                           log.providers.slice(0, 2).map((provider: any, idx: number) => (
-                            <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <span key={`${log.id || index}-provider-${idx}`} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                               {provider.model || provider.provider}
                             </span>
                           ))
@@ -105,6 +108,13 @@ export default function RequestLogsSection({
                           <span className="text-xs text-gray-500">+{log.providers.length - 2} more</span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        log.paymentMethod === 'credits' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {log.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -436,11 +446,18 @@ export default function RequestLogsSection({
                               <div className="text-xs text-gray-500">{provider.provider}</div>
                             </div>
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            provider.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {provider.success ? 'Success' : 'Error'}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              provider.paymentMethod === 'credits' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                            }`}>
+                              {provider.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              provider.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {provider.success ? 'Success' : 'Error'}
+                            </span>
+                          </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                           <div>
@@ -524,6 +541,16 @@ export default function RequestLogsSection({
                     <p className="text-xs text-gray-500">Failed Providers</p>
                     <p className="text-sm font-medium text-gray-900">
                       {(selectedLog as any).failedProviders || 0}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-500">Payment Method</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        (selectedLog as any).paymentMethod === 'credits' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {(selectedLog as any).paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
+                      </span>
                     </p>
                   </div>
                 </div>

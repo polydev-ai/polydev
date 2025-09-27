@@ -198,7 +198,7 @@
       ]
     },
     {
-      "name": "polydev.force_cli_detection",
+      "name": "force_cli_detection",
       "description": "Force detection and status update for CLI tools (Claude Code, Codex CLI, Gemini CLI). Updates local cache and reports status to MCP server via Supabase.",
       "inputSchema": {
         "type": "object",
@@ -290,7 +290,7 @@
       ]
     },
     {
-      "name": "polydev.get_cli_status",
+      "name": "get_cli_status",
       "description": "Get current CLI status with caching support. Returns cached results if available and fresh, otherwise performs new detection.",
       "inputSchema": {
         "type": "object",
@@ -347,7 +347,7 @@
       }
     },
     {
-      "name": "polydev.send_cli_prompt",
+      "name": "send_cli_prompt",
       "description": "Send a prompt to a CLI provider and get response. Supports both stdin and argument modes for maximum compatibility.",
       "inputSchema": {
         "type": "object",
@@ -443,7 +443,7 @@
       ]
     },
     {
-      "name": "polydev.detect_memory_sources",
+      "name": "detect_memory_sources",
       "description": "Detect all available memory sources across CLI tools (Claude Code, Cline, Codex, Cursor, Continue, Aider). Returns file paths for global memory, project memory, and recent conversations.",
       "inputSchema": {
         "type": "object",
@@ -503,7 +503,7 @@
       }
     },
     {
-      "name": "polydev.extract_memory", 
+      "name": "extract_memory", 
       "description": "Extract and optionally encrypt memory content from detected CLI tool sources. Provides TF-IDF relevance scoring and content analysis.",
       "inputSchema": {
         "type": "object",
@@ -550,7 +550,7 @@
       }
     },
     {
-      "name": "polydev.get_recent_conversations",
+      "name": "get_recent_conversations",
       "description": "Get recent conversations from CLI tools with TF-IDF relevance scoring against query context. Supports encrypted storage and retrieval.",
       "inputSchema": {
         "type": "object",
@@ -590,7 +590,7 @@
       }
     },
     {
-      "name": "polydev.get_memory_context",
+      "name": "get_memory_context",
       "description": "Get formatted memory and conversation context for injection into prompts. Automatically handles decryption and relevance scoring.",
       "inputSchema": {
         "type": "object",
@@ -631,7 +631,7 @@
       }
     },
     {
-      "name": "polydev.manage_memory_preferences", 
+      "name": "manage_memory_preferences", 
       "description": "Configure memory extraction and privacy preferences. Control which CLI tools and memory types are enabled, encryption settings, and context injection behavior.",
       "inputSchema": {
         "type": "object",

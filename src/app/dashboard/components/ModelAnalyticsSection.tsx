@@ -1,28 +1,4 @@
 'use client'
-import { useState, useEffect } from 'react'
-
-function getProviderLogo(providerName: string, logoMapping: Record<string, string>) {
-  if (!providerName) {
-    return null
-  }
-
-  // Normalize provider name for matching
-  const normalizedName = providerName.toLowerCase().replace(/[^a-z0-9]/g, '')
-
-  // Try exact match first
-  if (logoMapping[normalizedName]) {
-    return logoMapping[normalizedName]
-  }
-
-  // Try partial matching
-  for (const [key, logoUrl] of Object.entries(logoMapping)) {
-    if (normalizedName.includes(key) || key.includes(normalizedName)) {
-      return logoUrl
-    }
-  }
-
-  return null
-}
 
 export default function ModelAnalyticsSection({
   modelAnalytics,
@@ -33,19 +9,19 @@ export default function ModelAnalyticsSection({
   requestLogs: any[]
   providersRegistry?: any[]
 }) {
-  const [logoMapping, setLogoMapping] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    // Fetch logo mapping from API
-    fetch('/api/providers/logos')
-      .then(res => res.json())
-      .then(data => {
-        if (data.logoMapping) {
-          setLogoMapping(data.logoMapping)
-        }
-      })
-      .catch(err => console.error('Failed to fetch provider logos:', err))
-  }, [])
+  // Use providers registry directly instead of fetching separate logo mapping
+  const providerLookup = new Map<string, any>()
+  providersRegistry.forEach((provider: any) => {
+    if (provider.id) {
+      providerLookup.set(provider.id, provider)
+      providerLookup.set(provider.name, provider)
+      // Handle common variations
+      if (provider.id === 'xai') {
+        providerLookup.set('x-ai', provider)
+        providerLookup.set('xAI', provider)
+      }
+    }
+  })
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -56,76 +32,165 @@ export default function ModelAnalyticsSection({
         <div className="text-sm text-gray-500">Based on {requestLogs.length} requests</div>
       </div>
 
-      {/* Model Performance Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Models</p>
-              <p className="text-lg font-semibold text-gray-900">{modelAnalytics ? modelAnalytics.length : 0}</p>
-            </div>
-          </div>
-        </div>
+      {/* Comprehensive Model Performance Analytics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {(() => {
+          const validModels = modelAnalytics?.filter(m => m.requests > 0) || []
+          const totalRequests = validModels.reduce((sum, m) => sum + m.requests, 0)
+          const totalCost = validModels.reduce((sum, m) => sum + (m.totalCost || 0), 0)
+          const totalTokens = validModels.reduce((sum, m) => sum + (m.totalTokens || 0), 0)
+          const avgSuccessRate = validModels.length > 0
+            ? validModels.reduce((sum, m) => sum + parseFloat(m.successRate), 0) / validModels.length
+            : 0
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Fastest Model</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {modelAnalytics && modelAnalytics.length > 0 
-                  ? Math.max(...modelAnalytics.map(m => m.tokensPerSecond || 0))
-                  : 0} t/s
-              </p>
-            </div>
-          </div>
-        </div>
+          const fastestModel = validModels.length > 0
+            ? validModels.reduce((fastest, current) =>
+                (current.tokensPerSecond || 0) > (fastest.tokensPerSecond || 0) ? current : fastest
+              )
+            : null
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Cheapest per Token</p>
-              <p className="text-lg font-semibold text-gray-900">
-                ${modelAnalytics && modelAnalytics.length > 0 
-                  ? Math.min(...modelAnalytics.filter(m => parseFloat(m.costPerToken) > 0).map(m => parseFloat(m.costPerToken))).toFixed(6)
-                  : '0.000000'}
-              </p>
-            </div>
-          </div>
-        </div>
+          const cheapestModel = validModels.length > 0
+            ? validModels.filter(m => parseFloat(m.costPerToken) > 0).reduce((cheapest, current) =>
+                parseFloat(current.costPerToken) < parseFloat(cheapest.costPerToken) ? current : cheapest
+              )
+            : null
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Best Reliability</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {modelAnalytics && modelAnalytics.length > 0 
-                  ? Math.max(...modelAnalytics.map(m => parseFloat(m.successRate))).toFixed(1)
-                  : '0'}%
-              </p>
-            </div>
-          </div>
-        </div>
+          const mostReliableModel = validModels.length > 0
+            ? validModels.reduce((most, current) =>
+                parseFloat(current.successRate) > parseFloat(most.successRate) ? current : most
+              )
+            : null
+
+          return (
+            <>
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg shadow p-6 border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-blue-600 font-medium">Active Models</p>
+                    <p className="text-2xl font-bold text-blue-900">{validModels.length}</p>
+                    <p className="text-xs text-blue-500">{totalRequests.toLocaleString()} total requests</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-lg shadow p-6 border border-green-200">
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-green-600 font-medium">Speed Champion</p>
+                    <p className="text-2xl font-bold text-green-900">
+                      {fastestModel ? Math.round(fastestModel.tokensPerSecond || 0) : 0} t/s
+                    </p>
+                    <p className="text-xs text-green-500">{fastestModel?.model || 'No data'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-lg shadow p-6 border border-purple-200">
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-purple-600 font-medium">Most Economical</p>
+                    <p className="text-2xl font-bold text-purple-900">
+                      ${cheapestModel ? parseFloat(cheapestModel.costPerToken).toFixed(6) : '0.000000'}
+                    </p>
+                    <p className="text-xs text-purple-500">{cheapestModel?.model || 'No data'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-red-50 to-rose-100 rounded-lg shadow p-6 border border-red-200">
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-red-600 font-medium">Most Reliable</p>
+                    <p className="text-2xl font-bold text-red-900">
+                      {mostReliableModel ? parseFloat(mostReliableModel.successRate).toFixed(1) : '0'}%
+                    </p>
+                    <p className="text-xs text-red-500">{mostReliableModel?.model || 'No data'}</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )
+        })()}
       </div>
+
+      {/* Cost and Performance Overview */}
+      {modelAnalytics && modelAnalytics.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Cost Analysis</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Total Spent</span>
+                <span className="text-sm font-medium">${modelAnalytics.reduce((sum, m) => sum + (m.totalCost || 0), 0).toFixed(4)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Average per Request</span>
+                <span className="text-sm font-medium">${(modelAnalytics.reduce((sum, m) => sum + (m.totalCost || 0), 0) / Math.max(1, modelAnalytics.reduce((sum, m) => sum + m.requests, 0))).toFixed(6)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Cost per 1K Tokens</span>
+                <span className="text-sm font-medium">${((modelAnalytics.reduce((sum, m) => sum + (m.totalCost || 0), 0) / Math.max(1, modelAnalytics.reduce((sum, m) => sum + (m.totalTokens || 0), 0))) * 1000).toFixed(4)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Stats</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Avg Success Rate</span>
+                <span className="text-sm font-medium">{(modelAnalytics.reduce((sum, m) => sum + parseFloat(m.successRate), 0) / modelAnalytics.length).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Avg Latency</span>
+                <span className="text-sm font-medium">{Math.round(modelAnalytics.reduce((sum, m) => sum + (m.avgLatency || 0), 0) / modelAnalytics.length)}ms</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Avg Speed</span>
+                <span className="text-sm font-medium">{Math.round(modelAnalytics.reduce((sum, m) => sum + (m.tokensPerSecond || 0), 0) / modelAnalytics.length)} t/s</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Usage Distribution</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Most Used Model</span>
+                <span className="text-sm font-medium">{modelAnalytics.reduce((max, current) => current.requests > max.requests ? current : max).model}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Total Tokens</span>
+                <span className="text-sm font-medium">{modelAnalytics.reduce((sum, m) => sum + (m.totalTokens || 0), 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Failed Requests</span>
+                <span className="text-sm font-medium text-red-600">{modelAnalytics.reduce((sum, m) => sum + (m.errorCount || 0), 0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Model Comparison Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -138,78 +203,177 @@ export default function ModelAnalyticsSection({
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requests</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Speed (t/s)</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latency</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost/Token</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Cost</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Model
+                  <span className="block text-gray-400 normal-case font-normal">Provider & Performance Rank</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Usage
+                  <span className="block text-gray-400 normal-case font-normal">Requests & Success</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Reliability
+                  <span className="block text-gray-400 normal-case font-normal">Success Rate</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Speed
+                  <span className="block text-gray-400 normal-case font-normal">Tokens/sec & Latency</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Economics
+                  <span className="block text-gray-400 normal-case font-normal">Cost per Token & Total</span>
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Efficiency
+                  <span className="block text-gray-400 normal-case font-normal">Score & Ranking</span>
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {modelAnalytics && modelAnalytics.length > 0 ? modelAnalytics.map((model) => (
-                <tr key={`${model.provider}:${model.model}`} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 overflow-hidden">
-                        {(() => {
-                          const logoUrl = getProviderLogo(model.provider, logoMapping)
-                          if (logoUrl) {
-                            return (
-                              <img
-                                src={logoUrl}
-                                alt={`${model.provider} logo`}
-                                className="w-8 h-8 object-contain"
-                                onError={(e) => {
-                                  // Fallback to letter circle on image error
-                                  const target = e.target as HTMLImageElement
-                                  target.style.display = 'none'
-                                  const fallback = target.nextElementSibling as HTMLElement
-                                  if (fallback) fallback.style.display = 'flex'
-                                }}
-                              />
-                            )
-                          }
-                          return null
-                        })()}
-                        <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center" style={{ display: getProviderLogo(model.provider, logoMapping) ? 'none' : 'flex' }}>
-                          <span className="text-white text-xs font-bold">{model.model?.charAt(0).toUpperCase() || 'M'}</span>
+              {modelAnalytics && modelAnalytics.length > 0 ? (() => {
+                // Calculate rankings for various metrics
+                const sortedBySpeed = [...modelAnalytics].sort((a, b) => (b.tokensPerSecond || 0) - (a.tokensPerSecond || 0))
+                const sortedByCost = [...modelAnalytics].filter(m => parseFloat(m.costPerToken) > 0).sort((a, b) => parseFloat(a.costPerToken) - parseFloat(b.costPerToken))
+                const sortedByReliability = [...modelAnalytics].sort((a, b) => parseFloat(b.successRate) - parseFloat(a.successRate))
+
+                return modelAnalytics.map((model, index) => {
+                  // Calculate rankings (1-based)
+                  const speedRank = sortedBySpeed.findIndex(m => m.model === model.model) + 1
+                  const costRank = sortedByCost.findIndex(m => m.model === model.model) + 1
+                  const reliabilityRank = sortedByReliability.findIndex(m => m.model === model.model) + 1
+
+                  // Calculate composite efficiency score (lower is better for cost and latency)
+                  const normalizedSpeed = (model.tokensPerSecond || 0) / Math.max(...modelAnalytics.map(m => m.tokensPerSecond || 0))
+                  const normalizedCost = parseFloat(model.costPerToken) > 0
+                    ? 1 - (parseFloat(model.costPerToken) / Math.max(...modelAnalytics.filter(m => parseFloat(m.costPerToken) > 0).map(m => parseFloat(m.costPerToken))))
+                    : 0
+                  const normalizedReliability = parseFloat(model.successRate) / 100
+                  const efficiencyScore = ((normalizedSpeed + normalizedCost + normalizedReliability) / 3 * 100)
+
+                  // Get performance category
+                  const getPerformanceCategory = (score: number) => {
+                    if (score >= 80) return { label: 'Excellent', color: 'text-green-600', bg: 'bg-green-100' }
+                    if (score >= 60) return { label: 'Good', color: 'text-blue-600', bg: 'bg-blue-100' }
+                    if (score >= 40) return { label: 'Fair', color: 'text-yellow-600', bg: 'bg-yellow-100' }
+                    return { label: 'Poor', color: 'text-red-600', bg: 'bg-red-100' }
+                  }
+
+                  const performanceCategory = getPerformanceCategory(efficiencyScore)
+
+                  return (
+                    <tr key={`${model.provider}:${model.model}`} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center mr-3 overflow-hidden">
+                            {(() => {
+                              const registryProvider = providerLookup.get(model.provider)
+                              const logoUrl = model.providerLogo || registryProvider?.logo
+                              return logoUrl ? (
+                                <img
+                                  src={logoUrl}
+                                  alt={`${model.provider} logo`}
+                                  className="w-10 h-10 object-contain"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                                  <span className="text-xs font-medium text-gray-500">
+                                    {model.provider?.charAt(0)?.toUpperCase() || '?'}
+                                  </span>
+                                </div>
+                              )
+                            })()}
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">{model.model || 'Unknown Model'}</div>
+                            <div className="text-xs text-gray-500">{model.provider}</div>
+                            <div className="flex items-center mt-1">
+                              <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${performanceCategory.bg} ${performanceCategory.color}`}>
+                                {performanceCategory.label}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{model.model || 'Unknown Model'}</div>
-                        <div className="text-sm text-gray-500">{model.provider}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{model.requests}</div>
-                    <div className="text-sm text-gray-500">{model.successCount}✓ {model.errorCount}✗</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{parseFloat(model.successRate).toFixed(1)}%</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{Math.round(model.tokensPerSecond || 0)}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{Math.round(model.avgLatency || 0)}ms</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">${parseFloat(model.costPerToken).toFixed(6)}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">${(model.avgCost || 0).toFixed(4)}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{(model.totalTokens || 0).toLocaleString()}</div>
-                  </td>
-                </tr>
-              )) : (
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{model.requests.toLocaleString()}</div>
+                        <div className="text-xs text-gray-500">
+                          <span className="text-green-600">{model.successCount}✓</span>
+                          {model.errorCount > 0 && <span className="text-red-600 ml-2">{model.errorCount}✗</span>}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {((model.requests / modelAnalytics.reduce((sum, m) => sum + m.requests, 0)) * 100).toFixed(1)}% of total
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="text-sm font-medium text-gray-900">{parseFloat(model.successRate).toFixed(1)}%</div>
+                          {reliabilityRank <= 3 && (
+                            <span className="ml-2 inline-block w-5 h-5 rounded-full bg-yellow-400 text-white text-xs font-bold flex items-center justify-center">
+                              {reliabilityRank}
+                            </span>
+                          )}
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                          <div
+                            className={`h-1.5 rounded-full ${parseFloat(model.successRate) >= 95 ? 'bg-green-500' : parseFloat(model.successRate) >= 85 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                            style={{ width: `${Math.min(100, parseFloat(model.successRate))}%` }}
+                          ></div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="text-sm font-medium text-gray-900">{Math.round(model.tokensPerSecond || 0)} t/s</div>
+                          {speedRank <= 3 && (
+                            <span className="ml-2 inline-block w-5 h-5 rounded-full bg-green-500 text-white text-xs font-bold flex items-center justify-center">
+                              {speedRank}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {Math.round(model.avgLatency || 0)}ms latency
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="text-sm font-medium text-gray-900">${parseFloat(model.costPerToken).toFixed(6)}</div>
+                          {costRank <= 3 && costRank > 0 && (
+                            <span className="ml-2 inline-block w-5 h-5 rounded-full bg-purple-500 text-white text-xs font-bold flex items-center justify-center">
+                              {costRank}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          ${(model.totalCost || 0).toFixed(4)} total
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {(model.totalTokens || 0).toLocaleString()} tokens
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            {efficiencyScore.toFixed(0)}/100
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Rank #{index + 1} of {modelAnalytics.length}
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                          <div
+                            className="h-1.5 rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500"
+                            style={{ width: `${Math.min(100, efficiencyScore)}%` }}
+                          ></div>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              })() : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                     No model analytics available. Make some API requests to see data here.
                   </td>
                 </tr>

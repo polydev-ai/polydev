@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +19,21 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow, isValid, parseISO } from 'date-fns'
+
+// Global cache for credits data
+const creditsCache = {
+  balance: null as CreditBalance | null,
+  budget: null as BudgetInfo | null,
+  transactions: null as any[] | null,
+  timestamps: {
+    balance: 0,
+    budget: 0,
+    transactions: 0,
+  },
+  CACHE_DURATION: 2 * 60 * 1000, // 2 minutes
+}
+
+let activeRequests: Record<string, Promise<any> | null> = {}
 
 interface CreditBalance {
   balance: number
@@ -138,7 +153,6 @@ export default function CreditsPage() {
   const [budgetInfo, setBudgetInfo] = useState<BudgetInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [purchasing, setPurchasing] = useState(false)
-  // Credit sessions state declared before any conditional returns
   const [creditSessions, setCreditSessions] = useState<any[]>([])
   const [csTimeframe, setCsTimeframe] = useState('month')
   const [csLimit, setCsLimit] = useState(100)
@@ -151,46 +165,84 @@ export default function CreditsPage() {
   const [csUseCustomRange, setCsUseCustomRange] = useState(false)
   const [csFromDate, setCsFromDate] = useState<string>('')
   const [csToDate, setCsToDate] = useState<string>('')
-  // Provider registry data
   const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo_url: string, display_name: string }>>([])
   const [modelsRegistry, setModelsRegistry] = useState<Array<{ id: string, name: string, provider_id: string, actual_provider: string }>>([])
+  const isMountedRef = useRef(true)
 
-  useEffect(() => {
-    fetchCreditData()
-    fetchProvidersRegistry()
-    fetchModelsRegistry()
+  // Optimized data fetching with caching and deduplication
+  const fetchWithCache = useCallback(async (key: 'balance' | 'budget' | 'transactions', url: string) => {
+    const now = Date.now()
+
+    // Check cache first
+    if (creditsCache[key] &&
+        (now - creditsCache.timestamps[key]) < creditsCache.CACHE_DURATION) {
+      return creditsCache[key]
+    }
+
+    // Prevent duplicate requests
+    if (activeRequests[key]) {
+      return await activeRequests[key]
+    }
+
+    activeRequests[key] = (async () => {
+      try {
+        const response = await fetch(url, { credentials: 'include' })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const data = await response.json()
+
+        // Update cache
+        creditsCache[key] = data
+        creditsCache.timestamps[key] = now
+
+        return data
+      } catch (err) {
+        console.warn(`Failed to fetch ${key}:`, err)
+        return creditsCache[key] || null
+      } finally {
+        activeRequests[key] = null
+      }
+    })()
+
+    return await activeRequests[key]
   }, [])
 
-  const fetchCreditData = async () => {
+  // Consolidated data loading function
+  const loadAllData = useCallback(async () => {
+    if (!isMountedRef.current) return
+
     try {
       setLoading(true)
-      
-      const [balanceRes, budgetRes] = await Promise.all([
-        fetch('/api/credits/balance'),
-        fetch('/api/credits/budget')
+
+      // Fetch all data in parallel with caching
+      const [balanceData, budgetData] = await Promise.allSettled([
+        fetchWithCache('balance', '/api/credits/balance'),
+        fetchWithCache('budget', '/api/credits/budget')
       ])
 
-      if (balanceRes.ok) {
-        const balanceData = await balanceRes.json()
-        setCreditBalance(balanceData)
+      if (!isMountedRef.current) return
+
+      if (balanceData.status === 'fulfilled' && balanceData.value) {
+        setCreditBalance(balanceData.value)
       }
 
-      if (budgetRes.ok) {
-        const budgetData = await budgetRes.json()
-        setBudgetInfo(budgetData)
+      if (budgetData.status === 'fulfilled' && budgetData.value) {
+        setBudgetInfo(budgetData.value)
       }
     } catch (error) {
       console.error('Error fetching credit data:', error)
       toast.error('Failed to load credit information')
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
-  }
+  }, [fetchWithCache])
 
-  const handlePurchaseCredits = async (packageIndex: number) => {
+  // Memoized purchase credits handler
+  const handlePurchaseCredits = useCallback(async (packageIndex: number) => {
     try {
       setPurchasing(true)
-      
+
       const response = await fetch('/api/credits/purchase', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -207,38 +259,36 @@ export default function CreditsPage() {
 
       const { url } = await response.json()
       window.location.href = url
-      
+
     } catch (error) {
       console.error('Error purchasing credits:', error)
       toast.error('Failed to initiate purchase')
     } finally {
       setPurchasing(false)
     }
-  }
+  }, [])
 
-  const fetchProvidersRegistry = async () => {
+  // Memoized registry data fetching
+  const fetchRegistryData = useCallback(async () => {
     try {
-      const response = await fetch('/api/providers/registry')
-      if (response.ok) {
-        const data = await response.json()
+      const [providersRes, modelsRes] = await Promise.allSettled([
+        fetch('/api/providers/registry'),
+        fetch('/api/models/registry')
+      ])
+
+      if (providersRes.status === 'fulfilled' && providersRes.value.ok) {
+        const data = await providersRes.value.json()
         setProvidersRegistry(data.providers || [])
       }
-    } catch (error) {
-      console.error('Error fetching providers registry:', error)
-    }
-  }
 
-  const fetchModelsRegistry = async () => {
-    try {
-      const response = await fetch('/api/models/registry')
-      if (response.ok) {
-        const data = await response.json()
+      if (modelsRes.status === 'fulfilled' && modelsRes.value.ok) {
+        const data = await modelsRes.value.json()
         setModelsRegistry(data.models || [])
       }
     } catch (error) {
-      console.error('Error fetching models registry:', error)
+      console.error('Error fetching registry data:', error)
     }
-  }
+  }, [])
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -249,42 +299,146 @@ export default function CreditsPage() {
     }
   }
 
-  // Load credit sessions for table
-  useEffect(() => {
-    const loadCreditSessions = async () => {
-      try {
-        const now = new Date()
-        let from: string | undefined
-        let to: string | undefined
-        if (csUseCustomRange && csFromDate) from = new Date(csFromDate).toISOString()
-        if (csUseCustomRange && csToDate) to = new Date(csToDate).toISOString()
-        if (!csUseCustomRange) {
-          if (csTimeframe === 'day') from = new Date(now.getTime() - 24*60*60*1000).toISOString()
-          if (csTimeframe === 'week') from = new Date(now.getTime() - 7*24*60*60*1000).toISOString()
-          if (csTimeframe === 'month') from = new Date(now.getTime() - 30*24*60*60*1000).toISOString()
-          if (csTimeframe === 'year') from = new Date(now.getTime() - 365*24*60*60*1000).toISOString()
-        }
-        const params = new URLSearchParams()
-        params.set('onlyCredits', 'true')
-        params.set('limit', String(csLimit))
-        params.set('offset', String(csOffset))
-        params.set('includeCount', 'true')
-        if (csProvider) params.set('provider', csProvider)
-        if (csModel) params.set('model', csModel)
-        if (from) params.set('from', from)
-        if (to) params.set('to', to)
-        const res = await fetch(`/api/usage/sessions?${params.toString()}`)
-        if (res.ok) {
-          const data = await res.json()
-          setCreditSessions(data.items || [])
-          setCsTotal(typeof data.total === 'number' ? data.total : null)
-        }
-      } catch (e) {
-        console.error('Error loading credit sessions:', e)
+  // Optimized credit sessions loading with memoization
+  const loadCreditSessions = useCallback(async () => {
+    try {
+      const now = new Date()
+      let from: string | undefined
+      let to: string | undefined
+      if (csUseCustomRange && csFromDate) from = new Date(csFromDate).toISOString()
+      if (csUseCustomRange && csToDate) to = new Date(csToDate).toISOString()
+      if (!csUseCustomRange) {
+        if (csTimeframe === 'day') from = new Date(now.getTime() - 24*60*60*1000).toISOString()
+        if (csTimeframe === 'week') from = new Date(now.getTime() - 7*24*60*60*1000).toISOString()
+        if (csTimeframe === 'month') from = new Date(now.getTime() - 30*24*60*60*1000).toISOString()
+        if (csTimeframe === 'year') from = new Date(now.getTime() - 365*24*60*60*1000).toISOString()
       }
+      const params = new URLSearchParams()
+      params.set('onlyCredits', 'true')
+      params.set('limit', String(csLimit))
+      params.set('offset', String(csOffset))
+      params.set('includeCount', 'true')
+      if (csProvider) params.set('provider', csProvider)
+      if (csModel) params.set('model', csModel)
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
+      const res = await fetch(`/api/usage/sessions?${params.toString()}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCreditSessions(data.items || [])
+        setCsTotal(typeof data.total === 'number' ? data.total : null)
+      }
+    } catch (e) {
+      console.error('Error loading credit sessions:', e)
     }
+  }, [csTimeframe, csLimit, csOffset, csProvider, csModel, csUseCustomRange, csFromDate, csToDate])
+
+  // Main data loading effect
+  useEffect(() => {
+    isMountedRef.current = true
+    loadAllData()
+    fetchRegistryData()
+
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [loadAllData, fetchRegistryData])
+
+  // Credit sessions loading effect
+  useEffect(() => {
     loadCreditSessions()
-  }, [csTimeframe, csLimit, csOffset, csUseCustomRange, csFromDate, csToDate, csProvider, csModel])
+  }, [loadCreditSessions])
+
+  // Memoized computations for expensive operations
+  const memoizedComputations = useMemo(() => {
+    // Compute total credit balance
+    const totalCredits = (creditBalance?.balance || 0) + (creditBalance?.promotionalBalance || 0)
+
+    // Pre-compute provider logo lookup for performance
+    const providerLogoCache = new Map<string, string>()
+    providersRegistry.forEach(provider => {
+      const key = provider.id?.toLowerCase() || provider.name?.toLowerCase() || ''
+      if (key && provider.logo_url) {
+        providerLogoCache.set(key, provider.logo_url)
+      }
+    })
+
+    // Pre-compute model-to-provider mapping for performance
+    const modelProviderCache = new Map<string, string>()
+    modelsRegistry.forEach(model => {
+      if (model.id && model.actual_provider) {
+        modelProviderCache.set(model.id, model.actual_provider)
+      }
+      if (model.name && model.actual_provider) {
+        modelProviderCache.set(model.name, model.actual_provider)
+      }
+    })
+
+    // Memoized credit sessions rendering data
+    const renderedCreditSessions = creditSessions.map((session: any) => {
+      const providerLogo = providerLogoCache.get(session.provider?.toLowerCase()) || 'https://models.dev/logos/default.svg'
+      const actualProvider = modelProviderCache.get(session.model) || session.provider
+      const modelLogo = providerLogoCache.get(actualProvider?.toLowerCase()) || providerLogo
+
+      return {
+        ...session,
+        providerLogo,
+        modelLogo,
+        formattedDate: formatSafeDate(session.createdAt || session.timestamp || session.date)
+      }
+    })
+
+    return {
+      totalCredits,
+      renderedCreditSessions,
+      providerLogoCache,
+      modelProviderCache
+    }
+  }, [creditBalance, providersRegistry, modelsRegistry, creditSessions])
+
+  // Memoized event handlers to prevent re-renders
+  const handleTimeframeChange = useCallback((value: string) => {
+    setCsTimeframe(value)
+    setCsOffset(0) // Reset pagination
+  }, [])
+
+  const handleProviderChange = useCallback((value: string) => {
+    setCsProvider(value)
+    setCsOffset(0) // Reset pagination
+  }, [])
+
+  const handleModelChange = useCallback((value: string) => {
+    setCsModel(value)
+    setCsOffset(0) // Reset pagination
+  }, [])
+
+  const handleCustomRangeToggle = useCallback((checked: boolean) => {
+    setCsUseCustomRange(checked)
+    setCsOffset(0) // Reset pagination
+  }, [])
+
+  const handleFromDateChange = useCallback((value: string) => {
+    setCsFromDate(value)
+    setCsOffset(0) // Reset pagination
+  }, [])
+
+  const handleToDateChange = useCallback((value: string) => {
+    setCsToDate(value)
+    setCsOffset(0) // Reset pagination
+  }, [])
+
+  const handleLimitChange = useCallback((value: string) => {
+    setCsLimit(parseInt(value))
+    setCsOffset(0) // Reset pagination
+  }, [])
+
+  const handlePageNext = useCallback(() => {
+    setCsOffset(prev => prev + csLimit)
+  }, [csLimit])
+
+  const handlePagePrev = useCallback(() => {
+    setCsOffset(prev => Math.max(0, prev - csLimit))
+  }, [csLimit])
 
   // Load distinct provider/model options for dropdowns (narrow providers by model and models by provider)
   useEffect(() => {
@@ -526,7 +680,7 @@ export default function CreditsPage() {
         </TabsContent>
 
         <TabsContent value="budget" className="space-y-6">
-          <BudgetSettings budgetInfo={budgetInfo} onUpdate={fetchCreditData} />
+          <BudgetSettings budgetInfo={budgetInfo} onUpdate={loadAllData} />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">
@@ -616,18 +770,18 @@ export default function CreditsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {creditSessions.map((u: any) => (
+                    {memoizedComputations.renderedCreditSessions.map((u: any) => (
                       <tr key={u.id} className="border-t border-gray-200 dark:border-gray-700">
                         <td className="py-2 pr-4">{formatTimestamp(u.createdAt || u.timestamp || u.date)}</td>
                         <td className="py-2 pr-4">
                           <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md">
-                              <img src={getProviderLogo(u.provider, providersRegistry)} alt={u.provider} className="w-3 h-3" />
+                              <img src={u.providerLogo} alt={u.provider} className="w-3 h-3" />
                               <span className="text-xs font-medium">{u.provider || '—'}</span>
                             </div>
                             <span className="text-muted-foreground text-xs">→</span>
                             <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-                              <img src={getModelLogo(u.model, u.provider, providersRegistry, modelsRegistry)} alt={u.model} className="w-3 h-3" />
+                              <img src={u.modelLogo} alt={u.model} className="w-3 h-3" />
                               <span className="text-xs font-medium">{u.model || '—'}</span>
                             </div>
                           </div>
@@ -821,7 +975,7 @@ function AnalyticsDashboard({
               creditBalance.analytics.topModels.map((model: any, index) => (
                 <div key={index} className="flex items-center justify-between p-2 border rounded">
                   <div className="flex items-center gap-2">
-                    <img src={getModelLogo(model.model, '', providersRegistry, modelsRegistry)} alt={model.model} className="w-4 h-4" />
+                    <img src={memoizedComputations.providerLogoCache.get(memoizedComputations.modelProviderCache.get(model.model)?.toLowerCase()) || 'https://models.dev/logos/default.svg'} alt={model.model} className="w-4 h-4" />
                     <span className="font-medium">{model.model}</span>
                   </div>
                   <span className="text-sm text-muted-foreground">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { marked } from 'marked'
 import { ChevronLeft, ChevronRight, Copy, Check, BookOpen, ExternalLink, Zap, Shield, Code2 } from 'lucide-react'
@@ -48,14 +48,26 @@ function CopyButton({ text }: CopyButtonProps) {
   )
 }
 
+// Global cache for docs content to prevent reprocessing
+const docsCache = {
+  content: new Map<string, string>(),
+  processedMarkdown: new Map<string, string>(),
+  tableOfContents: new Map<string, { id: string; text: string; level: number }[]>(),
+  timestamps: new Map<string, number>(),
+  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes for content
+}
+
 export default function Documentation() {
   const [activeSection, setActiveSection] = useState('getting-started')
   const [activeItem, setActiveItem] = useState('introduction')
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [toc, setToc] = useState<{ id: string; text: string; level: number }[]>([])
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
 
-  const docSections: DocSection[] = [
+  // Memoized doc sections to prevent recreation on every render
+  const docSections: DocSection[] = useMemo(() => [
     {
       id: 'getting-started',
       title: 'Getting Started',
@@ -125,10 +137,10 @@ export default function Documentation() {
         { title: 'Webhooks', href: '#webhooks-api', filePath: '/docs/api-reference/webhooks/index.md' }
       ]
     }
-  ]
+  ], []) // Empty dependency array since docSections is static
 
-  // Get current item index for navigation
-  const getCurrentItemIndex = () => {
+  // Get current item index for navigation - memoized for performance
+  const getCurrentItemIndex = useCallback(() => {
     for (let sectionIndex = 0; sectionIndex < docSections.length; sectionIndex++) {
       const section = docSections[sectionIndex]
       for (let itemIndex = 0; itemIndex < section.items.length; itemIndex++) {
@@ -139,9 +151,10 @@ export default function Documentation() {
       }
     }
     return null
-  }
+  }, [docSections, activeItem])
 
-  const getNavigationItems = () => {
+  // Memoized navigation items calculation
+  const getNavigationItems = useCallback(() => {
     const current = getCurrentItemIndex()
     if (!current) return { prev: null, next: null }
 
@@ -163,10 +176,14 @@ export default function Documentation() {
       prev: currentIndex > 0 ? allItems[currentIndex - 1] : null,
       next: currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null
     }
-  }
+  }, [getCurrentItemIndex, docSections, activeItem])
 
-  // Enhanced markdown processing: heading anchors + copy buttons for code
-  const processMarkdownContent = (html: string) => {
+  // Enhanced markdown processing with caching: heading anchors + copy buttons for code
+  const processMarkdownContent = useCallback((html: string) => {
+    // Check cache first
+    if (docsCache.processedMarkdown.has(html)) {
+      return docsCache.processedMarkdown.get(html)!
+    }
     // Add ids to h2/h3 for anchors
     const addIds = (s: string) =>
       s
@@ -204,7 +221,12 @@ export default function Documentation() {
         `
       }
     )
-  }
+
+    // Cache the result
+    const result = addIds(html)
+    docsCache.processedMarkdown.set(html, result)
+    return result
+  }, [])
 
   // After content mounts, enhance with code-tabs and collect TOC
   useEffect(() => {
@@ -253,8 +275,16 @@ export default function Documentation() {
     })
   }, [content])
 
-  // Modern, comprehensive sample content
-  const getSampleContent = (itemId: string) => {
+  // Optimized sample content with caching and lazy loading
+  const getSampleContent = useCallback((itemId: string) => {
+    // Check cache first
+    if (docsCache.content.has(itemId)) {
+      const cachedData = docsCache.content.get(itemId)!
+      const timestamp = docsCache.timestamps.get(itemId) || 0
+      if (Date.now() - timestamp < docsCache.CACHE_DURATION) {
+        return cachedData
+      }
+    }
     const samples: Record<string, string> = {
       'what-is-polydev': `
 # What is Polydev?
@@ -732,12 +762,36 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
 `
     }
 
-    return samples[itemId] || samples['what-is-polydev']
-  }
+    const result = samples[itemId] || samples['what-is-polydev']
 
-  // Load content from markdown files
-  const loadContent = async (filePath: string, showLoading = true) => {
+    // Cache the result
+    docsCache.content.set(itemId, result)
+    docsCache.timestamps.set(itemId, Date.now())
+    return result
+  }, [])
+
+  // Optimized load content with debouncing and caching
+  const loadContent = useCallback(async (filePath: string, showLoading = true) => {
     if (!filePath) return
+
+    // Clear previous debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    // Debounce the content loading
+    debounceTimerRef.current = setTimeout(async () => {
+      if (!isMountedRef.current) return
+
+      // Check cache first
+      if (docsCache.content.has(filePath)) {
+        const cachedData = docsCache.content.get(filePath)!
+        const timestamp = docsCache.timestamps.get(filePath) || 0
+        if (Date.now() - timestamp < docsCache.CACHE_DURATION) {
+          setContent(cachedData)
+          return
+        }
+      }
 
     if (showLoading) {
       setLoading(true)
@@ -767,12 +821,28 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
       const html = await marked(sampleMarkdown)
       const processedHtml = processMarkdownContent(html)
       setContent(processedHtml)
+
+      // Cache the processed content
+      docsCache.content.set(filePath, processedHtml)
+      docsCache.timestamps.set(filePath, Date.now())
     } finally {
-      if (showLoading) {
+      if (showLoading && isMountedRef.current) {
         setLoading(false)
       }
     }
-  }
+    }, 300) // 300ms debounce
+  }, [activeItem, processMarkdownContent, getSampleContent])
+
+  // Cleanup function for component unmount
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
 
   // Load initial content immediately with sample data
   useEffect(() => {

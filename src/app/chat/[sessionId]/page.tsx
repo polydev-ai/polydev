@@ -409,7 +409,7 @@ export default function Chat() {
     }
   }
 
-  const getTierBadgeColor = (tier: 'cli' | 'api' | 'credits') => {
+  const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'credits') => {
     switch (tier) {
       case 'cli':
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
@@ -418,9 +418,9 @@ export default function Chat() {
       case 'credits':
         return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
     }
-  }
+  }, [])
 
-  const getSourceFromProvider = (
+  const getSourceFromProvider = useCallback((
     provider?: string,
     modelId?: string,
     fallbackMethod?: 'cli' | 'api' | 'credits',
@@ -437,12 +437,12 @@ export default function Chat() {
       return { type: 'credits', label: 'CREDITS' }
     }
     if (!provider) return null
-    
+
     // Check explicit provider suffixes first
     if (provider.includes('(CLI)') || provider.includes('CLI')) return { type: 'cli', label: 'CLI', cost: '$0.00' }
     if (provider.includes('(API)') || provider.includes('API')) return { type: 'api', label: 'API' }
     if (provider.includes('(Credits)') || provider.includes('Credits')) return { type: 'credits', label: 'Credits' }
-    
+
     // Try to match with dashboard models for better accuracy
     if (modelId) {
       const model = dashboardModels.find(m => m.id === modelId || m.name === modelId)
@@ -450,31 +450,31 @@ export default function Chat() {
         return { type: model.tier, label: model.tier.toUpperCase() }
       }
     }
-    
+
     // Fallback: assume API for most providers
     return { type: 'api', label: 'API' }
-  }
+  }, [dashboardModels])
 
-  const formatCost = (cost?: number) => {
+  const formatCost = useCallback((cost?: number) => {
     if (cost === undefined || cost === null || cost === 0) return '$0.0000'
     if (cost < 0.000001) return '<$0.0001'
     if (cost < 0.01) return `$${cost.toFixed(6)}`
     return `$${cost.toFixed(4)}`
-  }
+  }, [])
 
-  const formatDetailedCost = (costInfo?: { input_cost: number; output_cost: number; total_cost: number }) => {
+  const formatDetailedCost = useCallback((costInfo?: { input_cost: number; output_cost: number; total_cost: number }) => {
     if (!costInfo) return null
-    
+
     const input = formatCost(costInfo.input_cost)
     const output = formatCost(costInfo.output_cost)
     const total = formatCost(costInfo.total_cost)
-    
+
     return (
       <span className="text-xs text-gray-400 dark:text-gray-500" title={`Input: ${input} • Output: ${output} • Total: ${total}`}>
         {input} in • {output} out • {total} total
       </span>
     )
-  }
+  }, [formatCost])
 
   const clearChat = useCallback(() => {
     startNewSession()
@@ -490,8 +490,12 @@ export default function Chat() {
     setExpandedReasoning(newExpanded)
   }, [expandedReasoning])
 
-  // Group messages by conversation turns for split view
+  // Group messages by conversation turns for split view - memoized for performance
   const groupedMessageTurns = useMemo(() => {
+    if (viewMode !== 'split' || messages.length === 0) {
+      return [] // Skip computation if not needed
+    }
+
     const turns: Array<{
       userMessage: Message
       assistantMessages: Message[]
@@ -519,7 +523,7 @@ export default function Chat() {
     }
 
     return turns
-  }, [messages])
+  }, [messages, viewMode])
 
   if (loading || modelsLoading || sessionsLoading) {
     return (

@@ -1,10 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
 import { useMemorySettings } from '../../hooks/useMemorySettings'
 import { createClient } from '../utils/supabase/client'
+
+// Global cache for settings data
+const settingsCache = {
+  profile: null as any,
+  timestamp: 0,
+  CACHE_DURATION: 3 * 60 * 1000, // 3 minutes
+}
 
 export default function Settings() {
   const { user, loading } = useAuth()
@@ -24,24 +31,46 @@ export default function Settings() {
     securityNotifications: true,
     marketingEmails: false
   })
+  const isMountedRef = useRef(true)
 
   const supabase = createClient()
 
-  useEffect(() => {
-    if (user) {
-      loadProfile()
-    }
-  }, [user])
+  // Memoized profile loading with caching
+  const loadProfile = useCallback(async () => {
+    if (!user?.id) return
 
-  const loadProfile = async () => {
+    // Check cache first
+    const now = Date.now()
+    if (settingsCache.profile &&
+        (now - settingsCache.timestamp) < settingsCache.CACHE_DURATION) {
+      const cached = settingsCache.profile
+      setProfile(cached)
+      setFormData({
+        displayName: cached.display_name || '',
+        email: user?.email || '',
+        company: cached.company || '',
+        role: cached.role || '',
+        timezone: cached.timezone || '',
+        theme: cached.theme || 'system',
+        emailNotifications: cached.email_notifications ?? true,
+        securityNotifications: cached.security_notifications ?? true,
+        marketingEmails: cached.marketing_emails ?? false
+      })
+      return
+    }
+
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single()
 
-      if (data) {
+      if (data && isMountedRef.current) {
+        // Update cache
+        settingsCache.profile = data
+        settingsCache.timestamp = now
+
         setProfile(data)
         setFormData({
           displayName: data.display_name || '',
@@ -58,9 +87,26 @@ export default function Settings() {
     } catch (error) {
       console.error('Error loading profile:', error)
     }
-  }
+  }, [user, supabase])
 
-  const updateProfile = async (e: React.FormEvent) => {
+  // Optimized useEffect with cleanup
+  useEffect(() => {
+    isMountedRef.current = true
+    if (user) {
+      loadProfile()
+    }
+
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [user, loadProfile])
+
+  // Memoized form handlers to prevent re-renders
+  const handleInputChange = useCallback((field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }, [])
+
+  const updateProfile = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setMessage('')
@@ -83,7 +129,11 @@ export default function Settings() {
         })
 
       if (error) throw error
-      
+
+      // Clear cache after successful update
+      settingsCache.profile = null
+      settingsCache.timestamp = 0
+
       setMessage('Profile updated successfully!')
       await loadProfile()
     } catch (error: any) {
@@ -91,11 +141,11 @@ export default function Settings() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user, formData, supabase, loadProfile])
 
-  const handleMemorySettingChange = async (setting: keyof typeof memorySettings, value: boolean | number) => {
+  const handleMemorySettingChange = useCallback(async (setting: keyof typeof memorySettings, value: boolean | number) => {
     setMemoryMessage('')
-    
+
     try {
       const result = await updateMemorySettings({ [setting]: value })
       if (result.success) {
@@ -106,9 +156,30 @@ export default function Settings() {
     } catch (error) {
       setMemoryMessage('Failed to update memory settings')
     }
-  }
+  }, [updateMemorySettings])
 
-  const deleteAccount = async () => {
+  // Memoized computations for UI state
+  const memoizedState = useMemo(() => {
+    const isFormValid = formData.displayName.trim().length > 0
+    const hasChanges = profile && (
+      profile.display_name !== formData.displayName ||
+      profile.company !== formData.company ||
+      profile.role !== formData.role ||
+      profile.timezone !== formData.timezone ||
+      profile.theme !== formData.theme ||
+      profile.email_notifications !== formData.emailNotifications ||
+      profile.security_notifications !== formData.securityNotifications ||
+      profile.marketing_emails !== formData.marketingEmails
+    )
+
+    return {
+      isFormValid,
+      hasChanges,
+      showSaveButton: isFormValid && hasChanges && !isLoading
+    }
+  }, [formData, profile, isLoading])
+
+  const deleteAccount = useCallback(async () => {
     if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
       return
     }

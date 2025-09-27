@@ -71,28 +71,62 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Add fallback URLs for common providers
+    // Add fallback URLs for common providers - ENHANCED with all providers
     const fallbacks = {
+      // OpenAI
       'openai': 'https://cdn.worldvectorlogo.com/logos/openai-2.svg',
       'gpt': 'https://cdn.worldvectorlogo.com/logos/openai-2.svg',
+
+      // Anthropic
       'anthropic': 'https://cdn.worldvectorlogo.com/logos/anthropic.svg',
       'claude': 'https://cdn.worldvectorlogo.com/logos/anthropic.svg',
+
+      // Google
       'google': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
       'googlevertexai': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
       'googlegemini': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
       'gemini': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
+
+      // xAI
+      'xai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
+      'x-ai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
+      'grok': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
+
+      // DeepSeek
+      'deepseek': 'https://avatars.githubusercontent.com/u/159560534?s=200&v=4',
+
+      // Cerebras
+      'cerebras': 'https://avatars.githubusercontent.com/u/76206399?s=200&v=4',
+
+      // Groq
+      'groq': 'https://avatars.githubusercontent.com/u/129830771?s=200&v=4',
+
+      // Moonshot AI (Kimi)
+      'moonshot': 'https://assets.moonshot.cn/logo.png',
+      'moonshotai': 'https://assets.moonshot.cn/logo.png',
+      'kimi': 'https://assets.moonshot.cn/logo.png',
+
+      // Alibaba (Qwen)
+      'qwen': 'https://cdn.worldvectorlogo.com/logos/alibaba-group-holding-limited.svg',
+      'alibaba': 'https://cdn.worldvectorlogo.com/logos/alibaba-group-holding-limited.svg',
+
+      // Zhipu AI (GLM)
+      'glm': 'https://avatars.githubusercontent.com/u/137628472?s=200&v=4',
+      'zhipuai': 'https://avatars.githubusercontent.com/u/137628472?s=200&v=4',
+
+      // Other providers
       'mistral': 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4',
       'mistralai': 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4',
       'together': 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4',
       'togetherai': 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4',
-      'cerebras': 'https://avatars.githubusercontent.com/u/76206399?s=200&v=4',
-      'xai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
-      'x-ai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
       'perplexity': 'https://avatars.githubusercontent.com/u/83043819?s=200&v=4',
       'cohere': 'https://avatars.githubusercontent.com/u/30046380?s=200&v=4',
       'huggingface': 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg',
       'hugging-face': 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg',
-      'deepseek': 'https://avatars.githubusercontent.com/u/159560534?s=200&v=4'
+      'openrouter': 'https://avatars.githubusercontent.com/u/94922015?s=200&v=4',
+      'fireworksai': 'https://avatars.githubusercontent.com/u/109181394?s=200&v=4',
+      'fireworks': 'https://avatars.githubusercontent.com/u/109181394?s=200&v=4',
+      'replicate': 'https://avatars.githubusercontent.com/u/30462522?s=200&v=4'
     }
 
     // Add fallbacks only if not already present

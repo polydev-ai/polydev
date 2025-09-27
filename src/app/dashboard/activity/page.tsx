@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -93,12 +93,23 @@ interface UsageData {
   }
 }
 
+// Cache for activity data to prevent duplicate fetching
+const activityCache = {
+  data: new Map<string, UsageData>(),
+  timestamps: new Map<string, number>(),
+  CACHE_DURATION: 2 * 60 * 1000 // 2 minutes
+}
+
+let activeRequest: Promise<UsageData> | null = null
+
 export default function ActivityPage() {
   const { user } = useAuth()
   const [usageData, setUsageData] = useState<UsageData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+  const isMountedRef = useRef(true)
+  const debounceTimerRef = useRef<NodeJS.Timeout>()
+
   // Filter states
   const [timeframe, setTimeframe] = useState('30d')
   const [provider, setProvider] = useState('')
@@ -110,48 +121,121 @@ export default function ActivityPage() {
   const [groupBy, setGroupBy] = useState('day')
   const [includeComparison, setIncludeComparison] = useState(true)
 
-  const fetchData = async () => {
-    if (!user) return
-    
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const params = new URLSearchParams()
-      
-      if (startDate && endDate) {
-        params.set('start_date', startDate)
-        params.set('end_date', endDate)
-      } else {
-        params.set('timeframe', timeframe)
-      }
-      
-      if (provider) params.set('provider', provider)
-      if (model) params.set('model', model)
-      if (costMin) params.set('cost_min', costMin)
-      if (costMax) params.set('cost_max', costMax)
-      params.set('group_by', groupBy)
-      params.set('include_comparison', includeComparison.toString())
-
-      const response = await fetch(`/api/usage/comprehensive?${params.toString()}`)
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          window.location.href = '/auth/signin'
-          return
-        }
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const data = await response.json()
-      setUsageData(data)
-    } catch (error) {
-      console.error('Error fetching activity data:', error)
-      setError(error instanceof Error ? error.message : 'Failed to load activity data')
-    } finally {
-      setLoading(false)
+  // Create cache key from current filters
+  const getCacheKey = useCallback(() => {
+    const filters = {
+      timeframe,
+      provider,
+      model,
+      costMin,
+      costMax,
+      startDate,
+      endDate,
+      groupBy,
+      includeComparison
     }
-  }
+    return JSON.stringify(filters)
+  }, [timeframe, provider, model, costMin, costMax, startDate, endDate, groupBy, includeComparison])
+
+  const fetchData = useCallback(async () => {
+    if (!user || !isMountedRef.current) return
+
+    const cacheKey = getCacheKey()
+    const now = Date.now()
+
+    // Check cache first
+    if (activityCache.data.has(cacheKey) &&
+        activityCache.timestamps.has(cacheKey) &&
+        (now - activityCache.timestamps.get(cacheKey)!) < activityCache.CACHE_DURATION) {
+      const cachedData = activityCache.data.get(cacheKey)!
+      if (isMountedRef.current) {
+        setUsageData(cachedData)
+        setLoading(false)
+        setError(null)
+      }
+      return
+    }
+
+    // Prevent duplicate requests
+    if (activeRequest) {
+      try {
+        const data = await activeRequest
+        if (isMountedRef.current) {
+          setUsageData(data)
+          setLoading(false)
+          setError(null)
+        }
+      } catch (err) {
+        // Request already handled error state
+      }
+      return
+    }
+
+    activeRequest = (async (): Promise<UsageData> => {
+      try {
+        if (isMountedRef.current) {
+          setLoading(true)
+          setError(null)
+        }
+
+        const params = new URLSearchParams()
+
+        if (startDate && endDate) {
+          params.set('start_date', startDate)
+          params.set('end_date', endDate)
+        } else {
+          params.set('timeframe', timeframe)
+        }
+
+        if (provider) params.set('provider', provider)
+        if (model) params.set('model', model)
+        if (costMin) params.set('cost_min', costMin)
+        if (costMax) params.set('cost_max', costMax)
+        params.set('group_by', groupBy)
+        params.set('include_comparison', includeComparison.toString())
+
+        const response = await fetch(`/api/usage/comprehensive?${params.toString()}`)
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.location.href = '/auth/signin'
+            throw new Error('Authentication required')
+          }
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+
+        const data = await response.json()
+
+        // Cache the result
+        activityCache.data.set(cacheKey, data)
+        activityCache.timestamps.set(cacheKey, now)
+
+        if (isMountedRef.current) {
+          setUsageData(data)
+          setError(null)
+        }
+
+        return data
+      } catch (error) {
+        console.error('Error fetching activity data:', error)
+        if (isMountedRef.current) {
+          setError(error instanceof Error ? error.message : 'Failed to load activity data')
+        }
+        throw error
+      } finally {
+        activeRequest = null
+        if (isMountedRef.current) {
+          setLoading(false)
+        }
+      }
+    })()
+
+    try {
+      await activeRequest
+    } catch (error) {
+      // Error already handled above
+    }
+  }, [user, getCacheKey, timeframe, provider, model, costMin, costMax, startDate, endDate, groupBy, includeComparison])
 
   const downloadCSV = async () => {
     if (!user) return
@@ -190,9 +274,58 @@ export default function ActivityPage() {
     }
   }
 
+  // Debounced fetch function for filter changes
+  const debouncedFetch = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      fetchData()
+    }, 300) // 300ms debounce
+  }, [fetchData])
+
+  // Initial load when user changes
   useEffect(() => {
-    fetchData()
-  }, [user, timeframe, provider, model, costMin, costMax, startDate, endDate, groupBy, includeComparison])
+    isMountedRef.current = true
+    if (user) {
+      fetchData()
+    }
+    return () => {
+      isMountedRef.current = false
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [user, fetchData])
+
+  // Debounced refetch when filters change
+  useEffect(() => {
+    if (user) {
+      debouncedFetch()
+    }
+  }, [user, timeframe, provider, model, costMin, costMax, startDate, endDate, groupBy, includeComparison, debouncedFetch])
+
+  // Memoize expensive calculations (moved before conditional returns to fix hook order)
+  const summary = useMemo(() => {
+    return usageData?.summary || {
+      totalCost: 0,
+      totalTokens: 0,
+      totalSessions: 0,
+      avgCostPerSession: 0,
+      avgTokensPerSession: 0,
+      providerStats: [],
+      modelStats: [],
+      timeSeries: []
+    }
+  }, [usageData?.summary])
+
+  const comparison = useMemo(() => usageData?.comparison, [usageData?.comparison])
+  const sessions = useMemo(() => usageData?.sessions || [], [usageData?.sessions])
+
+  // Memoize filtered sessions for performance
+  const filteredSessions = useMemo(() => {
+    return sessions.slice(0, 100) // Limit to first 100 for performance
+  }, [sessions])
 
   if (!user) {
     return (
@@ -226,20 +359,6 @@ export default function ActivityPage() {
       </div>
     )
   }
-
-  const summary = usageData?.summary || {
-    totalCost: 0,
-    totalTokens: 0,
-    totalSessions: 0,
-    avgCostPerSession: 0,
-    avgTokensPerSession: 0,
-    providerStats: [],
-    modelStats: [],
-    timeSeries: []
-  }
-
-  const comparison = usageData?.comparison
-  const sessions = usageData?.sessions || []
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -624,7 +743,7 @@ export default function ActivityPage() {
             <CardHeader>
               <CardTitle>Individual Sessions</CardTitle>
               <CardDescription>
-                Detailed view of each AI interaction ({sessions.length} sessions)
+                Detailed view of each AI interaction ({sessions.length} total sessions, showing first 100)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -642,7 +761,7 @@ export default function ActivityPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sessions.map((session) => (
+                    {filteredSessions.map((session) => (
                       <tr key={session.id} className="border-t border-gray-200 dark:border-gray-700">
                         <td className="py-2 pr-4">{new Date(session.createdAt).toLocaleString()}</td>
                         <td className="py-2 pr-4">{session.provider} / {session.model}</td>
@@ -662,7 +781,7 @@ export default function ActivityPage() {
                         </td>
                       </tr>
                     ))}
-                    {sessions.length === 0 && (
+                    {filteredSessions.length === 0 && (
                       <tr>
                         <td colSpan={7} className="py-8 text-center text-muted-foreground">
                           No sessions found for the selected criteria

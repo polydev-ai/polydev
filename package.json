@@ -1,6 +1,6 @@
 {
   "name": "polydev-ai",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Agentic workflow assistant with CLI integration - get diverse perspectives from multiple LLMs when stuck or need enhanced reasoning",
   "keywords": [
     "mcp",
@@ -69,6 +69,7 @@
     "sonner": "^2.0.7",
     "stripe": "^18.5.0",
     "tailwind-merge": "^3.3.1",
+    "ts-node": "^10.9.2",
     "which": "^5.0.0"
   },
   "devDependencies": {

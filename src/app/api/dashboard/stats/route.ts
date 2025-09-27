@@ -161,25 +161,44 @@ export async function GET(request: NextRequest) {
     // Count MCP token usage for reference (not the same as client calls)
     const mcpTokenUsage = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
 
-    // Calculate real API requests from primary data source (these are actual model API calls)
-    const totalApiCalls = primaryDataSource.length || 0
-    const totalUsageTokens = primaryDataSource.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    // Calculate real API requests from BOTH MCP and chat sources (these are actual model API calls)
+    const mcpApiCalls = (requestLogs || []).length
+    const chatApiCalls = (chatLogs || []).length
+    const totalApiCalls = mcpApiCalls + chatApiCalls
 
-    // Calculate total cost from primary source only to avoid duplication
-    const totalCostFromLogs = primaryDataSource.reduce((sum, log) => {
+    // Calculate total tokens from both sources
+    const mcpTokenCount = (requestLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    const chatTokens = (chatLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    const totalUsageTokens = mcpTokenCount + chatTokens
+
+    // Calculate total cost from BOTH MCP and chat sources
+    const mcpCost = (requestLogs || []).reduce((sum, log) => {
       const cost = parseFloat(log.total_cost) || 0
       // Skip unrealistic costs (likely test data)
       if (cost > 10) {
-        console.log(`[Dashboard Stats] Skipping high cost entry: $${cost}`)
+        console.log(`[Dashboard Stats] Skipping high MCP cost entry: $${cost}`)
         return sum
       }
       return sum + cost
     }, 0) || 0
 
-    console.log(`[Dashboard Stats] Calculated total cost: $${totalCostFromLogs.toFixed(4)} from ${totalApiCalls} requests`)
+    const chatCost = (chatLogs || []).reduce((sum, log) => {
+      const cost = parseFloat(log.total_cost) || 0
+      // Skip unrealistic costs (likely test data)
+      if (cost > 10) {
+        console.log(`[Dashboard Stats] Skipping high chat cost entry: $${cost}`)
+        return sum
+      }
+      return sum + cost
+    }, 0) || 0
 
-    // Calculate average response time from actual data - only from successful requests
-    const responseTimes = primaryDataSource
+    const totalCostFromLogs = mcpCost + chatCost
+
+    console.log(`[Dashboard Stats] Calculated total cost: $${totalCostFromLogs.toFixed(4)} (MCP: $${mcpCost.toFixed(4)} + Chat: $${chatCost.toFixed(4)}) from ${mcpApiCalls} MCP + ${chatApiCalls} chat requests`)
+    console.log(`[Dashboard Stats] Total tokens: ${totalUsageTokens} (MCP: ${mcpTokenCount} + Chat: ${chatTokens})`)
+
+    // Calculate average response time from BOTH MCP and chat data - only from successful requests
+    const mcpResponseTimes = (requestLogs || [])
       .filter(log => {
         const hasResponseTime = 'response_time_ms' in log && log.response_time_ms && log.response_time_ms > 0
         const isSuccessful = (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)
@@ -188,30 +207,41 @@ export async function GET(request: NextRequest) {
       })
       .map(log => (log as any).response_time_ms)
 
-    const avgResponseTime = responseTimes.length > 0
-      ? Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length)
+    const chatResponseTimes = (chatLogs || [])
+      .filter(log => {
+        const hasResponseTime = 'response_time_ms' in log && log.response_time_ms && log.response_time_ms > 0
+        const isSuccessful = log.total_tokens > 0 // Chat logs without explicit status - use tokens as success indicator
+        const isReasonableTime = log.response_time_ms < 60000 // Less than 60 seconds
+        return hasResponseTime && isSuccessful && isReasonableTime
+      })
+      .map(log => (log as any).response_time_ms)
+
+    const allResponseTimes = [...mcpResponseTimes, ...chatResponseTimes]
+    const avgResponseTime = allResponseTimes.length > 0
+      ? Math.round(allResponseTimes.reduce((sum, time) => sum + time, 0) / allResponseTimes.length)
       : 0
 
-    // Calculate uptime based on success rate - improved criteria for realistic health metrics
-    const successfulRequests = primaryDataSource.filter(log => {
+    // Calculate uptime based on success rate from BOTH MCP and chat sources
+    const mcpSuccessfulRequests = (requestLogs || []).filter(log => {
       // Explicit success status
       if ((log as any).status === 'success') return true
-
       // Explicit failure status
       if ((log as any).status === 'failed' || (log as any).status === 'error') return false
-
-      // For logs without explicit status, consider successful if:
-      // 1. Has tokens (successful API response)
-      // 2. Has cost (successful billable request)
-      // 3. Chat logs (assume success if entry exists)
+      // For logs without explicit status, consider successful if has tokens or cost
       const hasTokens = log.total_tokens && log.total_tokens > 0
       const hasCost = log.total_cost && log.total_cost > 0
-      const isChatLog = dataSourceName === 'chat logs'
-
-      return hasTokens || hasCost || isChatLog
+      return hasTokens || hasCost
     }).length
 
-    const systemUptime = totalApiCalls > 0 ? `${((successfulRequests / totalApiCalls) * 100).toFixed(1)}%` : '99.9%'
+    const chatSuccessfulRequests = (chatLogs || []).filter(log => {
+      // Chat logs assume success if entry exists with tokens
+      const hasTokens = log.total_tokens && log.total_tokens > 0
+      const hasCost = log.total_cost && log.total_cost > 0
+      return hasTokens || hasCost
+    }).length
+
+    const totalSuccessfulRequests = mcpSuccessfulRequests + chatSuccessfulRequests
+    const systemUptime = totalApiCalls > 0 ? `${((totalSuccessfulRequests / totalApiCalls) * 100).toFixed(1)}%` : '99.9%'
 
     // Get provider breakdown based on actual user API keys and usage
     const providerStats = apiKeys?.map(apiKey => {
@@ -221,11 +251,11 @@ export async function GET(request: NextRequest) {
         p.id?.toLowerCase() === apiKey.provider?.toLowerCase()
       ) || null
       
-      // Calculate requests for this provider from usage data
-      const providerRequests = usageData?.filter(log => {
+      // Calculate requests for this provider from BOTH MCP and chat data
+      const mcpProviderRequests = (requestLogs || []).filter(log => {
         // Check detailed logs format first
         if ('provider_costs' in log && log.provider_costs) {
-          return Object.keys(log.provider_costs).some((key: string) => 
+          return Object.keys(log.provider_costs).some((key: string) =>
             key.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
             key.toLowerCase().includes((provider?.display_name || '').toLowerCase())
           )
@@ -233,7 +263,7 @@ export async function GET(request: NextRequest) {
         // Fallback to simple logs format
         if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
           const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
-          return modelsUsed.some((model: string) => 
+          return modelsUsed.some((model: string) =>
             model.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
             model.toLowerCase().includes((provider?.display_name || '').toLowerCase())
           )
@@ -241,23 +271,54 @@ export async function GET(request: NextRequest) {
         return false
       }).length || 0
 
+      const chatProviderRequests = (chatLogs || []).filter(log => {
+        // Check models_used in chat logs
+        if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
+          const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
+          return modelsUsed.some((model: string) =>
+            model.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
+            model.toLowerCase().includes((provider?.display_name || '').toLowerCase())
+          )
+        }
+        return false
+      }).length || 0
+
+      const providerRequests = mcpProviderRequests + chatProviderRequests
+
       // Use real current_usage if available
       const currentUsage = apiKey.current_usage ? 
         parseFloat(apiKey.current_usage.toString()) : 
         0
 
-      // Calculate average latency from usage data
-      const providerUsageData = usageData?.filter(log => {
+      // Calculate average latency from BOTH MCP and chat data
+      const mcpProviderUsageData = (requestLogs || []).filter(log => {
         if ('provider_costs' in log && log.provider_costs) {
-          return Object.keys(log.provider_costs).some((key: string) => 
+          return Object.keys(log.provider_costs).some((key: string) =>
             key.toLowerCase().includes(apiKey.provider.toLowerCase())
+          )
+        }
+        if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
+          const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
+          return modelsUsed.some((model: string) =>
+            model.toLowerCase().includes(apiKey.provider.toLowerCase())
           )
         }
         return false
       }) || []
-      
-      const avgLatency = providerUsageData.length > 0 ? 
-        Math.round(providerUsageData.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / providerUsageData.length) :
+
+      const chatProviderUsageData = (chatLogs || []).filter(log => {
+        if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
+          const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
+          return modelsUsed.some((model: string) =>
+            model.toLowerCase().includes(apiKey.provider.toLowerCase())
+          )
+        }
+        return false
+      }) || []
+
+      const allProviderUsageData = [...mcpProviderUsageData, ...chatProviderUsageData]
+      const avgLatency = allProviderUsageData.length > 0 ?
+        Math.round(allProviderUsageData.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / allProviderUsageData.length) :
         0
 
       return {
@@ -272,17 +333,36 @@ export async function GET(request: NextRequest) {
     // Use real cost from comprehensive data
     const totalCost = totalCostFromLogs
 
-    // Generate recent activity from usage data
+    // Generate recent activity from BOTH MCP and chat data
     const recentActivity: any[] = []
-    if (usageData && usageData.length > 0) {
-      // Get the most recent 5 usage entries
-      const sortedLogs = usageData
+
+    // Combine both MCP and chat logs for recent activity
+    const allActivityLogs: any[] = []
+
+    // Add MCP logs
+    if (requestLogs && requestLogs.length > 0) {
+      requestLogs.forEach(log => {
+        allActivityLogs.push({ ...log, source: 'MCP' })
+      })
+    }
+
+    // Add chat logs
+    if (chatLogs && chatLogs.length > 0) {
+      chatLogs.forEach(log => {
+        allActivityLogs.push({ ...log, source: 'Chat' })
+      })
+    }
+
+    if (allActivityLogs.length > 0) {
+      // Get the most recent 5 activity entries from both sources
+      const sortedLogs = allActivityLogs
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 5)
 
       sortedLogs.forEach(log => {
         let providerName = 'Multiple Models'
-        
+        let actionType = log.source === 'Chat' ? 'Chat Message' : 'MCP Request'
+
         // Extract provider name from detailed logs
         if ('provider_responses' in log && log.provider_responses && typeof log.provider_responses === 'object') {
           const firstProvider = Object.keys(log.provider_responses)[0]
@@ -297,9 +377,9 @@ export async function GET(request: NextRequest) {
 
         recentActivity.push({
           timestamp: log.created_at,
-          action: 'API Request',
+          action: actionType,
           provider: providerName,
-          tool: 'get_perspectives',
+          tool: log.source === 'Chat' ? 'chat_interface' : 'get_perspectives',
           cost: parseFloat((log.total_cost || 0).toFixed(4)),
           duration: log.response_time_ms || 0
         })
@@ -342,23 +422,29 @@ export async function GET(request: NextRequest) {
       uptime: systemUptime,
       responseTime: avgResponseTime,
 
-      // Additional detailed stats - calculate today's usage from actual data
+      // Additional detailed stats - calculate today's usage from BOTH sources
       messagesThisMonth: totalMessages,
-      apiCallsToday: primaryDataSource.filter(log => {
+      apiCallsToday: mcpApiCalls + chatApiCalls, // Total API calls today from both sources
+      requestsToday: ((requestLogs || []).filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
-      }).length || 0,
-      requestsToday: primaryDataSource.filter(log => {
+      }).length || 0) + ((chatLogs || []).filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
-      }).length || 0,
-      costToday: parseFloat((primaryDataSource.filter(log => {
+      }).length || 0),
+      costToday: parseFloat((((requestLogs || []).filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
       }).reduce((sum, log) => {
         const cost = parseFloat(log.total_cost) || 0
         return cost > 10 ? sum : sum + cost // Skip unrealistic costs
-      }, 0) || 0).toFixed(4)),
+      }, 0) || 0) + ((chatLogs || []).filter(log => {
+        const logDate = new Date(log.created_at)
+        return logDate >= todayStart
+      }).reduce((sum, log) => {
+        const cost = parseFloat(log.total_cost) || 0
+        return cost > 10 ? sum : sum + cost // Skip unrealistic costs
+      }, 0) || 0)).toFixed(4)),
       avgResponseTime: avgResponseTime,
       
       // Real provider breakdown
@@ -385,6 +471,244 @@ export async function GET(request: NextRequest) {
         Date.now()
     }
 
+    // Fetch models-dev providers for proper display names and logos
+    let modelsDevProviders: any[] = []
+    try {
+      const response = await fetch('http://localhost:3000/api/models-dev/providers?rich=true')
+      if (response.ok) {
+        const data = await response.json()
+        // API returns { providers: [...] }, extract the providers array
+        modelsDevProviders = Array.isArray(data) ? data : (data.providers || [])
+        console.log(`[Dashboard Stats] Loaded ${modelsDevProviders.length} providers from models-dev`)
+      }
+    } catch (error) {
+      console.warn('[Dashboard Stats] Failed to fetch models-dev providers:', error)
+    }
+
+    // Helper function to map model names to proper provider names
+    const getProviderFromModel = (modelName: string): string => {
+      const normalizedModel = modelName.toLowerCase()
+
+      // OpenAI models
+      if (normalizedModel.includes('gpt') || normalizedModel.includes('openai')) return 'openai'
+
+      // Anthropic models
+      if (normalizedModel.includes('claude') || normalizedModel.includes('anthropic')) return 'anthropic'
+
+      // Google models
+      if (normalizedModel.includes('gemini') || normalizedModel.includes('google')) return 'google'
+
+      // xAI models (Grok)
+      if (normalizedModel.includes('xai') || normalizedModel.includes('x-ai') || normalizedModel.includes('grok')) return 'xai'
+
+      // DeepSeek models
+      if (normalizedModel.includes('deepseek')) return 'deepseek'
+
+      // Cerebras models
+      if (normalizedModel.includes('cerebras')) return 'cerebras'
+
+      // Groq models - add more comprehensive detection
+      if (normalizedModel.includes('groq') || normalizedModel.includes('llama') || normalizedModel.includes('mixtral')) return 'groq'
+
+      // Moonshot (Kimi) models
+      if (normalizedModel.includes('kimi') || normalizedModel.includes('moonshot') || normalizedModel.includes('k2-instruct')) return 'moonshot'
+
+      // Qwen models (Alibaba)
+      if (normalizedModel.includes('qwen')) return 'alibaba'
+
+      // GLM models (Zhipu AI)
+      if (normalizedModel.includes('glm')) return 'zhipu-ai'
+
+      // Other providers
+      if (normalizedModel.includes('mistral')) return 'mistral'
+      if (normalizedModel.includes('together')) return 'together-ai'
+      if (normalizedModel.includes('perplexity')) return 'perplexity'
+      if (normalizedModel.includes('cohere')) return 'cohere'
+      if (normalizedModel.includes('huggingface') || normalizedModel.includes('hugging-face')) return 'huggingface'
+      if (normalizedModel.includes('openrouter')) return 'openrouter'
+      if (normalizedModel.includes('fireworks')) return 'fireworksai'
+      if (normalizedModel.includes('replicate')) return 'replicate'
+
+      // Additional mappings
+      if (normalizedModel.includes('pt-oss')) return 'huggingface'
+
+      // Fallback: return unknown
+      return 'unknown'
+    }
+
+    // Helper function to normalize provider IDs for matching with models-dev data
+    const normalizeId = (id: string) => {
+      const idMap: Record<string, string> = {
+        'xai': 'x-ai',
+        'x-ai': 'x-ai',
+        'moonshot': 'moonshot',
+        'qwen': 'alibaba', // Qwen is made by Alibaba
+        'glm': 'zhipu-ai', // GLM is made by Zhipu AI
+        'deepseek': 'deepseek',
+        'cerebras': 'cerebras',
+        'groq': 'groq',
+        'anthropic': 'anthropic',
+        'openai': 'openai',
+        'google': 'google',
+        'huggingface': 'huggingface',
+        'together': 'together-ai',
+        'togetherai': 'together-ai'
+      }
+      return idMap[id.toLowerCase()] || id.toLowerCase()
+    }
+
+    // Generate detailed provider and model analytics from combined data
+    const providerAnalytics: Record<string, any> = {}
+    const modelAnalytics: Record<string, any> = {}
+
+    // Process all logs for detailed analytics
+    const allLogsForAnalytics = [...(requestLogs || []), ...(chatLogs || [])]
+
+    allLogsForAnalytics.forEach((log: any) => {
+      // Extract providers from different log formats
+      let logProviders: any[] = []
+
+      if (log.providers && Array.isArray(log.providers)) {
+        logProviders = log.providers
+      } else if (log.provider_responses && typeof log.provider_responses === 'object') {
+        // Convert provider_responses to providers format
+        Object.entries(log.provider_responses).forEach(([providerModelKey, response]: [string, any]) => {
+          // FIXED: Extract model name and map to proper provider
+          const parts = providerModelKey.split(':')
+          const firstPart = parts[0] // This could be model name OR provider name
+          const secondPart = parts[1] || null // This could be model name if first part is provider
+
+          const correctProvider = getProviderFromModel(firstPart) // Map to proper provider
+
+          // If firstPart maps to a known provider and we have a secondPart, use secondPart as model
+          // Otherwise, if firstPart IS a provider name, use a generic model name
+          let actualModelName = firstPart
+          if (correctProvider !== 'unknown' && secondPart) {
+            actualModelName = secondPart
+          } else if (['openai', 'google', 'anthropic', 'xai', 'x-ai', 'groq', 'cerebras', 'deepseek', 'moonshot', 'qwen', 'glm'].includes(firstPart.toLowerCase())) {
+            // This is a provider name being used as model name - use generic model name
+            actualModelName = `${firstPart}-model`
+          }
+
+          logProviders.push({
+            provider: correctProvider,
+            model: actualModelName,
+            cost: response.cost || 0,
+            tokens: response.tokens_used || response.total_tokens || 0,
+            latency: response.response_time_ms || log.response_time_ms || 0,
+            success: response.error ? false : true
+          })
+        })
+      } else if (log.models_used && typeof log.models_used === 'object') {
+        // Extract from models_used format
+        const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
+        modelsUsed.forEach((model: string) => {
+          // FIXED: Use proper provider mapping instead of naive string splitting
+          const correctProvider = getProviderFromModel(model)
+
+          // If model name IS a provider name, use a generic model name
+          let actualModelName = model
+          if (['openai', 'google', 'anthropic', 'xai', 'x-ai', 'groq', 'cerebras', 'deepseek', 'moonshot', 'qwen', 'glm'].includes(model.toLowerCase())) {
+            actualModelName = `${model}-model`
+          }
+
+          logProviders.push({
+            provider: correctProvider,
+            model: actualModelName,
+            cost: log.total_cost || 0,
+            tokens: log.total_tokens || 0,
+            latency: log.response_time_ms || 0,
+            success: log.total_tokens > 0 // Assume success if tokens exist
+          })
+        })
+      }
+
+      // Process each provider in this log
+      logProviders.forEach((provider: any) => {
+        // Provider analytics
+        if (!providerAnalytics[provider.provider]) {
+          // Find the provider info from models-dev for display name and logo
+          const normalizedProviderId = normalizeId(provider.provider)
+          const providerInfo = modelsDevProviders.find(p => normalizeId(p.id || '') === normalizedProviderId) || {}
+
+
+          providerAnalytics[provider.provider] = {
+            name: providerInfo.name || provider.provider,
+            logo: providerInfo.logo,
+            requests: 0,
+            totalCost: 0,
+            totalTokens: 0,
+            totalLatency: 0,
+            successCount: 0,
+            errorCount: 0,
+            models: new Set(),
+          }
+        }
+        const pStats = providerAnalytics[provider.provider]
+        pStats.requests++
+        pStats.totalCost += provider.cost || 0
+        pStats.totalTokens += provider.tokens || 0
+        pStats.totalLatency += provider.latency || 0
+        if (provider.success) pStats.successCount++
+        else pStats.errorCount++
+        if (provider.model) pStats.models.add(provider.model)
+
+        // Model analytics
+        const modelKey = `${provider.provider}:${provider.model}`
+        if (!modelAnalytics[modelKey]) {
+          // Get provider info for model analytics as well
+          const normalizedProviderId = normalizeId(provider.provider)
+          const providerInfo = modelsDevProviders.find(p => normalizeId(p.id || '') === normalizedProviderId) || {}
+
+          modelAnalytics[modelKey] = {
+            provider: providerInfo.name || provider.provider,
+            providerLogo: providerInfo.logo,
+            model: provider.model,
+            requests: 0,
+            totalCost: 0,
+            totalTokens: 0,
+            totalLatency: 0,
+            successCount: 0,
+            errorCount: 0,
+          }
+        }
+        const mStats = modelAnalytics[modelKey]
+        mStats.requests++
+        mStats.totalCost += provider.cost || 0
+        mStats.totalTokens += provider.tokens || 0
+        mStats.totalLatency += provider.latency || 0
+        if (provider.success) mStats.successCount++
+        else mStats.errorCount++
+      })
+    })
+
+    // Transform and sort provider analytics
+    const processedProviderAnalytics = Object.values(providerAnalytics).map((stats: any) => ({
+      ...stats,
+      avgLatency: stats.requests > 0 ? Math.round(stats.totalLatency / stats.requests) : 0,
+      avgCost: stats.requests > 0 ? stats.totalCost / stats.requests : 0,
+      successRate: stats.requests > 0 ? ((stats.successCount / stats.requests) * 100).toFixed(1) : 0,
+      models: Array.from(stats.models),
+    })).sort((a: any, b: any) => b.requests - a.requests)
+
+    // Transform and sort model analytics
+    const processedModelAnalytics = Object.values(modelAnalytics).map((stats: any) => ({
+      ...stats,
+      avgLatency: stats.requests > 0 ? Math.round(stats.totalLatency / stats.requests) : 0,
+      avgCost: stats.requests > 0 ? stats.totalCost / stats.requests : 0,
+      tokensPerSecond: stats.totalLatency > 0 ? Math.round((stats.totalTokens * 1000) / stats.totalLatency) : 0,
+      successRate: stats.requests > 0 ? ((stats.successCount / stats.requests) * 100).toFixed(1) : 0,
+      costPerToken: stats.totalTokens > 0 ? (stats.totalCost / stats.totalTokens).toFixed(6) : 0,
+    })).sort((a: any, b: any) => b.requests - a.requests)
+
+    // Add request logs to stats response (so dashboard can display them)
+    stats.requestLogs = [...(requestLogs || []), ...(chatLogs || [])].slice(0, 50)
+
+    // Add analytics to stats response
+    stats.providerAnalytics = processedProviderAnalytics
+    stats.modelAnalytics = processedModelAnalytics
+
+
     console.log('[Dashboard Stats] Returning real statistics:', {
       creditsBalance: stats.creditsBalance,
       totalMessages: stats.totalMessages,
@@ -393,7 +717,10 @@ export async function GET(request: NextRequest) {
       totalCost: stats.totalCost,
       avgResponseTime: stats.responseTime,
       totalApiKeys: stats.totalApiKeys,
-      providersCount: stats.providerStats.length
+      providersCount: stats.providerStats.length,
+      providerAnalyticsCount: processedProviderAnalytics.length,
+      modelAnalyticsCount: processedModelAnalytics.length,
+      requestLogsCount: stats.requestLogs?.length
     })
 
     return NextResponse.json(stats)

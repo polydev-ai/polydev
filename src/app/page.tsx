@@ -504,13 +504,13 @@ export default function HomePage() {
         {/* Floating model logos with sophisticated positioning */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-[10%] w-10 h-10 opacity-[0.08]">
-            <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" fill className="object-contain" />
+            <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-contain" />
           </div>
           <div className="absolute top-32 right-[15%] w-8 h-8 opacity-[0.06]">
-            <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" fill className="object-contain" />
+            <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-contain" />
           </div>
           <div className="absolute bottom-40 left-[20%] w-12 h-12 opacity-[0.07]">
-            <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" fill className="object-contain" />
+            <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-contain" />
           </div>
 
           {/* Sophisticated geometric elements */}
@@ -579,7 +579,7 @@ export default function HomePage() {
 
               {/* Sophisticated description */}
               <div className="mt-8 max-w-4xl mx-auto">
-                <p className="text-xl sm:text-2xl leading-relaxed text-slate-600 font-light tracking-wide">
+                <div className="text-xl sm:text-2xl leading-relaxed text-slate-600 font-light tracking-wide">
                   {currentPersonality.theme.subtitle}
                   <br className="hidden sm:block" />
                   Compare solutions, validate approaches, improve quality—
@@ -587,7 +587,7 @@ export default function HomePage() {
                     <span className="font-medium text-slate-800">zero context switching</span>
                     <div className={`absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r ${currentPersonality.theme.gradient} rounded-full transition-all duration-1000`}></div>
                   </span>.
-                </p>
+                </div>
               </div>
 
               {/* Sophisticated model showcase */}
@@ -596,7 +596,7 @@ export default function HomePage() {
                   {MODEL_PROVIDERS.map((provider, index) => (
                     <div key={provider.name} className="group relative">
                       <div className="relative w-10 h-10 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/40 p-2 hover:bg-white/80 hover:border-orange-200/60 transition-all duration-500 hover:scale-110 shadow-lg hover:shadow-xl">
-                        <Image src={provider.logo} alt={provider.name} fill className="object-contain p-0.5" />
+                        <Image src={provider.logo} alt={provider.name} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-contain p-0.5" />
                       </div>
                       <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <span className="text-xs font-medium text-slate-600 whitespace-nowrap bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md shadow-sm">
@@ -874,7 +874,7 @@ export default function HomePage() {
                     <div key={index} className="relative flex-1">
                       <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-white to-slate-50/50 border border-slate-200/60 shadow-sm hover:shadow-md transition-all duration-300 h-full">
                         <div className="relative w-6 h-6 sm:w-8 sm:h-8 rounded-full overflow-hidden bg-white shadow-sm flex-shrink-0">
-                          <Image src={response.avatar} alt={response.model} fill className="object-contain p-1" />
+                          <Image src={response.avatar} alt={response.model} fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" className="object-contain p-1" />
                         </div>
                         <div className="flex-1 min-w-0 h-full flex flex-col">
                           <div className="flex items-center gap-2 mb-2">
@@ -1036,7 +1036,7 @@ env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }`}
               <div className="flex items-center gap-4 mb-8">
                 <div className="w-12 h-12 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
                   <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1721 9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1 1 21 9z" />
                   </svg>
                 </div>
                 <div>
@@ -1105,7 +1105,7 @@ env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }`}
                   className="w-full inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-2xl font-semibold text-lg hover:from-violet-600 hover:to-purple-600 transition-all duration-300 shadow-lg hover:shadow-xl"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1721 9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1 1 21 9z" />
                   </svg>
                   Go to Dashboard
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

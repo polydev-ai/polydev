@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { createClient } from '../utils/supabase/client'
 
@@ -32,54 +32,170 @@ interface UserStats {
   }>
 }
 
+// Global cache for profile data to prevent duplicate fetching
+const profileCache = {
+  profile: null as UserProfile | null,
+  stats: null as UserStats | null,
+  timestamps: {
+    profile: 0,
+    stats: 0,
+  },
+  CACHE_DURATION: 3 * 60 * 1000, // 3 minutes for profile data
+}
+
+let activeRequests: Record<string, Promise<any> | null> = {}
+
 export default function Profile() {
   const { user, loading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [stats, setStats] = useState<UserStats | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const isMountedRef = useRef(true)
 
   const supabase = createClient()
 
-  useEffect(() => {
-    if (user) {
-      loadProfile()
-      loadStats()
-    }
-  }, [user])
+  // Fetch with caching and deduplication
+  const fetchWithCache = useCallback(async (key: string, fetcher: () => Promise<any>) => {
+    const now = Date.now()
 
-  const loadProfile = async () => {
-    try {
+    // Check cache first
+    if (profileCache[key as keyof typeof profileCache] &&
+        (now - profileCache.timestamps[key as keyof typeof profileCache.timestamps]) < profileCache.CACHE_DURATION) {
+      return profileCache[key as keyof typeof profileCache]
+    }
+
+    // Prevent duplicate requests
+    if (activeRequests[key]) {
+      return await activeRequests[key]
+    }
+
+    activeRequests[key] = (async () => {
+      try {
+        const data = await fetcher()
+
+        // Update cache
+        profileCache[key as keyof typeof profileCache] = data
+        profileCache.timestamps[key as keyof typeof profileCache.timestamps] = now
+
+        return data
+      } catch (err) {
+        console.warn(`Failed to fetch ${key}:`, err)
+        return profileCache[key as keyof typeof profileCache] || null
+      } finally {
+        activeRequests[key] = null
+      }
+    })()
+
+    return await activeRequests[key]
+  }, [])
+
+  // Optimized profile loading with caching
+  const loadProfile = useCallback(async () => {
+    if (!user?.id) return
+
+    const data = await fetchWithCache('profile', async () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single()
 
       if (data) {
-        setProfile({
+        return {
           ...data,
           email: user?.email || data.email
-        })
+        }
       }
-    } catch (error) {
-      console.error('Error loading profile:', error)
-    }
-  }
+      return null
+    })
 
-  const loadStats = async () => {
-    try {
+    if (isMountedRef.current && data) {
+      setProfile(data)
+    }
+  }, [user?.id, supabase, fetchWithCache])
+
+  // Optimized stats loading with caching
+  const loadStats = useCallback(async () => {
+    const data = await fetchWithCache('stats', async () => {
       const response = await fetch('/api/profile/stats')
       if (response.ok) {
-        const data = await response.json()
-        setStats(data)
-      } else {
-        console.error('Failed to load profile stats:', response.statusText)
+        return await response.json()
       }
-    } catch (error) {
-      console.error('Error loading stats:', error)
+      throw new Error(`Failed to load profile stats: ${response.statusText}`)
+    })
+
+    if (isMountedRef.current && data) {
+      setStats(data)
     }
-  }
+  }, [fetchWithCache])
+
+  // Load data efficiently in parallel
+  const loadAllData = useCallback(async () => {
+    if (!user?.id) return
+
+    setIsLoading(true)
+    try {
+      // Load profile and stats in parallel
+      await Promise.allSettled([
+        loadProfile(),
+        loadStats()
+      ])
+    } catch (error) {
+      console.error('Error loading profile data:', error)
+      setMessage('Failed to load profile data')
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false)
+      }
+    }
+  }, [user?.id, loadProfile, loadStats])
+
+  useEffect(() => {
+    isMountedRef.current = true
+    if (user?.id) {
+      loadAllData()
+    }
+
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [user?.id, loadAllData])
+
+  // Memoized computed values to prevent unnecessary recalculations
+  const computedValues = useMemo(() => {
+    const displayName = profile?.display_name || 'User Profile'
+    const avatarInitial = profile?.display_name?.charAt(0)?.toUpperCase() ||
+                         user?.email?.charAt(0)?.toUpperCase() || '?'
+    const memberSince = new Date(user?.created_at || Date.now()).toLocaleDateString()
+    const formattedTokens = stats?.totalTokens?.toLocaleString() || '0'
+
+    return {
+      displayName,
+      avatarInitial,
+      memberSince,
+      formattedTokens
+    }
+  }, [profile, user, stats])
+
+  // Memoized activity rendering to prevent re-processing on every render
+  const renderedActivity = useMemo(() => {
+    if (!stats?.recentActivity || stats.recentActivity.length === 0) {
+      return null
+    }
+
+    return stats.recentActivity.map((activity, index) => ({
+      ...activity,
+      formattedDate: new Date(activity.timestamp).toLocaleDateString(),
+      formattedTime: new Date(activity.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+      formattedTokens: activity.tokens.toLocaleString(),
+      formattedCost: activity.cost.toFixed(4),
+      colorClass: activity.action.includes('Chat') ? 'bg-green-400' :
+                 activity.action.includes('Session') ? 'bg-blue-400' :
+                 activity.action.includes('API') ? 'bg-purple-400' :
+                 'bg-gray-400'
+    }))
+  }, [stats?.recentActivity])
 
   if (loading) {
     return (
@@ -110,6 +226,8 @@ export default function Profile() {
     )
   }
 
+  const { displayName, avatarInitial, memberSince, formattedTokens } = computedValues
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -119,19 +237,18 @@ export default function Profile() {
             <div className="flex items-center space-x-6">
               <div className="h-24 w-24 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full flex items-center justify-center">
                 <span className="text-2xl font-bold text-white">
-                  {profile?.display_name?.charAt(0)?.toUpperCase() || 
-                   user.email?.charAt(0)?.toUpperCase() || '?'}
+                  {avatarInitial}
                 </span>
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {profile?.display_name || 'User Profile'}
+                  {displayName}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-400 text-lg">
                   {user.email}
                 </p>
                 <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                  <span>Member since {new Date(user.created_at || Date.now()).toLocaleDateString()}</span>
+                  <span>Member since {memberSince}</span>
                   {profile?.company && (
                     <>
                       <span>•</span>
@@ -177,7 +294,7 @@ export default function Profile() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tokens Used</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.totalTokens?.toLocaleString() || 0}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{formattedTokens}</p>
                   </div>
                 </div>
               </div>
@@ -217,16 +334,11 @@ export default function Profile() {
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">Recent Activity</h3>
               </div>
               <div className="px-6 py-4">
-                {stats?.recentActivity && stats.recentActivity.length > 0 ? (
+                {renderedActivity ? (
                   <div className="space-y-4">
-                    {stats.recentActivity.map((activity, index) => (
+                    {renderedActivity.map((activity, index) => (
                       <div key={index} className="flex items-start space-x-3">
-                        <div className={`h-2 w-2 rounded-full mt-2 ${
-                          activity.action.includes('Chat') ? 'bg-green-400' :
-                          activity.action.includes('Session') ? 'bg-blue-400' :
-                          activity.action.includes('API') ? 'bg-purple-400' :
-                          'bg-gray-400'
-                        }`}></div>
+                        <div className={`h-2 w-2 rounded-full mt-2 ${activity.colorClass}`}></div>
                         <div className="flex-1">
                           <p className="text-sm text-gray-900 dark:text-white">
                             <span className="font-medium">{activity.action}</span>
@@ -238,17 +350,17 @@ export default function Profile() {
                             Model: {activity.model}
                           </p>
                           <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            <span>{new Date(activity.timestamp).toLocaleDateString()} {new Date(activity.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            <span>{activity.formattedDate} {activity.formattedTime}</span>
                             {activity.tokens > 0 && (
                               <>
                                 <span>•</span>
-                                <span>{activity.tokens.toLocaleString()} tokens</span>
+                                <span>{activity.formattedTokens} tokens</span>
                               </>
                             )}
                             {activity.cost > 0 && (
                               <>
                                 <span>•</span>
-                                <span>${activity.cost.toFixed(4)}</span>
+                                <span>${activity.formattedCost}</span>
                               </>
                             )}
                           </div>

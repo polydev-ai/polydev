@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePreferences } from '../../hooks/usePreferences'
+import { useEnhancedApiKeysData } from '../../hooks/useEnhancedApiKeysData'
 import { createClient } from '../../app/utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw, Copy } from 'lucide-react'
 import { ProviderConfig } from '../../types/providers'
@@ -121,13 +122,24 @@ interface ModelsDevModel {
 export default function EnhancedApiKeysPage() {
   const { user, loading: authLoading } = useAuth()
   const { preferences, updatePreferences: updateUserPreferences, loading: preferencesLoading, refetch: refetchPreferences } = usePreferences()
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+
+  // Use optimized data hook
+  const {
+    apiKeys,
+    legacyProviders,
+    modelsDevProviders,
+    cliStatuses,
+    apiKeyUsage,
+    providerModels,
+    loadingModels,
+    loading: dataLoading,
+    error: dataError,
+    refresh: refreshData,
+    fetchProviderModels
+  } = useEnhancedApiKeysData()
+
+  // Local component state
   const [providers, setProviders] = useState<ProviderConfig[]>([])
-  const [legacyProviders, setLegacyProviders] = useState<Record<string, any>>({})
-  const [modelsDevProviders, setModelsDevProviders] = useState<ModelsDevProvider[]>([])
-  const [providerModels, setProviderModels] = useState<Record<string, ModelsDevModel[]>>({})
-  const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({})
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -139,13 +151,10 @@ export default function EnhancedApiKeysPage() {
   const [updateApiKey, setUpdateApiKey] = useState(false)
   const [syncingModels, setSyncingModels] = useState(false)
   const [hasCompletedInitialSync, setHasCompletedInitialSync] = useState(false)
-  
-  // CLI Status State  
-  const [cliStatuses, setCliStatuses] = useState<CLIConfig[]>([])
   const [cliStatusLoading, setCliStatusLoading] = useState(false)
-  
-  // API Key Usage State
-  const [apiKeyUsage, setApiKeyUsage] = useState<Record<string, ApiKeyUsage>>({})
+
+  // Combine loading states
+  const loading = dataLoading || authLoading || preferencesLoading
   
   // Form state with new fields
   const [formData, setFormData] = useState({
@@ -224,47 +233,7 @@ export default function EnhancedApiKeysPage() {
   }, [legacyProviders, modelsDevProviders])
 
   // Fetch and cache models for a specific provider
-  const fetchProviderModels = useCallback(async (providerId: string) => {
-    if (providerModels[providerId] || loadingModels[providerId]) {
-      return providerModels[providerId] || []
-    }
-
-    setLoadingModels(prev => ({ ...prev, [providerId]: true }))
-    
-    try {
-      const response = await fetch(`/api/models-dev/providers?provider=${providerId}&rich=true`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch models')
-      }
-      const data = await response.json()
-      
-      // Handle rich data format (array with provider object containing models)
-      const providerData = Array.isArray(data) ? data[0] : data
-      const models = (providerData?.models || []).map((model: any) => ({
-        id: model.id,
-        provider_id: providerId,
-        name: model.name,
-        display_name: model.name,
-        friendly_id: model.id,
-        max_tokens: model.maxTokens,
-        context_length: model.contextWindow,
-        input_cost_per_million: model.pricing?.input,
-        output_cost_per_million: model.pricing?.output,
-        supports_vision: model.supportsVision,
-        supports_tools: model.supportsTools,
-        supports_reasoning: false, // Not available in rich data yet
-        description: model.description
-      }))
-      
-      setProviderModels(prev => ({ ...prev, [providerId]: models }))
-      setLoadingModels(prev => ({ ...prev, [providerId]: false }))
-      return models
-    } catch (error) {
-      console.warn(`Failed to fetch models for provider ${providerId}:`, error)
-      setLoadingModels(prev => ({ ...prev, [providerId]: false }))
-      return []
-    }
-  }, [providerModels, loadingModels])
+  // Use the optimized fetchProviderModels from the hook (no need to redefine)
 
   // Get models with pricing and capabilities from models.dev (legacy function for compatibility)
   const getProviderModelsWithPricing = useCallback(async (providerId: string) => {
@@ -310,181 +279,6 @@ export default function EnhancedApiKeysPage() {
     }
   ]
 
-  const fetchData = async () => {
-    if (!user?.id) return
-    
-    setLoading(true)
-    setError(null)
-
-    try {
-      // Execute all API calls in parallel for much faster loading
-      const [keysResult, providersResult, cliStatusResult] = await Promise.allSettled([
-        // API keys from Supabase
-        supabase
-          .from('user_api_keys')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('display_order', { ascending: true, nullsFirst: false })
-          .order('created_at', { ascending: false }),
-
-        // Providers data from models.dev API (rich data for models page)
-        fetch('/api/models-dev/providers?rich=true'),
-
-        // CLI status
-        fetch('/api/cli-status')
-      ])
-
-      // Process API keys
-      const keysData = keysResult.status === 'fulfilled' && !keysResult.value.error ? keysResult.value.data : []
-      if (keysResult.status === 'fulfilled' && keysResult.value.error) {
-        throw keysResult.value.error
-      }
-
-      // Process providers data
-      let legacyProvidersData: Record<string, any> = {}
-      if (providersResult.status === 'fulfilled' && providersResult.value.ok) {
-        try {
-          const data = await providersResult.value.json()
-          
-          // Rich data is an array of providers, need to set modelsDevProviders
-          if (Array.isArray(data)) {
-            // Normalize and de-duplicate providers by ID (prefer richer entries with models)
-            const normalizeId = (pid: string) => pid === 'xai' ? 'x-ai' : pid
-            const dedupMap = new Map<string, any>()
-            data.forEach((p: any) => {
-              const nid = normalizeId(p.id)
-              const existing = dedupMap.get(nid)
-              if (!existing) {
-                dedupMap.set(nid, { ...p, id: nid })
-              } else {
-                const existingScore = (existing.models?.length || 0) + (existing.description?.length || 0)
-                const candidateScore = (p.models?.length || 0) + (p.description?.length || 0)
-                if (candidateScore > existingScore) {
-                  dedupMap.set(nid, { ...p, id: nid })
-                }
-              }
-            })
-            setModelsDevProviders(Array.from(dedupMap.values()))
-            
-            // Convert rich data to legacy format for backward compatibility
-            data.forEach((provider: any) => {
-              if (provider.models) {
-                const supportedModels: Record<string, any> = {}
-                provider.models.forEach((model: any) => {
-                  supportedModels[model.id] = {
-                    name: model.name,
-                    maxTokens: model.maxTokens,
-                    contextWindow: model.contextWindow,
-                    supportsVision: model.supportsVision,
-                    supportsTools: model.supportsTools,
-                    pricing: model.pricing
-                  }
-                })
-                
-                const nid = normalizeId(provider.id)
-                legacyProvidersData[nid] = {
-                  name: provider.name,
-                  description: provider.description,
-                  website: provider.website,
-                  logo: provider.logo,
-                  baseUrl: provider.baseUrl,
-                  supportsStreaming: provider.supportsStreaming,
-                  supportsTools: provider.supportsTools,
-                  supportsVision: provider.supportsVision,
-                  supportedModels
-                }
-              }
-            })
-          } else {
-            // Fallback to legacy format
-            legacyProvidersData = data
-            setModelsDevProviders([])
-          }
-          
-          setLegacyProviders(legacyProvidersData)
-        } catch (err) {
-          console.warn('Failed to parse providers data:', err)
-        }
-      } else {
-        console.warn('Failed to fetch providers:', providersResult.status === 'fulfilled' ? providersResult.value.status : providersResult.reason)
-        setLegacyProviders({})
-        setModelsDevProviders([])
-      }
-
-      // Process CLI status
-      if (cliStatusResult.status === 'fulfilled' && cliStatusResult.value.ok) {
-        try {
-          const cliData = await cliStatusResult.value.json()
-          
-          // Transform the response into our expected format
-          const transformedStatuses: CLIConfig[] = Object.entries(cliData).map(([provider, config]: [string, any]) => ({
-            user_id: user.id,
-            provider,
-            custom_path: config?.custom_path || null,
-            enabled: config?.enabled || true,
-            status: config?.status || 'unchecked',
-            last_checked_at: config?.last_checked_at,
-            statusMessage: config?.message,
-            message: config?.message,
-            cli_version: config?.cli_version,
-            authenticated: config?.authenticated,
-            issue_type: config?.issue_type,
-            solutions: config?.solutions,
-            install_command: config?.install_command,
-            auth_command: config?.auth_command
-          }))
-          
-          setCliStatuses(transformedStatuses)
-        } catch (err) {
-          console.warn('Failed to parse CLI status:', err)
-        }
-      } else {
-        console.warn('Failed to fetch CLI status:', cliStatusResult.status === 'fulfilled' ? cliStatusResult.value.status : cliStatusResult.reason)
-      }
-      
-      // Only show providers that have API keys OR are configured in user preferences
-      const userConfiguredProviders = new Set<string>()
-      
-      // Add providers from API keys
-      if (keysData) {
-        keysData.forEach((key: any) => userConfiguredProviders.add(key.provider))
-      }
-      
-      // Add providers from user preferences (configured models)
-      if (preferences?.model_preferences) {
-        Object.keys(preferences.model_preferences).forEach(provider => {
-          userConfiguredProviders.add(provider)
-        })
-      }
-      
-      // Filter providers to only show user-configured ones
-      const providersWithKeys = Object.values(legacyProvidersData).filter((provider: any) => 
-        userConfiguredProviders.has(provider.id)
-      )
-
-      setApiKeys(keysData || [])
-      setProviders(providersWithKeys as ProviderConfig[])
-      
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchApiKeyUsage = async () => {
-    if (!user?.id) return
-    
-    try {
-      const response = await fetch('/api/usage/api-keys')
-      if (response.ok) {
-        const data = await response.json()
-        setApiKeyUsage(data.usage || {})
-      }
-    } catch (error) {
-      console.error('Error fetching API key usage:', error)
-    }
-  }
 
   // Auto-sync existing API key models to preferences
   const syncExistingModelsToPreferences = useCallback(async () => {
@@ -528,12 +322,6 @@ export default function EnhancedApiKeysPage() {
     }
   }, [syncingModels, refetchPreferences])
 
-  useEffect(() => {
-    if (user && !preferencesLoading) {
-      fetchData()
-      fetchApiKeyUsage()
-    }
-  }, [user, preferences, preferencesLoading])
 
   // Sync existing models to preferences when API keys are loaded
   useEffect(() => {
@@ -564,59 +352,18 @@ export default function EnhancedApiKeysPage() {
   useEffect(() => {
     if (apiKeys.length > 0) {
       const uniqueProviders = [...new Set(apiKeys.map(key => key.provider))]
-      const providersToFetch = uniqueProviders.filter(provider => 
+      const providersToFetch = uniqueProviders.filter(provider =>
         !providerModels[provider] && !loadingModels[provider]
       )
-      
-      if (providersToFetch.length > 0) {
-        // Set loading state for all providers
-        setLoadingModels(prev => {
-          const newState = { ...prev }
-          providersToFetch.forEach(provider => {
-            newState[provider] = true
-          })
-          return newState
-        })
 
-        // Fetch all provider models in parallel
+      if (providersToFetch.length > 0) {
+        // Use the hook's fetchProviderModels function which handles loading states internally
         Promise.allSettled(
-          providersToFetch.map(async (provider) => {
-            try {
-              const response = await fetch(`/api/models-dev/providers?provider=${provider}&rich=true`)
-              if (!response.ok) {
-                throw new Error('Failed to fetch models')
-              }
-              const data = await response.json()
-              // Handle rich data format (array with provider object containing models)
-              const providerData = Array.isArray(data) ? data[0] : data
-              const models = (providerData?.models || []).map((model: any) => ({
-                id: model.id,
-                provider_id: provider,
-                name: model.name,
-                display_name: model.name,
-                friendly_id: model.id,
-                max_tokens: model.maxTokens,
-                context_length: model.contextWindow,
-                input_cost_per_million: model.pricing?.input,
-                output_cost_per_million: model.pricing?.output,
-                supports_vision: model.supportsVision,
-                supports_tools: model.supportsTools,
-                supports_reasoning: false,
-                description: model.description
-              }))
-              
-              setProviderModels(prev => ({ ...prev, [provider]: models }))
-            } catch (error) {
-              console.warn(`Failed to fetch models for ${provider}:`, error)
-              setProviderModels(prev => ({ ...prev, [provider]: [] }))
-            } finally {
-              setLoadingModels(prev => ({ ...prev, [provider]: false }))
-            }
-          })
+          providersToFetch.map(provider => fetchProviderModels(provider))
         )
       }
     }
-  }, [apiKeys, providerModels, loadingModels])
+  }, [apiKeys, providerModels, loadingModels, fetchProviderModels])
 
   // Preload models for all available providers to show in "All Available Models" section
   useEffect(() => {

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     // Query models registry with actual provider extraction
     const { data: models, error } = await supabase
       .from('models_registry')
-      .select('id, name, provider_id, models_dev_metadata')
+      .select('id, name, provider_id, provider_model_id, models_dev_metadata')
       .eq('is_active', true)
 
     if (error) {
@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         id: model.id,
         name: model.name,
         provider_id: model.provider_id,
+        provider_model_id: model.provider_model_id,
         actual_provider: actualProvider
       }
     }) || []

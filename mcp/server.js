@@ -1,9 +1,32 @@
 #!/usr/bin/env node
 
+// Register ts-node for TypeScript support
+try {
+  require('ts-node/register');
+} catch (e) {
+  // ts-node not available, proceed without it
+}
+
 const fs = require('fs');
 const path = require('path');
 const CLIManager = require('../lib/cliManager').default;
-const UniversalMemoryExtractor = require('../src/lib/universalMemoryExtractor').UniversalMemoryExtractor;
+
+let UniversalMemoryExtractor;
+try {
+  UniversalMemoryExtractor = require('../src/lib/universalMemoryExtractor').UniversalMemoryExtractor;
+} catch (e) {
+  // Fallback if TypeScript module is not available
+  console.warn('UniversalMemoryExtractor not available, memory features will be disabled');
+  UniversalMemoryExtractor = class {
+    async detectMemorySources() { return []; }
+    async extractMemory() { return {}; }
+    async getRecentConversations() { return []; }
+    async getRelevantContext() { return ''; }
+    async getPreferences() { return {}; }
+    async updatePreferences() { return {}; }
+    async resetPreferences() { return {}; }
+  };
+}
 
 class MCPServer {
   constructor() {
@@ -126,35 +149,35 @@ class MCPServer {
           result = await this.callPerspectivesAPI(args);
           break;
         
-        case 'polydev.force_cli_detection':
+        case 'force_cli_detection':
           result = await this.forceCliDetection(args);
           break;
         
-        case 'polydev.get_cli_status':
+        case 'get_cli_status':
           result = await this.getCliStatus(args);
           break;
         
-        case 'polydev.send_cli_prompt':
+        case 'send_cli_prompt':
           result = await this.sendCliPrompt(args);
           break;
         
-        case 'polydev.detect_memory_sources':
+        case 'detect_memory_sources':
           result = await this.detectMemorySources(args);
           break;
         
-        case 'polydev.extract_memory':
+        case 'extract_memory':
           result = await this.extractMemory(args);
           break;
         
-        case 'polydev.get_recent_conversations':
+        case 'get_recent_conversations':
           result = await this.getRecentConversations(args);
           break;
         
-        case 'polydev.get_memory_context':
+        case 'get_memory_context':
           result = await this.getMemoryContext(args);
           break;
         
-        case 'polydev.manage_memory_preferences':
+        case 'manage_memory_preferences':
           result = await this.manageMemoryPreferences(args);
           break;
         
@@ -298,20 +321,20 @@ class MCPServer {
       case 'get_perspectives':
         return this.formatPerspectivesResponse(result);
       
-      case 'polydev.force_cli_detection':
+      case 'force_cli_detection':
         return this.formatCliDetectionResponse(result);
-      
-      case 'polydev.get_cli_status':
+
+      case 'get_cli_status':
         return this.formatCliStatusResponse(result);
-      
-      case 'polydev.send_cli_prompt':
+
+      case 'send_cli_prompt':
         return this.formatCliPromptResponse(result);
-      
-      case 'polydev.detect_memory_sources':
-      case 'polydev.extract_memory':
-      case 'polydev.get_recent_conversations':
-      case 'polydev.get_memory_context':
-      case 'polydev.manage_memory_preferences':
+
+      case 'detect_memory_sources':
+      case 'extract_memory':
+      case 'get_recent_conversations':
+      case 'get_memory_context':
+      case 'manage_memory_preferences':
         return this.formatMemoryResponse(result);
       
       default:

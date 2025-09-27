@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -52,6 +52,15 @@ interface Credits {
   total_spent: number
 }
 
+// Global cache for subscription data to prevent duplicate fetching
+const subscriptionCache = {
+  data: null as any,
+  timestamp: 0,
+  CACHE_DURATION: 2 * 60 * 1000, // 2 minutes for subscription data
+}
+
+let activeRequest: Promise<any> | null = null
+
 export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [messageUsage, setMessageUsage] = useState<MessageUsage | null>(null)
@@ -60,39 +69,101 @@ export default function SubscriptionPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isUpgrading, setIsUpgrading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const isMountedRef = useRef(true)
 
-  useEffect(() => {
-    fetchSubscriptionData()
+  // Fetch with caching and deduplication
+  const fetchSubscriptionData = useCallback(async () => {
+    const now = Date.now()
+
+    // Check cache first
+    if (subscriptionCache.data &&
+        (now - subscriptionCache.timestamp) < subscriptionCache.CACHE_DURATION) {
+      const cachedData = subscriptionCache.data
+      setSubscription(cachedData.subscription)
+      setMessageUsage(cachedData.messageUsage)
+      setCredits(cachedData.credits)
+      setProfileStats(cachedData.profileStats)
+      setIsLoading(false)
+      return
+    }
+
+    // Prevent duplicate requests
+    if (activeRequest) {
+      try {
+        await activeRequest
+      } catch (err) {
+        // Handle silently, data will be set from cache or error state
+      }
+      return
+    }
+
+    activeRequest = (async () => {
+      try {
+        // Batch all requests for better performance
+        const [subscriptionResponse, profileStatsResponse] = await Promise.all([
+          fetch('/api/subscription'),
+          fetch('/api/profile/stats')
+        ])
+
+        const results = {
+          subscription: null,
+          messageUsage: null,
+          credits: null,
+          profileStats: null
+        }
+
+        if (subscriptionResponse.ok) {
+          const subscriptionData = await subscriptionResponse.json()
+          results.subscription = subscriptionData.subscription
+          results.messageUsage = subscriptionData.messageUsage
+          results.credits = subscriptionData.credits
+        } else {
+          setMessage({ type: 'error', text: 'Failed to load subscription data' })
+        }
+
+        if (profileStatsResponse.ok) {
+          const profileData = await profileStatsResponse.json()
+          results.profileStats = profileData
+        }
+
+        // Update cache
+        subscriptionCache.data = results
+        subscriptionCache.timestamp = now
+
+        if (isMountedRef.current) {
+          setSubscription(results.subscription)
+          setMessageUsage(results.messageUsage)
+          setCredits(results.credits)
+          setProfileStats(results.profileStats)
+        }
+
+      } catch (error) {
+        console.error('Failed to fetch subscription data:', error)
+        if (isMountedRef.current) {
+          setMessage({ type: 'error', text: 'Failed to load subscription data' })
+        }
+      } finally {
+        if (isMountedRef.current) {
+          setIsLoading(false)
+        }
+        activeRequest = null
+      }
+    })()
+
+    return activeRequest
   }, [])
 
-  const fetchSubscriptionData = async () => {
-    try {
-      const [subscriptionResponse, profileStatsResponse] = await Promise.all([
-        fetch('/api/subscription'),
-        fetch('/api/profile/stats')
-      ])
+  useEffect(() => {
+    isMountedRef.current = true
+    fetchSubscriptionData()
 
-      if (subscriptionResponse.ok) {
-        const subscriptionData = await subscriptionResponse.json()
-        setSubscription(subscriptionData.subscription)
-        setMessageUsage(subscriptionData.messageUsage)
-        setCredits(subscriptionData.credits)
-      } else {
-        setMessage({ type: 'error', text: 'Failed to load subscription data' })
-      }
-
-      if (profileStatsResponse.ok) {
-        const profileData = await profileStatsResponse.json()
-        setProfileStats(profileData)
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to load subscription data' })
-    } finally {
-      setIsLoading(false)
+    return () => {
+      isMountedRef.current = false
     }
-  }
+  }, [fetchSubscriptionData])
 
-  const handleUpgrade = async () => {
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleUpgrade = useCallback(async () => {
     setIsUpgrading(true)
     try {
       const response = await fetch('/api/subscription/upgrade', {
@@ -114,9 +185,9 @@ export default function SubscriptionPage() {
     } finally {
       setIsUpgrading(false)
     }
-  }
+  }, [])
 
-  const openBillingPortal = async () => {
+  const openBillingPortal = useCallback(async () => {
     try {
       const response = await fetch('/api/subscription/portal', {
         method: 'POST',
@@ -139,7 +210,34 @@ export default function SubscriptionPage() {
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to open billing portal' })
     }
-  }
+  }, [])
+
+  const dismissMessage = useCallback(() => {
+    setMessage(null)
+  }, [])
+
+  // Memoized computed values to prevent unnecessary recalculations
+  const computedValues = useMemo(() => {
+    const actualMessagesSent = messageUsage?.actual_messages_sent ?? messageUsage?.messages_sent ?? 0
+    const messageUsagePercentage = messageUsage
+      ? Math.min((actualMessagesSent / messageUsage.messages_limit) * 100, 100)
+      : 0
+    const isPro = subscription?.tier === 'pro'
+    const isActive = subscription?.status === 'active'
+    const totalCredits = ((credits?.balance || 0) + (credits?.promotional_balance || 0))
+    const currentPeriodEndDate = subscription?.current_period_end
+      ? new Date(subscription.current_period_end).toLocaleDateString()
+      : null
+
+    return {
+      actualMessagesSent,
+      messageUsagePercentage,
+      isPro,
+      isActive,
+      totalCredits,
+      currentPeriodEndDate
+    }
+  }, [subscription, messageUsage, credits])
 
   if (isLoading) {
     return (
@@ -156,13 +254,14 @@ export default function SubscriptionPage() {
     )
   }
 
-  const actualMessagesSent = messageUsage?.actual_messages_sent ?? messageUsage?.messages_sent ?? 0
-  const messageUsagePercentage = messageUsage
-    ? Math.min((actualMessagesSent / messageUsage.messages_limit) * 100, 100)
-    : 0
-
-  const isPro = subscription?.tier === 'pro'
-  const isActive = subscription?.status === 'active'
+  const {
+    actualMessagesSent,
+    messageUsagePercentage,
+    isPro,
+    isActive,
+    totalCredits,
+    currentPeriodEndDate
+  } = computedValues
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -184,13 +283,13 @@ export default function SubscriptionPage() {
       {/* Message Display */}
       {message && (
         <div className={`p-4 rounded-lg ${
-          message.type === 'success' 
-            ? 'bg-green-50 text-green-800 border border-green-200' 
+          message.type === 'success'
+            ? 'bg-green-50 text-green-800 border border-green-200'
             : 'bg-red-50 text-red-800 border border-red-200'
         }`}>
           {message.text}
-          <button 
-            onClick={() => setMessage(null)}
+          <button
+            onClick={dismissMessage}
             className="ml-2 text-sm underline"
           >
             Dismiss
@@ -220,19 +319,19 @@ export default function SubscriptionPage() {
                 )}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {isPro 
-                  ? `$20/month • ${isActive ? 'Active' : subscription?.status}` 
+                {isPro
+                  ? `$20/month • ${isActive ? 'Active' : subscription?.status}`
                   : 'Limited features'
                 }
               </p>
             </div>
-            {subscription?.current_period_end && (
+            {currentPeriodEndDate && (
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">
-                  {subscription.cancel_at_period_end ? 'Cancels on' : 'Renews on'}
+                  {subscription?.cancel_at_period_end ? 'Cancels on' : 'Renews on'}
                 </p>
                 <p className="text-sm font-medium">
-                  {new Date(subscription.current_period_end).toLocaleDateString()}
+                  {currentPeriodEndDate}
                 </p>
               </div>
             )}
@@ -292,7 +391,7 @@ export default function SubscriptionPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${((credits?.balance || 0) + (credits?.promotional_balance || 0)).toFixed(2)}
+              ${totalCredits.toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">
               {isPro ? 'Monthly allocation + purchased' : 'Available credits'}
