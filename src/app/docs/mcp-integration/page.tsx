@@ -119,7 +119,7 @@ const completion = await client.chat.completions.create({
           MCP Integration Guide
         </h1>
         <p className="text-xl text-gray-600 dark:text-gray-300 mb-6">
-          Connect your favorite MCP clients to Polydev and route requests through your configured providers with intelligent model selection.
+          Connect your favorite MCP clients to Polydev for multi-model perspectives, CLI tool integration, and conversation memory access.
         </p>
         
         <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 mb-8">
@@ -130,7 +130,7 @@ const completion = await client.chat.completions.create({
                 📦 Install Local MCP Package
               </h3>
               <p className="text-green-800 dark:text-green-200 mb-3">
-                Install the Polydev MCP package locally via NPM. Runs as a local stdio server that connects to your Polydev account.
+                Install the Polydev MCP package locally via NPM. Runs as a local stdio server with access to CLI tools, memory, and your Polydev account.
               </p>
               <div className="bg-green-100 dark:bg-green-800 p-3 rounded-lg mb-3">
                 <code className="text-sm text-green-900 dark:text-green-100">npm install -g polydev-ai</code>
@@ -143,7 +143,10 @@ const completion = await client.chat.completions.create({
                   🔒 Secure Token Auth
                 </span>
                 <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded-full">
-                  ⚡ CLI Tool Integration
+                  🔗 Local CLI Access
+                </span>
+                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-orange-100 dark:bg-orange-800 text-orange-800 dark:text-orange-200 rounded-full">
+                  🧠 Memory Access
                 </span>
               </div>
             </div>
@@ -158,7 +161,7 @@ const completion = await client.chat.completions.create({
                 Simple Token Authentication
               </h3>
               <p className="text-blue-800 dark:text-blue-200 mb-4">
-                Generate your token and configure your environment - that's it!
+                Generate your token and configure your environment. Local execution means access to CLI tools and recent conversations.
               </p>
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
                 <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3">🔑 Setup Steps</h4>
@@ -179,30 +182,30 @@ const completion = await client.chat.completions.create({
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
           <Zap className="w-8 h-8 text-yellow-500 mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Multi-Provider Access
+            CLI Tool Integration
           </h3>
           <p className="text-gray-600 dark:text-gray-300 text-sm">
-            Access all your configured providers (OpenAI, Anthropic, Google, etc.) through a single API endpoint.
+            Detect and interact with local CLI tools (Claude Code, Cline, Cursor) directly from MCP clients.
           </p>
         </div>
         
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
           <Settings className="w-8 h-8 text-blue-500 mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Intelligent Routing
+            Memory & Context
           </h3>
           <p className="text-gray-600 dark:text-gray-300 text-sm">
-            Requests are automatically routed through your account with your API keys and preferences.
+            Access recent conversations and extract memory from CLI tool sessions for contextual responses.
           </p>
         </div>
         
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
           <Key className="w-8 h-8 text-green-500 mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Secure & Private
+            Multi-Provider Access
           </h3>
           <p className="text-gray-600 dark:text-gray-300 text-sm">
-            Your API keys stay secure on your account. MCP tokens provide controlled access.
+            Access all your configured providers (OpenAI, Anthropic, Google, etc.) with secure token-based authentication.
           </p>
         </div>
       </div>
