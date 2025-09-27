@@ -2,12 +2,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '../../../utils/supabase/server'
 import { subscriptionManager } from '@/lib/subscriptionManager'
 
+// Simple in-memory cache for expensive computations
+const statsCache = new Map<string, { data: any; timestamp: number; ttl: number }>()
+
+function getCachedData(key: string): any | null {
+  const cached = statsCache.get(key)
+  if (cached && Date.now() < cached.timestamp + cached.ttl) {
+    return cached.data
+  }
+  statsCache.delete(key)
+  return null
+}
+
+function setCachedData(key: string, data: any, ttl: number = 10000): void {
+  statsCache.set(key, { data, timestamp: Date.now(), ttl })
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Use service role for comprehensive stats access
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     let supabase = await createClient()
-    
+
     if (serviceRoleKey && serviceRoleKey !== 'your_service_role_key') {
       const { createClient: createServiceClient } = await import('@supabase/supabase-js')
       supabase = createServiceClient(
@@ -19,41 +35,151 @@ export async function GET(request: NextRequest) {
     // Get current user from regular client for auth
     const regularSupabase = await createClient()
     const { data: { user }, error: authError } = await regularSupabase.auth.getUser()
-    
+
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     console.log('[Dashboard Stats] Fetching real statistics for user:', user.id)
 
+    // Check cache first
+    const cacheKey = `dashboard-stats-${user.id}`
+    const cachedStats = getCachedData(cacheKey)
+    if (cachedStats) {
+      console.log('[Dashboard Stats] Returning cached data')
+      return NextResponse.json(cachedStats)
+    }
+
     // Get real data from database tables
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    // 0. Get user's current credits from user_credits table
-    const { data: userCredits, error: userCreditsError } = await supabase
-      .from('user_credits')
-      .select('balance, promotional_balance')
-      .eq('user_id', user.id)
-      .single()
+    // Execute all database queries in parallel for much better performance
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-    console.log('[Dashboard Stats] User credits:', { credits: userCredits, error: userCreditsError })
+    console.log('[Dashboard Stats] Executing parallel database queries...')
+
+    const [
+      userCreditsResult,
+      mcpTokensResult,
+      allTokensResult,
+      userTokensResult,
+      apiKeysResult,
+      providersResult,
+      requestLogsResult,
+      usageLogsResult,
+      chatLogsResult,
+      chatMessagesResult,
+      providersRegistryResult
+    ] = await Promise.allSettled([
+      // 0. User credits
+      supabase
+        .from('user_credits')
+        .select('balance, promotional_balance')
+        .eq('user_id', user.id)
+        .single(),
+
+      // 1. MCP access tokens
+      supabase
+        .from('mcp_access_tokens')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('revoked', false),
+
+      // 2. All tokens for usage calculation
+      supabase
+        .from('mcp_access_tokens')
+        .select('created_at, last_used_at, client_id, expires_at')
+        .eq('user_id', user.id),
+
+      // 3. MCP user tokens (legacy)
+      supabase
+        .from('mcp_user_tokens')
+        .select('created_at, last_used_at, active')
+        .eq('user_id', user.id),
+
+      // 4. User API keys
+      supabase
+        .from('user_api_keys')
+        .select('provider, created_at, last_used_at, active, current_usage, monthly_budget, max_tokens')
+        .eq('user_id', user.id),
+
+      // 5. Provider configurations
+      supabase
+        .from('provider_configurations')
+        .select('*'),
+
+      // 6. Request logs (last 30 days)
+      supabase
+        .from('mcp_request_logs')
+        .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs')
+        .eq('user_id', user.id)
+        .gte('created_at', thirtyDaysAgo)
+        .limit(500), // Limit to prevent excessive processing
+
+      // 7. Usage logs fallback
+      supabase
+        .from('mcp_usage_logs')
+        .select('total_tokens, total_cost, created_at, models_used, response_time_ms, status')
+        .eq('user_id', user.id)
+        .gte('created_at', thirtyDaysAgo)
+        .limit(500),
+
+      // 8. Chat logs
+      supabase
+        .from('chat_logs')
+        .select('total_tokens, total_cost, created_at, models_used, response_time_ms')
+        .eq('user_id', user.id)
+        .gte('created_at', thirtyDaysAgo)
+        .limit(500),
+
+      // 9. Chat messages for this month
+      supabase
+        .from('chat_logs')
+        .select('id, created_at')
+        .eq('user_id', user.id)
+        .gte('created_at', monthStart.toISOString()),
+
+      // 10. Providers registry for display names/logos
+      supabase
+        .from('providers_registry')
+        .select('*')
+        .eq('is_active', true)
+    ])
+
+    // Extract data from parallel results
+    const userCredits = userCreditsResult.status === 'fulfilled' ? userCreditsResult.value.data : null
+    const mcpTokens = mcpTokensResult.status === 'fulfilled' ? mcpTokensResult.value.data : []
+    const allTokens = allTokensResult.status === 'fulfilled' ? allTokensResult.value.data : []
+    const userTokens = userTokensResult.status === 'fulfilled' ? userTokensResult.value.data : []
+    const apiKeys = apiKeysResult.status === 'fulfilled' ? apiKeysResult.value.data : []
+    const providers = providersResult.status === 'fulfilled' ? providersResult.value.data : []
+    const requestLogs = requestLogsResult.status === 'fulfilled' ? requestLogsResult.value.data : []
+    const usageLogs = usageLogsResult.status === 'fulfilled' ? usageLogsResult.value.data : []
+    const chatLogs = chatLogsResult.status === 'fulfilled' ? chatLogsResult.value.data : []
+    const chatMessages = chatMessagesResult.status === 'fulfilled' ? chatMessagesResult.value.data : []
+    const modelsDevProviders = providersRegistryResult.status === 'fulfilled' ? providersRegistryResult.value.data : []
+
+    console.log('[Dashboard Stats] Parallel queries completed:', {
+      userCredits: !!userCredits,
+      mcpTokens: mcpTokens?.length || 0,
+      allTokens: allTokens?.length || 0,
+      userTokens: userTokens?.length || 0,
+      apiKeys: apiKeys?.length || 0,
+      providers: providers?.length || 0,
+      requestLogs: requestLogs?.length || 0,
+      usageLogs: usageLogs?.length || 0,
+      chatLogs: chatLogs?.length || 0,
+      chatMessages: chatMessages?.length || 0,
+      modelsDevProviders: modelsDevProviders?.length || 0
+    })
 
     const currentBalance = parseFloat(userCredits?.balance || '0')
     const currentPromoBalance = parseFloat(userCredits?.promotional_balance || '0')
     const totalUserCredits = currentBalance + currentPromoBalance
 
-    // 1. Get MCP access tokens and usage stats
-    const { data: mcpTokens, error: mcpError } = await supabase
-      .from('mcp_access_tokens')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('revoked', false)
-
-    console.log('[Dashboard Stats] MCP tokens:', { count: mcpTokens?.length, error: mcpError })
-
-    // 2. Count active connections (non-expired tokens used recently)
+    // Calculate active connections
     const activeTokens = mcpTokens?.filter(token => {
       const expiresAt = new Date(token.expires_at)
       const lastUsed = token.last_used_at ? new Date(token.last_used_at) : null
@@ -61,65 +187,9 @@ export async function GET(request: NextRequest) {
       return expiresAt > now && recentlyUsed
     }) || []
 
-    // 3. Get all tokens for this user to calculate total usage
-    const { data: allTokens, error: allTokensError } = await supabase
-      .from('mcp_access_tokens')
-      .select('created_at, last_used_at, client_id')
-      .eq('user_id', user.id)
-
-    console.log('[Dashboard Stats] All tokens:', { count: allTokens?.length, error: allTokensError })
-
-    // 4. Get MCP user tokens (pd_ tokens) for legacy stats
-    const { data: userTokens, error: userTokensError } = await supabase
-      .from('mcp_user_tokens')
-      .select('created_at, last_used_at, active')
-      .eq('user_id', user.id)
-
-    console.log('[Dashboard Stats] User tokens:', { count: userTokens?.length, error: userTokensError })
-
-    // 5. Get user's API keys with usage and budget data
-    const { data: apiKeys, error: apiKeysError } = await supabase
-      .from('user_api_keys')
-      .select('provider, created_at, last_used_at, active, current_usage, monthly_budget, max_tokens')
-      .eq('user_id', user.id)
-
-    console.log('[Dashboard Stats] API keys:', { count: apiKeys?.length, error: apiKeysError })
-
-    // 6. Get provider configurations to show available models
-    const { data: providers, error: providersError } = await supabase
-      .from('provider_configurations')
-      .select('*')
-
-    console.log('[Dashboard Stats] Providers:', { count: providers?.length, error: providersError })
-
-    // 7. Get actual usage data from detailed request logs (more accurate)
-    const { data: requestLogs, error: requestLogsError } = await supabase
-      .from('mcp_request_logs')
-      .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs')
-      .eq('user_id', user.id)
-      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
-
-    console.log('[Dashboard Stats] Request logs:', { count: requestLogs?.length, error: requestLogsError })
-    
-    // Fallback to simple usage logs if detailed logs not available
-    const { data: usageLogs, error: usageLogsError } = await supabase
-      .from('mcp_usage_logs')
-      .select('total_tokens, total_cost, created_at, models_used, response_time_ms, status')
-      .eq('user_id', user.id)
-      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
-
     // Use detailed logs if available, otherwise fallback to simple logs
     const usageData = requestLogs && requestLogs.length > 0 ? requestLogs : usageLogs
     console.log('[Dashboard Stats] Using data source:', requestLogs && requestLogs.length > 0 ? 'detailed request logs' : 'simple usage logs')
-
-    // Get comprehensive usage data including both MCP and chat logs
-    const { data: chatLogs, error: chatLogsError } = await supabase
-      .from('chat_logs')
-      .select('total_tokens, total_cost, created_at, models_used')
-      .eq('user_id', user.id)
-      .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-
-    console.log('[Dashboard Stats] Chat logs:', { count: chatLogs?.length, error: chatLogsError })
 
     // Use the most comprehensive data source available, prioritizing detailed request logs
     let primaryDataSource: any[] = []
@@ -142,29 +212,23 @@ export async function GET(request: NextRequest) {
     const totalTokens = (allTokens?.length || 0) + (userTokens?.length || 0)
     const activeConnections = activeTokens.length
 
-    // Calculate messages vs API calls distinction
-    // Messages = chat_logs entries (chat messages) + MCP token usage (MCP client calls)
-    const { data: chatMessages, error: chatMessagesError } = await supabase
-      .from('chat_logs')
-      .select('id, created_at')
-      .eq('user_id', user.id)
-      .gte('created_at', monthStart.toISOString())
+    // Calculate TOTAL messages from BOTH MCP calls AND web chat sessions
+    const mcpApiCalls = (requestLogs || []).length
+    const chatApiCalls = Array.isArray(chatMessages) ? chatMessages.length : (chatMessages || 0)
+    const totalMessages = mcpApiCalls + chatApiCalls // Total of ALL user interactions (MCP + Chat)
 
-    console.log('[Dashboard Stats] Chat messages:', { count: chatMessages?.length, error: chatMessagesError })
-
-    // Get actual message count using consistent function across all pages
-    const actualMessageCount = await subscriptionManager.getActualMessageCount(user.id, true)
-    const totalMessages = actualMessageCount.totalMessages
-
-    console.log('[Dashboard Stats] Actual message count:', actualMessageCount)
+    console.log('[Dashboard Stats] Total messages breakdown:', {
+      mcpApiCalls,
+      chatApiCalls,
+      totalMessages: totalMessages,
+      description: 'MCP calls + web chat sessions'
+    })
 
     // Count MCP token usage for reference (not the same as client calls)
     const mcpTokenUsage = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
 
-    // Calculate real API requests from BOTH MCP and chat sources (these are actual model API calls)
-    const mcpApiCalls = (requestLogs || []).length
-    const chatApiCalls = (chatLogs || []).length
-    const totalApiCalls = mcpApiCalls + chatApiCalls
+    // Total API calls is the same as total messages (each message = one API call)
+    const totalApiCalls = totalMessages
 
     // Calculate total tokens from both sources
     const mcpTokenCount = (requestLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
@@ -194,7 +258,7 @@ export async function GET(request: NextRequest) {
 
     const totalCostFromLogs = mcpCost + chatCost
 
-    console.log(`[Dashboard Stats] Calculated total cost: $${totalCostFromLogs.toFixed(4)} (MCP: $${mcpCost.toFixed(4)} + Chat: $${chatCost.toFixed(4)}) from ${mcpApiCalls} MCP + ${chatApiCalls} chat requests`)
+    console.log(`[Dashboard Stats] Calculated total cost: $${totalCostFromLogs.toFixed(4)} (MCP: $${mcpCost.toFixed(4)} + Chat: $${chatCost.toFixed(4)}) from ${mcpApiCalls} MCP + ${chatApiCalls} chat requests = ${totalMessages} total messages`)
     console.log(`[Dashboard Stats] Total tokens: ${totalUsageTokens} (MCP: ${mcpTokenCount} + Chat: ${chatTokens})`)
 
     // Calculate average response time from BOTH MCP and chat data - only from successful requests
@@ -233,15 +297,19 @@ export async function GET(request: NextRequest) {
       return hasTokens || hasCost
     }).length
 
-    const chatSuccessfulRequests = (chatLogs || []).filter(log => {
-      // Chat logs assume success if entry exists with tokens
-      const hasTokens = log.total_tokens && log.total_tokens > 0
-      const hasCost = log.total_cost && log.total_cost > 0
-      return hasTokens || hasCost
-    }).length
+    // For chat sessions, if chatLogs has cost tracking, use that. Otherwise, assume chatMessages are successful
+    const chatSuccessfulRequests = (chatLogs || []).length > 0
+      ? (chatLogs || []).filter(log => {
+          // Chat logs assume success if entry exists with tokens
+          const hasTokens = log.total_tokens && log.total_tokens > 0
+          const hasCost = log.total_cost && log.total_cost > 0
+          return hasTokens || hasCost
+        }).length
+      : (chatMessages || []).length // If no chat logs with cost data, assume all chat messages are successful
 
     const totalSuccessfulRequests = mcpSuccessfulRequests + chatSuccessfulRequests
     const systemUptime = totalApiCalls > 0 ? `${((totalSuccessfulRequests / totalApiCalls) * 100).toFixed(1)}%` : '99.9%'
+
 
     // Get provider breakdown based on actual user API keys and usage
     const providerStats = apiKeys?.map(apiKey => {
@@ -411,9 +479,9 @@ export async function GET(request: NextRequest) {
       // User's credits balance
       creditsBalance: parseFloat(totalUserCredits.toFixed(2)),
 
-      // Messages vs API calls distinction
-      totalMessages: totalMessages, // Chat messages + MCP client calls
-      totalApiCalls: totalApiCalls, // Actual model API requests
+      // Total user interactions (both MCP calls and web chat sessions)
+      totalMessages: totalMessages, // MCP API calls + web chat sessions
+      totalApiCalls: totalApiCalls, // Same as totalMessages (each interaction = one API call)
 
       // Legacy fields for backward compatibility
       totalRequests: totalApiCalls,
@@ -471,23 +539,8 @@ export async function GET(request: NextRequest) {
         Date.now()
     }
 
-    // Fetch models-dev providers for proper display names and logos directly from database
-    let modelsDevProviders: any[] = []
-    try {
-      const { data: providers, error: pErr } = await supabase
-        .from('providers_registry')
-        .select('*')
-        .eq('is_active', true)
-
-      if (pErr) {
-        console.warn('[Dashboard Stats] Failed to fetch providers from database:', pErr)
-      } else {
-        modelsDevProviders = providers || []
-        console.log(`[Dashboard Stats] Loaded ${modelsDevProviders.length} providers from database`)
-      }
-    } catch (error) {
-      console.warn('[Dashboard Stats] Failed to fetch models-dev providers:', error)
-    }
+    // Use already fetched providers registry data (from parallel queries)
+    console.log(`[Dashboard Stats] Using ${modelsDevProviders?.length || 0} providers from parallel query`)
 
     // Helper function to map model names to proper provider names
     const getProviderFromModel = (modelName: string): string => {
@@ -633,7 +686,7 @@ export async function GET(request: NextRequest) {
         if (!providerAnalytics[provider.provider]) {
           // Find the provider info from models-dev for display name and logo
           const normalizedProviderId = normalizeId(provider.provider)
-          const providerInfo = modelsDevProviders.find(p => normalizeId(p.id || '') === normalizedProviderId) || {}
+          const providerInfo = modelsDevProviders?.find(p => normalizeId(p.id || '') === normalizedProviderId) || {}
 
 
           providerAnalytics[provider.provider] = {
@@ -662,7 +715,7 @@ export async function GET(request: NextRequest) {
         if (!modelAnalytics[modelKey]) {
           // Get provider info for model analytics as well
           const normalizedProviderId = normalizeId(provider.provider)
-          const providerInfo = modelsDevProviders.find(p => normalizeId(p.id || '') === normalizedProviderId) || {}
+          const providerInfo = modelsDevProviders?.find(p => normalizeId(p.id || '') === normalizedProviderId) || {}
 
           modelAnalytics[modelKey] = {
             provider: providerInfo.name || provider.provider,
@@ -726,6 +779,9 @@ export async function GET(request: NextRequest) {
       modelAnalyticsCount: processedModelAnalytics.length,
       requestLogsCount: (stats as any).requestLogs?.length
     })
+
+    // Cache the result for 10 seconds to ensure near real-time data while maintaining performance
+    setCachedData(cacheKey, stats, 10000)
 
     return NextResponse.json(stats)
     
