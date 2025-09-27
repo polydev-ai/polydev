@@ -471,15 +471,19 @@ export async function GET(request: NextRequest) {
         Date.now()
     }
 
-    // Fetch models-dev providers for proper display names and logos
+    // Fetch models-dev providers for proper display names and logos directly from database
     let modelsDevProviders: any[] = []
     try {
-      const response = await fetch('http://localhost:3000/api/models-dev/providers?rich=true')
-      if (response.ok) {
-        const data = await response.json()
-        // API returns { providers: [...] }, extract the providers array
-        modelsDevProviders = Array.isArray(data) ? data : (data.providers || [])
-        console.log(`[Dashboard Stats] Loaded ${modelsDevProviders.length} providers from models-dev`)
+      const { data: providers, error: pErr } = await supabase
+        .from('providers_registry')
+        .select('*')
+        .eq('is_active', true)
+
+      if (pErr) {
+        console.warn('[Dashboard Stats] Failed to fetch providers from database:', pErr)
+      } else {
+        modelsDevProviders = providers || []
+        console.log(`[Dashboard Stats] Loaded ${modelsDevProviders.length} providers from database`)
       }
     } catch (error) {
       console.warn('[Dashboard Stats] Failed to fetch models-dev providers:', error)
