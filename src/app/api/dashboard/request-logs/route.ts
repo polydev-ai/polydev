@@ -244,7 +244,7 @@ export async function GET(request: NextRequest) {
       const providerResponses = log.provider_responses || {}
 
       // Cache latency calculations
-      const latencyValues = Object.values(providerLatencies)
+      const latencyValues = Object.values(providerLatencies) as number[]
       const avgLatency = latencyValues.length > 0
         ? Math.round(latencyValues.reduce((a, b) => a + b, 0) / latencyValues.length)
         : 0

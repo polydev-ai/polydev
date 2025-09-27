@@ -200,18 +200,18 @@ export async function GET(request: NextRequest) {
     // Calculate average response time from BOTH MCP and chat data - only from successful requests
     const mcpResponseTimes = (requestLogs || [])
       .filter(log => {
-        const hasResponseTime = 'response_time_ms' in log && log.response_time_ms && log.response_time_ms > 0
+        const hasResponseTime = 'response_time_ms' in log && log.response_time_ms && (log.response_time_ms as number) > 0
         const isSuccessful = (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)
-        const isReasonableTime = log.response_time_ms < 60000 // Less than 60 seconds
+        const isReasonableTime = (log.response_time_ms as number) < 60000 // Less than 60 seconds
         return hasResponseTime && isSuccessful && isReasonableTime
       })
       .map(log => (log as any).response_time_ms)
 
     const chatResponseTimes = (chatLogs || [])
       .filter(log => {
-        const hasResponseTime = 'response_time_ms' in log && log.response_time_ms && log.response_time_ms > 0
+        const hasResponseTime = 'response_time_ms' in log && log.response_time_ms && (log.response_time_ms as number) > 0
         const isSuccessful = log.total_tokens > 0 // Chat logs without explicit status - use tokens as success indicator
-        const isReasonableTime = log.response_time_ms < 60000 // Less than 60 seconds
+        const isReasonableTime = 'response_time_ms' in log ? (log.response_time_ms as number) < 60000 : true // Less than 60 seconds
         return hasResponseTime && isSuccessful && isReasonableTime
       })
       .map(log => (log as any).response_time_ms)
@@ -318,7 +318,7 @@ export async function GET(request: NextRequest) {
 
       const allProviderUsageData = [...mcpProviderUsageData, ...chatProviderUsageData]
       const avgLatency = allProviderUsageData.length > 0 ?
-        Math.round(allProviderUsageData.reduce((sum, log) => sum + (log.response_time_ms || 0), 0) / allProviderUsageData.length) :
+        Math.round(allProviderUsageData.reduce((sum, log) => sum + ((log as any).response_time_ms || 0), 0) / allProviderUsageData.length) :
         0
 
       return {
@@ -702,11 +702,11 @@ export async function GET(request: NextRequest) {
     })).sort((a: any, b: any) => b.requests - a.requests)
 
     // Add request logs to stats response (so dashboard can display them)
-    stats.requestLogs = [...(requestLogs || []), ...(chatLogs || [])].slice(0, 50)
+    ;(stats as any).requestLogs = [...(requestLogs || []), ...(chatLogs || [])].slice(0, 50)
 
     // Add analytics to stats response
-    stats.providerAnalytics = processedProviderAnalytics
-    stats.modelAnalytics = processedModelAnalytics
+    ;(stats as any).providerAnalytics = processedProviderAnalytics
+    ;(stats as any).modelAnalytics = processedModelAnalytics
 
 
     console.log('[Dashboard Stats] Returning real statistics:', {
@@ -720,7 +720,7 @@ export async function GET(request: NextRequest) {
       providersCount: stats.providerStats.length,
       providerAnalyticsCount: processedProviderAnalytics.length,
       modelAnalyticsCount: processedModelAnalytics.length,
-      requestLogsCount: stats.requestLogs?.length
+      requestLogsCount: (stats as any).requestLogs?.length
     })
 
     return NextResponse.json(stats)

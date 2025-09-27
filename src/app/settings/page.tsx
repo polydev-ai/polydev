@@ -209,7 +209,7 @@ export default function Settings() {
       setMessage(error.message || 'Error deleting account')
       setIsLoading(false)
     }
-  }
+  }, [user])
 
   if (loading) {
     return (

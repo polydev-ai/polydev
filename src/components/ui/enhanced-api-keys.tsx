@@ -129,6 +129,7 @@ export default function EnhancedApiKeysPage() {
     legacyProviders,
     modelsDevProviders,
     cliStatuses,
+    setCliStatuses,
     apiKeyUsage,
     providerModels,
     loadingModels,
@@ -561,7 +562,7 @@ export default function EnhancedApiKeysPage() {
         await addModelToProvider(formData.provider, formData.default_model)
       }
 
-      await fetchData()
+      await refreshData()
       setShowAddForm(false)
       setEditingKey(null)
       setUpdateApiKey(false)
@@ -585,14 +586,14 @@ export default function EnhancedApiKeysPage() {
 
   const deleteApiKey = async (id: string) => {
     try {
-      setLoading(true)
+      setSaving(true)
       const response = await fetch(`/api/api-keys/${id}`, { method: 'DELETE' })
       if (!response.ok) throw new Error('Failed to delete API key')
-      await fetchData()
+      await refreshData()
     } catch (err: any) {
       setError(err.message)
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
@@ -618,7 +619,7 @@ export default function EnhancedApiKeysPage() {
         await removeModelFromProvider(apiKey.provider, apiKey.default_model)
       }
 
-      await fetchData()
+      await refreshData()
     } catch (err: any) {
       setError(err.message)
     }
@@ -643,9 +644,6 @@ export default function EnhancedApiKeysPage() {
     const items = Array.from(apiKeys)
     const [reorderedItem] = items.splice(result.source.index, 1)
     items.splice(result.destination.index, 0, reorderedItem)
-
-    // Optimistically update the UI
-    setApiKeys(items)
 
     // Send the new order to the server
     const orderedIds = items.map(item => item.id)

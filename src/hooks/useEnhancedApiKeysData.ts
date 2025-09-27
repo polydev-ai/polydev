@@ -405,6 +405,7 @@ export function useEnhancedApiKeysData() {
     legacyProviders,
     modelsDevProviders,
     cliStatuses,
+    setCliStatuses,
     apiKeyUsage,
     providerModels,
     loadingModels,

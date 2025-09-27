@@ -975,7 +975,7 @@ function AnalyticsDashboard({
               creditBalance.analytics.topModels.map((model: any, index) => (
                 <div key={index} className="flex items-center justify-between p-2 border rounded">
                   <div className="flex items-center gap-2">
-                    <img src={memoizedComputations.providerLogoCache.get(memoizedComputations.modelProviderCache.get(model.model)?.toLowerCase()) || 'https://models.dev/logos/default.svg'} alt={model.model} className="w-4 h-4" />
+                    <img src={getModelLogo(model.model, '', providersRegistry, modelsRegistry)} alt={model.model} className="w-4 h-4" />
                     <span className="font-medium">{model.model}</span>
                   </div>
                   <span className="text-sm text-muted-foreground">

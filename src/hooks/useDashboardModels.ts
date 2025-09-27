@@ -94,11 +94,11 @@ export function useDashboardModels() {
 
         // Batch provider data fetching to prevent duplicate requests
         const providerDataCache = new Map<string, any>()
-        const uniqueProviders = [...new Set(apiKeys.map((key: any) => normalizeProviderId(key.provider)))]
+        const uniqueProviders: string[] = [...new Set(apiKeys.map((key: any) => normalizeProviderId(key.provider)))] as string[]
 
         // Pre-fetch all provider data in parallel
         await Promise.allSettled(
-          uniqueProviders.map(async (providerId) => {
+          uniqueProviders.map(async (providerId: string) => {
             try {
               const richResp = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(providerId)}&rich=true`)
               if (richResp.ok) {

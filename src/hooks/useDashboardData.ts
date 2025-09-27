@@ -182,7 +182,7 @@ export function useDashboardData() {
   const processAnalytics = useCallback(async (logs: any[]) => {
     // Check if we already have analytics for this data
     // Include provider data in hash to detect when API response changes
-    const firstLogProviders = logs[0]?.providers ? JSON.stringify(logs[0].providers.slice(0, 3).map(p => p.provider)) : ''
+    const firstLogProviders = logs[0]?.providers ? JSON.stringify(logs[0].providers.slice(0, 3).map((p: any) => p.provider)) : ''
     const logsHash = logs.length.toString() + (logs[0]?.id || '') + firstLogProviders
     if (dashboardCache.providerAnalytics &&
         dashboardCache.providerAnalytics._hash === logsHash) {
