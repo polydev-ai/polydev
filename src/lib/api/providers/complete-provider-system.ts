@@ -956,16 +956,20 @@ export class UniversalProviderHandler {
     }
     
     const endpoint = this.getEndpoint(config, options)
-    
+
+    // Determine timeout based on model - GPT-5 models need longer timeout
+    const isGPT5Model = options.model && (options.model === 'gpt-5' || options.model.includes('gpt-5'))
+    const timeoutMs = isGPT5Model ? 90000 : 30000 // 90 seconds for GPT-5, 30 seconds for others
+
     // Make request with retry logic
     const retryHandler = this.retryHandlers.get(providerId)
     if (retryHandler) {
       return retryHandler.executeWithRetry(async () => {
-        return this.makeHttpRequest(endpoint, headers, requestData)
+        return this.makeHttpRequest(endpoint, headers, requestData, timeoutMs)
       })
     }
-    
-    return this.makeHttpRequest(endpoint, headers, requestData)
+
+    return this.makeHttpRequest(endpoint, headers, requestData, timeoutMs)
   }
 
   async streamMessage(providerId: string, options: ApiHandlerOptions): Promise<ReadableStream> {
@@ -1048,8 +1052,8 @@ export class UniversalProviderHandler {
     return endpoint
   }
 
-  private async makeHttpRequest(endpoint: string, headers: Record<string, string>, data: any): Promise<Response> {
-    const controller = this.createAbortController()
+  private async makeHttpRequest(endpoint: string, headers: Record<string, string>, data: any, timeoutMs?: number): Promise<Response> {
+    const controller = this.createAbortController(timeoutMs)
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
