@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import { modelsDevService } from '@/lib/models-dev-integration'
 import { ResponseValidator } from '@/lib/api/utils/response-validator'
 import { computeCostUSD } from '@/utils/modelUtils'
+import { checkQuotaMiddleware, deductQuotaMiddleware, generateSessionId, extractUsageFromResponse, calculateEstimatedCost } from '@/lib/api/middleware/quota-middleware'
 // OpenRouterManager available if we later switch to per-user keys
 
 // Generate a title from conversation context using AI
@@ -442,11 +443,14 @@ export async function POST(request: NextRequest) {
     
     const { user } = authResult
     const supabase = await createClient()
-    
-    // Parse request body - support both OpenAI format and Polydev format  
+
+    // Parse request body - support both OpenAI format and Polydev format
     const body = await request.json()
     let { messages, model, models, temperature = 0.7, max_tokens = 65536, reasoning_effort } = body
     stream = body.stream || false
+
+    // Generate session ID for quota tracking
+    const sessionId = generateSessionId()
     
     // Validate and sanitize messages to prevent transformation errors
     if (!messages || !Array.isArray(messages)) {
@@ -501,7 +505,15 @@ export async function POST(request: NextRequest) {
         throw new Error('No default models configured in API keys. Please set up models at https://www.polydev.ai/dashboard/models')
       }
     }
-    
+
+    // QUOTA CHECK: Verify user has perspective quota for all requested models
+    for (const modelName of targetModels) {
+      const quotaCheck = await checkQuotaMiddleware(request, user.id, modelName)
+      if (!quotaCheck.allowed && quotaCheck.response) {
+        return quotaCheck.response
+      }
+    }
+
     // PRIORITY SYSTEM: CLI > API KEYS > OPENROUTER (CREDITS)
     
     // Step 1: Get all CLI configurations
@@ -951,6 +963,29 @@ export async function POST(request: NextRequest) {
               credits_used: collected[m].creditsUsed || 0,
               response_time_ms: (collected as any)[m]?.responseTimeMs || undefined
             }))
+
+            // QUOTA DEDUCTION: Deduct perspectives for successful responses
+            try {
+              for (const response of finalResponses) {
+                if (response.content && response.usage) {
+                  const usage = extractUsageFromResponse(response)
+                  const estimatedCost = response.cost?.total_cost || calculateEstimatedCost(response.model, usage.inputTokens, usage.outputTokens)
+
+                  await deductQuotaMiddleware(
+                    user.id,
+                    response.model,
+                    sessionId,
+                    usage,
+                    estimatedCost,
+                    { messages, temperature, max_tokens },
+                    { provider: response.provider, fallback_method: response.fallback_method }
+                  )
+                }
+              }
+            } catch (quotaDeductionError) {
+              console.error('Quota deduction error:', quotaDeductionError)
+              // Don't fail the request due to quota deduction errors
+            }
 
             // Persist chat history and logs
             try {
@@ -2281,18 +2316,41 @@ export async function POST(request: NextRequest) {
       console.warn('Failed to save chat history/log interaction:', logError)
     }
     
+    // QUOTA DEDUCTION: Deduct perspectives for successful responses (non-streaming)
+    try {
+      for (const response of responses) {
+        if (response && response.content && response.usage) {
+          const usage = extractUsageFromResponse(response)
+          const estimatedCost = response.cost?.total_cost || calculateEstimatedCost(response.model, usage.inputTokens, usage.outputTokens)
+
+          await deductQuotaMiddleware(
+            user.id,
+            response.model,
+            sessionId,
+            usage,
+            estimatedCost,
+            { messages, temperature, max_tokens },
+            { provider: response.provider, fallback_method: response.fallback_method }
+          )
+        }
+      }
+    } catch (quotaDeductionError) {
+      console.error('Non-streaming quota deduction error:', quotaDeductionError)
+      // Don't fail the request due to quota deduction errors
+    }
+
     // Return response in OpenAI format for single model, Polydev format for multiple
     if (targetModels.length === 1 && model) {
       const response = responses[0]
       if (response?.error) {
-        return NextResponse.json({ 
-          error: { 
-            message: response.error, 
-            type: 'api_error' 
-          } 
+        return NextResponse.json({
+          error: {
+            message: response.error,
+            type: 'api_error'
+          }
         }, { status: 500 })
       }
-      
+
       // Calculate cost information
       const usage = response?.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
       let costInfo: any = { input_cost: 0, output_cost: 0, total_cost: 0 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { Users, CreditCard, Code, BarChart3, Settings, Plus, Search, Activity, DollarSign } from 'lucide-react'
+import { Users, CreditCard, Code, BarChart3, Settings, Plus, Search, Activity, DollarSign, Target, Key } from 'lucide-react'
 import { SafeText, renderSafely } from '@/components/SafeText'
 
 
@@ -313,6 +313,28 @@ export default function AdminDashboard() {
               <h3 className="ml-3 text-lg font-semibold text-gray-900">Credit Management</h3>
             </div>
             <p className="text-gray-600">Adjust user credits and view usage</p>
+          </button>
+
+          <button
+            onClick={() => router.push('/admin/quotas')}
+            className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow text-left"
+          >
+            <div className="flex items-center mb-3">
+              <Target className="h-6 w-6 text-red-600" />
+              <h3 className="ml-3 text-lg font-semibold text-gray-900">Quota Management</h3>
+            </div>
+            <p className="text-gray-600">Manage perspective quotas and limits</p>
+          </button>
+
+          <button
+            onClick={() => router.push('/admin/providers')}
+            className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow text-left"
+          >
+            <div className="flex items-center mb-3">
+              <Key className="h-6 w-6 text-orange-600" />
+              <h3 className="ml-3 text-lg font-semibold text-gray-900">Provider API Keys</h3>
+            </div>
+            <p className="text-gray-600">Manage API keys with ordered fallback</p>
           </button>
 
           <button
