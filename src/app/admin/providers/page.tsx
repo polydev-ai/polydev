@@ -53,6 +53,7 @@ export default function ProvidersAdminPage() {
   const [error, setError] = useState('')
   const [selectedProvider, setSelectedProvider] = useState<string>('anthropic')
   const [showAddDialog, setShowAddDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null)
   const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo: string, display_name: string }>>([])
 
@@ -105,6 +106,20 @@ export default function ProvidersAdminPage() {
     }
   }
 
+  const handleOpenEdit = (key: ApiKey) => {
+    setEditingKey(key)
+    setFormData({
+      provider: key.provider,
+      key_name: key.key_name,
+      encrypted_key: '', // Don't populate for security
+      monthly_budget: key.monthly_budget?.toString() || '',
+      daily_limit: key.daily_limit?.toString() || '',
+      rate_limit_rpm: key.rate_limit_rpm?.toString() || '',
+      priority_order: key.priority_order.toString()
+    })
+    setShowEditDialog(true)
+  }
+
   const handleAddKey = async () => {
     try {
       const response = await fetch('/api/admin/providers', {
@@ -140,6 +155,48 @@ export default function ProvidersAdminPage() {
       }
     } catch (err) {
       setError('Error adding API key')
+    }
+  }
+
+  const handleUpdateKey = async () => {
+    if (!editingKey) return
+
+    try {
+      const response = await fetch('/api/admin/providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_key',
+          keyId: editingKey.id,
+          key_name: formData.key_name,
+          encrypted_key: formData.encrypted_key ? btoa(formData.encrypted_key) : undefined,
+          monthly_budget: formData.monthly_budget ? Number(formData.monthly_budget) : null,
+          daily_limit: formData.daily_limit ? Number(formData.daily_limit) : null,
+          rate_limit_rpm: formData.rate_limit_rpm ? Number(formData.rate_limit_rpm) : null,
+          priority_order: formData.priority_order ? Number(formData.priority_order) : 1
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setShowEditDialog(false)
+        setEditingKey(null)
+        setFormData({
+          provider: 'anthropic',
+          key_name: '',
+          encrypted_key: '',
+          monthly_budget: '',
+          daily_limit: '',
+          rate_limit_rpm: '',
+          priority_order: ''
+        })
+        loadApiKeys()
+      } else {
+        setError(data.error || 'Failed to update API key')
+      }
+    } catch (err) {
+      setError('Error updating API key')
     }
   }
 
@@ -316,14 +373,14 @@ export default function ProvidersAdminPage() {
                 Add API Key
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-hidden flex flex-col">
-            <DialogHeader className="flex-shrink-0">
+            <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
               <DialogTitle>Add New API Key</DialogTitle>
               <DialogDescription>
                 Add a new API key for a provider. Keys will be tried in priority order.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-2">
+            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="provider" className="text-right">Provider</Label>
                 <Select value={formData.provider} onValueChange={(value) => setFormData({...formData, provider: value})}>
@@ -421,8 +478,100 @@ export default function ProvidersAdminPage() {
                 />
               </div>
             </div>
-            <DialogFooter className="flex-shrink-0">
+            <DialogFooter>
               <Button onClick={handleAddKey}>Add Key</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit API Key Dialog */}
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit API Key</DialogTitle>
+              <DialogDescription>
+                Update the API key settings. Leave API Key field empty to keep the existing key.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit_provider" className="text-right">Provider</Label>
+                <Input
+                  id="edit_provider"
+                  value={PROVIDERS.find(p => p.id === formData.provider)?.name || formData.provider}
+                  disabled
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit_key_name" className="text-right">Key Name</Label>
+                <Input
+                  id="edit_key_name"
+                  value={formData.key_name}
+                  onChange={(e) => setFormData({...formData, key_name: e.target.value})}
+                  className="col-span-3"
+                  placeholder="My API Key"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit_encrypted_key" className="text-right">API Key</Label>
+                <Input
+                  id="edit_encrypted_key"
+                  type="password"
+                  value={formData.encrypted_key}
+                  onChange={(e) => setFormData({...formData, encrypted_key: e.target.value})}
+                  className="col-span-3"
+                  placeholder="Leave empty to keep existing"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit_priority_order" className="text-right">Priority Order</Label>
+                <Input
+                  id="edit_priority_order"
+                  type="number"
+                  value={formData.priority_order}
+                  onChange={(e) => setFormData({...formData, priority_order: e.target.value})}
+                  className="col-span-3"
+                  placeholder="1"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit_monthly_budget" className="text-right">Monthly Budget ($)</Label>
+                <Input
+                  id="edit_monthly_budget"
+                  type="number"
+                  value={formData.monthly_budget}
+                  onChange={(e) => setFormData({...formData, monthly_budget: e.target.value})}
+                  className="col-span-3"
+                  placeholder="100"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit_daily_limit" className="text-right">Daily Limit ($)</Label>
+                <Input
+                  id="edit_daily_limit"
+                  type="number"
+                  value={formData.daily_limit}
+                  onChange={(e) => setFormData({...formData, daily_limit: e.target.value})}
+                  className="col-span-3"
+                  placeholder="10"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit_rate_limit_rpm" className="text-right">Rate Limit (RPM)</Label>
+                <Input
+                  id="edit_rate_limit_rpm"
+                  type="number"
+                  value={formData.rate_limit_rpm}
+                  onChange={(e) => setFormData({...formData, rate_limit_rpm: e.target.value})}
+                  className="col-span-3"
+                  placeholder="100"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
+              <Button onClick={handleUpdateKey}>Update Key</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -587,6 +736,13 @@ export default function ProvidersAdminPage() {
                               </div>
                             </div>
                             <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenEdit(key)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="sm"

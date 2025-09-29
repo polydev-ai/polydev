@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'add_key':
         return await addProviderKey(supabase, data)
+      case 'update_key':
+        return await updateKey(supabase, data)
       case 'update_budget':
         return await updateKeyBudget(supabase, data)
       case 'toggle_active':
@@ -172,6 +174,44 @@ async function addProviderKey(supabase: any, data: any) {
   }
 
   return NextResponse.json({ success: true, apiKey: newKey })
+}
+
+async function updateKey(supabase: any, data: any) {
+  const { keyId, key_name, encrypted_key, monthly_budget, daily_limit, rate_limit_rpm, priority_order } = data
+
+  if (!keyId) {
+    return NextResponse.json({ error: 'Key ID is required' }, { status: 400 })
+  }
+
+  const updateData: any = {
+    updated_at: new Date().toISOString()
+  }
+
+  if (key_name !== undefined) updateData.key_name = key_name
+  if (monthly_budget !== undefined) updateData.monthly_budget = monthly_budget
+  if (daily_limit !== undefined) updateData.daily_limit = daily_limit
+  if (rate_limit_rpm !== undefined) updateData.rate_limit_rpm = rate_limit_rpm
+  if (priority_order !== undefined) updateData.priority_order = priority_order
+
+  if (encrypted_key) {
+    updateData.encrypted_key = encrypted_key
+    const decodedKey = atob(encrypted_key)
+    updateData.key_preview = decodedKey.length > 8
+      ? `${decodedKey.slice(0, 8)}...${decodedKey.slice(-4)}`
+      : `${decodedKey.slice(0, 4)}***`
+  }
+
+  const { error } = await supabase
+    .from('user_api_keys')
+    .update(updateData)
+    .eq('id', keyId)
+
+  if (error) {
+    console.error('Error updating API key:', error)
+    return NextResponse.json({ error: 'Failed to update API key' }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
 }
 
 async function updateKeyBudget(supabase: any, data: any) {
