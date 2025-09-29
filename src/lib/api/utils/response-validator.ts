@@ -375,6 +375,7 @@ export class ResponseValidator {
         
       case 'google':
       case 'vertex':
+      case 'gemini':
         if (response.candidates) {
           // Handle both array and non-array candidates
           let candidate = null
@@ -383,7 +384,7 @@ export class ResponseValidator {
           } else {
             candidate = response.candidates
           }
-          
+
           if (candidate?.content?.parts) {
             const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
             return parts[0]?.text || null
@@ -413,6 +414,7 @@ export class ResponseValidator {
         
       case 'google':
       case 'vertex':
+      case 'gemini':
         return response.usageMetadata || null
         
       default:

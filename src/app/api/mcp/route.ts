@@ -418,6 +418,11 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
     
     case 'gemini':
     case 'google':
+      // Debug logging for Gemini response
+      console.log('[DEBUG] Raw Gemini API response:', JSON.stringify(data, null, 2))
+      console.log('[DEBUG] Has candidates:', !!data.candidates)
+      console.log('[DEBUG] Candidates type:', Array.isArray(data.candidates) ? 'array' : typeof data.candidates)
+
       return {
         content: (() => {
           // Handle both array and non-array candidates
@@ -425,14 +430,23 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
             let candidate = null
             if (Array.isArray(data.candidates)) {
               candidate = data.candidates[0]
+              console.log('[DEBUG] First candidate:', JSON.stringify(candidate, null, 2))
             } else {
               candidate = data.candidates
+              console.log('[DEBUG] Single candidate:', JSON.stringify(candidate, null, 2))
             }
-            
+
             if (candidate?.content?.parts) {
               const parts = Array.isArray(candidate.content.parts) ? candidate.content.parts : [candidate.content.parts]
-              return parts[0]?.text || 'No response'
+              console.log('[DEBUG] Parts:', JSON.stringify(parts, null, 2))
+              const text = parts[0]?.text
+              console.log('[DEBUG] Extracted text:', text)
+              return text || 'No response'
+            } else {
+              console.log('[DEBUG] No content.parts found. Candidate structure:', Object.keys(candidate || {}))
             }
+          } else {
+            console.log('[DEBUG] No candidates in response. Response keys:', Object.keys(data))
           }
           return 'No response'
         })(),

@@ -101,12 +101,16 @@ export async function PUT(request: NextRequest) {
     
     // Validate the updates
     const allowedFields = [
-      'default_provider', 
-      'default_model', 
-      'preferred_providers', 
+      'default_provider',
+      'default_model',
+      'preferred_providers',
       'usage_preference',
       'model_preferences',
-      'mcp_settings'
+      'mcp_settings',
+      'max_output_tokens_premium',
+      'max_output_tokens_normal',
+      'max_output_tokens_eco',
+      'max_output_tokens_custom'
     ]
     
     const filteredUpdates: any = {}

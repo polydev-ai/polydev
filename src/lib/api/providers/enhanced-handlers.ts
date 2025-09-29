@@ -276,7 +276,7 @@ export class EnhancedGoogleHandler extends BaseEnhancedHandler {
   protected async makeRequest(options: ApiHandlerOptions): Promise<Response> {
     const transformer = getTransformer('google')
     const requestBody = transformer.transformRequest(options)
-    
+
     // Add Google-specific safety settings
     if (options.safetySettings) {
       requestBody.safetySettings = options.safetySettings
@@ -289,17 +289,27 @@ export class EnhancedGoogleHandler extends BaseEnhancedHandler {
         { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }
       ]
     }
-    
+
     const headers = this.prepareHeaders(options)
     const endpoint = options.stream
       ? `${this.baseUrl}/models/${options.model}:streamGenerateContent`
       : `${this.baseUrl}/models/${options.model}:generateContent`
 
-    return fetch(endpoint, {
+    console.log('[DEBUG] Gemini request endpoint:', endpoint)
+    console.log('[DEBUG] Gemini request body:', JSON.stringify(requestBody, null, 2))
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody)
     })
+
+    console.log('[DEBUG] Gemini response status:', response.status, response.statusText)
+    const responseClone = response.clone()
+    const responseText = await responseClone.text()
+    console.log('[DEBUG] Gemini raw response:', responseText)
+
+    return response
   }
   
   protected getTestModel(): string {
