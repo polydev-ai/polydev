@@ -38,12 +38,12 @@ interface ProviderStats {
 }
 
 const PROVIDERS = [
-  { id: 'anthropic', name: 'Anthropic', description: 'Claude models' },
-  { id: 'openai', name: 'OpenAI', description: 'GPT models' },
-  { id: 'xai', name: 'xAI', description: 'Grok models' },
-  { id: 'google', name: 'Google', description: 'Gemini models' },
-  { id: 'cerebras', name: 'Cerebras', description: 'Fast inference models' },
-  { id: 'zai', name: 'ZAI', description: 'Zero-latency AI models' }
+  { id: 'anthropic', name: 'Anthropic', description: 'Claude models', logo: 'https://mintlify.s3.us-west-1.amazonaws.com/anthropic/logo/light.svg' },
+  { id: 'openai', name: 'OpenAI', description: 'GPT models', logo: 'https://cdn.openai.com/API/logo-assets/powered-by-openai.svg' },
+  { id: 'xai', name: 'xAI', description: 'Grok models', logo: 'https://x.ai/favicon.ico' },
+  { id: 'google', name: 'Google', description: 'Gemini models', logo: 'https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg' },
+  { id: 'cerebras', name: 'Cerebras', description: 'Fast inference models', logo: 'https://cerebras.ai/wp-content/uploads/2023/03/cerebras-icon.svg' },
+  { id: 'zai', name: 'ZAI', description: 'Zero-latency AI models', logo: 'https://via.placeholder.com/32/4F46E5/ffffff?text=Z' }
 ]
 
 export default function ProvidersAdminPage() {
@@ -289,7 +289,7 @@ export default function ProvidersAdminPage() {
                 Add API Key
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New API Key</DialogTitle>
               <DialogDescription>
@@ -301,12 +301,28 @@ export default function ProvidersAdminPage() {
                 <Label htmlFor="provider" className="text-right">Provider</Label>
                 <Select value={formData.provider} onValueChange={(value) => setFormData({...formData, provider: value})}>
                   <SelectTrigger className="col-span-3">
-                    <SelectValue />
+                    <SelectValue>
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={PROVIDERS.find(p => p.id === formData.provider)?.logo}
+                          alt={formData.provider}
+                          className="w-5 h-5 object-contain"
+                        />
+                        <span>{PROVIDERS.find(p => p.id === formData.provider)?.name}</span>
+                      </div>
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {PROVIDERS.map(provider => (
                       <SelectItem key={provider.id} value={provider.id}>
-                        {provider.name}
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={provider.logo}
+                            alt={provider.name}
+                            className="w-5 h-5 object-contain"
+                          />
+                          <span>{provider.name}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -443,10 +459,15 @@ export default function ProvidersAdminPage() {
       <Tabs value={selectedProvider} onValueChange={setSelectedProvider}>
         <TabsList className="grid w-full grid-cols-6">
           {PROVIDERS.map(provider => (
-            <TabsTrigger key={provider.id} value={provider.id}>
-              {provider.name}
+            <TabsTrigger key={provider.id} value={provider.id} className="flex items-center gap-2">
+              <img
+                src={provider.logo}
+                alt={provider.name}
+                className="w-4 h-4 object-contain"
+              />
+              <span>{provider.name}</span>
               {stats[provider.id] && (
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="ml-1">
                   {stats[provider.id].count}
                 </Badge>
               )}
@@ -459,7 +480,14 @@ export default function ProvidersAdminPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  {provider.name} API Keys
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={provider.logo}
+                      alt={provider.name}
+                      className="w-6 h-6 object-contain"
+                    />
+                    <span>{provider.name} API Keys</span>
+                  </div>
                   <Badge variant="outline">
                     {getProviderKeys(provider.id).length} keys
                   </Badge>
