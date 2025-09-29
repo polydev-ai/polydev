@@ -63,7 +63,7 @@ export default function ProvidersAdminPage() {
     monthly_budget: '',
     daily_limit: '',
     rate_limit_rpm: '',
-    user_id: ''
+    priority_order: ''
   })
 
   useEffect(() => {
@@ -99,6 +99,7 @@ export default function ProvidersAdminPage() {
           monthly_budget: formData.monthly_budget ? Number(formData.monthly_budget) : null,
           daily_limit: formData.daily_limit ? Number(formData.daily_limit) : null,
           rate_limit_rpm: formData.rate_limit_rpm ? Number(formData.rate_limit_rpm) : null,
+          priority_order: formData.priority_order ? Number(formData.priority_order) : 1,
           encrypted_key: btoa(formData.encrypted_key) // Base64 encode
         })
       })
@@ -114,7 +115,7 @@ export default function ProvidersAdminPage() {
           monthly_budget: '',
           daily_limit: '',
           rate_limit_rpm: '',
-          user_id: ''
+          priority_order: ''
         })
         loadApiKeys()
       } else {
@@ -312,16 +313,6 @@ export default function ProvidersAdminPage() {
                 </Select>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="user_id" className="text-right">User ID</Label>
-                <Input
-                  id="user_id"
-                  value={formData.user_id}
-                  onChange={(e) => setFormData({...formData, user_id: e.target.value})}
-                  className="col-span-3"
-                  placeholder="User UUID"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="key_name" className="text-right">Key Name</Label>
                 <Input
                   id="key_name"
@@ -340,6 +331,17 @@ export default function ProvidersAdminPage() {
                   onChange={(e) => setFormData({...formData, encrypted_key: e.target.value})}
                   className="col-span-3"
                   placeholder="sk-..."
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="priority_order" className="text-right">Priority Order</Label>
+                <Input
+                  id="priority_order"
+                  type="number"
+                  value={formData.priority_order}
+                  onChange={(e) => setFormData({...formData, priority_order: e.target.value})}
+                  className="col-span-3"
+                  placeholder="1"
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
