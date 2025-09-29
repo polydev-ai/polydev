@@ -17,10 +17,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('user_api_keys')
-      .select(`
-        *,
-        profiles!inner(email)
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (provider) {
@@ -38,11 +35,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch API keys' }, { status: 500 })
     }
 
-    // Transform data to include email
-    const transformedKeys = apiKeys?.map((key: any) => ({
-      ...key,
-      user_email: key.profiles.email
-    })) || []
+    // No transformation needed for admin keys
+    const transformedKeys = apiKeys || []
 
     // Get provider statistics
     const { data: providerStats, error: statsError } = await supabase
@@ -111,11 +105,14 @@ export async function POST(request: NextRequest) {
 }
 
 async function addProviderKey(supabase: any, data: any) {
-  const { provider, key_name, encrypted_key, monthly_budget, rate_limit_rpm, user_id, priority_order, daily_limit } = data
+  const { provider, key_name, encrypted_key, monthly_budget, rate_limit_rpm, priority_order, daily_limit } = data
 
-  if (!provider || !user_id) {
-    return NextResponse.json({ error: 'Provider and user_id are required' }, { status: 400 })
+  if (!provider) {
+    return NextResponse.json({ error: 'Provider is required' }, { status: 400 })
   }
+
+  // For admin keys, use a system user ID or create a special admin user
+  const user_id = process.env.ADMIN_USER_ID || '00000000-0000-0000-0000-000000000000'
 
   // Validate provider
   const validProviders = ['anthropic', 'openai', 'xai', 'google', 'cerebras', 'zai']

@@ -315,14 +315,14 @@ export default function ProvidersAdminPage() {
                 Add API Key
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
+            <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-hidden flex flex-col">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle>Add New API Key</DialogTitle>
               <DialogDescription>
                 Add a new API key for a provider. Keys will be tried in priority order.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+            <div className="grid gap-4 py-4 overflow-y-auto flex-1 pr-2">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="provider" className="text-right">Provider</Label>
                 <Select value={formData.provider} onValueChange={(value) => setFormData({...formData, provider: value})}>
@@ -420,7 +420,7 @@ export default function ProvidersAdminPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-shrink-0">
               <Button onClick={handleAddKey}>Add Key</Button>
             </DialogFooter>
           </DialogContent>
