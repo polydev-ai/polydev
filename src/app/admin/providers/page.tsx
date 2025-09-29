@@ -38,12 +38,12 @@ interface ProviderStats {
 }
 
 const PROVIDERS = [
-  { id: 'anthropic', name: 'Anthropic', description: 'Claude models', logo: 'https://mintlify.s3.us-west-1.amazonaws.com/anthropic/logo/light.svg' },
-  { id: 'openai', name: 'OpenAI', description: 'GPT models', logo: 'https://cdn.openai.com/API/logo-assets/powered-by-openai.svg' },
-  { id: 'xai', name: 'xAI', description: 'Grok models', logo: 'https://x.ai/favicon.ico' },
-  { id: 'google', name: 'Google', description: 'Gemini models', logo: 'https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg' },
-  { id: 'cerebras', name: 'Cerebras', description: 'Fast inference models', logo: 'https://cerebras.ai/wp-content/uploads/2023/03/cerebras-icon.svg' },
-  { id: 'zai', name: 'ZAI', description: 'Zero-latency AI models', logo: 'https://via.placeholder.com/32/4F46E5/ffffff?text=Z' }
+  { id: 'anthropic', name: 'Anthropic', description: 'Claude models' },
+  { id: 'openai', name: 'OpenAI', description: 'GPT models' },
+  { id: 'xai', name: 'xAI', description: 'Grok models' },
+  { id: 'google', name: 'Google', description: 'Gemini models' },
+  { id: 'cerebras', name: 'Cerebras', description: 'Fast inference models' },
+  { id: 'zai', name: 'ZAI', description: 'Zero-latency AI models' }
 ]
 
 export default function ProvidersAdminPage() {
@@ -54,6 +54,7 @@ export default function ProvidersAdminPage() {
   const [selectedProvider, setSelectedProvider] = useState<string>('anthropic')
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null)
+  const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo_url: string, display_name: string }>>([])
 
   // Form state
   const [formData, setFormData] = useState({
@@ -68,7 +69,20 @@ export default function ProvidersAdminPage() {
 
   useEffect(() => {
     loadApiKeys()
+    loadProvidersRegistry()
   }, [])
+
+  const loadProvidersRegistry = async () => {
+    try {
+      const response = await fetch('/api/providers/registry')
+      const data = await response.json()
+      if (data.success && data.providers) {
+        setProvidersRegistry(data.providers)
+      }
+    } catch (err) {
+      console.error('Error loading providers registry:', err)
+    }
+  }
 
   const loadApiKeys = async () => {
     try {
@@ -253,6 +267,15 @@ export default function ProvidersAdminPage() {
       .sort((a, b) => a.priority_order - b.priority_order)
   }
 
+  const getProviderLogo = (providerId: string) => {
+    const providerInfo = providersRegistry.find(p =>
+      p.id === providerId ||
+      p.name.toLowerCase() === providerId.toLowerCase() ||
+      providerId.toLowerCase().includes(p.id)
+    )
+    return providerInfo?.logo_url || 'https://models.dev/logos/default.svg'
+  }
+
   const formatUsage = (current: number, limit: number | null) => {
     if (!limit) return `$${current.toFixed(2)}`
     const percentage = (current / limit) * 100
@@ -289,14 +312,14 @@ export default function ProvidersAdminPage() {
                 Add API Key
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Add New API Key</DialogTitle>
               <DialogDescription>
                 Add a new API key for a provider. Keys will be tried in priority order.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 overflow-y-auto max-h-[60vh]">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="provider" className="text-right">Provider</Label>
                 <Select value={formData.provider} onValueChange={(value) => setFormData({...formData, provider: value})}>
@@ -304,7 +327,7 @@ export default function ProvidersAdminPage() {
                     <SelectValue>
                       <div className="flex items-center gap-2">
                         <img
-                          src={PROVIDERS.find(p => p.id === formData.provider)?.logo}
+                          src={getProviderLogo(formData.provider)}
                           alt={formData.provider}
                           className="w-5 h-5 object-contain"
                         />
@@ -317,7 +340,7 @@ export default function ProvidersAdminPage() {
                       <SelectItem key={provider.id} value={provider.id}>
                         <div className="flex items-center gap-2">
                           <img
-                            src={provider.logo}
+                            src={getProviderLogo(provider.id)}
                             alt={provider.name}
                             className="w-5 h-5 object-contain"
                           />
@@ -461,7 +484,7 @@ export default function ProvidersAdminPage() {
           {PROVIDERS.map(provider => (
             <TabsTrigger key={provider.id} value={provider.id} className="flex items-center gap-2">
               <img
-                src={provider.logo}
+                src={getProviderLogo(provider.id)}
                 alt={provider.name}
                 className="w-4 h-4 object-contain"
               />
@@ -482,7 +505,7 @@ export default function ProvidersAdminPage() {
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <img
-                      src={provider.logo}
+                      src={getProviderLogo(provider.id)}
                       alt={provider.name}
                       className="w-6 h-6 object-contain"
                     />
