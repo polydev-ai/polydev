@@ -115,7 +115,7 @@ export default function ProvidersAdminPage() {
       monthly_budget: key.monthly_budget?.toString() || '',
       daily_limit: key.daily_limit?.toString() || '',
       rate_limit_rpm: key.rate_limit_rpm?.toString() || '',
-      priority_order: key.priority_order.toString()
+      priority_order: key.priority_order?.toString() || '1'
     })
     setShowEditDialog(true)
   }
