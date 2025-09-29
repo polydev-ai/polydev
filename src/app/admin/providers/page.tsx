@@ -373,14 +373,14 @@ export default function ProvidersAdminPage() {
                 Add API Key
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-            <DialogHeader>
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col overflow-hidden">
+            <DialogHeader className="shrink-0">
               <DialogTitle>Add New API Key</DialogTitle>
               <DialogDescription>
                 Add a new API key for a provider. Keys will be tried in priority order.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 overflow-y-auto min-h-0">
+            <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="provider" className="text-right">Provider</Label>
                 <Select value={formData.provider} onValueChange={(value) => setFormData({...formData, provider: value})}>
@@ -478,7 +478,7 @@ export default function ProvidersAdminPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="shrink-0">
               <Button onClick={handleAddKey}>Add Key</Button>
             </DialogFooter>
           </DialogContent>
@@ -486,14 +486,14 @@ export default function ProvidersAdminPage() {
 
         {/* Edit API Key Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col overflow-hidden">
+            <DialogHeader className="shrink-0">
               <DialogTitle>Edit API Key</DialogTitle>
               <DialogDescription>
                 Update the API key settings. Leave API Key field empty to keep the existing key.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 overflow-y-auto min-h-0">
+            <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit_provider" className="text-right">Provider</Label>
                 <Input
@@ -569,7 +569,7 @@ export default function ProvidersAdminPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="shrink-0">
               <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
               <Button onClick={handleUpdateKey}>Update Key</Button>
             </DialogFooter>
