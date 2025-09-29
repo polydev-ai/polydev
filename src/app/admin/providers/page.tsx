@@ -54,7 +54,7 @@ export default function ProvidersAdminPage() {
   const [selectedProvider, setSelectedProvider] = useState<string>('anthropic')
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null)
-  const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo_url: string, display_name: string }>>([])
+  const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo: string, display_name: string }>>([])
 
   // Form state
   const [formData, setFormData] = useState({
@@ -74,10 +74,13 @@ export default function ProvidersAdminPage() {
 
   const loadProvidersRegistry = async () => {
     try {
-      const response = await fetch('/api/providers/registry')
+      const response = await fetch('/api/models-dev/providers?rich=true')
+      if (!response.ok) {
+        throw new Error('Failed to fetch providers')
+      }
       const data = await response.json()
-      if (data.success && data.providers) {
-        setProvidersRegistry(data.providers)
+      if (Array.isArray(data)) {
+        setProvidersRegistry(data)
       }
     } catch (err) {
       console.error('Error loading providers registry:', err)
@@ -273,7 +276,7 @@ export default function ProvidersAdminPage() {
       p.name.toLowerCase() === providerId.toLowerCase() ||
       providerId.toLowerCase().includes(p.id)
     )
-    return providerInfo?.logo_url || 'https://models.dev/logos/default.svg'
+    return providerInfo?.logo || 'https://models.dev/logos/default.svg'
   }
 
   const formatUsage = (current: number, limit: number | null) => {
@@ -312,14 +315,14 @@ export default function ProvidersAdminPage() {
                 Add API Key
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] max-h-[90vh]">
+            <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Add New API Key</DialogTitle>
               <DialogDescription>
                 Add a new API key for a provider. Keys will be tried in priority order.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 overflow-y-auto max-h-[60vh]">
+            <div className="grid gap-4 py-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 200px)' }}>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="provider" className="text-right">Provider</Label>
                 <Select value={formData.provider} onValueChange={(value) => setFormData({...formData, provider: value})}>
