@@ -281,7 +281,7 @@ export default function ModelTiersPage() {
             </DialogContent>
           </Dialog>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
+            <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
               Add Model
@@ -351,6 +351,7 @@ export default function ModelTiersPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="space-y-6">

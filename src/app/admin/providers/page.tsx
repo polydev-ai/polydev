@@ -373,7 +373,7 @@ export default function ProvidersAdminPage() {
                 Add API Key
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col overflow-hidden">
+            <DialogContent className="sm:max-w-[500px] flex flex-col overflow-hidden" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader className="shrink-0">
               <DialogTitle>Add New API Key</DialogTitle>
               <DialogDescription>
@@ -486,7 +486,7 @@ export default function ProvidersAdminPage() {
 
         {/* Edit API Key Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogContent className="sm:max-w-[500px] flex flex-col overflow-hidden" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader className="shrink-0">
               <DialogTitle>Edit API Key</DialogTitle>
               <DialogDescription>

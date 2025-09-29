@@ -79,7 +79,7 @@ export async function getMaxOutputTokens(
 
     // User tier-specific setting (capped by admin global max)
     if (tier !== 'unknown') {
-      const tierField = `max_output_tokens_${tier}`
+      const tierField = `max_output_tokens_${tier}` as keyof typeof userPrefs
       const userTierValue = userPrefs?.[tierField]
       if (userTierValue) {
         return {
@@ -113,7 +113,7 @@ export async function getMaxOutputTokens(
 
     // Provider tier-specific setting
     if (tier !== 'unknown' && providerConfig) {
-      const tierField = `max_output_tokens_${tier}`
+      const tierField = `max_output_tokens_${tier}` as keyof typeof providerConfig
       const providerTierValue = providerConfig[tierField]
       if (providerTierValue) {
         return {
@@ -173,7 +173,7 @@ export function getMaxOutputTokensSync(
 
   // User tier setting
   if (tier !== 'unknown') {
-    const tierField = `max_output_tokens_${tier}`
+    const tierField = `max_output_tokens_${tier}` as keyof typeof userPrefs
     const userTierValue = userPrefs?.[tierField]
     if (userTierValue) {
       return {
@@ -193,7 +193,7 @@ export function getMaxOutputTokensSync(
 
   // Provider tier setting
   if (tier !== 'unknown' && providerConfig) {
-    const tierField = `max_output_tokens_${tier}`
+    const tierField = `max_output_tokens_${tier}` as keyof typeof providerConfig
     const providerTierValue = providerConfig[tierField]
     if (providerTierValue) {
       return {
