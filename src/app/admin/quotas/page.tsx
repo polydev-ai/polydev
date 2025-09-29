@@ -486,7 +486,7 @@ export default function QuotaManagement() {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => resetUserQuota(user.user_id, 'monthly')}
+                        onClick={() => resetUserQuota(user.id, 'monthly')}
                         className="text-orange-600 hover:text-orange-900"
                         title="Reset Monthly Usage"
                       >
@@ -560,7 +560,7 @@ export default function QuotaManagement() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => updateUserQuota(updateModal.user!.user_id, updateModal.field!, newValue)}
+                  onClick={() => updateUserQuota(updateModal.user!.id, updateModal.field!, newValue)}
                   className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
                 >
                   Update

@@ -163,16 +163,28 @@ export default function ProviderAnalyticsPage() {
 
       // Filter by selected provider if not 'all'
       if (selectedProvider !== 'all') {
-        Object.keys(mockAnalytics).forEach(key => {
-          if (Array.isArray(mockAnalytics[key as keyof typeof mockAnalytics])) {
-            mockAnalytics[key as keyof typeof mockAnalytics] = mockAnalytics[key as keyof typeof mockAnalytics].filter(
-              (item: any) => item.provider === selectedProvider
-            )
-          }
-        })
-      }
+        const filteredAnalytics = { ...mockAnalytics }
 
-      setAnalytics(mockAnalytics)
+        filteredAnalytics.keyUsageStats = mockAnalytics.keyUsageStats.filter(
+          (item: any) => item.provider === selectedProvider
+        )
+        filteredAnalytics.providerOverview = mockAnalytics.providerOverview.filter(
+          (item: any) => item.provider === selectedProvider
+        )
+        filteredAnalytics.usageTrends = mockAnalytics.usageTrends.filter(
+          (item: any) => item.provider === selectedProvider
+        )
+        filteredAnalytics.errorAnalysis = mockAnalytics.errorAnalysis.filter(
+          (item: any) => item.provider === selectedProvider
+        )
+        filteredAnalytics.costBreakdown = mockAnalytics.costBreakdown.filter(
+          (item: any) => item.provider === selectedProvider
+        )
+
+        setAnalytics(filteredAnalytics)
+      } else {
+        setAnalytics(mockAnalytics)
+      }
 
     } catch (err) {
       setError('Error loading analytics data')

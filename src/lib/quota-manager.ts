@@ -175,11 +175,28 @@ export class QuotaManager {
       // Update user quota usage
       const tierUsageKey = `${modelInfo.tier}_perspectives_used`
 
+      // Get current usage first
+      const { data: currentQuota, error: fetchError } = await supabase
+        .from('user_perspective_quotas')
+        .select('messages_used, ' + tierUsageKey)
+        .eq('user_id', userId)
+        .single()
+
+      if (fetchError || !currentQuota) {
+        throw new Error('Failed to fetch current quota')
+      }
+
+      // Type guard to ensure we have the expected properties
+      const quotaData = currentQuota as any
+      if (typeof quotaData.messages_used !== 'number' || typeof quotaData[tierUsageKey] !== 'number') {
+        throw new Error('Invalid quota data structure')
+      }
+
       const { error: quotaError } = await supabase
         .from('user_perspective_quotas')
         .update({
-          messages_used: supabase.raw('messages_used + 1'),
-          [tierUsageKey]: supabase.raw(`${tierUsageKey} + 1`),
+          messages_used: quotaData.messages_used + 1,
+          [tierUsageKey]: quotaData[tierUsageKey] + 1,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', userId)
@@ -326,15 +343,29 @@ export class QuotaManager {
 
       const planTier = quota?.plan_tier || 'free'
 
+      // Get current monthly summary if it exists
+      const { data: currentSummary } = await supabase
+        .from('monthly_usage_summary')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('month_year', monthYear)
+        .single()
+
+      // Calculate new values
+      const newTotalMessages = (currentSummary?.total_messages || 0) + 1
+      const newPerspectivesUsed = (currentSummary?.[`${modelTier}_perspectives_used`] || 0) + 1
+      const newTotalCost = (currentSummary?.total_estimated_cost || 0) + cost
+      const newTierCost = (currentSummary?.[`${modelTier}_cost`] || 0) + cost
+
       // Upsert monthly summary
       const updateData = {
         user_id: userId,
         month_year: monthYear,
         plan_tier: planTier,
-        total_messages: supabase.raw('COALESCE(total_messages, 0) + 1'),
-        [`${modelTier}_perspectives_used`]: supabase.raw(`COALESCE(${modelTier}_perspectives_used, 0) + 1`),
-        total_estimated_cost: supabase.raw(`COALESCE(total_estimated_cost, 0) + ${cost}`),
-        [`${modelTier}_cost`]: supabase.raw(`COALESCE(${modelTier}_cost, 0) + ${cost}`),
+        total_messages: newTotalMessages,
+        [`${modelTier}_perspectives_used`]: newPerspectivesUsed,
+        total_estimated_cost: newTotalCost,
+        [`${modelTier}_cost`]: newTierCost,
         updated_at: new Date().toISOString()
       }
 
