@@ -279,10 +279,11 @@ export default function ProvidersAdminPage() {
     return providerInfo?.logo || 'https://models.dev/logos/default.svg'
   }
 
-  const formatUsage = (current: number, limit: number | null) => {
-    if (!limit) return `$${current.toFixed(2)}`
-    const percentage = (current / limit) * 100
-    return `$${current.toFixed(2)} / $${limit.toFixed(2)} (${percentage.toFixed(1)}%)`
+  const formatUsage = (current: number | null | undefined, limit: number | null | undefined) => {
+    const currentVal = current || 0
+    if (!limit) return `$${currentVal.toFixed(2)}`
+    const percentage = (currentVal / limit) * 100
+    return `$${currentVal.toFixed(2)} / $${limit.toFixed(2)} (${percentage.toFixed(1)}%)`
   }
 
   if (loading) {
