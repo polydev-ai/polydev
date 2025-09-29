@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { Users, CreditCard, Code, BarChart3, Settings, Plus, Search, Activity, DollarSign, Target, Key } from 'lucide-react'
+import { Users, CreditCard, Code, BarChart3, Settings, Plus, Search, Activity, DollarSign, Target, Key, Layers } from 'lucide-react'
 import { SafeText, renderSafely } from '@/components/SafeText'
 
 
@@ -390,6 +390,17 @@ export default function AdminDashboard() {
               <h3 className="ml-3 text-lg font-semibold text-gray-900">Pricing</h3>
             </div>
             <p className="text-gray-600">Manage subscription tiers and credit packages</p>
+          </button>
+
+          <button
+            onClick={() => router.push('/admin/model-tiers')}
+            className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow text-left"
+          >
+            <div className="flex items-center mb-3">
+              <Layers className="h-6 w-6 text-purple-600" />
+              <h3 className="ml-3 text-lg font-semibold text-gray-900">Model Tiers & Limits</h3>
+            </div>
+            <p className="text-gray-600">Manage model tiers, max output tokens, and global limits</p>
           </button>
         </div>
 

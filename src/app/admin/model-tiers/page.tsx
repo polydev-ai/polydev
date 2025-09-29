@@ -234,6 +234,14 @@ export default function ModelTiersPage() {
 
   return (
     <div className="container mx-auto p-6">
+      <div className="mb-4">
+        <button
+          onClick={() => window.location.href = '/admin'}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          ← Back to Admin Portal
+        </button>
+      </div>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Model Tiers Management</h1>

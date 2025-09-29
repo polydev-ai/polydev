@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { ArrowLeft, Plus, Copy, Trash2, Gift, Calendar, Users, Check, CreditCard } from 'lucide-react'
+import { ArrowLeft, Plus, Copy, Trash2, Gift, Calendar, Users, Check, CreditCard, Home } from 'lucide-react'
 
 interface CouponCode {
   id: string
@@ -295,9 +295,10 @@ export default function CouponsManagement() {
             <div className="flex items-center">
               <button
                 onClick={() => router.push('/admin')}
-                className="mr-4 p-2 text-gray-600 hover:text-gray-900"
+                className="mr-4 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Back to Admin Portal"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <Home className="h-5 w-5" />
               </button>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Coupon Codes</h1>

@@ -218,6 +218,14 @@ export default function AdminPricing() {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-4">
+          <button
+            onClick={() => router.push('/admin')}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Back to Admin Portal
+          </button>
+        </div>
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
@@ -228,9 +236,6 @@ export default function AdminPricing() {
               Manage subscription tiers, credit packages, and sync with Stripe
             </p>
           </div>
-          <Button onClick={() => router.push('/admin')} variant="outline">
-            Back to Dashboard
-          </Button>
         </div>
 
         {message && (

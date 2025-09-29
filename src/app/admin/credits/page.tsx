@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
-import { ArrowLeft, Plus, Search, Download, Filter, CreditCard } from 'lucide-react'
+import { ArrowLeft, Plus, Search, Download, Filter, CreditCard, Home } from 'lucide-react'
 
 interface User {
   id: string
@@ -245,9 +245,10 @@ function CreditManagementContent() {
             <div className="flex items-center">
               <button
                 onClick={() => router.push('/admin')}
-                className="mr-4 p-2 text-gray-600 hover:text-gray-900"
+                className="mr-4 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Back to Admin Portal"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <Home className="h-5 w-5" />
               </button>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Credit Management</h1>
