@@ -1266,7 +1266,7 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
               </ul>
 
               <Link
-                href="/auth"
+                href="/dashboard/subscription"
                 className="w-full block text-center px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-lg hover:from-orange-600 hover:to-amber-600 transition-all duration-300 shadow-lg hover:shadow-xl"
               >
                 Upgrade to Plus
@@ -1315,7 +1315,7 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
               </ul>
 
               <Link
-                href="/auth"
+                href="/dashboard/subscription"
                 className="w-full block text-center px-6 py-4 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl font-semibold hover:from-violet-600 hover:to-purple-700 transition-all duration-300"
               >
                 Upgrade to Pro

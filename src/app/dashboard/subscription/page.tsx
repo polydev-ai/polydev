@@ -529,14 +529,25 @@ export default function SubscriptionPage() {
               </li>
             </ul>
             {!isPlus && (
-              <Button
-                className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
-                onClick={() => handleUpgrade('plus', 'month')}
-                disabled={isUpgrading}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                {isUpgrading ? 'Processing...' : 'Upgrade to Plus'}
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+                  onClick={() => handleUpgrade('plus', 'month')}
+                  disabled={isUpgrading}
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  {isUpgrading ? 'Processing...' : 'Monthly - $25/mo'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full border-orange-500 text-orange-600 hover:bg-orange-50"
+                  onClick={() => handleUpgrade('plus', 'year')}
+                  disabled={isUpgrading}
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  {isUpgrading ? 'Processing...' : 'Annual - $240/yr ($20/mo)'}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -580,14 +591,25 @@ export default function SubscriptionPage() {
               </li>
             </ul>
             {!isPro && (
-              <Button
-                className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
-                onClick={() => handleUpgrade('pro', 'month')}
-                disabled={isUpgrading}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                {isUpgrading ? 'Processing...' : 'Upgrade to Pro'}
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
+                  onClick={() => handleUpgrade('pro', 'month')}
+                  disabled={isUpgrading}
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  {isUpgrading ? 'Processing...' : 'Monthly - $60/mo'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full border-purple-500 text-purple-600 hover:bg-purple-50"
+                  onClick={() => handleUpgrade('pro', 'year')}
+                  disabled={isUpgrading}
+                >
+                  <Zap className="h-4 w-4 mr-2" />
+                  {isUpgrading ? 'Processing...' : 'Annual - $600/yr ($50/mo)'}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
