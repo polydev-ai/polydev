@@ -198,24 +198,36 @@ export default function AdminBonuses() {
         ? new Date(Date.now() + grantForm.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
         : null
 
+      // Check if "All Users" is selected
+      const targetUserIds = grantForm.userId === 'ALL_USERS'
+        ? users.map(u => u.id)
+        : [grantForm.userId]
+
+      // Create bonus records for all target users
+      const bonusRecords = targetUserIds.map(userId => ({
+        user_id: userId,
+        bonus_type: grantForm.bonusType,
+        messages: grantForm.messages,
+        premium_perspectives: grantForm.premiumPerspectives,
+        normal_perspectives: grantForm.normalPerspectives,
+        eco_perspectives: grantForm.ecoPerspectives,
+        expires_at: expiresAt,
+        is_expired: false,
+        created_by: user?.id,
+        notes: grantForm.notes || null
+      }))
+
       const { error } = await supabase
         .from('user_bonus_quotas')
-        .insert({
-          user_id: grantForm.userId,
-          bonus_type: grantForm.bonusType,
-          messages: grantForm.messages,
-          premium_perspectives: grantForm.premiumPerspectives,
-          normal_perspectives: grantForm.normalPerspectives,
-          eco_perspectives: grantForm.ecoPerspectives,
-          expires_at: expiresAt,
-          is_expired: false,
-          created_by: user?.id,
-          notes: grantForm.notes || null
-        })
+        .insert(bonusRecords)
 
       if (error) throw error
 
-      setMessage({ type: 'success', text: 'Bonus granted successfully!' })
+      const successMessage = grantForm.userId === 'ALL_USERS'
+        ? `Bonus granted successfully to all ${targetUserIds.length} users!`
+        : 'Bonus granted successfully!'
+
+      setMessage({ type: 'success', text: successMessage })
       setShowGrantDialog(false)
       resetForm()
       loadBonuses()
@@ -483,6 +495,12 @@ export default function AdminBonuses() {
                     <SelectValue placeholder="Select a user" />
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" align="start" className="max-h-[200px] overflow-y-auto z-[9999] bg-white border shadow-lg" sideOffset={8}>
+                    <SelectItem value="ALL_USERS">
+                      <div className="flex items-center gap-2 font-semibold text-blue-600">
+                        <UserIcon className="h-4 w-4" />
+                        <span>🎁 All Users ({users.length})</span>
+                      </div>
+                    </SelectItem>
                     {users.map(user => (
                       <SelectItem key={user.id} value={user.id}>
                         <div className="flex items-center gap-2">
