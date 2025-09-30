@@ -46,11 +46,16 @@ export default function ModelTiersPage() {
   const [savingGlobal, setSavingGlobal] = useState(false)
   const { toast } = useToast()
 
-  // Database-driven dropdowns
+  // Database-driven dropdowns for Add dialog
   const [providers, setProviders] = useState<Provider[]>([])
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([])
   const [selectedProvider, setSelectedProvider] = useState<string>('')
   const [selectedModel, setSelectedModel] = useState<string>('')
+
+  // Database-driven dropdowns for Edit dialog
+  const [editAvailableModels, setEditAvailableModels] = useState<ModelOption[]>([])
+  const [editSelectedProvider, setEditSelectedProvider] = useState<string>('')
+  const [editSelectedModel, setEditSelectedModel] = useState<string>('')
 
   const [newModel, setNewModel] = useState({
     provider: '',
@@ -65,6 +70,16 @@ export default function ModelTiersPage() {
     fetchGlobalSettings()
     fetchProviders()
   }, [])
+
+  // Auto-select the model in edit dialog once models are loaded
+  useEffect(() => {
+    if (editingModel && editAvailableModels.length > 0 && !editSelectedModel) {
+      const model = editAvailableModels.find(m => m.name === editingModel.model_name)
+      if (model) {
+        setEditSelectedModel(model.id)
+      }
+    }
+  }, [editAvailableModels, editingModel, editSelectedModel])
 
   const fetchModels = async () => {
     try {
@@ -131,6 +146,23 @@ export default function ModelTiersPage() {
     }
   }
 
+  const fetchModelsForEditProvider = async (providerId: string) => {
+    try {
+      const response = await fetch(`/api/admin/models/list?provider_id=${providerId}`)
+      const data = await response.json()
+      if (data.models) {
+        setEditAvailableModels(data.models)
+      }
+    } catch (error) {
+      console.error('Error fetching models for edit:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load models for provider',
+        variant: 'destructive'
+      })
+    }
+  }
+
   const handleSaveGlobalMax = async () => {
     setSavingGlobal(true)
     try {
@@ -182,6 +214,9 @@ export default function ModelTiersPage() {
         await fetchModels()
         setIsEditDialogOpen(false)
         setEditingModel(null)
+        setEditSelectedProvider('')
+        setEditSelectedModel('')
+        setEditAvailableModels([])
       } else {
         throw new Error(data.error)
       }
@@ -361,14 +396,14 @@ export default function ModelTiersPage() {
               Add Model
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]" onInteractOutside={(e) => e.preventDefault()}>
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle>Add New Model Tier</DialogTitle>
               <DialogDescription>
                 Add a new model with its tier and max output tokens
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 overflow-y-auto flex-1 px-1">
               <div className="space-y-2">
                 <Label htmlFor="new-provider">Provider</Label>
                 <Select
@@ -469,7 +504,7 @@ export default function ModelTiersPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-shrink-0">
               <Button variant="outline" onClick={() => {
                 setIsAddDialogOpen(false)
                 resetAddDialog()
@@ -517,8 +552,15 @@ export default function ModelTiersPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           setEditingModel(model)
+                          // Find provider ID from provider name
+                          const provider = providers.find(p => p.name === model.provider)
+                          if (provider) {
+                            setEditSelectedProvider(provider.id)
+                            // Fetch models for this provider
+                            await fetchModelsForEditProvider(provider.id)
+                          }
                           setIsEditDialogOpen(true)
                         }}
                       >
@@ -545,22 +587,99 @@ export default function ModelTiersPage() {
         ))}
       </div>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogHeader>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open)
+        if (!open) {
+          setEditingModel(null)
+          setEditSelectedProvider('')
+          setEditSelectedModel('')
+          setEditAvailableModels([])
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Edit Model Tier</DialogTitle>
             <DialogDescription>
-              Update the model's tier and max output tokens
+              Update the provider, model, tier, and max output tokens
             </DialogDescription>
           </DialogHeader>
           {editingModel && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 overflow-y-auto flex-1 px-1">
+              <div className="space-y-2">
+                <Label htmlFor="edit-provider">Provider</Label>
+                <Select
+                  value={editSelectedProvider}
+                  onValueChange={(value) => {
+                    setEditSelectedProvider(value)
+                    setEditSelectedModel('')
+                    setEditAvailableModels([])
+                    fetchModelsForEditProvider(value)
+                    // Find provider name from ID
+                    const provider = providers.find(p => p.id === value)
+                    if (provider) {
+                      setEditingModel({ ...editingModel, provider: provider.name })
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providers.map(provider => (
+                      <SelectItem key={provider.id} value={provider.id}>
+                        <div className="flex items-center gap-2">
+                          {provider.logo_url && (
+                            <img src={provider.logo_url} alt={provider.display_name} className="w-5 h-5" />
+                          )}
+                          <span>{provider.display_name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-model-name">Model</Label>
+                <Select
+                  value={editSelectedModel}
+                  onValueChange={(value) => {
+                    setEditSelectedModel(value)
+                    // Find model details from ID
+                    const model = editAvailableModels.find(m => m.id === value)
+                    if (model) {
+                      setEditingModel({
+                        ...editingModel,
+                        model_name: model.name,
+                        display_name: model.display_name
+                      })
+                    }
+                  }}
+                  disabled={!editSelectedProvider}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={editSelectedProvider ? "Select a model" : "Select a provider first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {editAvailableModels.map(model => (
+                      <SelectItem key={model.id} value={model.id}>
+                        <div className="flex items-center gap-2">
+                          {model.provider_logo_url && (
+                            <img src={model.provider_logo_url} alt={model.provider_name} className="w-5 h-5" />
+                          )}
+                          <span>{model.display_name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-display-name">Display Name</Label>
                 <Input
                   id="edit-display-name"
                   value={editingModel.display_name}
                   onChange={(e) => setEditingModel({ ...editingModel, display_name: e.target.value })}
+                  placeholder="e.g., Claude 3 Opus"
                 />
               </div>
               <div className="space-y-2">
@@ -585,22 +704,19 @@ export default function ModelTiersPage() {
                   onChange={(e) => setEditingModel({ ...editingModel, max_output_tokens: parseInt(e.target.value) || 0 })}
                 />
               </div>
-              <div className="rounded-lg bg-muted p-3 text-sm">
-                <p className="text-muted-foreground">
-                  <strong>Provider:</strong> {editingModel.provider}
-                </p>
-                <p className="text-muted-foreground">
-                  <strong>Model ID:</strong> {editingModel.model_name}
-                </p>
-              </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0">
             <Button variant="outline" onClick={() => {
               setIsEditDialogOpen(false)
               setEditingModel(null)
+              setEditSelectedProvider('')
+              setEditSelectedModel('')
+              setEditAvailableModels([])
             }}>Cancel</Button>
             <Button onClick={() => editingModel && handleUpdate(editingModel.id, {
+              provider: editingModel.provider,
+              model_name: editingModel.model_name,
               display_name: editingModel.display_name,
               tier: editingModel.tier,
               max_output_tokens: editingModel.max_output_tokens
