@@ -258,24 +258,24 @@ export default function AdminPricing() {
         )}
 
         {config && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 gap-8">
             {/* Subscription Tiers */}
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold flex items-center gap-2">
+            <div>
+              <h2 className="text-2xl font-semibold flex items-center gap-2 mb-6">
                 <CreditCard className="h-6 w-6" />
                 Subscription Tiers
               </h2>
 
-              {/* Free Tier */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    Free Plan
-                    <Badge variant="secondary">Free</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Free Tier */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      Free Plan
+                      <Badge variant="secondary">$0</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div>
                       <Label htmlFor="free-messages">Message Limit</Label>
                       <Input
@@ -285,68 +285,105 @@ export default function AdminPricing() {
                         onChange={(e) => updateSubscriptionPrice('free_tier', 'message_limit', parseInt(e.target.value))}
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="free-credits">Credits Allocation</Label>
-                      <Input
-                        id="free-credits"
-                        type="number"
-                        step="0.01"
-                        value={config.subscription_pricing.free_tier.credits_allocation}
-                        onChange={(e) => updateSubscriptionPrice('free_tier', 'credits_allocation', parseFloat(e.target.value))}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Pro Tier */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    Pro Plan
-                    <Badge className="bg-orange-500 text-white">
-                      {config.subscription_pricing.pro_tier.price_display}/month
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="pro-price">Price (cents)</Label>
-                      <Input
-                        id="pro-price"
-                        type="number"
-                        value={config.subscription_pricing.pro_tier.price_cents}
-                        onChange={(e) => {
-                          const cents = parseInt(e.target.value)
-                          const display = `$${(cents / 100).toFixed(2)}`
-                          updateSubscriptionPrice('pro_tier', 'price_cents', cents)
-                          updateSubscriptionPrice('pro_tier', 'price_display', display)
-                        }}
-                      />
+                {/* Plus Tier */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      Plus Plan
+                      <Badge className="bg-orange-500 text-white">
+                        {config.subscription_pricing.plus_tier?.price_display}/month
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="plus-price">Price (cents)</Label>
+                        <Input
+                          id="plus-price"
+                          type="number"
+                          value={config.subscription_pricing.plus_tier?.price_cents}
+                          onChange={(e) => {
+                            const cents = parseInt(e.target.value)
+                            const display = `$${(cents / 100).toFixed(0)}`
+                            updateSubscriptionPrice('plus_tier' as any, 'price_cents', cents)
+                            updateSubscriptionPrice('plus_tier' as any, 'price_display', display)
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="plus-messages">Messages/Month</Label>
+                        <Input
+                          id="plus-messages"
+                          value="Unlimited"
+                          disabled
+                          className="bg-gray-100"
+                        />
+                      </div>
                     </div>
                     <div>
-                      <Label htmlFor="pro-credits">Monthly Credits ($)</Label>
+                      <Label htmlFor="plus-stripe-id">Stripe Price ID</Label>
                       <Input
-                        id="pro-credits"
-                        type="number"
-                        step="0.01"
-                        value={config.subscription_pricing.pro_tier.credits_allocation}
-                        onChange={(e) => updateSubscriptionPrice('pro_tier', 'credits_allocation', parseFloat(e.target.value))}
+                        id="plus-stripe-id"
+                        value={config.subscription_pricing.plus_tier?.stripe_price_id_monthly}
+                        onChange={(e) => updateSubscriptionPrice('plus_tier' as any, 'stripe_price_id_monthly', e.target.value)}
+                        placeholder="price_1234567890"
                       />
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="pro-stripe-id">Stripe Price ID</Label>
-                    <Input
-                      id="pro-stripe-id"
-                      value={config.subscription_pricing.pro_tier.stripe_price_id}
-                      onChange={(e) => updateSubscriptionPrice('pro_tier', 'stripe_price_id', e.target.value)}
-                      placeholder="price_1234567890"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+
+                {/* Pro Tier */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      Pro Plan
+                      <Badge className="bg-purple-500 text-white">
+                        {config.subscription_pricing.pro_tier.price_display}/month
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="pro-price">Price (cents)</Label>
+                        <Input
+                          id="pro-price"
+                          type="number"
+                          value={config.subscription_pricing.pro_tier.price_cents}
+                          onChange={(e) => {
+                            const cents = parseInt(e.target.value)
+                            const display = `$${(cents / 100).toFixed(0)}`
+                            updateSubscriptionPrice('pro_tier', 'price_cents', cents)
+                            updateSubscriptionPrice('pro_tier', 'price_display', display)
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="pro-messages">Messages/Month</Label>
+                        <Input
+                          id="pro-messages"
+                          value="Unlimited"
+                          disabled
+                          className="bg-gray-100"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="pro-stripe-id">Stripe Price ID</Label>
+                      <Input
+                        id="pro-stripe-id"
+                        value={config.subscription_pricing.pro_tier.stripe_price_id_monthly}
+                        onChange={(e) => updateSubscriptionPrice('pro_tier', 'stripe_price_id_monthly', e.target.value)}
+                        placeholder="price_1234567890"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
 
             {/* Credit Packages */}

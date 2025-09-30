@@ -1169,7 +1169,7 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8 max-w-4xl mx-auto mb-16">
+          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16">
             {/* Free Tier */}
             <div className="bg-gradient-to-br from-white to-slate-50/50 rounded-3xl border border-slate-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-500">
               <div className="text-center mb-8">
@@ -1188,19 +1188,19 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">10 Polydev credits</span>
+                  <span className="text-slate-700">1,000 free messages</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">MCP integration</span>
+                  <span className="text-slate-700">3 models to compare</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">All fast models</span>
+                  <span className="text-slate-700">Query GPT-5 & Claude Opus</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1218,23 +1218,23 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
               </Link>
             </div>
 
-            {/* Pro Tier */}
-            <div className="bg-gradient-to-br from-violet-50 to-orange-50/50 rounded-3xl border-2 border-violet-300/60 p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 relative scale-105">
+            {/* Plus Tier */}
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50/50 rounded-3xl border-2 border-orange-300/60 p-8 shadow-2xl hover:shadow-3xl transition-all duration-500 relative scale-105">
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <span className="bg-gradient-to-r from-violet-500 to-orange-500 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
+                <span className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
                   Most Popular
                 </span>
               </div>
 
               <div className="text-center mb-8">
-                <div className="w-12 h-12 bg-gradient-to-r from-violet-500 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Pro</h3>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Plus</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$25</div>
-                <div className="text-slate-600">1,500 credits included</div>
+                <div className="text-slate-600">per month</div>
               </div>
 
               <ul className="space-y-4 mb-8">
@@ -1242,31 +1242,79 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">1,500 Polydev credits</span>
+                  <span className="text-slate-700">Unlimited messages</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">All premium models</span>
+                  <span className="text-slate-700">340+ models from 37+ providers</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Priority processing</span>
+                  <span className="text-slate-700">Advanced project memory</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Extra credits: 500 for $10</span>
+                  <span className="text-slate-700">Priority model access</span>
                 </li>
               </ul>
 
               <Link
                 href="/auth"
-                className="w-full block text-center px-6 py-4 bg-gradient-to-r from-violet-500 to-orange-500 text-white rounded-2xl font-bold text-lg hover:from-violet-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl"
+                className="w-full block text-center px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl font-bold text-lg hover:from-orange-600 hover:to-amber-600 transition-all duration-300 shadow-lg hover:shadow-xl"
+              >
+                Upgrade to Plus
+              </Link>
+            </div>
+
+            {/* Pro Tier */}
+            <div className="bg-gradient-to-br from-violet-50 to-purple-50/50 rounded-3xl border border-violet-200/60 p-8 shadow-lg hover:shadow-xl transition-all duration-500">
+              <div className="text-center mb-8">
+                <div className="w-12 h-12 bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">Pro</h3>
+                <div className="text-4xl font-bold text-slate-900 mb-1">$60</div>
+                <div className="text-slate-600">per month</div>
+              </div>
+
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">Everything in Plus</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">Priority support</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">Team features</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-slate-700">Advanced analytics</span>
+                </li>
+              </ul>
+
+              <Link
+                href="/auth"
+                className="w-full block text-center px-6 py-4 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-2xl font-semibold hover:from-violet-600 hover:to-purple-700 transition-all duration-300"
               >
                 Upgrade to Pro
               </Link>
