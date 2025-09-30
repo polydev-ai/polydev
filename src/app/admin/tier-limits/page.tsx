@@ -25,11 +25,17 @@ interface TierLimits {
   eco_perspectives_limit: number
 }
 
+interface ModelTier {
+  display_name: string
+  tier: string
+}
+
 export default function AdminTierLimits() {
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [tierLimits, setTierLimits] = useState<TierLimits[]>([])
+  const [modelTiers, setModelTiers] = useState<ModelTier[]>([])
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -39,6 +45,7 @@ export default function AdminTierLimits() {
   useEffect(() => {
     checkAdminAccess()
     loadTierLimits()
+    loadModelTiers()
   }, [])
 
   const checkAdminAccess = async () => {
@@ -84,6 +91,22 @@ export default function AdminTierLimits() {
     } catch (error) {
       console.error('Error loading tier limits:', error)
       setMessage({ type: 'error', text: 'Failed to load tier limits' })
+    }
+  }
+
+  const loadModelTiers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('model_tiers')
+        .select('display_name, tier')
+        .order('tier', { ascending: true })
+        .order('display_name', { ascending: true })
+
+      if (error) throw error
+
+      setModelTiers(data || [])
+    } catch (error) {
+      console.error('Error loading model tiers:', error)
     }
   }
 
@@ -340,9 +363,21 @@ export default function AdminTierLimits() {
             <p><strong>Perspectives:</strong> Each model API call counts as 1 perspective (one message can trigger multiple perspectives)</p>
             <p><strong>Tiers:</strong></p>
             <ul className="list-disc ml-6 space-y-1">
-              <li><strong>Premium:</strong> High-end models (GPT-4, Claude Opus, Gemini Pro)</li>
-              <li><strong>Normal:</strong> Mid-range models (GPT-3.5, Claude Sonnet)</li>
-              <li><strong>Eco:</strong> Cost-effective models (Claude Haiku, smaller models)</li>
+              <li>
+                <strong>Premium:</strong> {modelTiers.filter(m => m.tier === 'premium').length > 0
+                  ? modelTiers.filter(m => m.tier === 'premium').map(m => m.display_name).join(', ')
+                  : 'No models configured'}
+              </li>
+              <li>
+                <strong>Normal:</strong> {modelTiers.filter(m => m.tier === 'normal').length > 0
+                  ? modelTiers.filter(m => m.tier === 'normal').map(m => m.display_name).join(', ')
+                  : 'No models configured'}
+              </li>
+              <li>
+                <strong>Eco:</strong> {modelTiers.filter(m => m.tier === 'eco').length > 0
+                  ? modelTiers.filter(m => m.tier === 'eco').map(m => m.display_name).join(', ')
+                  : 'No models configured'}
+              </li>
             </ul>
             <p className="mt-4 text-xs text-blue-600">
               Changes take effect immediately on user page refresh. Users will see updated limits in their dashboard.

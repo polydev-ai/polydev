@@ -139,22 +139,39 @@ export default function AdminBonuses() {
 
   const loadBonuses = async () => {
     try {
-      // Fetch bonuses with user email joins
+      // Fetch bonuses
       const { data: bonusData, error } = await supabase
         .from('user_bonus_quotas')
-        .select(`
-          *,
-          profiles!user_bonus_quotas_user_id_fkey(email),
-          grantor:profiles!user_bonus_quotas_granted_by_fkey(email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
+      // Get unique user IDs
+      const userIds = [...new Set(bonusData?.map(b => b.user_id).filter(Boolean) || [])]
+      const granterIds = [...new Set(bonusData?.map(b => b.granted_by).filter(Boolean) || [])]
+      const allUserIds = [...new Set([...userIds, ...granterIds])]
+
+      // Fetch profiles for these users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .in('id', allUserIds)
+
+      if (profilesError) {
+        console.warn('Error fetching profiles:', profilesError)
+      }
+
+      // Create a map of user IDs to emails
+      const userEmailMap = new Map(
+        profilesData?.map(p => [p.id, p.email]) || []
+      )
+
+      // Process bonuses with email lookups
       const processedBonuses = (bonusData || []).map((bonus: any) => ({
         ...bonus,
-        user_email: bonus.profiles?.email || 'Unknown',
-        granted_by_email: bonus.grantor?.email || 'System'
+        user_email: userEmailMap.get(bonus.user_id) || 'Unknown',
+        granted_by_email: bonus.granted_by ? (userEmailMap.get(bonus.granted_by) || 'System') : 'System'
       }))
 
       setBonuses(processedBonuses)
