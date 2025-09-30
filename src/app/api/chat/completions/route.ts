@@ -1252,7 +1252,9 @@ export async function POST(request: NextRequest) {
                   usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
                   provider: 'N/A',
                   fallback_method: 'none',
-                  error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${modelId}).`
+                  error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${modelId}).`,
+                  providerSourceId: undefined,
+                  sourceType: undefined
                 }
               }
             }
@@ -1263,7 +1265,9 @@ export async function POST(request: NextRequest) {
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
             provider: 'N/A',
             fallback_method: 'none',
-            error: `No provider available for model: ${modelId}. Please configure API keys at https://www.polydev.ai/dashboard/models or ensure you have sufficient credits.`
+            error: `No provider available for model: ${modelId}. Please configure API keys at https://www.polydev.ai/dashboard/models or ensure you have sufficient credits.`,
+            providerSourceId: undefined,
+            sourceType: undefined
           }
         }
         
@@ -1720,7 +1724,9 @@ export async function POST(request: NextRequest) {
               usage: usage,
               costInfo: cost,
               provider: `${selectedProvider} (API)`,
-              fallback_method: fallbackMethod
+              fallback_method: fallbackMethod,
+              providerSourceId: selectedConfig?.keyId,
+              sourceType: selectedConfig?.sourceType
             }
           } else if (selectedProvider === 'openrouter') {
             // Handle OpenRouter (either as API provider or credits)
@@ -1875,7 +1881,9 @@ export async function POST(request: NextRequest) {
               cost: costInfo || undefined,
               provider: selectedConfig.type === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)',
               fallback_method: fallbackMethod,
-              credits_used: selectedConfig.type === 'credits' ? totalCostUsd : undefined
+              credits_used: selectedConfig.type === 'credits' ? totalCostUsd : undefined,
+              providerSourceId: selectedConfig?.keyId,
+              sourceType: selectedConfig?.sourceType
             }
           }
         } catch (error: any) {
@@ -1968,7 +1976,9 @@ export async function POST(request: NextRequest) {
                     costInfo: cost,
                     provider: 'OpenRouter (Credits - 401 Retry)',
                     fallback_method: 'credits',
-                    credits_used: creditsUsed
+                    credits_used: creditsUsed,
+                    providerSourceId: undefined,
+                    sourceType: 'admin_credits'
                   }
                 } else {
                   throw new Error(`OpenRouter credits retry failed: ${result?.error?.message || 'Unknown error'}`)
@@ -2136,7 +2146,9 @@ export async function POST(request: NextRequest) {
                     content: apiResult.choices?.[0]?.message?.content || '',
                     usage: apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
                     provider: 'OpenRouter (API - CLI Fallback)',
-                    fallback_method: 'api'
+                    fallback_method: 'api',
+                    providerSourceId: providerConfigs['openrouter']?.api?.keyId,
+                    sourceType: providerConfigs['openrouter']?.api?.sourceType
                   }
                 }
               } catch (openrouterError: any) {
@@ -2213,7 +2225,9 @@ export async function POST(request: NextRequest) {
                       costInfo: costInfo,
                       provider: 'OpenRouter (Credits - CLI Fallback)',
                       fallback_method: 'credits',
-                      credits_used: (parsedUsage.total_tokens || 0) / 1000000 * 50
+                      credits_used: (parsedUsage.total_tokens || 0) / 1000000 * 50,
+                      providerSourceId: undefined,
+                      sourceType: 'admin_credits'
                     }
                   }
                 }
@@ -2246,7 +2260,9 @@ export async function POST(request: NextRequest) {
             provider: `${selectedProvider} (${fallbackMethod.toUpperCase()})`,
             fallback_method: fallbackMethod,
             exhaustion_detected: exhaustionCheck.isExhausted,
-            exhaustion_permanent: exhaustionCheck.isPermanent
+            exhaustion_permanent: exhaustionCheck.isPermanent,
+            providerSourceId: selectedConfig?.keyId,
+            sourceType: selectedConfig?.sourceType
           }
         }
       })
