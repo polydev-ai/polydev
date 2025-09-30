@@ -396,14 +396,14 @@ export default function ModelTiersPage() {
               Add Model
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] h-[90vh] flex flex-col top-[5vh] translate-y-0" onInteractOutside={(e) => e.preventDefault()}>
-            <DialogHeader className="flex-shrink-0">
+          <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col fixed top-[5vh] translate-y-0" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogHeader className="flex-shrink-0 pb-4 border-b">
               <DialogTitle>Add New Model Tier</DialogTitle>
               <DialogDescription>
                 Add a new model with its tier and max output tokens
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4 overflow-y-auto flex-1 px-1">
+            <div className="space-y-4 py-4 overflow-y-auto flex-1 px-1 min-h-0">
               <div className="space-y-2">
                 <Label htmlFor="new-provider">Provider</Label>
                 <Select
@@ -504,7 +504,7 @@ export default function ModelTiersPage() {
                 />
               </div>
             </div>
-            <DialogFooter className="flex-shrink-0">
+            <DialogFooter className="flex-shrink-0 pt-4 border-t">
               <Button variant="outline" onClick={() => {
                 setIsAddDialogOpen(false)
                 resetAddDialog()
@@ -596,15 +596,15 @@ export default function ModelTiersPage() {
           setEditAvailableModels([])
         }
       }}>
-        <DialogContent className="sm:max-w-[500px] h-[90vh] flex flex-col top-[5vh] translate-y-0" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogHeader className="flex-shrink-0">
+        <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col fixed top-[5vh] translate-y-0" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader className="flex-shrink-0 pb-4 border-b">
             <DialogTitle>Edit Model Tier</DialogTitle>
             <DialogDescription>
               Update the provider, model, tier, and max output tokens
             </DialogDescription>
           </DialogHeader>
           {editingModel && (
-            <div className="space-y-4 py-4 overflow-y-auto flex-1 px-1">
+            <div className="space-y-4 py-4 overflow-y-auto flex-1 px-1 min-h-0">
               <div className="space-y-2">
                 <Label htmlFor="edit-provider">Provider</Label>
                 <Select
@@ -706,7 +706,7 @@ export default function ModelTiersPage() {
               </div>
             </div>
           )}
-          <DialogFooter className="flex-shrink-0">
+          <DialogFooter className="flex-shrink-0 pt-4 border-t">
             <Button variant="outline" onClick={() => {
               setIsEditDialogOpen(false)
               setEditingModel(null)
