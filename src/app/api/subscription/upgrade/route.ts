@@ -29,16 +29,18 @@ export async function POST(request: NextRequest) {
 
     const { data: configData, error: configError } = await adminSupabase
       .from('admin_pricing_config')
-      .select('config')
-      .eq('id', 1)
-      .single()
+      .select('*')
 
     if (configError || !configData) {
       console.error('[Subscription] Failed to fetch pricing config:', configError)
       return NextResponse.json({ error: 'Failed to fetch pricing configuration' }, { status: 500 })
     }
 
-    const config = configData.config
+    // Build config object from key-value pairs
+    const config: any = {}
+    configData.forEach(item => {
+      config[item.config_key] = item.config_value
+    })
 
     // Get the correct price ID based on tier and interval
     let priceId: string
