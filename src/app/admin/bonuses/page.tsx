@@ -68,7 +68,7 @@ interface UserProfile {
 
 interface GrantBonusForm {
   userId: string
-  bonusType: 'admin_grant' | 'promotion' | 'compensation' | 'referral' | 'other'
+  bonusType: 'admin_bonus' | 'referral_bonus'
   messages: number
   premiumPerspectives: number
   normalPerspectives: number
@@ -88,7 +88,7 @@ export default function AdminBonuses() {
   const [showGrantDialog, setShowGrantDialog] = useState(false)
   const [grantForm, setGrantForm] = useState<GrantBonusForm>({
     userId: '',
-    bonusType: 'admin_grant',
+    bonusType: 'admin_bonus',
     messages: 800,
     premiumPerspectives: 0,
     normalPerspectives: 0,
@@ -280,7 +280,7 @@ export default function AdminBonuses() {
   const resetForm = () => {
     setGrantForm({
       userId: '',
-      bonusType: 'admin_grant',
+      bonusType: 'admin_bonus',
       messages: 800,
       premiumPerspectives: 0,
       normalPerspectives: 0,
@@ -302,13 +302,10 @@ export default function AdminBonuses() {
 
   const getBonusTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      admin_grant: 'bg-blue-100 text-blue-800',
-      promotion: 'bg-purple-100 text-purple-800',
-      compensation: 'bg-orange-100 text-orange-800',
-      referral: 'bg-green-100 text-green-800',
-      other: 'bg-gray-100 text-gray-800'
+      admin_bonus: 'bg-blue-100 text-blue-800',
+      referral_bonus: 'bg-green-100 text-green-800'
     }
-    return colors[type] || colors.other
+    return colors[type] || 'bg-gray-100 text-gray-800'
   }
 
   if (loading) {
@@ -536,11 +533,8 @@ export default function AdminBonuses() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" align="start" className="z-[9999] bg-white border shadow-lg" sideOffset={8}>
-                    <SelectItem value="admin_grant">Admin Grant</SelectItem>
-                    <SelectItem value="promotion">Promotion</SelectItem>
-                    <SelectItem value="compensation">Compensation</SelectItem>
-                    <SelectItem value="referral">Referral</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="admin_bonus">Admin Bonus</SelectItem>
+                    <SelectItem value="referral_bonus">Referral Bonus</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
