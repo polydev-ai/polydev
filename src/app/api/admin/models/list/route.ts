@@ -1,45 +1,18 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { createClient, createAdminClient } from '../../../utils/supabase/server'
 
 export async function GET(request: Request) {
   try {
-    // Get user token from cookies for authentication
-    const cookieStore = await cookies()
-    const authCookie = cookieStore.get('sb-oxhutuxkthdxvciytwmb-auth-token')
+    // Authenticate user with SSR client (handles cookies properly)
+    const supabase = await createClient()
 
-    if (!authCookie) {
-      return NextResponse.json({ error: 'Unauthorized - No auth token' }, { status: 401 })
-    }
-
-    let accessToken: string
-    try {
-      const authData = JSON.parse(authCookie.value)
-      accessToken = authData.access_token
-    } catch (e) {
-      return NextResponse.json({ error: 'Invalid auth token' }, { status: 401 })
-    }
-
-    // Create user client to verify admin status
-    const userClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        }
-      }
-    )
-
-    // Check admin access
-    const { data: { user } } = await userClient.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: profile } = await userClient
+    // Check admin access
+    const { data: profile } = await supabase
       .from('profiles')
       .select('is_admin')
       .eq('id', user.id)
@@ -49,18 +22,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Use service role client to fetch data (bypasses RLS)
-    const serviceClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use admin client to fetch data (bypasses RLS)
+    const adminClient = createAdminClient()
 
     // Get provider_id from query params for filtering
     const { searchParams } = new URL(request.url)
     const providerId = searchParams.get('provider_id')
 
     // Build query
-    let query = serviceClient
+    let query = adminClient
       .from('models_registry')
       .select(`
         id,
