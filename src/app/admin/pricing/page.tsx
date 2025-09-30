@@ -16,8 +16,7 @@ import {
   X,
   AlertCircle,
   CheckCircle,
-  CreditCard,
-  Coins
+  CreditCard
 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
@@ -34,35 +33,26 @@ interface PricingConfig {
     }
     plus_tier: {
       name: string
-      price_cents: number
-      price_display: string
-      billing_interval: string
+      price_cents_monthly: number
+      price_cents_annual: number
+      price_display_monthly: string
+      price_display_annual: string
       stripe_price_id_monthly: string
       stripe_price_id_annual: string
       message_limit: number | null
-      credits_allocation: number
       features: string[]
     }
     pro_tier: {
       name: string
-      price_cents: number
-      price_display: string
-      billing_interval: string
+      price_cents_monthly: number
+      price_cents_annual: number
+      price_display_monthly: string
+      price_display_annual: string
       stripe_price_id_monthly: string
       stripe_price_id_annual: string
       message_limit: number | null
-      credits_allocation: number
       features: string[]
     }
-  }
-  credit_packages: {
-    packages: Array<{
-      name: string
-      credits: number
-      price_cents: number
-      price_display: string
-      stripe_price_id: string
-    }>
   }
 }
 
@@ -187,7 +177,7 @@ export default function AdminPricing() {
     }
   }
 
-  const updateSubscriptionPrice = (tier: 'free_tier' | 'pro_tier', field: string, value: any) => {
+  const updateSubscriptionPrice = (tier: 'free_tier' | 'plus_tier' | 'pro_tier', field: string, value: any) => {
     if (!config) return
 
     const newConfig = {
@@ -199,20 +189,6 @@ export default function AdminPricing() {
     }
 
     updateConfig('subscription_pricing', newConfig)
-  }
-
-  const updateCreditPackage = (packageIndex: number, field: string, value: any) => {
-    if (!config) return
-
-    const newPackages = [...config.credit_packages.packages]
-    newPackages[packageIndex] = {
-      ...newPackages[packageIndex],
-      [field]: value
-    }
-
-    updateConfig('credit_packages', {
-      packages: newPackages
-    })
   }
 
   if (loading) {
@@ -342,10 +318,10 @@ export default function AdminPricing() {
                       Plus Plan
                       <div className="flex flex-col items-end gap-1">
                         <Badge className="bg-orange-500 text-white">
-                          $20/month
+                          {config.subscription_pricing.plus_tier?.price_display_monthly || '$25'}/month
                         </Badge>
                         <Badge variant="outline" className="text-xs">
-                          $240/year
+                          {config.subscription_pricing.plus_tier?.price_display_annual || '$20'}/month annual
                         </Badge>
                       </div>
                     </CardTitle>
@@ -359,6 +335,43 @@ export default function AdminPricing() {
                         disabled
                         className="bg-gray-100"
                       />
+                    </div>
+                    <div className="border-t pt-4">
+                      <Label className="text-sm font-semibold mb-3 block">Pricing (Editable)</Label>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="plus-price-monthly" className="text-xs">Monthly Price (cents)</Label>
+                          <Input
+                            id="plus-price-monthly"
+                            type="number"
+                            value={config.subscription_pricing.plus_tier?.price_cents_monthly}
+                            onChange={(e) => {
+                              const cents = parseInt(e.target.value)
+                              const display = `$${(cents / 100).toFixed(0)}`
+                              updateSubscriptionPrice('plus_tier', 'price_cents_monthly', cents)
+                              updateSubscriptionPrice('plus_tier', 'price_display_monthly', display)
+                            }}
+                            placeholder="2500 = $25"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="plus-price-annual" className="text-xs">Annual Price Per Month (cents)</Label>
+                          <Input
+                            id="plus-price-annual"
+                            type="number"
+                            value={config.subscription_pricing.plus_tier?.price_cents_annual}
+                            onChange={(e) => {
+                              const cents = parseInt(e.target.value)
+                              const display = `$${(cents / 100).toFixed(0)}`
+                              updateSubscriptionPrice('plus_tier', 'price_cents_annual', cents)
+                              updateSubscriptionPrice('plus_tier', 'price_display_annual', display)
+                            }}
+                            placeholder="2000 = $20/month"
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div className="border-t pt-4">
                       <Label className="text-sm font-semibold mb-3 block">Perspective Allocations</Label>
@@ -403,7 +416,7 @@ export default function AdminPricing() {
                           <Input
                             id="plus-stripe-monthly"
                             value={config.subscription_pricing.plus_tier?.stripe_price_id_monthly}
-                            onChange={(e) => updateSubscriptionPrice('plus_tier' as any, 'stripe_price_id_monthly', e.target.value)}
+                            onChange={(e) => updateSubscriptionPrice('plus_tier', 'stripe_price_id_monthly', e.target.value)}
                             placeholder="price_monthly_xxx"
                             className="text-sm"
                           />
@@ -413,7 +426,7 @@ export default function AdminPricing() {
                           <Input
                             id="plus-stripe-annual"
                             value={config.subscription_pricing.plus_tier?.stripe_price_id_annual}
-                            onChange={(e) => updateSubscriptionPrice('plus_tier' as any, 'stripe_price_id_annual', e.target.value)}
+                            onChange={(e) => updateSubscriptionPrice('plus_tier', 'stripe_price_id_annual', e.target.value)}
                             placeholder="price_annual_xxx"
                             className="text-sm"
                           />
@@ -430,10 +443,10 @@ export default function AdminPricing() {
                       Pro Plan
                       <div className="flex flex-col items-end gap-1">
                         <Badge className="bg-purple-500 text-white">
-                          $50/month
+                          {config.subscription_pricing.pro_tier.price_display_monthly || '$60'}/month
                         </Badge>
                         <Badge variant="outline" className="text-xs">
-                          $600/year
+                          {config.subscription_pricing.pro_tier.price_display_annual || '$50'}/month annual
                         </Badge>
                       </div>
                     </CardTitle>
@@ -447,6 +460,43 @@ export default function AdminPricing() {
                         disabled
                         className="bg-gray-100"
                       />
+                    </div>
+                    <div className="border-t pt-4">
+                      <Label className="text-sm font-semibold mb-3 block">Pricing (Editable)</Label>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="pro-price-monthly" className="text-xs">Monthly Price (cents)</Label>
+                          <Input
+                            id="pro-price-monthly"
+                            type="number"
+                            value={config.subscription_pricing.pro_tier.price_cents_monthly}
+                            onChange={(e) => {
+                              const cents = parseInt(e.target.value)
+                              const display = `$${(cents / 100).toFixed(0)}`
+                              updateSubscriptionPrice('pro_tier', 'price_cents_monthly', cents)
+                              updateSubscriptionPrice('pro_tier', 'price_display_monthly', display)
+                            }}
+                            placeholder="6000 = $60"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="pro-price-annual" className="text-xs">Annual Price Per Month (cents)</Label>
+                          <Input
+                            id="pro-price-annual"
+                            type="number"
+                            value={config.subscription_pricing.pro_tier.price_cents_annual}
+                            onChange={(e) => {
+                              const cents = parseInt(e.target.value)
+                              const display = `$${(cents / 100).toFixed(0)}`
+                              updateSubscriptionPrice('pro_tier', 'price_cents_annual', cents)
+                              updateSubscriptionPrice('pro_tier', 'price_display_annual', display)
+                            }}
+                            placeholder="5000 = $50/month"
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div className="border-t pt-4">
                       <Label className="text-sm font-semibold mb-3 block">Perspective Allocations</Label>
@@ -511,69 +561,6 @@ export default function AdminPricing() {
                   </CardContent>
                 </Card>
               </div>
-            </div>
-
-            {/* Credit Packages */}
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold flex items-center gap-2">
-                <Coins className="h-6 w-6" />
-                Credit Packages
-              </h2>
-
-              {config.credit_packages.packages.map((pkg, index) => (
-                <Card key={index}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      {pkg.name}
-                      <Badge variant="outline">{pkg.price_display}</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor={`package-${index}-credits`}>Credits</Label>
-                        <Input
-                          id={`package-${index}-credits`}
-                          type="number"
-                          value={pkg.credits}
-                          onChange={(e) => updateCreditPackage(index, 'credits', parseInt(e.target.value))}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor={`package-${index}-price`}>Price (cents)</Label>
-                        <Input
-                          id={`package-${index}-price`}
-                          type="number"
-                          value={pkg.price_cents}
-                          onChange={(e) => {
-                            const cents = parseInt(e.target.value)
-                            const display = `$${(cents / 100).toFixed(2)}`
-                            updateCreditPackage(index, 'price_cents', cents)
-                            updateCreditPackage(index, 'price_display', display)
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor={`package-${index}-name`}>Package Name</Label>
-                      <Input
-                        id={`package-${index}-name`}
-                        value={pkg.name}
-                        onChange={(e) => updateCreditPackage(index, 'name', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`package-${index}-stripe-id`}>Stripe Price ID</Label>
-                      <Input
-                        id={`package-${index}-stripe-id`}
-                        value={pkg.stripe_price_id}
-                        onChange={(e) => updateCreditPackage(index, 'stripe_price_id', e.target.value)}
-                        placeholder="price_1234567890"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
             </div>
           </div>
         )}

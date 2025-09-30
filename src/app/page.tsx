@@ -1235,6 +1235,7 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Plus</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$25</div>
                 <div className="text-slate-600">per month</div>
+                <div className="text-sm text-emerald-600 font-medium mt-2">or $20/month billed annually</div>
               </div>
 
               <ul className="space-y-4 mb-8">
@@ -1283,6 +1284,7 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Pro</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$60</div>
                 <div className="text-slate-600">per month</div>
+                <div className="text-sm text-emerald-600 font-medium mt-2">or $50/month billed annually</div>
               </div>
 
               <ul className="space-y-4 mb-8">

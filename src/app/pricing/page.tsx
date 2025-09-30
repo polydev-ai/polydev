@@ -13,19 +13,18 @@ interface PricingConfig {
       features: string[]
       limitations: string[]
     }
-    pro_tier: {
+    plus_tier: {
       name: string
-      price_display: string
-      billing_interval: string
+      price_display_monthly: string
+      price_display_annual: string
       features: string[]
     }
-  }
-  credit_packages: {
-    packages: Array<{
+    pro_tier: {
       name: string
-      credits: number
-      price_display: string
-    }>
+      price_display_monthly: string
+      price_display_annual: string
+      features: string[]
+    }
   }
 }
 
@@ -65,15 +64,16 @@ export default function Pricing() {
       name: config?.subscription_pricing.free_tier.name || 'Free',
       price: config?.subscription_pricing.free_tier.price_display || '$0',
       period: 'forever',
+      annualPrice: null,
       description: 'Perfect for trying out multiple AI models',
       features: config?.subscription_pricing.free_tier.features || [
-        '1000 free messages to get started',
-        'Query GPT-5, Claude Opus 4, Gemini 2.5 Pro',
-        'Compare responses side-by-side',
-        'Works with Cursor, Claude Code, Continue'
+        '200 messages/month',
+        '10 Premium / 40 Normal / 150 Eco perspectives',
+        'Query top AI models',
+        'Compare responses side-by-side'
       ],
-      limitations: config?.subscription_pricing.free_tier.limitations || ['Limited to 3 models'],
-      messageLimit: config?.subscription_pricing.free_tier.message_limit || 1000,
+      limitations: config?.subscription_pricing.free_tier.limitations || ['Limited perspectives'],
+      messageLimit: config?.subscription_pricing.free_tier.message_limit || 200,
       cta: 'Start Free',
       highlighted: false,
       icon: (
@@ -85,22 +85,44 @@ export default function Pricing() {
       )
     },
     {
-      name: config?.subscription_pricing.pro_tier.name || 'Pro',
-      price: config?.subscription_pricing.pro_tier.price_display || '$20',
-      period: `/${config?.subscription_pricing.pro_tier.billing_interval || 'month'}`,
-      description: 'For developers who want unlimited access',
-      features: config?.subscription_pricing.pro_tier.features || [
+      name: config?.subscription_pricing.plus_tier?.name || 'Plus',
+      price: config?.subscription_pricing.plus_tier?.price_display_monthly || '$25',
+      period: '/month',
+      annualPrice: config?.subscription_pricing.plus_tier?.price_display_annual || '$20',
+      description: 'Most popular for individual developers',
+      features: config?.subscription_pricing.plus_tier?.features || [
         'Unlimited messages',
-        '340+ models from 37+ providers',
-        'Advanced project memory with encryption',
-        'Priority model access (GPT-5, Claude Opus 4)',
-        'Cost optimization routing',
-        'Priority support & team features'
+        '400 Premium / 1,600 Normal / 4,000 Eco perspectives',
+        'All AI models access',
+        'Advanced memory features'
       ],
-      cta: 'Upgrade to Pro',
+      cta: 'Upgrade to Plus',
       highlighted: true,
       icon: (
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-violet-500 flex items-center justify-center shadow-lg">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+      )
+    },
+    {
+      name: config?.subscription_pricing.pro_tier.name || 'Pro',
+      price: config?.subscription_pricing.pro_tier.price_display_monthly || '$60',
+      period: '/month',
+      annualPrice: config?.subscription_pricing.pro_tier.price_display_annual || '$50',
+      description: 'For power users and teams',
+      features: config?.subscription_pricing.pro_tier.features || [
+        'Unlimited messages',
+        '1,200 Premium / 4,800 Normal / 10,000 Eco perspectives',
+        'Priority model access',
+        'Team collaboration features',
+        'Priority support'
+      ],
+      cta: 'Upgrade to Pro',
+      highlighted: false,
+      icon: (
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
           </svg>
@@ -113,27 +135,29 @@ export default function Pricing() {
     {
       category: 'Usage & Access',
       items: [
-        { name: 'Monthly messages', free: '1000 free messages', pro: 'Unlimited' },
-        { name: 'Model access', free: 'Top 3 models', pro: '340+ models from 37 providers' },
-        { name: 'Response comparison', free: true, pro: true },
-        { name: 'Priority model access', free: false, pro: true }
+        { name: 'Monthly messages', free: '200 messages', plus: 'Unlimited', pro: 'Unlimited' },
+        { name: 'Premium perspectives', free: '10', plus: '400', pro: '1,200' },
+        { name: 'Normal perspectives', free: '40', plus: '1,600', pro: '4,800' },
+        { name: 'Eco perspectives', free: '150', plus: '4,000', pro: '10,000' },
+        { name: 'Model access', free: 'Top models', plus: 'All 340+ models', pro: 'All 340+ models' },
+        { name: 'Priority model access', free: false, plus: false, pro: true }
       ]
     },
     {
       category: 'Integration & Memory',
       items: [
-        { name: 'Editor integration', free: 'Basic', pro: 'Advanced' },
-        { name: 'Project memory', free: 'Basic', pro: 'Encrypted + advanced' },
-        { name: 'Cost optimization', free: false, pro: true },
-        { name: 'Usage analytics', free: false, pro: true }
+        { name: 'Editor integration', free: 'Basic', plus: 'Advanced', pro: 'Advanced' },
+        { name: 'Project memory', free: 'Basic', plus: 'Advanced', pro: 'Encrypted + advanced' },
+        { name: 'Cost optimization', free: false, plus: true, pro: true },
+        { name: 'Usage analytics', free: false, plus: true, pro: true }
       ]
     },
     {
       category: 'Support & Collaboration',
       items: [
-        { name: 'Support level', free: 'Community', pro: 'Priority' },
-        { name: 'Team features', free: false, pro: true },
-        { name: 'Custom configurations', free: false, pro: true }
+        { name: 'Support level', free: 'Community', plus: 'Standard', pro: 'Priority' },
+        { name: 'Team features', free: false, plus: false, pro: true },
+        { name: 'Custom configurations', free: false, plus: false, pro: true }
       ]
     }
   ]
@@ -164,8 +188,8 @@ export default function Pricing() {
               <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">No surprises.</span>
             </h1>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-12 leading-relaxed">
-              Try for free with 1000 messages, then upgrade to unlimited access for just $20/month.
-              Get answers from 340+ AI models without the complexity of managing multiple APIs.
+              Try for free with 200 messages, then upgrade to Plus for $25/month or Pro for $60/month.
+              Get annual pricing at $20/month (Plus) or $50/month (Pro). Access 340+ AI models seamlessly.
             </p>
           </div>
         </div>
@@ -174,7 +198,7 @@ export default function Pricing() {
       {/* Pricing Cards */}
       <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="grid md:grid-cols-2 gap-8 mb-16 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
             {plans.map((plan, index) => (
               <div
                 key={index}
@@ -204,6 +228,11 @@ export default function Pricing() {
                     <span className="text-xl text-slate-600 ml-2">
                       {plan.period}
                     </span>
+                    {plan.annualPrice && (
+                      <div className="text-sm text-emerald-600 font-medium mt-2">
+                        or {plan.annualPrice}/month billed annually
+                      </div>
+                    )}
                   </div>
                   <p className="text-slate-600 text-lg">
                     {plan.description}
@@ -267,6 +296,9 @@ export default function Pricing() {
                       Free
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
+                      Plus
+                    </th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
                       Pro
                     </th>
                   </tr>
@@ -276,7 +308,7 @@ export default function Pricing() {
                     <>
                       <tr key={`category-${categoryIndex}`}>
                         <td
-                          colSpan={3}
+                          colSpan={4}
                           className="px-6 py-4 bg-gradient-to-r from-orange-50 to-violet-50 text-sm font-bold text-slate-900"
                         >
                           {category.category}
@@ -289,6 +321,9 @@ export default function Pricing() {
                           </td>
                           <td className="px-6 py-4 text-sm text-center">
                             <FeatureValue value={item.free} />
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <FeatureValue value={item.plus} />
                           </td>
                           <td className="px-6 py-4 text-sm text-center">
                             <FeatureValue value={item.pro} />
@@ -319,11 +354,11 @@ export default function Pricing() {
           <div className="grid md:grid-cols-2 gap-8">
             <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
               <h3 className="text-xl font-bold text-slate-900 mb-4">
-                What happens after my 1000 free messages?
+                What happens after my 200 free messages?
               </h3>
               <p className="text-slate-600 leading-relaxed">
-                You'll be prompted to upgrade to Pro for unlimited access. No credit card required to start,
-                and you can upgrade anytime to continue getting answers from multiple AI models.
+                You'll be prompted to upgrade to Plus ($25/month) or Pro ($60/month) for unlimited access.
+                No credit card required to start, and you can upgrade anytime to continue getting answers from multiple AI models.
               </p>
             </div>
 
@@ -332,7 +367,7 @@ export default function Pricing() {
                 Can I cancel anytime?
               </h3>
               <p className="text-slate-600 leading-relaxed">
-                Yes, you can cancel your Pro subscription at any time. You'll continue to have access
+                Yes, you can cancel your Plus or Pro subscription at any time. You'll continue to have access
                 until the end of your billing period, then you'll return to the free plan.
               </p>
             </div>
@@ -387,7 +422,7 @@ export default function Pricing() {
             Ready to get unstuck faster?
           </h2>
           <p className="text-xl text-orange-100 max-w-3xl mx-auto mb-12">
-            Start with 1000 free messages and see how multiple AI models can help you
+            Start with 200 free messages and see how multiple AI models can help you
             debug better, design smarter, and code more efficiently.
           </p>
 
@@ -407,7 +442,7 @@ export default function Pricing() {
           </div>
 
           <div className="text-orange-100 text-sm">
-            ✓ 1000 free messages  ✓ No credit card required  ✓ Cancel anytime
+            ✓ 200 free messages  ✓ No credit card required  ✓ Cancel anytime
           </div>
         </div>
       </section>
