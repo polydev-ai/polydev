@@ -155,62 +155,31 @@ export default function AdminBonuses() {
 
   const loadUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .order('email')
+      const response = await fetch('/api/admin/users/list')
+      const data = await response.json()
 
-      if (error) throw error
-      setUsers(data || [])
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load users')
+      }
+
+      setUsers(data.users || [])
     } catch (error) {
       console.error('Error loading users:', error)
+      setMessage({ type: 'error', text: 'Failed to load users' })
     }
   }
 
   const loadBonuses = async () => {
     try {
-      const { data: bonusData, error } = await supabase
-        .from('user_bonus_quotas')
-        .select('*')
-        .order('created_at', { ascending: false })
+      const response = await fetch('/api/admin/bonuses/list')
+      const data = await response.json()
 
-      if (error) throw error
-
-      // Get unique user IDs
-      const userIds = [...new Set(bonusData?.map(b => b.user_id).filter(Boolean) || [])]
-      const creatorIds = [...new Set(bonusData?.map(b => b.created_by).filter(Boolean) || [])]
-      const allUserIds = [...new Set([...userIds, ...creatorIds])]
-
-      if (allUserIds.length === 0) {
-        setBonuses([])
-        setFilteredBonuses([])
-        return
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load bonuses')
       }
 
-      // Fetch profiles for these users
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .in('id', allUserIds)
-
-      if (profilesError) {
-        console.warn('Error fetching profiles:', profilesError)
-      }
-
-      // Create a map of user IDs to emails
-      const userEmailMap = new Map(
-        profilesData?.map(p => [p.id, p.email]) || []
-      )
-
-      // Process bonuses with email lookups
-      const processedBonuses = (bonusData || []).map((bonus: any) => ({
-        ...bonus,
-        user_email: userEmailMap.get(bonus.user_id) || 'Unknown',
-        created_by_email: bonus.created_by ? (userEmailMap.get(bonus.created_by) || 'System') : 'System'
-      }))
-
-      setBonuses(processedBonuses)
-      setFilteredBonuses(processedBonuses)
+      setBonuses(data.bonuses || [])
+      setFilteredBonuses(data.bonuses || [])
     } catch (error) {
       console.error('Error loading bonuses:', error)
       setMessage({ type: 'error', text: 'Failed to load bonuses' })
