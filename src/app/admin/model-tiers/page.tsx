@@ -396,7 +396,7 @@ export default function ModelTiersPage() {
               Add Model
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogContent className="sm:max-w-[500px] h-[90vh] flex flex-col top-[5vh] translate-y-0" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader className="flex-shrink-0">
               <DialogTitle>Add New Model Tier</DialogTitle>
               <DialogDescription>
@@ -596,7 +596,7 @@ export default function ModelTiersPage() {
           setEditAvailableModels([])
         }
       }}>
-        <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="sm:max-w-[500px] h-[90vh] flex flex-col top-[5vh] translate-y-0" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Edit Model Tier</DialogTitle>
             <DialogDescription>
