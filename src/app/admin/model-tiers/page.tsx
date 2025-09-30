@@ -423,7 +423,7 @@ export default function ModelTiersPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select a provider" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto">
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto w-[var(--radix-select-trigger-width)] z-[100]" sideOffset={5}>
                     {providers.map(provider => (
                       <SelectItem key={provider.id} value={provider.id}>
                         <div className="flex items-center gap-2">
@@ -458,7 +458,7 @@ export default function ModelTiersPage() {
                   <SelectTrigger>
                     <SelectValue placeholder={selectedProvider ? "Select a model" : "Select a provider first"} />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto">
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto w-[var(--radix-select-trigger-width)] z-[100]" sideOffset={5}>
                     {availableModels.map(model => (
                       <SelectItem key={model.id} value={model.id}>
                         <div className="flex items-center gap-2">
@@ -624,7 +624,7 @@ export default function ModelTiersPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select a provider" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto">
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto w-[var(--radix-select-trigger-width)] z-[100]" sideOffset={5}>
                     {providers.map(provider => (
                       <SelectItem key={provider.id} value={provider.id}>
                         <div className="flex items-center gap-2">
@@ -659,7 +659,7 @@ export default function ModelTiersPage() {
                   <SelectTrigger>
                     <SelectValue placeholder={editSelectedProvider ? "Select a model" : "Select a provider first"} />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto">
+                  <SelectContent position="popper" className="max-h-[200px] overflow-y-auto w-[var(--radix-select-trigger-width)] z-[100]" sideOffset={5}>
                     {editAvailableModels.map(model => (
                       <SelectItem key={model.id} value={model.id}>
                         <div className="flex items-center gap-2">
