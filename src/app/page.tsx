@@ -1188,25 +1188,25 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">1,000 free messages</span>
+                  <span className="text-slate-700">200 Messages / Month</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">3 models to compare</span>
+                  <span className="text-slate-700">10 Premium Perspectives</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Query GPT-5 & Claude Opus</span>
+                  <span className="text-slate-700">40 Normal Perspectives</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Use your own API keys</span>
+                  <span className="text-slate-700">150 Eco Perspectives</span>
                 </li>
               </ul>
 
@@ -1242,25 +1242,25 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Unlimited messages</span>
+                  <span className="text-slate-700">Unlimited Messages / Month</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">340+ models from 37+ providers</span>
+                  <span className="text-slate-700">400 Premium Perspectives</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Advanced project memory</span>
+                  <span className="text-slate-700">1,600 Normal Perspectives</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Priority model access</span>
+                  <span className="text-slate-700">4,000 Eco Perspectives</span>
                 </li>
               </ul>
 
@@ -1290,25 +1290,25 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Everything in Plus</span>
+                  <span className="text-slate-700">Unlimited Messages / Month</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Priority support</span>
+                  <span className="text-slate-700">1,200 Premium Perspectives</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Team features</span>
+                  <span className="text-slate-700">4,800 Normal Perspectives</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-slate-700">Advanced analytics</span>
+                  <span className="text-slate-700">10,000 Eco Perspectives</span>
                 </li>
               </ul>
 
@@ -1329,56 +1329,82 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
               <p className="text-xl text-slate-600">Different models, different costs. Choose what works for your needs.</p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-white rounded-2xl border border-slate-200/60 p-8 shadow-lg">
+            <div className="grid md:grid-cols-3 gap-8">
+              {/* Eco Models */}
+              <div className="bg-white rounded-2xl border border-emerald-200/60 p-8 shadow-lg">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
-                    <span className="text-emerald-600 font-bold text-xl">1</span>
+                    <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold text-slate-900">Fast Models</h4>
-                    <p className="text-slate-600">1 credit per perspective</p>
+                    <h4 className="text-xl font-bold text-slate-900">Eco Models</h4>
+                    <p className="text-slate-600">Most efficient</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">GPT-5 Mini</div>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Gemini 2.5 Flash Lite</div>
                   </div>
-                  <div className="bg-slate-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">Claude Haiku</div>
+                  <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">GPT-5 Nano</div>
                   </div>
-                  <div className="bg-slate-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">Grok 4 Fast</div>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">Gemini Flash</div>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">GLM 4.5</div>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">Qwen Coder</div>
+                  <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Grok 4 Fast Reasoning</div>
                   </div>
                 </div>
               </div>
 
+              {/* Normal Models */}
+              <div className="bg-white rounded-2xl border border-blue-200/60 p-8 shadow-lg">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-bold text-slate-900">Normal Models</h4>
+                    <p className="text-slate-600">Balanced performance</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Claude Haiku 3.5</div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Gemini 2.5 Flash</div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">GPT-5 Mini</div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Grok Code Fast</div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">Qwen 3 Coder 480B</div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <div className="text-sm font-semibold text-slate-700">GLM-4.5</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Premium Models */}
               <div className="bg-white rounded-2xl border border-violet-200/60 p-8 shadow-lg">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center">
-                    <span className="text-violet-600 font-bold text-xl">5</span>
+                    <svg className="w-6 h-6 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
                   </div>
                   <div>
                     <h4 className="text-xl font-bold text-slate-900">Premium Models</h4>
-                    <p className="text-slate-600">5 credits per perspective</p>
+                    <p className="text-slate-600">Most powerful</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-violet-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">GPT-5</div>
-                  </div>
-                  <div className="bg-violet-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">Claude Opus 4</div>
-                  </div>
+                <div className="grid grid-cols-1 gap-3">
                   <div className="bg-violet-50 rounded-lg p-3 text-center">
                     <div className="text-sm font-semibold text-slate-700">Claude Sonnet 4</div>
                   </div>
@@ -1386,10 +1412,10 @@ Use get_perspectives to get responses from Claude, GPT-5, Gemini, and other mode
                     <div className="text-sm font-semibold text-slate-700">Gemini 2.5 Pro</div>
                   </div>
                   <div className="bg-violet-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">Grok 4</div>
+                    <div className="text-sm font-semibold text-slate-700">GPT-5</div>
                   </div>
                   <div className="bg-violet-50 rounded-lg p-3 text-center">
-                    <div className="text-sm font-semibold text-slate-700">o1-preview</div>
+                    <div className="text-sm font-semibold text-slate-700">Grok 4</div>
                   </div>
                 </div>
               </div>
