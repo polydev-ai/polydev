@@ -396,7 +396,7 @@ export default function ModelTiersPage() {
               Add Model
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col fixed top-[5vh] translate-y-0" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col fixed top-[5vh] translate-y-0">
             <DialogHeader className="flex-shrink-0 pb-4 border-b">
               <DialogTitle>Add New Model Tier</DialogTitle>
               <DialogDescription>
@@ -487,7 +487,7 @@ export default function ModelTiersPage() {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" side="bottom" align="start" className="z-[9999] bg-white border shadow-lg" sideOffset={8}>
                     <SelectItem value="premium">Premium</SelectItem>
                     <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="eco">Eco</SelectItem>
@@ -596,7 +596,7 @@ export default function ModelTiersPage() {
           setEditAvailableModels([])
         }
       }}>
-        <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col fixed top-[5vh] translate-y-0" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col fixed top-[5vh] translate-y-0">
           <DialogHeader className="flex-shrink-0 pb-4 border-b">
             <DialogTitle>Edit Model Tier</DialogTitle>
             <DialogDescription>
@@ -688,7 +688,7 @@ export default function ModelTiersPage() {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" side="bottom" align="start" className="z-[9999] bg-white border shadow-lg" sideOffset={8}>
                     <SelectItem value="premium">Premium</SelectItem>
                     <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="eco">Eco</SelectItem>
