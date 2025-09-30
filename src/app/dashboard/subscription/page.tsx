@@ -163,12 +163,13 @@ export default function SubscriptionPage() {
   }, [fetchSubscriptionData])
 
   // Memoized handlers to prevent unnecessary re-renders
-  const handleUpgrade = useCallback(async () => {
+  const handleUpgrade = useCallback(async (tier: 'plus' | 'pro' = 'plus', interval: 'month' | 'year' = 'month') => {
     setIsUpgrading(true)
     try {
       const response = await fetch('/api/subscription/upgrade', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier, interval })
       })
 
       if (response.ok) {
@@ -352,8 +353,8 @@ export default function SubscriptionPage() {
 
           <div className="flex gap-2">
             {isFree ? (
-              <Button onClick={handleUpgrade} disabled={isUpgrading}>
-                {isUpgrading ? 'Upgrading...' : 'Upgrade to Plus or Pro'}
+              <Button onClick={() => handleUpgrade('plus', 'month')} disabled={isUpgrading}>
+                {isUpgrading ? 'Upgrading...' : 'Upgrade to Plus'}
               </Button>
             ) : (
               <Button variant="outline" onClick={openBillingPortal}>
@@ -530,7 +531,7 @@ export default function SubscriptionPage() {
             {!isPlus && (
               <Button
                 className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
-                onClick={handleUpgrade}
+                onClick={() => handleUpgrade('plus', 'month')}
                 disabled={isUpgrading}
               >
                 <Zap className="h-4 w-4 mr-2" />
@@ -581,7 +582,7 @@ export default function SubscriptionPage() {
             {!isPro && (
               <Button
                 className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
-                onClick={handleUpgrade}
+                onClick={() => handleUpgrade('pro', 'month')}
                 disabled={isUpgrading}
               >
                 <Zap className="h-4 w-4 mr-2" />

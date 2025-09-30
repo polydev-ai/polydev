@@ -11,16 +11,63 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
+
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get tier and interval from request body
+    const body = await request.json().catch(() => ({}))
+    const tier = body.tier || 'plus' // Default to plus
+    const interval = body.interval || 'month' // Default to monthly
+
+    // Fetch pricing config from database
+    const adminSupabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data: configData, error: configError } = await adminSupabase
+      .from('admin_pricing_config')
+      .select('config')
+      .eq('id', 1)
+      .single()
+
+    if (configError || !configData) {
+      console.error('[Subscription] Failed to fetch pricing config:', configError)
+      return NextResponse.json({ error: 'Failed to fetch pricing configuration' }, { status: 500 })
+    }
+
+    const config = configData.config
+
+    // Get the correct price ID based on tier and interval
+    let priceId: string
+    let planKey: string
+
+    if (tier === 'plus') {
+      priceId = interval === 'year'
+        ? config.subscription_pricing.plus_tier.stripe_price_id_annual
+        : config.subscription_pricing.plus_tier.stripe_price_id_monthly
+      planKey = 'plus'
+    } else if (tier === 'pro') {
+      priceId = interval === 'year'
+        ? config.subscription_pricing.pro_tier.stripe_price_id_annual
+        : config.subscription_pricing.pro_tier.stripe_price_id_monthly
+      planKey = 'pro'
+    } else {
+      return NextResponse.json({ error: 'Invalid tier specified' }, { status: 400 })
+    }
+
+    if (!priceId) {
+      console.error('[Subscription] Missing price ID for tier:', tier, 'interval:', interval)
+      return NextResponse.json({ error: 'Price configuration not found' }, { status: 500 })
     }
 
     // Get or create Stripe customer
     try {
       const customer = await getOrCreateStripeCustomer(
-        user.id, 
-        user.email || '', 
+        user.id,
+        user.email || '',
         user.user_metadata?.full_name || user.email || ''
       )
 
@@ -30,7 +77,7 @@ export async function POST(request: NextRequest) {
         payment_method_types: ['card'],
         line_items: [
           {
-            price: 'price_1S2oYBJtMA6wwImls1Og4rZi', // Pro monthly price ID
+            price: priceId,
             quantity: 1,
           },
         ],
@@ -39,12 +86,13 @@ export async function POST(request: NextRequest) {
         cancel_url: `https://www.polydev.ai/dashboard/subscription?canceled=true`,
         metadata: {
           userId: user.id,
-          planKey: 'pro',
-          type: 'subscription'
+          planKey: planKey,
+          type: 'subscription',
+          interval: interval
         }
       })
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         checkoutUrl: session.url,
         session: { id: session.id, url: session.url }
       })
