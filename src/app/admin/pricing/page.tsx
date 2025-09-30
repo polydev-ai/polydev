@@ -289,13 +289,48 @@ export default function AdminPricing() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="free-messages">Message Limit</Label>
+                      <Label htmlFor="free-messages">Messages/Month</Label>
                       <Input
                         id="free-messages"
                         type="number"
                         value={config.subscription_pricing.free_tier.message_limit}
                         onChange={(e) => updateSubscriptionPrice('free_tier', 'message_limit', parseInt(e.target.value))}
                       />
+                    </div>
+                    <div className="border-t pt-4">
+                      <Label className="text-sm font-semibold mb-3 block">Perspective Allocations</Label>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="free-premium" className="text-xs">Premium Perspectives</Label>
+                          <Input
+                            id="free-premium"
+                            type="number"
+                            placeholder="10"
+                            className="text-sm"
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="free-normal" className="text-xs">Normal Perspectives</Label>
+                          <Input
+                            id="free-normal"
+                            type="number"
+                            placeholder="40"
+                            className="text-sm"
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="free-eco" className="text-xs">Eco Perspectives</Label>
+                          <Input
+                            id="free-eco"
+                            type="number"
+                            placeholder="150"
+                            className="text-sm"
+                            disabled
+                          />
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -305,45 +340,85 @@ export default function AdminPricing() {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       Plus Plan
-                      <Badge className="bg-orange-500 text-white">
-                        {config.subscription_pricing.plus_tier?.price_display}/month
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge className="bg-orange-500 text-white">
+                          $20/month
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          $240/year
+                        </Badge>
+                      </div>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="plus-price">Price (cents)</Label>
-                        <Input
-                          id="plus-price"
-                          type="number"
-                          value={config.subscription_pricing.plus_tier?.price_cents}
-                          onChange={(e) => {
-                            const cents = parseInt(e.target.value)
-                            const display = `$${(cents / 100).toFixed(0)}`
-                            updateSubscriptionPrice('plus_tier' as any, 'price_cents', cents)
-                            updateSubscriptionPrice('plus_tier' as any, 'price_display', display)
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="plus-messages">Messages/Month</Label>
-                        <Input
-                          id="plus-messages"
-                          value="Unlimited"
-                          disabled
-                          className="bg-gray-100"
-                        />
+                    <div>
+                      <Label htmlFor="plus-messages">Messages/Month</Label>
+                      <Input
+                        id="plus-messages"
+                        value="Unlimited"
+                        disabled
+                        className="bg-gray-100"
+                      />
+                    </div>
+                    <div className="border-t pt-4">
+                      <Label className="text-sm font-semibold mb-3 block">Perspective Allocations</Label>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="plus-premium" className="text-xs">Premium Perspectives</Label>
+                          <Input
+                            id="plus-premium"
+                            type="number"
+                            placeholder="400"
+                            className="text-sm"
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="plus-normal" className="text-xs">Normal Perspectives</Label>
+                          <Input
+                            id="plus-normal"
+                            type="number"
+                            placeholder="1600"
+                            className="text-sm"
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="plus-eco" className="text-xs">Eco Perspectives</Label>
+                          <Input
+                            id="plus-eco"
+                            type="number"
+                            placeholder="4000"
+                            className="text-sm"
+                            disabled
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <Label htmlFor="plus-stripe-id">Stripe Price ID</Label>
-                      <Input
-                        id="plus-stripe-id"
-                        value={config.subscription_pricing.plus_tier?.stripe_price_id_monthly}
-                        onChange={(e) => updateSubscriptionPrice('plus_tier' as any, 'stripe_price_id_monthly', e.target.value)}
-                        placeholder="price_1234567890"
-                      />
+                    <div className="border-t pt-4">
+                      <Label className="text-sm font-semibold mb-3 block">Stripe Configuration</Label>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="plus-stripe-monthly" className="text-xs">Monthly Price ID</Label>
+                          <Input
+                            id="plus-stripe-monthly"
+                            value={config.subscription_pricing.plus_tier?.stripe_price_id_monthly}
+                            onChange={(e) => updateSubscriptionPrice('plus_tier' as any, 'stripe_price_id_monthly', e.target.value)}
+                            placeholder="price_monthly_xxx"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="plus-stripe-annual" className="text-xs">Annual Price ID</Label>
+                          <Input
+                            id="plus-stripe-annual"
+                            value={config.subscription_pricing.plus_tier?.stripe_price_id_annual}
+                            onChange={(e) => updateSubscriptionPrice('plus_tier' as any, 'stripe_price_id_annual', e.target.value)}
+                            placeholder="price_annual_xxx"
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -353,45 +428,85 @@ export default function AdminPricing() {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       Pro Plan
-                      <Badge className="bg-purple-500 text-white">
-                        {config.subscription_pricing.pro_tier.price_display}/month
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge className="bg-purple-500 text-white">
+                          $50/month
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          $600/year
+                        </Badge>
+                      </div>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="pro-price">Price (cents)</Label>
-                        <Input
-                          id="pro-price"
-                          type="number"
-                          value={config.subscription_pricing.pro_tier.price_cents}
-                          onChange={(e) => {
-                            const cents = parseInt(e.target.value)
-                            const display = `$${(cents / 100).toFixed(0)}`
-                            updateSubscriptionPrice('pro_tier', 'price_cents', cents)
-                            updateSubscriptionPrice('pro_tier', 'price_display', display)
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="pro-messages">Messages/Month</Label>
-                        <Input
-                          id="pro-messages"
-                          value="Unlimited"
-                          disabled
-                          className="bg-gray-100"
-                        />
+                    <div>
+                      <Label htmlFor="pro-messages">Messages/Month</Label>
+                      <Input
+                        id="pro-messages"
+                        value="Unlimited"
+                        disabled
+                        className="bg-gray-100"
+                      />
+                    </div>
+                    <div className="border-t pt-4">
+                      <Label className="text-sm font-semibold mb-3 block">Perspective Allocations</Label>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="pro-premium" className="text-xs">Premium Perspectives</Label>
+                          <Input
+                            id="pro-premium"
+                            type="number"
+                            placeholder="1200"
+                            className="text-sm"
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="pro-normal" className="text-xs">Normal Perspectives</Label>
+                          <Input
+                            id="pro-normal"
+                            type="number"
+                            placeholder="4800"
+                            className="text-sm"
+                            disabled
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="pro-eco" className="text-xs">Eco Perspectives</Label>
+                          <Input
+                            id="pro-eco"
+                            type="number"
+                            placeholder="10000"
+                            className="text-sm"
+                            disabled
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <Label htmlFor="pro-stripe-id">Stripe Price ID</Label>
-                      <Input
-                        id="pro-stripe-id"
-                        value={config.subscription_pricing.pro_tier.stripe_price_id_monthly}
-                        onChange={(e) => updateSubscriptionPrice('pro_tier', 'stripe_price_id_monthly', e.target.value)}
-                        placeholder="price_1234567890"
-                      />
+                    <div className="border-t pt-4">
+                      <Label className="text-sm font-semibold mb-3 block">Stripe Configuration</Label>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="pro-stripe-monthly" className="text-xs">Monthly Price ID</Label>
+                          <Input
+                            id="pro-stripe-monthly"
+                            value={config.subscription_pricing.pro_tier.stripe_price_id_monthly}
+                            onChange={(e) => updateSubscriptionPrice('pro_tier', 'stripe_price_id_monthly', e.target.value)}
+                            placeholder="price_monthly_xxx"
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="pro-stripe-annual" className="text-xs">Annual Price ID</Label>
+                          <Input
+                            id="pro-stripe-annual"
+                            value={config.subscription_pricing.pro_tier.stripe_price_id_annual}
+                            onChange={(e) => updateSubscriptionPrice('pro_tier', 'stripe_price_id_annual', e.target.value)}
+                            placeholder="price_annual_xxx"
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
