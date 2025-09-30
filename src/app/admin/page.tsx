@@ -393,6 +393,17 @@ export default function AdminDashboard() {
           </button>
 
           <button
+            onClick={() => router.push('/admin/tier-limits')}
+            className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow text-left"
+          >
+            <div className="flex items-center mb-3">
+              <Target className="h-6 w-6 text-blue-600" />
+              <h3 className="ml-3 text-lg font-semibold text-gray-900">Tier Limits</h3>
+            </div>
+            <p className="text-gray-600">Configure message and perspective limits per tier</p>
+          </button>
+
+          <button
             onClick={() => router.push('/admin/model-tiers')}
             className="bg-white p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow text-left"
           >

@@ -62,50 +62,36 @@ export interface OpenRouterKey {
   updated_at: string
 }
 
-// Credit packages with volume discounts
-export const CREDIT_PACKAGES = [
-  { 
-    amount: 10, 
-    price: 1000, // $10.00 in cents
-    bonus: 0, 
-    description: 'Starter package',
-    popular: false 
-  },
-  { 
-    amount: 25, 
-    price: 2400, // $24.00 in cents
-    bonus: 1, 
-    description: 'Most popular',
-    popular: true 
-  },
-  { 
-    amount: 50, 
-    price: 4700, // $47.00 in cents
-    bonus: 3, 
-    description: 'Great value',
-    popular: false 
-  },
-  { 
-    amount: 100, 
-    price: 9200, // $92.00 in cents
-    bonus: 8, 
-    description: 'Power user',
-    popular: false 
-  },
-  { 
-    amount: 250, 
-    price: 22500, // $225.00 in cents
-    bonus: 25, 
-    description: 'Enterprise',
-    popular: false 
-  }
-]
+// Credit packages are now loaded dynamically from database
+// Use getCreditPackages() method to fetch current packages
 
 export class CreditManager {
   private openrouter = new OpenRouterClient()
-  
+
   private async getSupabase() {
     return await createClient()
+  }
+
+  /**
+   * Fetch credit packages from database configuration
+   */
+  async getCreditPackages() {
+    try {
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
+        .from('admin_pricing_config')
+        .select('config_value')
+        .eq('config_key', 'credit_packages')
+        .single()
+
+      if (error) throw error
+
+      return data?.config_value?.packages || []
+    } catch (error) {
+      console.error('[CreditManager] Error fetching credit packages:', error)
+      // Return empty array if config not found
+      return []
+    }
   }
 
   /**

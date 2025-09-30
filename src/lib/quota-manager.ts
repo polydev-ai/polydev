@@ -382,29 +382,33 @@ export class QuotaManager {
   }
 
   /**
-   * Update user's plan tier and quota limits
+   * Update user's plan tier and quota limits (uses dynamic database config)
    */
   async updateUserPlan(
     userId: string,
     newTier: 'free' | 'plus' | 'pro'
   ): Promise<void> {
     try {
-      const quotaLimits = {
-        free: { messages: 200, premium: 10, normal: 100, eco: 500 },
-        plus: { messages: null, premium: 500, normal: 2000, eco: 10000 },
-        pro: { messages: null, premium: 1500, normal: 6000, eco: 30000 }
-      }
+      // Fetch tier limits from database
+      const { data: tierLimits, error: tierError } = await supabase
+        .from('admin_tier_limits')
+        .select('*')
+        .eq('tier', newTier)
+        .single()
 
-      const limits = quotaLimits[newTier]
+      if (tierError || !tierLimits) {
+        console.error('Error fetching tier limits:', tierError)
+        throw new Error(`Failed to fetch limits for tier: ${newTier}`)
+      }
 
       const { error } = await supabase
         .from('user_perspective_quotas')
         .update({
           plan_tier: newTier,
-          messages_per_month: limits.messages,
-          premium_perspectives_limit: limits.premium,
-          normal_perspectives_limit: limits.normal,
-          eco_perspectives_limit: limits.eco,
+          messages_per_month: tierLimits.messages_per_month,
+          premium_perspectives_limit: tierLimits.premium_perspectives_limit,
+          normal_perspectives_limit: tierLimits.normal_perspectives_limit,
+          eco_perspectives_limit: tierLimits.eco_perspectives_limit,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', userId)
