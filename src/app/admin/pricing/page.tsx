@@ -32,12 +32,24 @@ interface PricingConfig {
       features: string[]
       limitations: string[]
     }
+    plus_tier: {
+      name: string
+      price_cents: number
+      price_display: string
+      billing_interval: string
+      stripe_price_id_monthly: string
+      stripe_price_id_annual: string
+      message_limit: number | null
+      credits_allocation: number
+      features: string[]
+    }
     pro_tier: {
       name: string
       price_cents: number
       price_display: string
       billing_interval: string
-      stripe_price_id: string
+      stripe_price_id_monthly: string
+      stripe_price_id_annual: string
       message_limit: number | null
       credits_allocation: number
       features: string[]
