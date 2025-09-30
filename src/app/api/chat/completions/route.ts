@@ -999,7 +999,9 @@ export async function POST(request: NextRequest) {
               cost: collected[m].cost,
               fallback_method: collected[m].fallback,
               credits_used: collected[m].creditsUsed || 0,
-              response_time_ms: (collected as any)[m]?.responseTimeMs || undefined
+              response_time_ms: (collected as any)[m]?.responseTimeMs || undefined,
+              providerSourceId: collected[m].providerSourceId,
+              sourceType: collected[m].sourceType
             }))
 
             // QUOTA DEDUCTION: Deduct perspectives for successful responses
