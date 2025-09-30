@@ -78,7 +78,9 @@ export async function deductQuotaMiddleware(
   },
   estimatedCost?: number,
   requestMetadata?: any,
-  responseMetadata?: any
+  responseMetadata?: any,
+  providerSourceId?: string,
+  sourceType?: 'user_key' | 'user_cli' | 'admin_key' | 'admin_credits'
 ): Promise<void> {
   try {
     await quotaManager.deductQuota({
@@ -89,7 +91,9 @@ export async function deductQuotaMiddleware(
       outputTokens: usage.outputTokens,
       estimatedCost: estimatedCost || 0,
       requestMetadata,
-      responseMetadata
+      responseMetadata,
+      providerSourceId,
+      sourceType
     })
   } catch (error) {
     console.error('Quota deduction middleware error:', error)

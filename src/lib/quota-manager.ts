@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { getModelTier, calculatePerspectiveCost } from './model-tiers'
+import { bonusManager } from './bonus-manager'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +17,7 @@ export interface UserQuotaStatus {
   reason?: string
   quotaRemaining: {
     messages?: number
+    bonusMessages: number
     premium: number
     normal: number
     eco: number
@@ -38,6 +40,8 @@ export interface QuotaDeduction {
   estimatedCost: number
   requestMetadata?: any
   responseMetadata?: any
+  providerSourceId?: string  // ID from admin_system_api_keys or user_api_keys
+  sourceType?: 'user_key' | 'user_cli' | 'admin_key' | 'admin_credits'
 }
 
 export class QuotaManager {
@@ -55,7 +59,7 @@ export class QuotaManager {
         return {
           allowed: false,
           reason: `Unknown model: ${modelName}`,
-          quotaRemaining: { premium: 0, normal: 0, eco: 0 },
+          quotaRemaining: { bonusMessages: 0, premium: 0, normal: 0, eco: 0 },
           planTier: 'free',
           currentUsage: { messages: 0, premium: 0, normal: 0, eco: 0 }
         }
@@ -72,11 +76,14 @@ export class QuotaManager {
         return {
           allowed: false,
           reason: 'User quota not found',
-          quotaRemaining: { premium: 0, normal: 0, eco: 0 },
+          quotaRemaining: { bonusMessages: 0, premium: 0, normal: 0, eco: 0 },
           planTier: 'free',
           currentUsage: { messages: 0, premium: 0, normal: 0, eco: 0 }
         }
       }
+
+      // Get bonus balance
+      const bonusBalance = await bonusManager.getAvailableBonusBalance(userId)
 
       // Check if we need to reset monthly quota
       const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
@@ -100,6 +107,7 @@ export class QuotaManager {
       const remaining = {
         messages: quota.messages_per_month ?
           Math.max(0, quota.messages_per_month - quota.messages_used) : undefined,
+        bonusMessages: bonusBalance,
         premium: Math.max(0, quota.premium_perspectives_limit - quota.premium_perspectives_used),
         normal: Math.max(0, quota.normal_perspectives_limit - quota.normal_perspectives_used),
         eco: Math.max(0, quota.eco_perspectives_limit - quota.eco_perspectives_used)
@@ -113,10 +121,11 @@ export class QuotaManager {
       }
 
       // Check message limit (if not unlimited)
-      if (quota.messages_per_month && quota.messages_used >= quota.messages_per_month) {
+      // Allow if bonus messages are available
+      if (quota.messages_per_month && quota.messages_used >= quota.messages_per_month && bonusBalance === 0) {
         return {
           allowed: false,
-          reason: 'Monthly message limit exceeded',
+          reason: 'Monthly message limit exceeded and no bonus messages available',
           quotaRemaining: remaining,
           planTier: quota.plan_tier,
           currentUsage
@@ -149,7 +158,7 @@ export class QuotaManager {
       return {
         allowed: false,
         reason: 'Internal quota check error',
-        quotaRemaining: { premium: 0, normal: 0, eco: 0 },
+        quotaRemaining: { bonusMessages: 0, premium: 0, normal: 0, eco: 0 },
         planTier: 'free',
         currentUsage: { messages: 0, premium: 0, normal: 0, eco: 0 }
       }
@@ -172,6 +181,10 @@ export class QuotaManager {
       // Calculate actual cost if not provided
       const actualCost = estimatedCost || calculatePerspectiveCost(modelName, inputTokens, outputTokens)
 
+      // Try to deduct from bonus messages first (FIFO - expiring soonest first)
+      const bonusDeducted = await bonusManager.deductFromBonuses(userId, 1)
+      const usedBonus = bonusDeducted > 0
+
       // Update user quota usage
       const tierUsageKey = `${modelInfo.tier}_perspectives_used`
 
@@ -192,13 +205,20 @@ export class QuotaManager {
         throw new Error('Invalid quota data structure')
       }
 
+      // If bonus was used, only increment perspectives, not messages
+      // If no bonus, increment both messages and perspectives
+      const updateData: any = {
+        [tierUsageKey]: quotaData[tierUsageKey] + 1,
+        updated_at: new Date().toISOString()
+      }
+
+      if (!usedBonus) {
+        updateData.messages_used = quotaData.messages_used + 1
+      }
+
       const { error: quotaError } = await supabase
         .from('user_perspective_quotas')
-        .update({
-          messages_used: quotaData.messages_used + 1,
-          [tierUsageKey]: quotaData[tierUsageKey] + 1,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('user_id', userId)
 
       if (quotaError) {
@@ -207,22 +227,43 @@ export class QuotaManager {
       }
 
       // Record detailed usage
+      const usageRecord: any = {
+        user_id: userId,
+        session_id: sessionId,
+        model_name: modelName,
+        model_tier: modelInfo.tier,
+        provider: modelInfo.provider,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        total_tokens: inputTokens + outputTokens,
+        estimated_cost: actualCost,
+        perspectives_deducted: 1,
+        request_metadata: deduction.requestMetadata || {},
+        response_metadata: deduction.responseMetadata || {}
+      }
+
+      // Add provider source tracking if available
+      if (deduction.providerSourceId) {
+        usageRecord.provider_source_id = deduction.providerSourceId
+      }
+      if (deduction.sourceType) {
+        usageRecord.request_metadata = {
+          ...usageRecord.request_metadata,
+          source_type: deduction.sourceType
+        }
+      }
+
+      // Track if bonus was used
+      if (usedBonus) {
+        usageRecord.request_metadata = {
+          ...usageRecord.request_metadata,
+          used_bonus_message: true
+        }
+      }
+
       const { error: usageError } = await supabase
         .from('perspective_usage')
-        .insert({
-          user_id: userId,
-          session_id: sessionId,
-          model_name: modelName,
-          model_tier: modelInfo.tier,
-          provider: modelInfo.provider,
-          input_tokens: inputTokens,
-          output_tokens: outputTokens,
-          total_tokens: inputTokens + outputTokens,
-          estimated_cost: actualCost,
-          perspectives_deducted: 1,
-          request_metadata: deduction.requestMetadata || {},
-          response_metadata: deduction.responseMetadata || {}
-        })
+        .insert(usageRecord)
 
       if (usageError) {
         console.error('Error recording usage:', usageError)

@@ -528,8 +528,14 @@ export async function POST(request: NextRequest) {
     // Step 2: Get ALL API keys (including OpenRouter as a provider)
     const { data: apiKeys } = await supabase
       .from('user_api_keys')
-      .select('provider, encrypted_key, api_base, active')
+      .select('id, provider, encrypted_key, api_base, active')
       .eq('user_id', user.id)
+      .eq('active', true)
+
+    // Step 2.5: Get admin system API keys
+    const { data: adminKeys } = await supabase
+      .from('admin_system_api_keys')
+      .select('id, provider_id, encrypted_api_key, api_base_url, active')
       .eq('active', true)
     
     // Step 3: Get model mappings for OpenRouter credits fallback
@@ -555,8 +561,8 @@ export async function POST(request: NextRequest) {
     }
     
     // Build comprehensive provider configuration with separate CLI and API capabilities
-    const providerConfigs: Record<string, { cli?: any, api?: any }> = {}
-    
+    const providerConfigs: Record<string, { cli?: any, api?: any, admin?: any }> = {}
+
     // Process CLI configurations
     ;(cliConfigs || []).forEach(cli => {
       const mappedProvider = cliProviderMappings[cli.provider]
@@ -568,12 +574,13 @@ export async function POST(request: NextRequest) {
           type: 'cli',
           priority: 1,
           cliProvider: cli.provider,
-          customPath: cli.custom_path
+          customPath: cli.custom_path,
+          sourceType: 'user_cli'
         }
       }
     })
-    
-    // Process API key configurations
+
+    // Process user API key configurations
     ;(apiKeys || []).forEach(key => {
       if (!providerConfigs[key.provider]) {
         providerConfigs[key.provider] = {}
@@ -582,7 +589,24 @@ export async function POST(request: NextRequest) {
         type: 'api',
         priority: 2,
         apiKey: atob(key.encrypted_key),
-        baseUrl: key.api_base
+        baseUrl: key.api_base,
+        keyId: key.id,
+        sourceType: 'user_key'
+      }
+    })
+
+    // Process admin system API keys (priority 3 - before credits)
+    ;(adminKeys || []).forEach(key => {
+      if (!providerConfigs[key.provider_id]) {
+        providerConfigs[key.provider_id] = {}
+      }
+      providerConfigs[key.provider_id].admin = {
+        type: 'admin',
+        priority: 3,
+        apiKey: atob(key.encrypted_api_key),
+        baseUrl: key.api_base_url,
+        keyId: key.id,
+        sourceType: 'admin_key'
       }
     })
     
@@ -607,14 +631,15 @@ export async function POST(request: NextRequest) {
     if (stream) {
       const encoder = new TextEncoder()
 
-      // Helper to choose provider + config for a model (CLI > API > OpenRouter credits)
+      // Helper to choose provider + config for a model (CLI > User API > Admin API > OpenRouter credits)
       const selectProviderForModel = async (modelId: string) => {
         const requiredProvider = await getProviderFromModel(modelId, supabase, user.id)
         let selectedProvider: string | null = null
         let selectedConfig: any = null
-        let fallbackMethod: 'cli' | 'api' | 'credits' = 'api'
+        let fallbackMethod: 'cli' | 'api' | 'admin' | 'credits' = 'api'
         let actualModelId = modelId
 
+        // Priority 1: CLI tools
         if (providerConfigs[requiredProvider]?.cli) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].cli
@@ -622,6 +647,7 @@ export async function POST(request: NextRequest) {
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
         }
 
+        // Priority 2: User API keys
         if (!selectedProvider && providerConfigs[requiredProvider]?.api) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].api
@@ -629,6 +655,15 @@ export async function POST(request: NextRequest) {
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
         }
 
+        // Priority 3: Admin system API keys
+        if (!selectedProvider && providerConfigs[requiredProvider]?.admin) {
+          selectedProvider = requiredProvider
+          selectedConfig = providerConfigs[requiredProvider].admin
+          fallbackMethod = 'admin'
+          actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+        }
+
+        // Special handling for OpenRouter
         if (!selectedProvider && requiredProvider === 'openrouter' && providerConfigs['openrouter']?.api) {
           selectedProvider = 'openrouter'
           selectedConfig = providerConfigs['openrouter'].api
@@ -636,11 +671,12 @@ export async function POST(request: NextRequest) {
           actualModelId = await resolveProviderModelId(modelId, 'openrouter')
         }
 
+        // Priority 4: OpenRouter credits (admin-provided fallback)
         if (!selectedProvider && totalCredits > 0) {
           const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
           if (openrouterModelId !== modelId) {
             selectedProvider = 'openrouter'
-            selectedConfig = { type: 'credits', priority: 3, apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '', baseUrl: 'https://openrouter.ai/api/v1' }
+            selectedConfig = { type: 'credits', priority: 4, apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '', baseUrl: 'https://openrouter.ai/api/v1', sourceType: 'admin_credits' }
             fallbackMethod = 'credits'
             actualModelId = openrouterModelId
           }
@@ -650,7 +686,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Per-model collectors
-      const collected: Record<string, { content: string; usage: any; provider: string; fallback?: string; modelResolved?: string; creditsUsed?: number; cost?: { input_cost: number; output_cost: number; total_cost: number } }> = {}
+      const collected: Record<string, { content: string; usage: any; provider: string; fallback?: string; modelResolved?: string; creditsUsed?: number; cost?: { input_cost: number; output_cost: number; total_cost: number }; providerSourceId?: string; sourceType?: string }> = {}
       targetModels.forEach((m) => { collected[m] = { content: '', usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }, provider: 'unknown' } })
 
       const streamingResponse = new ReadableStream({
@@ -799,6 +835,8 @@ export async function POST(request: NextRequest) {
 
               collected[friendlyModelId].provider = selectedProvider
               collected[friendlyModelId].fallback = fallbackMethod
+              collected[friendlyModelId].providerSourceId = selectedConfig?.keyId
+              collected[friendlyModelId].sourceType = selectedConfig?.sourceType
 
               // Metrics for latency
               const modelStart = Date.now()
@@ -978,7 +1016,9 @@ export async function POST(request: NextRequest) {
                     usage,
                     estimatedCost,
                     { messages, temperature, max_tokens },
-                    { provider: response.provider, fallback_method: response.fallback_method }
+                    { provider: response.provider, fallback_method: response.fallback_method },
+                    response.providerSourceId,
+                    response.sourceType as any
                   )
                 }
               }
@@ -2330,7 +2370,9 @@ export async function POST(request: NextRequest) {
             usage,
             estimatedCost,
             { messages, temperature, max_tokens },
-            { provider: response.provider, fallback_method: response.fallback_method }
+            { provider: response.provider, fallback_method: response.fallback_method },
+            response.providerSourceId,
+            response.sourceType as any
           )
         }
       }

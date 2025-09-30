@@ -20,6 +20,21 @@ interface ModelTier {
   active: boolean
 }
 
+interface Provider {
+  id: string
+  name: string
+  display_name: string
+  logo_url: string
+}
+
+interface ModelOption {
+  id: string
+  name: string
+  display_name: string
+  provider_name: string
+  provider_logo_url: string
+}
+
 export default function ModelTiersPage() {
   const [models, setModels] = useState<ModelTier[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,6 +45,12 @@ export default function ModelTiersPage() {
   const [globalMaxTokens, setGlobalMaxTokens] = useState(32000)
   const [savingGlobal, setSavingGlobal] = useState(false)
   const { toast } = useToast()
+
+  // Database-driven dropdowns
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([])
+  const [selectedProvider, setSelectedProvider] = useState<string>('')
+  const [selectedModel, setSelectedModel] = useState<string>('')
 
   const [newModel, setNewModel] = useState({
     provider: '',
@@ -42,6 +63,7 @@ export default function ModelTiersPage() {
   useEffect(() => {
     fetchModels()
     fetchGlobalSettings()
+    fetchProviders()
   }, [])
 
   const fetchModels = async () => {
@@ -72,6 +94,40 @@ export default function ModelTiersPage() {
       }
     } catch (error) {
       console.error('Error fetching global settings:', error)
+    }
+  }
+
+  const fetchProviders = async () => {
+    try {
+      const response = await fetch('/api/admin/providers/list')
+      const data = await response.json()
+      if (data.providers) {
+        setProviders(data.providers)
+      }
+    } catch (error) {
+      console.error('Error fetching providers:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load providers',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const fetchModelsForProvider = async (providerId: string) => {
+    try {
+      const response = await fetch(`/api/admin/models/list?provider_id=${providerId}`)
+      const data = await response.json()
+      if (data.models) {
+        setAvailableModels(data.models)
+      }
+    } catch (error) {
+      console.error('Error fetching models:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load models for provider',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -157,13 +213,7 @@ export default function ModelTiersPage() {
         })
         await fetchModels()
         setIsAddDialogOpen(false)
-        setNewModel({
-          provider: '',
-          model_name: '',
-          display_name: '',
-          tier: 'normal',
-          max_output_tokens: 8000
-        })
+        resetAddDialog()
       } else {
         throw new Error(data.error)
       }
@@ -174,6 +224,19 @@ export default function ModelTiersPage() {
         variant: 'destructive'
       })
     }
+  }
+
+  const resetAddDialog = () => {
+    setNewModel({
+      provider: '',
+      model_name: '',
+      display_name: '',
+      tier: 'normal',
+      max_output_tokens: 8000
+    })
+    setSelectedProvider('')
+    setSelectedModel('')
+    setAvailableModels([])
   }
 
   const handleDelete = async (id: string) => {
@@ -288,7 +351,10 @@ export default function ModelTiersPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+            setIsAddDialogOpen(open)
+            if (!open) resetAddDialog()
+          }}>
             <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -304,22 +370,72 @@ export default function ModelTiersPage() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="new-provider">Provider ID</Label>
-                <Input
-                  id="new-provider"
-                  value={newModel.provider}
-                  onChange={(e) => setNewModel({ ...newModel, provider: e.target.value })}
-                  placeholder="e.g., anthropic, openai, google"
-                />
+                <Label htmlFor="new-provider">Provider</Label>
+                <Select
+                  value={selectedProvider}
+                  onValueChange={(value) => {
+                    setSelectedProvider(value)
+                    setSelectedModel('')
+                    setAvailableModels([])
+                    fetchModelsForProvider(value)
+                    // Find provider name from ID
+                    const provider = providers.find(p => p.id === value)
+                    if (provider) {
+                      setNewModel({ ...newModel, provider: provider.name, model_name: '', display_name: '' })
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providers.map(provider => (
+                      <SelectItem key={provider.id} value={provider.id}>
+                        <div className="flex items-center gap-2">
+                          {provider.logo_url && (
+                            <img src={provider.logo_url} alt={provider.display_name} className="w-5 h-5" />
+                          )}
+                          <span>{provider.display_name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="new-model-name">Model ID</Label>
-                <Input
-                  id="new-model-name"
-                  value={newModel.model_name}
-                  onChange={(e) => setNewModel({ ...newModel, model_name: e.target.value })}
-                  placeholder="e.g., claude-3-opus-20240229"
-                />
+                <Label htmlFor="new-model-name">Model</Label>
+                <Select
+                  value={selectedModel}
+                  onValueChange={(value) => {
+                    setSelectedModel(value)
+                    // Find model details from ID
+                    const model = availableModels.find(m => m.id === value)
+                    if (model) {
+                      setNewModel({
+                        ...newModel,
+                        model_name: model.name,
+                        display_name: model.display_name
+                      })
+                    }
+                  }}
+                  disabled={!selectedProvider}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={selectedProvider ? "Select a model" : "Select a provider first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableModels.map(model => (
+                      <SelectItem key={model.id} value={model.id}>
+                        <div className="flex items-center gap-2">
+                          {model.provider_logo_url && (
+                            <img src={model.provider_logo_url} alt={model.provider_name} className="w-5 h-5" />
+                          )}
+                          <span>{model.display_name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-display-name">Display Name</Label>
@@ -354,7 +470,10 @@ export default function ModelTiersPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => {
+                setIsAddDialogOpen(false)
+                resetAddDialog()
+              }}>Cancel</Button>
               <Button onClick={handleCreate}>Create</Button>
             </DialogFooter>
           </DialogContent>

@@ -3,49 +3,117 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import type { User } from '@supabase/supabase-js'
-import { ArrowLeft, TrendingUp, Users, CreditCard, Activity, Download, Calendar, Home } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
+import {
+  BarChart3,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Activity,
+  Key,
+  Gift,
+  ArrowLeft
+} from 'lucide-react'
 
-interface AnalyticsData {
-  userGrowth: {
-    total: number
-    thisWeek: number
-    thisMonth: number
-    growth: number
-  }
-  subscription: {
-    active: number
-    revenue: number
-    conversionRate: number
-    churnRate: number
-  }
-  usage: {
-    totalSessions: number
-    apiCalls: number
-    averageSessionDuration: number
-    popularModels: Array<{ name: string; count: number }>
-  }
-  credits: {
-    totalIssued: number
-    totalUsed: number
-    averagePerUser: number
-    topUsers: Array<{ email: string; credits: number }>
-  }
-  activity: {
-    dailyActiveUsers: number
-    weeklyActiveUsers: number
-    monthlyActiveUsers: number
-    retentionRate: number
-  }
+interface SystemStats {
+  total_users: number
+  new_users_this_month: number
+  active_users_this_month: number
+  total_messages_this_month: number
+  premium_perspectives_this_month: number
+  normal_perspectives_this_month: number
+  eco_perspectives_this_month: number
+  total_cost_this_month: number
+  free_users: number
+  plus_users: number
+  pro_users: number
 }
 
-export default function Analytics() {
-  const [user, setUser] = useState<User | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+interface DailyTrend {
+  date: string
+  total_requests: number
+  active_users: number
+  total_cost: number
+  premium_requests: number
+  normal_requests: number
+  eco_requests: number
+  bonus_messages_used: number
+}
+
+interface ProviderData {
+  provider: string
+  total_requests: number
+  unique_users: number
+  total_cost: number
+  total_tokens: number
+}
+
+interface ModelData {
+  model_name: string
+  model_tier: string
+  provider: string
+  total_requests: number
+  unique_users: number
+  total_cost: number
+  avg_cost: number
+}
+
+interface AdminKeyData {
+  provider_source_id: string
+  key_name: string
+  key_provider: string
+  total_requests: number
+  total_cost: number
+  total_input_tokens: number
+  total_output_tokens: number
+}
+
+interface UserKeyData {
+  total_user_keys: number
+  users_with_keys: number
+  provider: string
+  keys_per_provider: number
+}
+
+interface BonusData {
+  bonus_type: string
+  total_bonuses: number
+  total_messages_granted: number
+  total_messages_used: number
+  total_messages_remaining: number
+  active_bonuses: number
+  expired_bonuses: number
+  fully_used_bonuses: number
+}
+
+interface TopUser {
+  user_id: string
+  email: string
+  current_plan_tier: string
+  total_requests: number
+  total_cost: number
+  last_activity: string
+}
+
+export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
-  const [dateRange, setDateRange] = useState('30') // days
-  const [selectedMetric, setSelectedMetric] = useState('users')
+  const [systemStats, setSystemStats] = useState<SystemStats | null>(null)
+  const [dailyTrends, setDailyTrends] = useState<DailyTrend[]>([])
+  const [providers, setProviders] = useState<ProviderData[]>([])
+  const [models, setModels] = useState<ModelData[]>([])
+  const [adminKeys, setAdminKeys] = useState<AdminKeyData[]>([])
+  const [userKeys, setUserKeys] = useState<UserKeyData[]>([])
+  const [bonuses, setBonuses] = useState<BonusData[]>([])
+  const [topUsers, setTopUsers] = useState<TopUser[]>([])
 
   const router = useRouter()
   const supabase = createClient()
@@ -54,124 +122,87 @@ export default function Analytics() {
     checkAdminAccess()
   }, [])
 
-  useEffect(() => {
-    if (isAdmin) {
-      loadAnalytics()
-    }
-  }, [isAdmin, dateRange])
-
-  async function checkAdminAccess() {
+  const checkAdminAccess = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-
       if (!user) {
-        router.push('/login')
+        router.push('/auth/signin')
         return
       }
 
-      setUser(user)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single()
 
-      const legacyAdminEmails = new Set(['admin@polydev.ai', 'venkat@polydev.ai', 'gvsfans@gmail.com'])
-      const isLegacyAdmin = legacyAdminEmails.has(user.email || '')
-
-      let isNewAdmin = false
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('email', user.email)
-          .single()
-
-        isNewAdmin = profile?.is_admin || false
-      } catch (error) {
-        console.log('Profile not found, checking legacy admin access')
-      }
-
-      if (!isNewAdmin && !isLegacyAdmin) {
-        router.push('/admin')
+      if (!profile?.is_admin) {
+        router.push('/')
         return
       }
 
-      setIsAdmin(true)
+      await loadAllAnalytics()
     } catch (error) {
       console.error('Error checking admin access:', error)
-      router.push('/admin')
+      router.push('/')
     } finally {
       setLoading(false)
     }
   }
 
-  async function loadAnalytics() {
+  const loadAllAnalytics = async () => {
     try {
-      console.log('📊 Loading analytics from dedicated admin API...')
+      // Load all analytics in parallel
+      const [
+        systemResponse,
+        trendsResponse,
+        providersResponse,
+        modelsResponse,
+        adminKeysResponse,
+        userKeysResponse,
+        bonusesResponse,
+        topUsersResponse
+      ] = await Promise.all([
+        fetch('/api/admin/analytics?type=system'),
+        fetch('/api/admin/analytics?type=daily-trends'),
+        fetch('/api/admin/analytics?type=providers'),
+        fetch('/api/admin/analytics?type=models'),
+        fetch('/api/admin/analytics?type=admin-keys'),
+        fetch('/api/admin/analytics?type=user-keys'),
+        fetch('/api/admin/analytics?type=bonuses'),
+        fetch('/api/admin/analytics?type=top-users')
+      ])
 
-      // Use dedicated admin analytics API that bypasses RLS
-      const response = await fetch(`/api/admin/analytics?days=${dateRange}`)
+      const [system, trends, provs, mods, adminK, userK, bonus, topU] = await Promise.all([
+        systemResponse.json(),
+        trendsResponse.json(),
+        providersResponse.json(),
+        modelsResponse.json(),
+        adminKeysResponse.json(),
+        userKeysResponse.json(),
+        bonusesResponse.json(),
+        topUsersResponse.json()
+      ])
 
-      if (!response.ok) {
-        throw new Error(`Admin analytics API failed: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to load analytics')
-      }
-
-      console.log('✅ Admin Analytics API Response:', data.analytics)
-      setAnalytics(data.analytics)
+      setSystemStats(system.data)
+      setDailyTrends(trends.data || [])
+      setProviders(provs.data || [])
+      setModels(mods.data || [])
+      setAdminKeys(adminK.data || [])
+      setUserKeys(userK.data || [])
+      setBonuses(bonus.data || [])
+      setTopUsers(topU.data || [])
     } catch (error) {
       console.error('Error loading analytics:', error)
-      // Fallback to empty analytics
-      setAnalytics({
-        userGrowth: { total: 0, thisWeek: 0, thisMonth: 0, growth: 0 },
-        subscription: { active: 0, revenue: 0, conversionRate: 0, churnRate: 0 },
-        usage: { totalSessions: 0, apiCalls: 0, averageSessionDuration: 0, popularModels: [] },
-        credits: { totalIssued: 0, totalUsed: 0, averagePerUser: 0, topUsers: [] },
-        activity: { dailyActiveUsers: 0, weeklyActiveUsers: 0, monthlyActiveUsers: 0, retentionRate: 0 }
-      })
     }
   }
 
-  function exportData(format: 'csv' | 'json') {
-    if (!analytics) return
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat().format(Math.round(num))
+  }
 
-    const data = {
-      export_date: new Date().toISOString(),
-      date_range: `${dateRange} days`,
-      analytics
-    }
-
-    if (format === 'json') {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `polydev-analytics-${new Date().toISOString().split('T')[0]}.json`
-      a.click()
-    } else {
-      // Convert to CSV format
-      const csvData = [
-        ['Metric', 'Value'],
-        ['Total Users', analytics.userGrowth.total],
-        ['Users This Week', analytics.userGrowth.thisWeek],
-        ['Users This Month', analytics.userGrowth.thisMonth],
-        ['Active Subscriptions', analytics.subscription.active],
-        ['Monthly Revenue', `$${analytics.subscription.revenue}`],
-        ['Total Credits Issued', analytics.credits.totalIssued],
-        ['Daily Active Users', analytics.activity.dailyActiveUsers],
-        ['Weekly Active Users', analytics.activity.weeklyActiveUsers],
-        ['Monthly Active Users', analytics.activity.monthlyActiveUsers]
-      ]
-
-      const csvContent = csvData.map(row => row.join(',')).join('\n')
-      const blob = new Blob([csvContent], { type: 'text/csv' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `polydev-analytics-${new Date().toISOString().split('T')[0]}.csv`
-      a.click()
-    }
+  const formatCost = (cost: number) => {
+    return `$${cost.toFixed(4)}`
   }
 
   if (loading) {
@@ -182,260 +213,409 @@ export default function Analytics() {
     )
   }
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-red-600">Access denied.</div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center">
-              <button
-                onClick={() => router.push('/admin')}
-                className="mr-4 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Back to Admin Portal"
-              >
-                <Home className="h-5 w-5" />
-              </button>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-                <p className="text-gray-600 mt-1">Platform insights and metrics</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              <select
-                value={dateRange}
-                onChange={(e) => setDateRange(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="7">Last 7 days</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="365">Last year</option>
-              </select>
-              <button
-                onClick={() => exportData('csv')}
-                className="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </button>
-              <button
-                onClick={() => exportData('json')}
-                className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export JSON
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-4">
+          <button
+            onClick={() => router.push('/admin')}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Admin Portal
+          </button>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center">
-              <Users className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics?.userGrowth.total || 0}</p>
-                <p className="text-sm text-green-600">+{analytics?.userGrowth.growth.toFixed(1) || 0}% growth</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center">
-              <CreditCard className="h-8 w-8 text-green-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">${analytics?.subscription.revenue || 0}</p>
-                <p className="text-sm text-gray-500">{analytics?.subscription.active || 0} active subs</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center">
-              <Activity className="h-8 w-8 text-purple-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Daily Active Users</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics?.activity.dailyActiveUsers || 0}</p>
-                <p className="text-sm text-gray-500">{analytics?.activity.retentionRate || 0}% retention</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-orange-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">API Calls</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics?.usage.totalSessions.toLocaleString() || 0}</p>
-                <p className="text-sm text-gray-500">Avg {analytics?.usage.averageSessionDuration || 0}m session</p>
-              </div>
-            </div>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+              <BarChart3 className="h-8 w-8 text-blue-600" />
+              Analytics Dashboard
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Comprehensive analytics for the perspective-based quota system
+            </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* User Growth Chart */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">User Growth</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">This Week</span>
-                <span className="text-sm font-medium">{analytics?.userGrowth.thisWeek || 0} new users</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{ width: `${Math.min((analytics?.userGrowth.thisWeek || 0) / Math.max(1, analytics?.userGrowth.thisMonth || 1) * 100, 100)}%` }}
-                ></div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">This Month</span>
-                <span className="text-sm font-medium">{analytics?.userGrowth.thisMonth || 0} new users</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-green-600 h-2 rounded-full"
-                  style={{ width: `${Math.min((analytics?.userGrowth.thisMonth || 0) / Math.max(1, analytics?.userGrowth.total || 1) * 100, 100)}%` }}
-                ></div>
-              </div>
-
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-600">Growth Rate</p>
-                <p className="text-lg font-semibold text-green-600">+{analytics?.userGrowth.growth.toFixed(1) || 0}%</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Popular Models */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Popular Models</h3>
-            <div className="space-y-4">
-              {analytics?.usage.popularModels.map((model, index) => (
-                <div key={model.name} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-xs flex items-center justify-center mr-3">
-                      {index + 1}
-                    </span>
-                    <span className="text-sm font-medium text-gray-900">{model.name}</span>
+        {/* System Stats Overview */}
+        {systemStats && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Users</p>
+                    <p className="text-2xl font-bold">{formatNumber(systemStats.total_users)}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatNumber(systemStats.new_users_this_month)} new this month
+                    </p>
                   </div>
-                  <span className="text-sm text-gray-600">{model.count} uses</span>
+                  <Users className="h-8 w-8 text-blue-500" />
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
+              </CardContent>
+            </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Credits Overview */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Credits Overview</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Issued</span>
-                <span className="text-sm font-medium">{analytics?.credits.totalIssued || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Used</span>
-                <span className="text-sm font-medium">{analytics?.credits.totalUsed || 0}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Average per User</span>
-                <span className="text-sm font-medium">{analytics?.credits.averagePerUser.toFixed(1) || 0}</span>
-              </div>
-
-              <div className="mt-6">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Top Credit Users</h4>
-                {analytics?.credits.topUsers.map((user, index) => (
-                  <div key={user.email} className="flex justify-between items-center py-1">
-                    <span className="text-xs text-gray-600">{user.email}</span>
-                    <span className="text-xs font-medium">{user.credits}</span>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Messages This Month</p>
+                    <p className="text-2xl font-bold">{formatNumber(systemStats.total_messages_this_month)}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatNumber(systemStats.active_users_this_month)} active users
+                    </p>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <Activity className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Cost</p>
+                    <p className="text-2xl font-bold">{formatCost(systemStats.total_cost_this_month)}</p>
+                    <p className="text-xs text-gray-500 mt-1">This month</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-yellow-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Plan Distribution</p>
+                    <p className="text-2xl font-bold">
+                      {formatNumber(systemStats.free_users + systemStats.plus_users + systemStats.pro_users)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {systemStats.free_users}F / {systemStats.plus_users}+ / {systemStats.pro_users}P
+                    </p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
+        )}
 
-          {/* Activity Metrics */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">User Activity</h3>
-            <div className="space-y-6">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Daily Active</span>
-                  <span className="text-sm font-medium">{analytics?.activity.dailyActiveUsers || 0}</span>
+        {/* Perspectives Breakdown */}
+        {systemStats && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Perspective Usage This Month</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-1">Premium</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {formatNumber(systemStats.premium_perspectives_this_month)}
+                  </p>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: '45%' }}></div>
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-1">Normal</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {formatNumber(systemStats.normal_perspectives_this_month)}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-1">Eco</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatNumber(systemStats.eco_perspectives_this_month)}
+                  </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
 
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Weekly Active</span>
-                  <span className="text-sm font-medium">{analytics?.activity.weeklyActiveUsers || 0}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: '70%' }}></div>
-                </div>
-              </div>
+        {/* Tabs for Detailed Analytics */}
+        <Tabs defaultValue="trends" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="trends">Daily Trends</TabsTrigger>
+            <TabsTrigger value="providers">Providers</TabsTrigger>
+            <TabsTrigger value="models">Models</TabsTrigger>
+            <TabsTrigger value="admin-keys">Admin Keys</TabsTrigger>
+            <TabsTrigger value="user-keys">User Keys</TabsTrigger>
+            <TabsTrigger value="bonuses">Bonuses</TabsTrigger>
+            <TabsTrigger value="top-users">Top Users</TabsTrigger>
+          </TabsList>
 
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Monthly Active</span>
-                  <span className="text-sm font-medium">{analytics?.activity.monthlyActiveUsers || 0}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-purple-600 h-2 rounded-full" style={{ width: '85%' }}></div>
-                </div>
-              </div>
+          {/* Daily Trends Tab */}
+          <TabsContent value="trends">
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Usage Trends (Last 30 Days)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Requests</TableHead>
+                      <TableHead className="text-right">Active Users</TableHead>
+                      <TableHead className="text-right">Cost</TableHead>
+                      <TableHead className="text-right">Premium</TableHead>
+                      <TableHead className="text-right">Normal</TableHead>
+                      <TableHead className="text-right">Eco</TableHead>
+                      <TableHead className="text-right">Bonus Used</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dailyTrends.slice(0, 30).map((trend) => (
+                      <TableRow key={trend.date}>
+                        <TableCell>{new Date(trend.date).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">{formatNumber(trend.total_requests)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(trend.active_users)}</TableCell>
+                        <TableCell className="text-right">{formatCost(trend.total_cost)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(trend.premium_requests)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(trend.normal_requests)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(trend.eco_requests)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(trend.bonus_messages_used)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-              <div className="pt-4 border-t border-gray-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Retention Rate</span>
-                  <span className="text-lg font-semibold text-green-600">{analytics?.activity.retentionRate || 0}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+          {/* Providers Tab */}
+          <TabsContent value="providers">
+            <Card>
+              <CardHeader>
+                <CardTitle>Provider Usage</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Provider</TableHead>
+                      <TableHead className="text-right">Requests</TableHead>
+                      <TableHead className="text-right">Unique Users</TableHead>
+                      <TableHead className="text-right">Total Cost</TableHead>
+                      <TableHead className="text-right">Total Tokens</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {providers.map((provider) => (
+                      <TableRow key={provider.provider}>
+                        <TableCell className="font-medium">{provider.provider}</TableCell>
+                        <TableCell className="text-right">{formatNumber(provider.total_requests)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(provider.unique_users)}</TableCell>
+                        <TableCell className="text-right">{formatCost(provider.total_cost)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(provider.total_tokens)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Subscription Analytics */}
-        <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Subscription Analytics</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">{analytics?.subscription.active || 0}</p>
-              <p className="text-sm text-gray-600">Active Subscriptions</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">${analytics?.subscription.revenue || 0}</p>
-              <p className="text-sm text-gray-600">Monthly Revenue</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-purple-600">{analytics?.subscription.conversionRate.toFixed(1) || 0}%</p>
-              <p className="text-sm text-gray-600">Conversion Rate</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-orange-600">{analytics?.subscription.churnRate || 0}%</p>
-              <p className="text-sm text-gray-600">Churn Rate</p>
-            </div>
-          </div>
-        </div>
+          {/* Models Tab */}
+          <TabsContent value="models">
+            <Card>
+              <CardHeader>
+                <CardTitle>Model Usage</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Tier</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead className="text-right">Requests</TableHead>
+                      <TableHead className="text-right">Total Cost</TableHead>
+                      <TableHead className="text-right">Avg Cost</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {models.slice(0, 20).map((model, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{model.model_name}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            model.model_tier === 'premium' ? 'bg-purple-100 text-purple-700' :
+                            model.model_tier === 'normal' ? 'bg-blue-100 text-blue-700' :
+                            'bg-green-100 text-green-700'
+                          }`}>
+                            {model.model_tier}
+                          </span>
+                        </TableCell>
+                        <TableCell>{model.provider}</TableCell>
+                        <TableCell className="text-right">{formatNumber(model.total_requests)}</TableCell>
+                        <TableCell className="text-right">{formatCost(model.total_cost)}</TableCell>
+                        <TableCell className="text-right">{formatCost(model.avg_cost)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Admin Keys Tab */}
+          <TabsContent value="admin-keys">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  Admin API Keys Usage
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Key Name</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead className="text-right">Requests</TableHead>
+                      <TableHead className="text-right">Total Cost</TableHead>
+                      <TableHead className="text-right">Input Tokens</TableHead>
+                      <TableHead className="text-right">Output Tokens</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {adminKeys.map((key) => (
+                      <TableRow key={key.provider_source_id}>
+                        <TableCell className="font-medium">{key.key_name}</TableCell>
+                        <TableCell>{key.key_provider}</TableCell>
+                        <TableCell className="text-right">{formatNumber(key.total_requests)}</TableCell>
+                        <TableCell className="text-right">{formatCost(key.total_cost)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(key.total_input_tokens)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(key.total_output_tokens)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* User Keys Tab */}
+          <TabsContent value="user-keys">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  User API Keys Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Provider</TableHead>
+                      <TableHead className="text-right">Total Keys</TableHead>
+                      <TableHead className="text-right">Users With Keys</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {userKeys.map((key, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{key.provider}</TableCell>
+                        <TableCell className="text-right">{formatNumber(key.keys_per_provider)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(key.users_with_keys)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Bonuses Tab */}
+          <TabsContent value="bonuses">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Gift className="h-5 w-5" />
+                  Bonus Quotas Analytics
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Bonus Type</TableHead>
+                      <TableHead className="text-right">Total Bonuses</TableHead>
+                      <TableHead className="text-right">Messages Granted</TableHead>
+                      <TableHead className="text-right">Messages Used</TableHead>
+                      <TableHead className="text-right">Remaining</TableHead>
+                      <TableHead className="text-right">Active</TableHead>
+                      <TableHead className="text-right">Expired/Used</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bonuses.map((bonus) => (
+                      <TableRow key={bonus.bonus_type}>
+                        <TableCell className="font-medium">{bonus.bonus_type}</TableCell>
+                        <TableCell className="text-right">{formatNumber(bonus.total_bonuses)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(bonus.total_messages_granted)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(bonus.total_messages_used)}</TableCell>
+                        <TableCell className="text-right text-green-600 font-semibold">
+                          {formatNumber(bonus.total_messages_remaining)}
+                        </TableCell>
+                        <TableCell className="text-right">{formatNumber(bonus.active_bonuses)}</TableCell>
+                        <TableCell className="text-right text-gray-500">
+                          {formatNumber(bonus.expired_bonuses + bonus.fully_used_bonuses)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Top Users Tab */}
+          <TabsContent value="top-users">
+            <Card>
+              <CardHeader>
+                <CardTitle>Top Users by Usage</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead className="text-right">Requests</TableHead>
+                      <TableHead className="text-right">Total Cost</TableHead>
+                      <TableHead>Last Activity</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topUsers.map((user) => (
+                      <TableRow key={user.user_id}>
+                        <TableCell className="font-medium">{user.email}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            user.current_plan_tier === 'pro' ? 'bg-purple-100 text-purple-700' :
+                            user.current_plan_tier === 'plus' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {user.current_plan_tier}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">{formatNumber(user.total_requests)}</TableCell>
+                        <TableCell className="text-right">{formatCost(user.total_cost)}</TableCell>
+                        <TableCell>{user.last_activity ? new Date(user.last_activity).toLocaleDateString() : 'N/A'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )
