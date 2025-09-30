@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 
 interface Subscription {
-  tier: 'free' | 'pro'
+  tier: 'free' | 'plus' | 'pro'
   status: 'active' | 'past_due' | 'canceled' | 'trialing'
   current_period_end: string | null
   cancel_at_period_end: boolean
@@ -223,6 +223,8 @@ export default function SubscriptionPage() {
       ? Math.min((actualMessagesSent / messageUsage.messages_limit) * 100, 100)
       : 0
     const isPro = subscription?.tier === 'pro'
+    const isPlus = subscription?.tier === 'plus'
+    const isFree = !isPro && !isPlus
     const isActive = subscription?.status === 'active'
     const totalCredits = ((credits?.balance || 0) + (credits?.promotional_balance || 0))
     const currentPeriodEndDate = subscription?.current_period_end
@@ -233,6 +235,8 @@ export default function SubscriptionPage() {
       actualMessagesSent,
       messageUsagePercentage,
       isPro,
+      isPlus,
+      isFree,
       isActive,
       totalCredits,
       currentPeriodEndDate
@@ -258,6 +262,8 @@ export default function SubscriptionPage() {
     actualMessagesSent,
     messageUsagePercentage,
     isPro,
+    isPlus,
+    isFree,
     isActive,
     totalCredits,
     currentPeriodEndDate
@@ -275,8 +281,8 @@ export default function SubscriptionPage() {
             Manage your Polydev subscription and usage
           </p>
         </div>
-        <Badge variant={isPro ? "default" : "secondary"} className="text-sm">
-          {isPro ? 'Pro Plan' : 'Free Plan'}
+        <Badge variant={(isPro || isPlus) ? "default" : "secondary"} className="text-sm">
+          {isPro ? 'Pro Plan' : isPlus ? 'Plus Plan' : 'Free Plan'}
         </Badge>
       </div>
 
@@ -311,8 +317,13 @@ export default function SubscriptionPage() {
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 {isPro ? (
                   <>
-                    <Crown className="h-5 w-5 text-yellow-500" />
+                    <Crown className="h-5 w-5 text-purple-500" />
                     Polydev Pro
+                  </>
+                ) : isPlus ? (
+                  <>
+                    <Crown className="h-5 w-5 text-orange-500" />
+                    Polydev Plus
                   </>
                 ) : (
                   'Free Plan'
@@ -320,7 +331,9 @@ export default function SubscriptionPage() {
               </h3>
               <p className="text-sm text-muted-foreground">
                 {isPro
-                  ? `$20/month • ${isActive ? 'Active' : subscription?.status}`
+                  ? `$60/month • ${isActive ? 'Active' : subscription?.status}`
+                  : isPlus
+                  ? `$25/month • ${isActive ? 'Active' : subscription?.status}`
                   : 'Limited features'
                 }
               </p>
@@ -338,9 +351,9 @@ export default function SubscriptionPage() {
           </div>
 
           <div className="flex gap-2">
-            {!isPro ? (
+            {isFree ? (
               <Button onClick={handleUpgrade} disabled={isUpgrading}>
-                {isUpgrading ? 'Upgrading...' : 'Upgrade to Pro'}
+                {isUpgrading ? 'Upgrading...' : 'Upgrade to Plus or Pro'}
               </Button>
             ) : (
               <Button variant="outline" onClick={openBillingPortal}>
@@ -363,10 +376,10 @@ export default function SubscriptionPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {actualMessagesSent}
-              {!isPro && ` / ${messageUsage?.messages_limit || 200}`}
+              {isFree && ` / ${messageUsage?.messages_limit || 200}`}
             </div>
             <p className="text-xs text-muted-foreground">
-              {isPro ? 'Messages sent this month' : 'Messages this month'}
+              {(isPro || isPlus) ? 'Messages sent this month' : 'Messages this month'}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Includes web chat + MCP client calls
@@ -377,7 +390,7 @@ export default function SubscriptionPage() {
                 </>
               )}
             </p>
-            {!isPro && messageUsage && (
+            {isFree && messageUsage && (
               <Progress value={messageUsagePercentage} className="mt-2" />
             )}
           </CardContent>
@@ -440,13 +453,13 @@ export default function SubscriptionPage() {
       </div>
 
       {/* Plan Comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Free Plan */}
-        <Card className={!isPro ? 'border-orange-300 bg-orange-50/30' : ''}>
+        <Card className={isFree ? 'border-slate-300 bg-slate-50/30' : ''}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Free Plan
-              {!isPro && <Badge className="bg-orange-500 text-white">Current</Badge>}
+              {isFree && <Badge className="bg-slate-500 text-white">Current</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -454,41 +467,44 @@ export default function SubscriptionPage() {
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                1000 free messages to get started
+                200 messages/month
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Query GPT-5, Claude Opus 4, Gemini 2.5 Pro
+                10/40/150 perspectives
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Compare responses side-by-side
+                Top AI models
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Works with Cursor, Claude Code, Continue
+                Compare responses
               </li>
               <li className="flex items-center gap-2">
                 <X className="h-4 w-4 text-red-500" />
-                Limited to 3 models
+                Limited perspectives
               </li>
             </ul>
           </CardContent>
         </Card>
 
-        {/* Pro Plan */}
-        <Card className={isPro ? 'border-orange-500 bg-orange-50/30' : 'hover:border-orange-200'}>
+        {/* Plus Plan */}
+        <Card className={isPlus ? 'border-orange-500 bg-orange-50/30' : 'hover:border-orange-200'}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Crown className="h-5 w-5 text-orange-500" />
-                Pro Plan
+                Plus Plan
               </div>
-              {isPro && <Badge className="bg-orange-500 text-white">Current</Badge>}
+              {isPlus && <Badge className="bg-orange-500 text-white">Current</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-2xl font-bold">$20/month</div>
+            <div>
+              <div className="text-2xl font-bold">$25/month</div>
+              <div className="text-sm text-emerald-600 font-medium">or $20/month annually</div>
+            </div>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
@@ -496,28 +512,75 @@ export default function SubscriptionPage() {
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                340+ models from 37+ providers
+                400/1,600/4,000 perspectives
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Advanced project memory with encryption
+                340+ models access
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Priority model access (GPT-5, Claude Opus 4)
+                Advanced memory features
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Cost optimization routing
+                Cost optimization
+              </li>
+            </ul>
+            {!isPlus && (
+              <Button
+                className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+                onClick={handleUpgrade}
+                disabled={isUpgrading}
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                {isUpgrading ? 'Processing...' : 'Upgrade to Plus'}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pro Plan */}
+        <Card className={isPro ? 'border-purple-500 bg-purple-50/30' : 'hover:border-purple-200'}>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Crown className="h-5 w-5 text-purple-500" />
+                Pro Plan
+              </div>
+              {isPro && <Badge className="bg-purple-500 text-white">Current</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="text-2xl font-bold">$60/month</div>
+              <div className="text-sm text-emerald-600 font-medium">or $50/month annually</div>
+            </div>
+            <ul className="space-y-2">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Unlimited messages
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-green-500" />
-                Priority support & team features
+                1,200/4,800/10,000 perspectives
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Priority model access
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Team collaboration
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Priority support
               </li>
             </ul>
             {!isPro && (
               <Button
-                className="w-full bg-gradient-to-r from-orange-500 to-violet-500 hover:from-orange-600 hover:to-violet-600"
+                className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
                 onClick={handleUpgrade}
                 disabled={isUpgrading}
               >
