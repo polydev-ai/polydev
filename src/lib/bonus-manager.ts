@@ -104,7 +104,6 @@ export class BonusManager {
         .from('user_bonus_quotas')
         .select('*')
         .eq('user_id', userId)
-        .lt('messages_used', supabase.sql`bonus_messages`)
         .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
         .order('expires_at', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true })
@@ -114,7 +113,12 @@ export class BonusManager {
         return []
       }
 
-      return data || []
+      // Filter for bonuses that still have remaining messages
+      const activeBonuses = (data || []).filter(
+        bonus => bonus.messages_used < bonus.bonus_messages
+      )
+
+      return activeBonuses
     } catch (error) {
       console.error('Error in getActiveBonuses:', error)
       return []
