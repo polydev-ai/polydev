@@ -6,29 +6,58 @@ import { cookies } from 'next/headers'
 
 // Get authenticated user from request
 async function getAuthenticatedUser(request: NextRequest) {
-  const cookieStore = await cookies()
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: false
-      },
-      global: {
-        headers: {
-          cookie: cookieStore.toString()
+  try {
+    const cookieStore = await cookies()
+
+    // Find all Supabase auth cookies
+    const allCookies = cookieStore.getAll()
+    console.log('Available cookies:', allCookies.map(c => c.name))
+
+    // Try to find auth token from various possible cookie names
+    let accessToken = null
+
+    // Check for Supabase auth cookies (they follow pattern: sb-{project-ref}-auth-token)
+    for (const cookie of allCookies) {
+      if (cookie.name.includes('auth-token')) {
+        try {
+          const parsed = JSON.parse(cookie.value)
+          if (parsed.access_token) {
+            accessToken = parsed.access_token
+            console.log('Found access token in cookie:', cookie.name)
+            break
+          }
+        } catch (e) {
+          // Not JSON, might be plain token
+          accessToken = cookie.value
+          console.log('Using plain cookie value:', cookie.name)
+          break
         }
       }
     }
-  )
 
-  const { data: { user }, error } = await supabase.auth.getUser()
+    if (!accessToken) {
+      console.error('No access token found in cookies')
+      return null
+    }
 
-  if (error || !user) {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Verify the JWT and get user
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken)
+
+    if (error || !user) {
+      console.error('Error getting user from token:', error)
+      return null
+    }
+
+    return user
+  } catch (error) {
+    console.error('Error in getAuthenticatedUser:', error)
     return null
   }
-
-  return user
 }
 
 // Admin API for managing all provider API keys
