@@ -44,15 +44,37 @@ export function useChatModels() {
         const { adminModels: rawAdminModels } = await response.json()
 
         // Transform admin models to DashboardModel format
-        // We'll need to fetch additional model metadata from models.dev API
+        // Fetch provider logos and metadata from models.dev API
         const transformedAdminModels: DashboardModel[] = []
 
+        // Batch fetch provider data for all unique providers
+        const uniqueProviders = [...new Set(rawAdminModels.map((m: any) => m.provider))]
+        const providerDataMap = new Map<string, any>()
+
+        await Promise.allSettled(
+          uniqueProviders.map(async (providerId: string) => {
+            try {
+              const response = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(providerId)}&rich=true`)
+              if (response.ok) {
+                const data = await response.json()
+                const providerData = Array.isArray(data) ? data[0] : data
+                providerDataMap.set(providerId, providerData)
+              }
+            } catch (error) {
+              console.warn(`Failed to fetch provider data for ${providerId}:`, error)
+            }
+          })
+        )
+
         for (const adminModel of rawAdminModels || []) {
+          const providerData = providerDataMap.get(adminModel.provider)
+
           transformedAdminModels.push({
             id: adminModel.id,
             name: formatModelName(adminModel.id),
             provider: adminModel.provider,
-            providerName: formatProviderName(adminModel.provider),
+            providerName: providerData?.name || formatProviderName(adminModel.provider),
+            providerLogo: providerData?.logo || providerData?.logo_url,
             tier: 'api',
             isConfigured: true,
             description: `${formatModelName(adminModel.id)} - Admin Provided (${adminModel.keyName})`
