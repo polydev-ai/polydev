@@ -65,6 +65,16 @@ export default function ProvidersAdminPage() {
     loadProvidersRegistry()
   }, [])
 
+  // Update selected provider to first available provider with keys
+  useEffect(() => {
+    if (stats && Object.keys(stats).length > 0) {
+      const firstProviderWithKeys = Object.keys(stats).find(p => stats[p].count > 0)
+      if (firstProviderWithKeys && !stats[selectedProvider]) {
+        setSelectedProvider(firstProviderWithKeys)
+      }
+    }
+  }, [stats])
+
   const loadProvidersRegistry = async () => {
     try {
       const response = await fetch('/api/models-dev/providers?rich=true')
@@ -403,7 +413,7 @@ export default function ProvidersAdminPage() {
                       </div>
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="max-h-[300px] overflow-y-auto">
+                  <SelectContent className="max-h-[300px]" position="popper" sideOffset={5}>
                     {providersRegistry.map(provider => (
                       <SelectItem key={provider.id} value={provider.id}>
                         <div className="flex items-center gap-2">
@@ -639,9 +649,24 @@ export default function ProvidersAdminPage() {
       </div>
 
       {/* Provider Tabs */}
+      {Object.keys(stats).filter(p => stats[p].count > 0).length === 0 ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center space-y-4">
+              <Key className="w-12 h-12 mx-auto text-gray-400" />
+              <div>
+                <h3 className="text-lg font-semibold">No API Keys Configured</h3>
+                <p className="text-gray-600 mt-2">Get started by adding your first API key using the "Add API Key" button above.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
       <Tabs value={selectedProvider} onValueChange={setSelectedProvider}>
         <TabsList className="flex flex-wrap w-full gap-1">
-          {providersRegistry.map(provider => (
+          {providersRegistry
+            .filter(provider => stats[provider.id] && stats[provider.id].count > 0)
+            .map(provider => (
             <TabsTrigger key={provider.id} value={provider.id} className="flex items-center gap-2 flex-1 min-w-[120px]">
               <img
                 src={provider.logo}
@@ -658,7 +683,9 @@ export default function ProvidersAdminPage() {
           ))}
         </TabsList>
 
-        {providersRegistry.map(provider => (
+        {providersRegistry
+          .filter(provider => stats[provider.id] && stats[provider.id].count > 0)
+          .map(provider => (
           <TabsContent key={provider.id} value={provider.id} className="space-y-4">
             <Card>
               <CardHeader>
@@ -783,6 +810,7 @@ export default function ProvidersAdminPage() {
           </TabsContent>
         ))}
       </Tabs>
+      )}
     </div>
   )
 }
