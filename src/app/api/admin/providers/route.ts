@@ -86,9 +86,11 @@ export async function GET(request: NextRequest) {
     const showAllAdmins = url.searchParams.get('showAll') === 'true'
 
     // By default, show current admin's keys. If showAll=true, show all admin keys
+    // IMPORTANT: Only show admin-managed keys (is_admin_key = true), not personal user keys
     let query = supabase
       .from('user_api_keys')
       .select('*')
+      .eq('is_admin_key', true) // Only fetch admin-managed keys
       .order('created_at', { ascending: false })
 
     if (!showAllAdmins) {
@@ -109,10 +111,11 @@ export async function GET(request: NextRequest) {
     // No transformation needed for admin keys
     const transformedKeys = apiKeys || []
 
-    // Get provider statistics
+    // Get provider statistics for admin-managed keys only
     const statsQuery = supabase
       .from('user_api_keys')
       .select('provider, current_usage, monthly_budget')
+      .eq('is_admin_key', true) // Only include admin-managed keys in stats
 
     if (!showAllAdmins) {
       statsQuery.eq('user_id', user.id)
@@ -244,6 +247,7 @@ async function addProviderKey(supabase: any, data: any) {
     current_usage: 0,
     daily_usage: 0,
     active: true,
+    is_admin_key: true, // Mark as admin-managed key
     last_used_at: null,
     created_at: new Date().toISOString()
   }
@@ -366,7 +370,7 @@ async function reorderKeys(supabase: any, data: any) {
   }
 
   try {
-    // Update each key's priority order
+    // Update each key's priority order (admin keys only)
     for (const { keyId, priority_order } of keyOrders) {
       const { error } = await supabase
         .from('user_api_keys')
@@ -377,6 +381,7 @@ async function reorderKeys(supabase: any, data: any) {
         .eq('id', keyId)
         .eq('provider', provider)
         .eq('user_id', authenticated_user_id)
+        .eq('is_admin_key', true) // Only reorder admin-managed keys
 
       if (error) {
         console.error('Error updating key order:', error)
@@ -420,12 +425,13 @@ async function getNextAvailableKey(supabase: any, data: any) {
   }
 
   try {
-    // Get all active keys for this provider/user ordered by priority
+    // Get all active admin-managed keys for this provider/user ordered by priority
     const { data: keys, error } = await supabase
       .from('user_api_keys')
       .select('*')
       .eq('provider', provider)
       .eq('user_id', authenticated_user_id)
+      .eq('is_admin_key', true) // Only fetch admin-managed keys
       .eq('active', true)
       .order('priority_order', { ascending: true })
 
