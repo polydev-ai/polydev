@@ -49,7 +49,7 @@ export class ProviderKeyManager {
         .eq('provider', provider.toLowerCase())
         .eq('user_id', userId)
         .eq('active', true)
-        .order('is_primary', { ascending: false, nullsLast: true }) // Primary keys first
+        .order('is_primary', { ascending: false, nullsFirst: false }) // Primary keys first
         .order('priority_order', { ascending: true, nullsFirst: false })
 
       if (error) {
