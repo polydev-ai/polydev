@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { ArrowLeft, Search, Eye, Brain, Zap, Image, Settings, DollarSign, Edit, Plus, X, Home } from 'lucide-react'
+import { ArrowLeft, Search, Eye, Brain, Zap, Image, Settings, DollarSign, Edit, Plus, X, Home, Copy } from 'lucide-react'
 
 interface ModelRegistryEntry {
   id: string
@@ -232,6 +232,55 @@ export default function ModelsManagement() {
     }
   }
 
+  async function duplicateModel(model: ModelRegistryEntry) {
+    try {
+      // Generate a unique name for the duplicate
+      let copyNumber = 1
+      let newName = `${model.name}-copy`
+      let newDisplayName = `${model.display_name} (Copy)`
+
+      // Check if a model with this name already exists
+      const { data: existingModels } = await supabase
+        .from('models_registry')
+        .select('name')
+        .like('name', `${model.name}-copy%`)
+
+      if (existingModels && existingModels.length > 0) {
+        copyNumber = existingModels.length + 1
+        newName = `${model.name}-copy-${copyNumber}`
+        newDisplayName = `${model.display_name} (Copy ${copyNumber})`
+      }
+
+      const newId = `${model.provider_id}/${newName}`
+
+      const duplicatedModel = {
+        ...model,
+        id: newId,
+        name: newName,
+        display_name: newDisplayName,
+        friendly_id: newName,
+        provider_model_id: model.provider_model_id || newName,
+        is_active: false, // Set duplicates as inactive by default
+      }
+
+      // Remove timestamps as they'll be auto-generated
+      const { created_at, updated_at, ...modelData } = duplicatedModel
+
+      const { error } = await supabase
+        .from('models_registry')
+        .insert([modelData])
+
+      if (error) throw error
+
+      await logActivity('duplicate_model', `Duplicated model: ${model.display_name} -> ${newDisplayName}`)
+      await loadModelsData()
+      alert(`Model duplicated successfully as "${newDisplayName}"`)
+    } catch (error) {
+      console.error('Error duplicating model:', error)
+      alert('Error duplicating model: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    }
+  }
+
   async function logActivity(action: string, details: string) {
     try {
       await supabase
@@ -417,14 +466,21 @@ export default function ModelsManagement() {
                   </div>
                   <div className="flex space-x-1">
                     <button
+                      onClick={() => duplicateModel(model)}
+                      className="p-2 rounded-md text-purple-600 hover:bg-purple-50"
+                      title="Duplicate model"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                    <button
                       onClick={() => {
                         setEditingModel(model)
                         setShowEditForm(true)
                       }}
                       className="p-2 rounded-md text-blue-600 hover:bg-blue-50"
-                      title="Edit pricing and parameters"
+                      title="Edit model"
                     >
-                      <DollarSign className="h-4 w-4" />
+                      <Edit className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => toggleModelStatus(model.id, model.is_active)}
