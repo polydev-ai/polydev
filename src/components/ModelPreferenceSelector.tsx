@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ChevronDown, ChevronRight, Check, Search, Star } from 'lucide-react'
 import { usePreferences } from '../hooks/usePreferences'
 import { useChatModels } from '../hooks/useChatModels'
+import { useEnhancedApiKeysData } from '../hooks/useEnhancedApiKeysData'
 import { PROVIDER_ICONS } from '../lib/openrouter-providers'
 
 interface SelectedModelsConfig {
@@ -16,9 +17,25 @@ interface SelectedModelsConfig {
 export default function ModelPreferenceSelector() {
   const { preferences, updatePreferences } = usePreferences()
   const { models: allModels, loading: modelsLoading } = useChatModels()
+  const { modelsDevProviders } = useEnhancedApiKeysData()
   const [isExpanded, setIsExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+
+  // Create provider logo mapping from modelsDevProviders
+  const providerLogoMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    modelsDevProviders.forEach(provider => {
+      if (provider.logo || provider.logo_url) {
+        // Normalize provider ID
+        const normalizedId = provider.id === 'xai' ? 'x-ai' : provider.id
+        map[normalizedId] = provider.logo || provider.logo_url || ''
+        // Also map by name (lowercase)
+        map[provider.name.toLowerCase()] = provider.logo || provider.logo_url || ''
+      }
+    })
+    return map
+  }, [modelsDevProviders])
 
   // Get current selections from preferences
   const savedChatModels = preferences?.mcp_settings?.saved_chat_models || []
@@ -100,27 +117,30 @@ export default function ModelPreferenceSelector() {
     }
   }
 
-  const getProviderLogo = (providerName: string, providerLogo?: string) => {
-    if (providerLogo) {
+  const getProviderLogo = (provider: string, providerName: string, modelProviderLogo?: string) => {
+    // Try to get logo from multiple sources
+    const logoUrl = modelProviderLogo ||
+                    providerLogoMap[provider.toLowerCase()] ||
+                    providerLogoMap[providerName.toLowerCase()]
+
+    if (logoUrl) {
       return (
         <img
-          src={providerLogo}
+          src={logoUrl}
           alt={providerName}
           className="w-6 h-6 rounded object-contain"
           onError={(e) => {
             e.currentTarget.style.display = 'none'
-            e.currentTarget.parentElement?.appendChild(
-              Object.assign(document.createElement('div'), {
-                className: 'w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600',
-                textContent: providerName[0]?.toUpperCase() || '?'
-              })
-            )
+            const fallback = document.createElement('div')
+            fallback.className = 'w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600'
+            fallback.textContent = providerName[0]?.toUpperCase() || '?'
+            e.currentTarget.parentElement?.appendChild(fallback)
           }}
         />
       )
     }
 
-    const providerIcon = PROVIDER_ICONS[providerName.toLowerCase()]
+    const providerIcon = PROVIDER_ICONS[provider.toLowerCase()] || PROVIDER_ICONS[providerName.toLowerCase()]
     if (providerIcon) {
       return (
         <div className="w-6 h-6 flex items-center justify-center text-lg">
@@ -216,7 +236,7 @@ export default function ModelPreferenceSelector() {
                   return (
                     <div key={provider} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
-                        {getProviderLogo(firstModel.providerName, firstModel.providerLogo)}
+                        {getProviderLogo(firstModel.provider, firstModel.providerName, firstModel.providerLogo)}
                         <h4 className="font-semibold text-gray-900">{firstModel.providerName}</h4>
                         <span className="text-sm text-gray-500">({models.length} models)</span>
                       </div>
