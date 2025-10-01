@@ -27,6 +27,7 @@ interface ApiKey {
   active: boolean
   last_used_at: string | null
   created_at: string
+  user_id: string
   user_email?: string
 }
 
@@ -200,7 +201,7 @@ export default function ProvidersAdminPage() {
     }
   }
 
-  const handleDeleteKey = async (keyId: string, userId: string) => {
+  const handleDeleteKey = async (keyId: string) => {
     if (!confirm('Are you sure you want to delete this API key?')) return
 
     try {
@@ -209,8 +210,7 @@ export default function ProvidersAdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'delete_key',
-          keyId,
-          user_id: userId
+          keyId
         })
       })
 
@@ -768,7 +768,7 @@ export default function ProvidersAdminPage() {
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                onClick={() => handleDeleteKey(key.id, key.user_email || '')}
+                                onClick={() => handleDeleteKey(key.id)}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>

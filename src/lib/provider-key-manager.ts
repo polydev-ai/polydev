@@ -36,8 +36,36 @@ export interface KeyUsageUpdate {
 export class ProviderKeyManager {
   /**
    * Get the next available API key for a provider with ordered fallback
+   * Priority: User keys first, then system/admin keys as fallback
    */
   async getNextAvailableKey(
+    provider: string,
+    userId: string
+  ): Promise<ApiKeyInfo | null> {
+    try {
+      const adminUserId = process.env.ADMIN_USER_ID || '00000000-0000-0000-0000-000000000000'
+
+      // Try user keys first
+      let availableKey = await this.getAvailableKeyForUser(provider, userId)
+
+      // If no user keys available and user is not admin, fall back to admin/system keys
+      if (!availableKey && userId !== adminUserId) {
+        console.log(`No available user keys for ${provider}, falling back to system keys`)
+        availableKey = await this.getAvailableKeyForUser(provider, adminUserId)
+      }
+
+      return availableKey
+
+    } catch (error) {
+      console.error('Error getting next available key:', error)
+      return null
+    }
+  }
+
+  /**
+   * Get available key for a specific user
+   */
+  private async getAvailableKeyForUser(
     provider: string,
     userId: string
   ): Promise<ApiKeyInfo | null> {
@@ -58,7 +86,6 @@ export class ProviderKeyManager {
       }
 
       if (!keys || keys.length === 0) {
-        console.log(`No active keys found for provider ${provider}`)
         return null
       }
 
@@ -89,11 +116,10 @@ export class ProviderKeyManager {
         }
       }
 
-      console.log(`All keys for provider ${provider} have exceeded their limits`)
       return null
 
     } catch (error) {
-      console.error('Error getting next available key:', error)
+      console.error('Error getting available key for user:', error)
       return null
     }
   }

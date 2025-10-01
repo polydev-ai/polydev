@@ -15,17 +15,17 @@ export async function GET(request: NextRequest) {
     const provider = url.searchParams.get('provider')
     const userId = url.searchParams.get('userId')
 
+    // Admin user ID for system keys
+    const adminUserId = process.env.ADMIN_USER_ID || '00000000-0000-0000-0000-000000000000'
+
     let query = supabase
       .from('user_api_keys')
       .select('*')
+      .eq('user_id', userId || adminUserId) // Only show admin/system keys by default
       .order('created_at', { ascending: false })
 
     if (provider) {
       query = query.eq('provider', provider)
-    }
-
-    if (userId) {
-      query = query.eq('user_id', userId)
     }
 
     const { data: apiKeys, error } = await query
@@ -38,10 +38,11 @@ export async function GET(request: NextRequest) {
     // No transformation needed for admin keys
     const transformedKeys = apiKeys || []
 
-    // Get provider statistics
+    // Get provider statistics for admin keys only
     const { data: providerStats, error: statsError } = await supabase
       .from('user_api_keys')
       .select('provider, current_usage, monthly_budget')
+      .eq('user_id', userId || adminUserId)
 
     const stats = providerStats?.reduce((acc: any, key) => {
       if (!acc[key.provider]) {
@@ -306,17 +307,17 @@ async function reorderKeys(supabase: any, data: any) {
 }
 
 async function deleteKey(supabase: any, data: any) {
-  const { keyId, user_id } = data
+  const { keyId } = data
 
-  if (!keyId || !user_id) {
-    return NextResponse.json({ error: 'Key ID and user_id are required' }, { status: 400 })
+  if (!keyId) {
+    return NextResponse.json({ error: 'Key ID is required' }, { status: 400 })
   }
 
+  // Using service role key, we can delete any key by ID
   const { error } = await supabase
     .from('user_api_keys')
     .delete()
     .eq('id', keyId)
-    .eq('user_id', user_id)
 
   if (error) {
     console.error('Error deleting key:', error)
