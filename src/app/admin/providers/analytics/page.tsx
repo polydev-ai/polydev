@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertCircle, BarChart3, TrendingUp, AlertTriangle, DollarSign, Activity, RefreshCw } from 'lucide-react'
+import { AlertCircle, BarChart3, TrendingUp, AlertTriangle, DollarSign, Activity, RefreshCw, ArrowLeft, ExternalLink } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 
@@ -110,18 +110,29 @@ export default function ProviderAnalyticsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <button
           onClick={() => window.location.href = '/admin/providers'}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
         >
-          ← Back to Provider Keys
+          <ArrowLeft className="h-4 w-4" />
+          Back to Provider Keys
+        </button>
+        <button
+          onClick={() => window.location.href = '/admin/analytics'}
+          className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 border border-blue-300 rounded-md hover:bg-blue-50"
+        >
+          System Analytics
+          <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
         </button>
       </div>
 
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Provider Analytics</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <BarChart3 className="h-8 w-8 text-blue-600" />
+            Provider Analytics
+          </h1>
           <p className="text-gray-600 mt-2">Monitor admin API key usage, costs, and performance</p>
         </div>
         <div className="flex space-x-3">

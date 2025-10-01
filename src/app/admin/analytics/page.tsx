@@ -21,7 +21,9 @@ import {
   Activity,
   Key,
   Gift,
-  ArrowLeft
+  ArrowLeft,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react'
 
 interface SystemStats {
@@ -106,6 +108,7 @@ interface TopUser {
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [systemStats, setSystemStats] = useState<SystemStats | null>(null)
   const [dailyTrends, setDailyTrends] = useState<DailyTrend[]>([])
   const [providers, setProviders] = useState<ProviderData[]>([])
@@ -114,6 +117,7 @@ export default function AnalyticsPage() {
   const [userKeys, setUserKeys] = useState<UserKeyData[]>([])
   const [bonuses, setBonuses] = useState<BonusData[]>([])
   const [topUsers, setTopUsers] = useState<TopUser[]>([])
+  const [timeRange, setTimeRange] = useState('30d')
 
   const router = useRouter()
   const supabase = createClient()
@@ -150,8 +154,24 @@ export default function AnalyticsPage() {
     }
   }
 
-  const loadAllAnalytics = async () => {
+  const loadAllAnalytics = async (forceRefresh = false) => {
+    if (forceRefresh) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+
     try {
+      // Calculate date range
+      const endDate = new Date().toISOString()
+      const daysMap: Record<string, number> = {
+        '7d': 7,
+        '30d': 30,
+        '90d': 90
+      }
+      const days = daysMap[timeRange] || 30
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+
       // Load all analytics in parallel
       const [
         systemResponse,
@@ -164,10 +184,10 @@ export default function AnalyticsPage() {
         topUsersResponse
       ] = await Promise.all([
         fetch('/api/admin/analytics?type=system'),
-        fetch('/api/admin/analytics?type=daily-trends'),
-        fetch('/api/admin/analytics?type=providers'),
-        fetch('/api/admin/analytics?type=models'),
-        fetch('/api/admin/analytics?type=admin-keys'),
+        fetch(`/api/admin/analytics?type=daily-trends&startDate=${startDate}&endDate=${endDate}`),
+        fetch(`/api/admin/analytics?type=providers&startDate=${startDate}&endDate=${endDate}`),
+        fetch(`/api/admin/analytics?type=models&startDate=${startDate}&endDate=${endDate}`),
+        fetch(`/api/admin/analytics?type=admin-keys&startDate=${startDate}&endDate=${endDate}`),
         fetch('/api/admin/analytics?type=user-keys'),
         fetch('/api/admin/analytics?type=bonuses'),
         fetch('/api/admin/analytics?type=top-users')
@@ -194,8 +214,17 @@ export default function AnalyticsPage() {
       setTopUsers(topU.data || [])
     } catch (error) {
       console.error('Error loading analytics:', error)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
   }
+
+  useEffect(() => {
+    if (!loading) {
+      loadAllAnalytics(false)
+    }
+  }, [timeRange])
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat().format(Math.round(num))
@@ -230,11 +259,37 @@ export default function AnalyticsPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
               <BarChart3 className="h-8 w-8 text-blue-600" />
-              Analytics Dashboard
+              System Analytics
             </h1>
             <p className="text-gray-600 mt-2">
-              Comprehensive analytics for the perspective-based quota system
+              Comprehensive analytics for users, quotas, and system-wide metrics
             </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="7d">Last 7 Days</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="90d">Last 90 Days</option>
+            </select>
+            <button
+              onClick={() => loadAllAnalytics(true)}
+              disabled={refreshing}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+            <button
+              onClick={() => router.push('/admin/providers/analytics')}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Provider Analytics
+              <ExternalLink className="h-4 w-4 ml-2" />
+            </button>
           </div>
         </div>
 
