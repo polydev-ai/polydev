@@ -11,6 +11,8 @@ import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
 // Use API endpoint instead of direct modelsDevService import to avoid server-side imports in client component
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { getModelTier } from '../../lib/model-tiers'
+import ModelSourcePriorityPicker from '../ModelSourcePriorityPicker'
+import ModelPreferenceSelector from '../ModelPreferenceSelector'
 
 interface ApiKey {
   id: string
@@ -707,7 +709,7 @@ export default function EnhancedApiKeysPage() {
         <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center space-x-2">
           <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
           <span className="text-green-700 dark:text-green-300">{success}</span>
-          <button 
+          <button
             onClick={() => setSuccess(null)}
             className="ml-auto text-green-600 hover:text-green-800"
           >
@@ -715,6 +717,12 @@ export default function EnhancedApiKeysPage() {
           </button>
         </div>
       )}
+
+      {/* Model Source Priority Picker */}
+      <ModelSourcePriorityPicker />
+
+      {/* Model Preference Selector */}
+      <ModelPreferenceSelector />
 
       {/* CLI Tools Status Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
