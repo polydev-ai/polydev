@@ -7,7 +7,7 @@ export interface DashboardModel {
   provider: string
   providerName: string
   providerLogo?: string
-  tier: 'cli' | 'api' | 'credits'
+  tier: 'cli' | 'api' | 'admin'
   isConfigured?: boolean
   price?: {
     input: number
@@ -327,14 +327,14 @@ export function useDashboardModels() {
 }
 
 // Simplified tier mapping independent of CLI/API keys
-function getTierFromProvider(providerId: string): 'cli' | 'api' | 'credits' {
+function getTierFromProvider(providerId: string): 'cli' | 'api' | 'admin' {
   const cliProviders = ['claude-code', 'cline', 'vscode-lm']
   if (cliProviders.includes(providerId)) return 'cli'
 
   const apiProviders = ['anthropic', 'openai', 'google', 'gemini', 'mistral', 'bedrock', 'vertex']
   if (apiProviders.includes(providerId)) return 'api'
 
-  return 'credits'
+  return 'admin'
 }
 
 function formatModelName(modelId: string): string {
