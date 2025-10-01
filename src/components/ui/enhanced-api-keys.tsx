@@ -153,6 +153,7 @@ export default function EnhancedApiKeysPage() {
   const [showApiKey, setShowApiKey] = useState<{[keyId: string]: boolean}>({})
   const [expandedProviders, setExpandedProviders] = useState<{[provider: string]: boolean}>({})
   const [expandedAvailableProviders, setExpandedAvailableProviders] = useState<{[provider: string]: boolean}>({})
+  const [allModelsExpanded, setAllModelsExpanded] = useState(false) // Minimized by default
   const [updateApiKey, setUpdateApiKey] = useState(false)
   const [syncingModels, setSyncingModels] = useState(false)
   const [hasCompletedInitialSync, setHasCompletedInitialSync] = useState(false)
@@ -1559,21 +1560,38 @@ export default function EnhancedApiKeysPage() {
       )}
 
       {/* All Available Models Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
-          <TrendingUp className="w-5 h-5" />
-          <span>All Available Models</span>
-          <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
-            (Browse all models from all providers)
-          </span>
-        </h2>
-
-        {modelsDevProviders.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-            Loading available models...
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+        <button
+          onClick={() => setAllModelsExpanded(!allModelsExpanded)}
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            {allModelsExpanded ? (
+              <ChevronDown className="w-5 h-5 text-gray-400" />
+            ) : (
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            )}
+            <div className="text-left">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">All Available Models</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                Browse all models from all providers
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="space-y-4">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            {modelsDevProviders.length} providers
+          </div>
+        </button>
+
+        {allModelsExpanded && (
+          <div className="px-6 pb-6 border-t border-gray-100 dark:border-gray-700">
+            <div className="mt-4 space-y-4">
+              {modelsDevProviders.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  Loading available models...
+                </div>
+              ) : (
+                <div className="space-y-4">
             {modelsDevProviders.map((provider) => (
               <div key={provider.id} className="border rounded-lg bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600">
                 <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -1673,6 +1691,9 @@ export default function EnhancedApiKeysPage() {
                 )}
               </div>
             ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

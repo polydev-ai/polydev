@@ -100,9 +100,27 @@ export default function ModelPreferenceSelector() {
     }
   }
 
-  const getProviderLogo = (provider: string) => {
-    const providerIcon = PROVIDER_ICONS[provider.toLowerCase()]
+  const getProviderLogo = (providerName: string, providerLogo?: string) => {
+    if (providerLogo) {
+      return (
+        <img
+          src={providerLogo}
+          alt={providerName}
+          className="w-6 h-6 rounded object-contain"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+            e.currentTarget.parentElement?.appendChild(
+              Object.assign(document.createElement('div'), {
+                className: 'w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600',
+                textContent: providerName[0]?.toUpperCase() || '?'
+              })
+            )
+          }}
+        />
+      )
+    }
 
+    const providerIcon = PROVIDER_ICONS[providerName.toLowerCase()]
     if (providerIcon) {
       return (
         <div className="w-6 h-6 flex items-center justify-center text-lg">
@@ -114,7 +132,7 @@ export default function ModelPreferenceSelector() {
     // Fallback to first letter
     return (
       <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-        {provider[0].toUpperCase()}
+        {providerName[0]?.toUpperCase() || '?'}
       </div>
     )
   }
@@ -193,56 +211,76 @@ export default function ModelPreferenceSelector() {
               <div className="text-center py-8 text-gray-500">Loading models...</div>
             ) : (
               <div className="space-y-4 max-h-96 overflow-y-auto">
-                {Object.entries(modelsByProvider).map(([provider, models]) => (
-                  <div key={provider} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      {getProviderLogo(provider)}
-                      <h4 className="font-semibold text-gray-900 capitalize">{provider}</h4>
-                      <span className="text-sm text-gray-500">({models.length} models)</span>
-                    </div>
+                {Object.entries(modelsByProvider).map(([provider, models]) => {
+                  const firstModel = models[0]
+                  return (
+                    <div key={provider} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        {getProviderLogo(firstModel.providerName, firstModel.providerLogo)}
+                        <h4 className="font-semibold text-gray-900">{firstModel.providerName}</h4>
+                        <span className="text-sm text-gray-500">({models.length} models)</span>
+                      </div>
 
-                    <div className="space-y-2">
-                      {models.map(model => (
-                        <div key={model.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                          <div className="flex-1">
-                            <div className="font-medium text-sm text-gray-900">{model.name}</div>
-                            {model.price && (
-                              <div className="text-xs text-gray-500">
-                                ${model.price.input}/M in · ${model.price.output}/M out
+                      <div className="space-y-2">
+                        {models.map(model => (
+                          <div key={model.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm text-gray-900">{model.name}</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                {model.price && (
+                                  <div className="text-xs text-gray-500">
+                                    ${model.price.input.toFixed(2)}/M in ${model.price.output.toFixed(2)}/M out
+                                  </div>
+                                )}
+                                {model.features?.supportsImages && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
+                                    Vision
+                                  </span>
+                                )}
+                                {model.features?.supportsReasoning && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-700">
+                                    Reasoning
+                                  </span>
+                                )}
+                                {model.tier === 'api' && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700">
+                                    API
+                                  </span>
+                                )}
                               </div>
-                            )}
-                          </div>
+                            </div>
 
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => toggleModelForChat(model.id)}
-                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                                selectedChatModels.includes(model.id)
-                                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
-                            >
-                              {selectedChatModels.includes(model.id) && <Check className="w-3 h-3 inline mr-1" />}
-                              Chat
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => toggleModelForChat(model.id)}
+                                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                  selectedChatModels.includes(model.id)
+                                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {selectedChatModels.includes(model.id) && <Check className="w-3 h-3 inline mr-1" />}
+                                Chat
+                              </button>
 
-                            <button
-                              onClick={() => toggleModelForMcp(model.id)}
-                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                                selectedMcpModels.includes(model.id)
-                                  ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
-                            >
-                              {selectedMcpModels.includes(model.id) && <Check className="w-3 h-3 inline mr-1" />}
-                              MCP
-                            </button>
+                              <button
+                                onClick={() => toggleModelForMcp(model.id)}
+                                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                  selectedMcpModels.includes(model.id)
+                                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {selectedMcpModels.includes(model.id) && <Check className="w-3 h-3 inline mr-1" />}
+                                MCP
+                              </button>
+                            </div>
                           </div>
-                        </div>
                       ))}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
 
                 {Object.keys(modelsByProvider).length === 0 && (
                   <div className="text-center py-8 text-gray-500">
