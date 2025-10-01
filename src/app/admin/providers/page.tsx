@@ -38,15 +38,6 @@ interface ProviderStats {
   activeKeys: number
 }
 
-const PROVIDERS = [
-  { id: 'anthropic', name: 'Anthropic', description: 'Claude models' },
-  { id: 'openai', name: 'OpenAI', description: 'GPT models' },
-  { id: 'xai', name: 'xAI', description: 'Grok models' },
-  { id: 'google', name: 'Google', description: 'Gemini models' },
-  { id: 'cerebras', name: 'Cerebras', description: 'Fast inference models' },
-  { id: 'zai', name: 'ZAI', description: 'Zero-latency AI models' }
-]
-
 export default function ProvidersAdminPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [stats, setStats] = useState<Record<string, ProviderStats>>({})
@@ -56,7 +47,7 @@ export default function ProvidersAdminPage() {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null)
-  const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo: string, display_name: string }>>([])
+  const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo: string, display_name: string, description?: string }>>([])
 
   // Form state
   const [formData, setFormData] = useState({
@@ -82,7 +73,15 @@ export default function ProvidersAdminPage() {
       }
       const data = await response.json()
       if (Array.isArray(data)) {
-        setProvidersRegistry(data)
+        // Normalize provider data
+        const normalizedProviders = data.map(p => ({
+          id: p.id,
+          name: p.name || p.display_name || p.id,
+          display_name: p.display_name || p.name || p.id,
+          logo: p.logo || p.logo_url || 'https://models.dev/logos/default.svg',
+          description: p.description || ''
+        }))
+        setProvidersRegistry(normalizedProviders)
       }
     } catch (err) {
       console.error('Error loading providers registry:', err)
@@ -381,14 +380,14 @@ export default function ProvidersAdminPage() {
                 Add API Key
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] flex flex-col overflow-hidden" onInteractOutside={(e) => e.preventDefault()}>
+            <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader className="shrink-0">
               <DialogTitle>Add New API Key</DialogTitle>
               <DialogDescription>
                 Add a new API key for a provider. Keys will be tried in priority order.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1">
+            <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1 max-h-[60vh]">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="provider" className="text-right">Provider</Label>
                 <Select value={formData.provider} onValueChange={(value) => setFormData({...formData, provider: value})}>
@@ -400,16 +399,16 @@ export default function ProvidersAdminPage() {
                           alt={formData.provider}
                           className="w-5 h-5 object-contain"
                         />
-                        <span>{PROVIDERS.find(p => p.id === formData.provider)?.name}</span>
+                        <span>{providersRegistry.find(p => p.id === formData.provider)?.name || formData.provider}</span>
                       </div>
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
-                    {PROVIDERS.map(provider => (
+                  <SelectContent className="max-h-[300px] overflow-y-auto">
+                    {providersRegistry.map(provider => (
                       <SelectItem key={provider.id} value={provider.id}>
                         <div className="flex items-center gap-2">
                           <img
-                            src={getProviderLogo(provider.id)}
+                            src={provider.logo}
                             alt={provider.name}
                             className="w-5 h-5 object-contain"
                           />
@@ -494,19 +493,19 @@ export default function ProvidersAdminPage() {
 
         {/* Edit API Key Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="sm:max-w-[500px] flex flex-col overflow-hidden" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader className="shrink-0">
               <DialogTitle>Edit API Key</DialogTitle>
               <DialogDescription>
                 Update the API key settings. Leave API Key field empty to keep the existing key.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1">
+            <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1 max-h-[60vh]">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit_provider" className="text-right">Provider</Label>
                 <Input
                   id="edit_provider"
-                  value={PROVIDERS.find(p => p.id === formData.provider)?.name || formData.provider}
+                  value={providersRegistry.find(p => p.id === formData.provider)?.name || formData.provider}
                   disabled
                   className="col-span-3"
                 />
@@ -641,15 +640,15 @@ export default function ProvidersAdminPage() {
 
       {/* Provider Tabs */}
       <Tabs value={selectedProvider} onValueChange={setSelectedProvider}>
-        <TabsList className="grid w-full grid-cols-6">
-          {PROVIDERS.map(provider => (
-            <TabsTrigger key={provider.id} value={provider.id} className="flex items-center gap-2">
+        <TabsList className="flex flex-wrap w-full gap-1">
+          {providersRegistry.map(provider => (
+            <TabsTrigger key={provider.id} value={provider.id} className="flex items-center gap-2 flex-1 min-w-[120px]">
               <img
-                src={getProviderLogo(provider.id)}
+                src={provider.logo}
                 alt={provider.name}
                 className="w-4 h-4 object-contain"
               />
-              <span>{provider.name}</span>
+              <span className="truncate">{provider.name}</span>
               {stats[provider.id] && (
                 <Badge variant="secondary" className="ml-1">
                   {stats[provider.id].count}
@@ -659,14 +658,14 @@ export default function ProvidersAdminPage() {
           ))}
         </TabsList>
 
-        {PROVIDERS.map(provider => (
+        {providersRegistry.map(provider => (
           <TabsContent key={provider.id} value={provider.id} className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <img
-                      src={getProviderLogo(provider.id)}
+                      src={provider.logo}
                       alt={provider.name}
                       className="w-6 h-6 object-contain"
                     />
@@ -676,7 +675,7 @@ export default function ProvidersAdminPage() {
                     {getProviderKeys(provider.id).length} keys
                   </Badge>
                 </CardTitle>
-                <CardDescription>{provider.description}</CardDescription>
+                <CardDescription>{provider.description || `Manage ${provider.name} API keys`}</CardDescription>
               </CardHeader>
               <CardContent>
                 {getProviderKeys(provider.id).length === 0 ? (
