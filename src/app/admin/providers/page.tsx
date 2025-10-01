@@ -48,6 +48,7 @@ export default function ProvidersAdminPage() {
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null)
   const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo: string, display_name: string, description?: string }>>([])
+  const [providerSearch, setProviderSearch] = useState('')
 
   // Form state
   const [formData, setFormData] = useState({
@@ -83,14 +84,16 @@ export default function ProvidersAdminPage() {
       }
       const data = await response.json()
       if (Array.isArray(data)) {
-        // Normalize provider data
-        const normalizedProviders = data.map(p => ({
-          id: p.id,
-          name: p.name || p.display_name || p.id,
-          display_name: p.display_name || p.name || p.id,
-          logo: p.logo || p.logo_url || 'https://models.dev/logos/default.svg',
-          description: p.description || ''
-        }))
+        // Normalize provider data and sort alphabetically
+        const normalizedProviders = data
+          .map(p => ({
+            id: p.id,
+            name: p.name || p.display_name || p.id,
+            display_name: p.display_name || p.name || p.id,
+            logo: p.logo || p.logo_url || 'https://models.dev/logos/default.svg',
+            description: p.description || ''
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name))
         setProvidersRegistry(normalizedProviders)
       }
     } catch (err) {
@@ -400,7 +403,16 @@ export default function ProvidersAdminPage() {
             <div className="grid gap-4 py-4 overflow-y-auto flex-1 px-1 max-h-[60vh]">
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="provider" className="text-right">Provider</Label>
-                <Select value={formData.provider} onValueChange={(value) => setFormData({...formData, provider: value})}>
+                <Select
+                  value={formData.provider}
+                  onValueChange={(value) => {
+                    setFormData({...formData, provider: value})
+                    setProviderSearch('')
+                  }}
+                  onOpenChange={(open) => {
+                    if (!open) setProviderSearch('')
+                  }}
+                >
                   <SelectTrigger className="col-span-3">
                     <SelectValue>
                       <div className="flex items-center gap-2">
@@ -413,19 +425,48 @@ export default function ProvidersAdminPage() {
                       </div>
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="max-h-[300px]" position="popper" sideOffset={5}>
-                    {providersRegistry.map(provider => (
-                      <SelectItem key={provider.id} value={provider.id}>
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={provider.logo}
-                            alt={provider.name}
-                            className="w-5 h-5 object-contain"
-                          />
-                          <span>{provider.name}</span>
+                  <SelectContent
+                    className="max-h-[350px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg z-[100]"
+                    position="popper"
+                    sideOffset={5}
+                  >
+                    <div className="sticky top-0 bg-white dark:bg-gray-900 p-2 border-b border-gray-200 dark:border-gray-700 z-10">
+                      <Input
+                        placeholder="Search providers..."
+                        value={providerSearch}
+                        onChange={(e) => setProviderSearch(e.target.value)}
+                        className="h-8"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="max-h-[250px] overflow-y-auto">
+                      {providersRegistry
+                        .filter(provider =>
+                          provider.name.toLowerCase().includes(providerSearch.toLowerCase()) ||
+                          provider.id.toLowerCase().includes(providerSearch.toLowerCase())
+                        )
+                        .map(provider => (
+                        <SelectItem key={provider.id} value={provider.id} className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={provider.logo}
+                              alt={provider.name}
+                              className="w-5 h-5 object-contain"
+                            />
+                            <span>{provider.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                      {providersRegistry.filter(provider =>
+                        provider.name.toLowerCase().includes(providerSearch.toLowerCase()) ||
+                        provider.id.toLowerCase().includes(providerSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="py-6 text-center text-sm text-gray-500">
+                          No providers found
                         </div>
-                      </SelectItem>
-                    ))}
+                      )}
+                    </div>
                   </SelectContent>
                 </Select>
               </div>
