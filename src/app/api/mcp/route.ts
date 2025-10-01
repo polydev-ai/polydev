@@ -848,6 +848,46 @@ function handleToolsList(id: string) {
           }
         }
       }
+    },
+    {
+      name: 'list_available_models',
+      description: 'Get a list of available AI models with their availability status, cost, and quota information. Shows which models are available via CLI, API keys, or admin perspectives.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          filter_by_tier: {
+            type: 'string',
+            enum: ['premium', 'normal', 'eco', 'all'],
+            description: 'Filter models by tier (default: all)',
+            default: 'all'
+          },
+          show_only_available: {
+            type: 'boolean',
+            description: 'Only show available models (default: false)',
+            default: false
+          }
+        }
+      }
+    },
+    {
+      name: 'select_models_interactive',
+      description: 'Select models interactively for use in get_perspectives. Returns formatted model selection with availability and cost information to help users choose appropriate models.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          model_ids: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Array of model IDs to use for perspectives'
+          },
+          validate_only: {
+            type: 'boolean',
+            description: 'Only validate selection without confirming (default: false)',
+            default: false
+          }
+        },
+        required: ['model_ids']
+      }
     }
   ]
 
@@ -886,7 +926,15 @@ async function handleToolCall(params: any, id: string, request: NextRequest, use
       case 'setup_cli_monitoring':
         result = await handleCliMonitoringSetup(args, user)
         break
-      
+
+      case 'list_available_models':
+        result = await handleListAvailableModels(args, user, request)
+        break
+
+      case 'select_models_interactive':
+        result = await handleSelectModelsInteractive(args, user, request)
+        break
+
       default:
         return NextResponse.json({
           jsonrpc: '2.0',
@@ -2883,6 +2931,171 @@ ${enabled ? '✅ **Enabled**' : '❌ **Disabled**'} - Check every ${interval_min
 - Error diagnostics and resolution hints
 
 **Monitor your CLI status** at: [Polydev Dashboard → API Keys → CLI Providers](https://polydev.com/dashboard/models)`
+}
+
+async function handleListAvailableModels(args: any, user: any, request: NextRequest): Promise<string> {
+  const { filter_by_tier = 'all', show_only_available = false } = args
+
+  try {
+    // Call the /api/models/available endpoint
+    const baseUrl = request.nextUrl.origin
+    const response = await fetch(`${baseUrl}/api/models/available`, {
+      headers: {
+        'Authorization': request.headers.get('authorization') || '',
+        'Cookie': request.headers.get('cookie') || '',
+        'x-client-source': request.headers.get('x-client-source') || '',
+        'user-agent': request.headers.get('user-agent') || ''
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch models: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const { subscription, models, meta } = data
+
+    // Filter models
+    let filteredModels = models
+    if (filter_by_tier !== 'all') {
+      filteredModels = models.filter((m: any) => m.tier === filter_by_tier)
+    }
+    if (show_only_available) {
+      filteredModels = filteredModels.filter((m: any) => m.availability.status === 'available')
+    }
+
+    // Group by tier
+    const premium = filteredModels.filter((m: any) => m.tier === 'premium')
+    const normal = filteredModels.filter((m: any) => m.tier === 'normal')
+    const eco = filteredModels.filter((m: any) => m.tier === 'eco')
+
+    // Format output
+    let output = `## 📊 Available AI Models\n\n`
+    output += `**Your Subscription:** ${subscription.tier}\n`
+    output += `**Perspectives Remaining:** Premium: ${subscription.perspectives.premium.remaining}/${subscription.perspectives.premium.total} | `
+    output += `Normal: ${subscription.perspectives.normal.remaining}/${subscription.perspectives.normal.total} | `
+    output += `Eco: ${subscription.perspectives.eco.remaining}/${subscription.perspectives.eco.total}\n\n`
+
+    if (meta.auto_exclusions.length > 0) {
+      output += `⚠️ **Auto-excluded providers:** ${meta.auto_exclusions.join(', ')}\n\n`
+    }
+
+    const formatModel = (m: any) => {
+      const icon = m.availability.status === 'available' ? '✅' :
+                   m.availability.status === 'fallback' ? '⚡' :
+                   m.availability.status === 'locked' ? '🔒' : '❌'
+
+      const source = m.availability.primary_source === 'cli' ? 'CLI (FREE)' :
+                     m.availability.primary_source === 'api' ? 'API (FREE)' :
+                     m.availability.primary_source === 'admin' ? `${m.availability.perspectives_needed} ${m.tier.toUpperCase()}` :
+                     'Unavailable'
+
+      return `${icon} **${m.display_name}** (${m.model_id})\n   Source: ${source}\n`
+    }
+
+    if (premium.length > 0) {
+      output += `### 🔮 Premium Models (${premium.length})\n`
+      premium.forEach((m: any) => { output += formatModel(m) })
+      output += '\n'
+    }
+
+    if (normal.length > 0) {
+      output += `### ⚙️ Normal Models (${normal.length})\n`
+      normal.forEach((m: any) => { output += formatModel(m) })
+      output += '\n'
+    }
+
+    if (eco.length > 0) {
+      output += `### 🌿 Eco Models (${eco.length})\n`
+      eco.forEach((m: any) => { output += formatModel(m) })
+      output += '\n'
+    }
+
+    output += `\n**Usage:** Use \`select_models_interactive\` to select models for your next perspective request.`
+
+    return output
+
+  } catch (error) {
+    console.error('Error in handleListAvailableModels:', error)
+    throw error
+  }
+}
+
+async function handleSelectModelsInteractive(args: any, user: any, request: NextRequest): Promise<string> {
+  const { model_ids, validate_only = false } = args
+
+  try {
+    // Call the /api/perspectives/validate endpoint
+    const baseUrl = request.nextUrl.origin
+    const response = await fetch(`${baseUrl}/api/perspectives/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': request.headers.get('authorization') || '',
+        'Cookie': request.headers.get('cookie') || '',
+        'x-client-source': request.headers.get('x-client-source') || '',
+        'user-agent': request.headers.get('user-agent') || ''
+      },
+      body: JSON.stringify({ model_ids })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to validate models: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const { valid, warnings, estimated_usage, cost_breakdown, quotas_remaining } = data
+
+    let output = `## 🎯 Model Selection\n\n`
+
+    if (valid) {
+      output += `✅ **Selection Valid**\n\n`
+    } else {
+      output += `⚠️ **Selection Issues Found**\n\n`
+    }
+
+    // Show cost breakdown
+    output += `### 💰 Cost Breakdown\n`
+    cost_breakdown.forEach((item: any) => {
+      const costStr = item.cost === 0 ? 'FREE' : `${item.cost} ${item.tier.toUpperCase()}`
+      output += `- **${item.model_name}**: ${costStr} (via ${item.source.toUpperCase()})\n`
+    })
+
+    // Show estimated usage
+    output += `\n### 📊 Estimated Perspective Usage\n`
+    output += `- Premium: ${estimated_usage.premium_perspectives}\n`
+    output += `- Normal: ${estimated_usage.normal_perspectives}\n`
+    output += `- Eco: ${estimated_usage.eco_perspectives}\n`
+
+    // Show remaining quotas
+    output += `\n### 📈 Quotas After This Request\n`
+    output += `- Premium: ${quotas_remaining.premium} remaining\n`
+    output += `- Normal: ${quotas_remaining.normal} remaining\n`
+    output += `- Eco: ${quotas_remaining.eco} remaining\n`
+
+    // Show warnings if any
+    if (warnings.length > 0) {
+      output += `\n### ⚠️ Warnings\n`
+      warnings.forEach((w: any) => {
+        output += `- **${w.model_name}**: ${w.message}\n`
+        if (w.suggested_alternative) {
+          output += `  → Suggested alternative: ${w.suggested_alternative.model_name}\n`
+        }
+      })
+    }
+
+    if (!validate_only && valid) {
+      output += `\n✅ **Ready to use!** Pass these model_ids to \`get_perspectives\` tool:\n\`\`\`json\n${JSON.stringify(model_ids, null, 2)}\n\`\`\``
+    } else if (validate_only) {
+      output += `\n💡 Set \`validate_only: false\` to confirm selection.`
+    }
+
+    return output
+
+  } catch (error) {
+    console.error('Error in handleSelectModelsInteractive:', error)
+    throw error
+  }
 }
 
 // Helper function to get default model for a provider

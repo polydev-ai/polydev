@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Check, Search, Star } from 'lucide-react'
+import { ChevronDown, ChevronRight, Check, Search, Star, AlertCircle, Zap, Lock } from 'lucide-react'
 import { usePreferences } from '../hooks/usePreferences'
 import { useChatModels } from '../hooks/useChatModels'
 import { useEnhancedApiKeysData } from '../hooks/useEnhancedApiKeysData'
@@ -44,6 +44,20 @@ export default function ModelPreferenceSelector() {
   const [maxChatModels, setMaxChatModels] = useState(10)
   const [maxMcpModels, setMaxMcpModels] = useState(5)
 
+  // Quota and availability state
+  const [quotas, setQuotas] = useState<{
+    premium: { total: number; used: number; remaining: number }
+    normal: { total: number; used: number; remaining: number }
+    eco: { total: number; used: number; remaining: number }
+  } | null>(null)
+  const [modelAvailability, setModelAvailability] = useState<Record<string, {
+    status: 'available' | 'fallback' | 'locked' | 'unavailable'
+    primary_source?: 'cli' | 'api' | 'admin'
+    perspectives_needed?: number
+    tier?: string
+  }>>({})
+  const [loadingQuotas, setLoadingQuotas] = useState(false)
+
   // Update local state when preferences load
   useEffect(() => {
     if (preferences?.mcp_settings?.saved_chat_models) {
@@ -58,6 +72,40 @@ export default function ModelPreferenceSelector() {
     setMaxChatModels(maxChat)
     setMaxMcpModels(maxMcp)
   }, [preferences])
+
+  // Fetch quotas when expanded
+  useEffect(() => {
+    if (isExpanded && !quotas) {
+      fetchQuotas()
+    }
+  }, [isExpanded, quotas])
+
+  const fetchQuotas = async () => {
+    try {
+      setLoadingQuotas(true)
+      const response = await fetch('/api/models/available')
+      if (response.ok) {
+        const data = await response.json()
+        setQuotas(data.subscription.perspectives)
+
+        // Build availability map from models
+        const availabilityMap: Record<string, any> = {}
+        data.models?.forEach((model: any) => {
+          availabilityMap[model.model_id] = {
+            status: model.availability.status,
+            primary_source: model.availability.primary_source,
+            perspectives_needed: model.availability.perspectives_needed,
+            tier: model.tier
+          }
+        })
+        setModelAvailability(availabilityMap)
+      }
+    } catch (error) {
+      console.error('Failed to fetch quotas:', error)
+    } finally {
+      setLoadingQuotas(false)
+    }
+  }
 
   // Filter models by search query
   const filteredModels = allModels.filter(model =>
@@ -157,6 +205,70 @@ export default function ModelPreferenceSelector() {
     )
   }
 
+  const getAvailabilityIndicator = (modelId: string) => {
+    const availability = modelAvailability[modelId]
+    if (!availability) return null
+
+    const { status, primary_source, perspectives_needed, tier } = availability
+
+    // Status icon
+    let statusIcon
+    let statusColor = ''
+    switch (status) {
+      case 'available':
+        statusIcon = <Check className="w-3 h-3" />
+        statusColor = 'text-green-600'
+        break
+      case 'fallback':
+        statusIcon = <Zap className="w-3 h-3" />
+        statusColor = 'text-yellow-600'
+        break
+      case 'locked':
+        statusIcon = <Lock className="w-3 h-3" />
+        statusColor = 'text-gray-400'
+        break
+      case 'unavailable':
+        statusIcon = <AlertCircle className="w-3 h-3" />
+        statusColor = 'text-red-600'
+        break
+    }
+
+    // Source and cost badge - using explicit classes for Tailwind
+    let sourceBadge
+    if (primary_source === 'cli') {
+      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700">CLI • FREE</span>
+    } else if (primary_source === 'api') {
+      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">API • FREE</span>
+    } else if (primary_source === 'admin') {
+      if (tier === 'premium') {
+        sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-700">
+          {perspectives_needed} PREMIUM
+        </span>
+      } else if (tier === 'normal') {
+        sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
+          {perspectives_needed} NORMAL
+        </span>
+      } else if (tier === 'eco') {
+        sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700">
+          {perspectives_needed} ECO
+        </span>
+      }
+    } else if (status === 'locked') {
+      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">Upgrade Required</span>
+    } else if (status === 'unavailable') {
+      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">Unavailable</span>
+    }
+
+    return (
+      <div className="flex items-center gap-2">
+        <span className={`flex items-center ${statusColor}`}>
+          {statusIcon}
+        </span>
+        {sourceBadge}
+      </div>
+    )
+  }
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
       <button
@@ -184,6 +296,56 @@ export default function ModelPreferenceSelector() {
       {isExpanded && (
         <div className="px-6 pb-6 border-t border-gray-100">
           <div className="mt-4 space-y-4">
+            {/* Quota Display */}
+            {loadingQuotas ? (
+              <div className="text-center py-2 text-gray-500">Loading quotas...</div>
+            ) : quotas && (
+              <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <div className="text-xs font-medium text-gray-600 mb-1">Premium</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-purple-600">
+                      {quotas.premium.remaining}/{quotas.premium.total}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-purple-600 h-1.5 rounded-full transition-all"
+                      style={{ width: `${(quotas.premium.remaining / quotas.premium.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-600 mb-1">Normal</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-blue-600">
+                      {quotas.normal.remaining}/{quotas.normal.total}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-blue-600 h-1.5 rounded-full transition-all"
+                      style={{ width: `${(quotas.normal.remaining / quotas.normal.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-gray-600 mb-1">Eco</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-green-600">
+                      {quotas.eco.remaining}/{quotas.eco.total}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div
+                      className="bg-green-600 h-1.5 rounded-full transition-all"
+                      style={{ width: `${(quotas.eco.remaining / quotas.eco.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Search bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -246,7 +408,8 @@ export default function ModelPreferenceSelector() {
                           <div key={model.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
                             <div className="flex-1">
                               <div className="font-medium text-sm text-gray-900">{model.name}</div>
-                              <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                {getAvailabilityIndicator(model.id)}
                                 {model.price && (
                                   <div className="text-xs text-gray-500">
                                     ${model.price.input.toFixed(2)}/M in ${model.price.output.toFixed(2)}/M out

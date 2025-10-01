@@ -66,11 +66,14 @@ export default function Chat() {
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Set selected models from saved preferences or fallback to all configured models
+  // Set selected models from model preferences (top X models based on order)
   useEffect(() => {
     if (dashboardModels.length > 0 && preferences) {
-      const savedChatModels = preferences.mcp_settings?.saved_chat_models
+      // Get max number of chat models to show (default to 3)
+      const maxChatModels = preferences.mcp_settings?.max_chat_models || 3
 
+      // Check if we have saved chat models preference
+      const savedChatModels = preferences.mcp_settings?.saved_chat_models
       if (savedChatModels && savedChatModels.length > 0) {
         // Filter saved models to only include those that are still configured
         const validSavedModels = savedChatModels.filter(modelId =>
@@ -83,10 +86,40 @@ export default function Chat() {
         }
       }
 
-      // Fallback: Get all configured API key models (same logic as models page)
-      const configuredModels = dashboardModels.filter(model => model.isConfigured)
-      const modelIds = configuredModels.map(m => m.id)
-      setSelectedModels(modelIds)
+      // Extract top X models from model_preferences ordered by priority
+      const modelPreferences = preferences.model_preferences || {}
+
+      // Get all provider entries sorted by order
+      const sortedProviders = Object.entries(modelPreferences)
+        .sort(([, a], [, b]) => (a.order || 0) - (b.order || 0))
+
+      // Extract model IDs from sorted providers
+      const topModels: string[] = []
+      for (const [provider, config] of sortedProviders) {
+        if (topModels.length >= maxChatModels) break
+
+        // Add models from this provider
+        for (const modelId of config.models || []) {
+          if (topModels.length >= maxChatModels) break
+
+          // Check if model is configured in dashboard
+          const model = dashboardModels.find(m => m.id === modelId && m.isConfigured)
+          if (model) {
+            topModels.push(modelId)
+          }
+        }
+      }
+
+      if (topModels.length > 0) {
+        setSelectedModels(topModels)
+      } else {
+        // Final fallback: Get top X configured models
+        const configuredModels = dashboardModels
+          .filter(model => model.isConfigured)
+          .slice(0, maxChatModels)
+          .map(m => m.id)
+        setSelectedModels(configuredModels)
+      }
     }
   }, [dashboardModels, preferences])
 
@@ -410,39 +443,41 @@ export default function Chat() {
     }
   }
 
-  const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'credits') => {
+  const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'admin') => {
     switch (tier) {
       case 'cli':
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
       case 'api':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-      case 'credits':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400'
+      case 'admin':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
     }
   }, [])
 
   const getSourceFromProvider = useCallback((
     provider?: string,
     modelId?: string,
-    fallbackMethod?: 'cli' | 'api' | 'credits',
+    fallbackMethod?: 'cli' | 'api' | 'admin',
     creditsUsed?: number
   ):
-    | { type: 'cli' | 'api' | 'credits'; label: string; cost?: string }
+    | { type: 'cli' | 'api' | 'admin'; label: string; cost?: string }
     | null => {
     // Prefer explicit fallback method from server
     if (fallbackMethod) {
       return { type: fallbackMethod, label: fallbackMethod.toUpperCase(), cost: fallbackMethod === 'cli' ? '$0.00' : undefined }
     }
-    // Backward-compatible: infer Credits if creditsUsed > 0
+    // Backward-compatible: infer Admin (Perspectives) if creditsUsed > 0
     if (typeof creditsUsed === 'number' && creditsUsed > 0) {
-      return { type: 'credits', label: 'CREDITS' }
+      return { type: 'admin', label: 'ADMIN' }
     }
     if (!provider) return null
 
     // Check explicit provider suffixes first
     if (provider.includes('(CLI)') || provider.includes('CLI')) return { type: 'cli', label: 'CLI', cost: '$0.00' }
     if (provider.includes('(API)') || provider.includes('API')) return { type: 'api', label: 'API' }
-    if (provider.includes('(Credits)') || provider.includes('Credits')) return { type: 'credits', label: 'Credits' }
+    if (provider.includes('(Admin)') || provider.includes('Admin') || provider.includes('(Perspectives)') || provider.includes('Perspectives')) {
+      return { type: 'admin', label: 'ADMIN' }
+    }
 
     // Try to match with dashboard models for better accuracy
     if (modelId) {

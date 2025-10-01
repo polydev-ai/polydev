@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
-import { GripVertical, ChevronDown, ChevronRight, Terminal, Key, Crown, Coins } from 'lucide-react'
+import { GripVertical, ChevronDown, ChevronRight, Terminal, Key, Crown } from 'lucide-react'
 import { usePreferences } from '../hooks/usePreferences'
 
-type SourceType = 'cli' | 'api' | 'admin' | 'credits'
+type SourceType = 'cli' | 'api' | 'admin'
 
 interface SourceInfo {
   id: SourceType
@@ -29,15 +29,9 @@ const SOURCE_INFO: Record<SourceType, SourceInfo> = {
   },
   admin: {
     id: 'admin',
-    label: 'Admin Provided',
-    description: 'Models provided by Polydev administrators',
+    label: 'Admin Provided (Perspectives)',
+    description: 'Models provided by Polydev using your perspective quota',
     icon: <Crown className="w-5 h-5 text-yellow-500" />
-  },
-  credits: {
-    id: 'credits',
-    label: 'Polydev Credits',
-    description: 'Models available through Polydev credits',
-    icon: <Coins className="w-5 h-5 text-green-500" />
   }
 }
 
@@ -46,7 +40,7 @@ export default function ModelSourcePriorityPicker() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const currentPriority = (preferences?.source_priority as SourceType[]) || ['cli', 'api', 'admin', 'credits']
+  const currentPriority = (preferences?.source_priority as SourceType[]) || ['cli', 'api', 'admin']
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return
