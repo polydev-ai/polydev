@@ -9,6 +9,7 @@ interface UserPreferences {
   id?: string
   user_id: string
   usage_preference: 'auto' | 'api_keys' | 'credits' | 'cli'
+  prefer_own_keys?: boolean
   mcp_settings: {
     default_temperature?: number
     default_max_tokens?: number
@@ -244,9 +245,39 @@ export default function PreferencesPage() {
             </div>
             <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
               <p className="text-xs text-blue-800 dark:text-blue-300">
-                <strong>Auto (Recommended):</strong> Automatically uses your API keys when available and configured, 
+                <strong>Auto (Recommended):</strong> Automatically uses your API keys when available and configured,
                 falls back to credits when API keys are not available. This provides the best balance of cost and convenience.
               </p>
+            </div>
+          </div>
+
+          {/* Prefer Own Keys Toggle */}
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="prefer_own_keys"
+                checked={preferences.prefer_own_keys || false}
+                onChange={(e) => updatePreference('prefer_own_keys', e.target.checked)}
+                className="mt-1 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 w-4 h-4"
+              />
+              <div className="flex-1">
+                <label htmlFor="prefer_own_keys" className="block text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                  Use my API keys only
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  When enabled, requests will only use your configured API keys and never fall back to platform credits.
+                  This gives you complete control over which keys are used for your requests.
+                </p>
+                {preferences.prefer_own_keys && (
+                  <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                    <p className="text-xs text-yellow-800 dark:text-yellow-300">
+                      ⚠️ <strong>Note:</strong> If all your API keys are unavailable (exceeded limits, disabled, or not configured),
+                      requests will fail instead of using platform credits.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -10,6 +10,7 @@ import ProviderAnalyticsSection from './components/ProviderAnalyticsSection'
 import ModelAnalyticsSection from './components/ModelAnalyticsSection'
 import McpClientsSection from './components/McpClientsSection'
 import AnalyticsSection from './components/AnalyticsSection'
+import { Crown, Star, Leaf } from 'lucide-react'
 
 interface MCPClient {
   id: string
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [selectedLog, setSelectedLog] = useState<any | null>(null)
   const [logsFilter, setLogsFilter] = useState('all')
   const [isConnected, setIsConnected] = useState(false)
+  const [quotaData, setQuotaData] = useState<any>(null)
 
   // Use optimized dashboard data hook
   const {
@@ -40,6 +42,23 @@ export default function Dashboard() {
     error,
     refresh
   } = useDashboardData()
+
+  // Fetch quota data
+  useEffect(() => {
+    const fetchQuotaData = async () => {
+      if (!user) return
+      try {
+        const response = await fetch('/api/user/quota', { credentials: 'include' })
+        if (response.ok) {
+          const data = await response.json()
+          setQuotaData(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch quota data:', error)
+      }
+    }
+    fetchQuotaData()
+  }, [user])
 
   // Setup real-time connection indicator
   useEffect(() => {
@@ -235,61 +254,95 @@ export default function Dashboard() {
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-100">Credit Balance</p>
-                <p className="text-2xl font-bold text-white">${((creditBalance?.balance || 0) + (creditBalance?.promotionalBalance || 0)).toFixed(2)}</p>
-                {(creditBalance?.promotionalBalance || 0) > 0 && (<p className="text-xs text-blue-100">${(creditBalance?.balance || 0).toFixed(2)} regular + ${(creditBalance?.promotionalBalance || 0).toFixed(2)} promotional</p>)}
+                <p className="text-sm font-medium text-blue-100">Messages Used</p>
+                <p className="text-2xl font-bold text-white">{quotaData?.used?.messages || 0} / {quotaData?.limits?.messages || '∞'}</p>
+                {(quotaData?.bonusMessages || 0) > 0 && (<p className="text-xs text-blue-100">+{quotaData.bonusMessages} bonus messages</p>)}
               </div>
               <div className="p-3 bg-white bg-opacity-20 rounded-full">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg>
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
               </div>
             </div>
             <div className="mt-2">
-              <Link href="/dashboard/credits" className="text-sm text-blue-100 hover:text-white underline">{creditBalance?.hasOpenRouterKey ? 'Using API Keys' : 'Buy Credits →'}</Link>
+              <Link href="/dashboard/credits" className="text-sm text-blue-100 hover:text-white underline">View Details →</Link>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Total Messages</p>
-                <p className="text-2xl font-bold text-gray-900">{(realTimeData?.totalRequests || 0).toLocaleString()}</p>
+          {/* Premium Perspectives Card */}
+          <div className="bg-white rounded-lg shadow-lg border-2 border-purple-200 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg">
+                  <Crown className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">Premium</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-full">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              </div>
-            </div>
-            <div className="mt-2"><span className="text-sm text-green-600">+12% from last hour</span></div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Total Cost</p>
-                <p className="text-2xl font-bold text-gray-900">${(realTimeData?.totalCost || 0).toFixed(2)}</p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-full">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Avg Response Time</p>
-                <p className="text-2xl font-bold text-gray-900">{realTimeData?.responseTime || 245}ms</p>
-              </div>
-              <div className="p-3 bg-yellow-100 rounded-full">
-                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-              </div>
-            </div>
-            <div className="mt-2">
-              <span className={`text-sm ${(realTimeData?.responseTime || 245) < 300 ? 'text-green-600' : (realTimeData?.responseTime || 245) < 500 ? 'text-yellow-600' : 'text-red-600'}`}>
-                {(realTimeData?.responseTime || 245) < 300 ? 'Excellent' : (realTimeData?.responseTime || 245) < 500 ? 'Good' : 'Slow'}
+              <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full font-medium">
+                {quotaData?.percentages?.premium?.toFixed(0) || 0}%
               </span>
             </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{quotaData?.remaining?.premium || 0}</p>
+              <p className="text-xs text-gray-500 mt-1">of {quotaData?.limits?.premium || 0} remaining</p>
+            </div>
+            <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-pink-600 rounded-full transition-all duration-300"
+                style={{ width: `${quotaData?.percentages?.premium || 0}%` }}
+              />
+            </div>
           </div>
 
+          {/* Normal Perspectives Card */}
+          <div className="bg-white rounded-lg shadow-lg border-2 border-blue-200 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg">
+                  <Star className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">Normal</p>
+              </div>
+              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                {quotaData?.percentages?.normal?.toFixed(0) || 0}%
+              </span>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{quotaData?.remaining?.normal || 0}</p>
+              <p className="text-xs text-gray-500 mt-1">of {quotaData?.limits?.normal || 0} remaining</p>
+            </div>
+            <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-cyan-600 rounded-full transition-all duration-300"
+                style={{ width: `${quotaData?.percentages?.normal || 0}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Eco Perspectives Card */}
+          <div className="bg-white rounded-lg shadow-lg border-2 border-green-200 p-6 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg">
+                  <Leaf className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">Eco</p>
+              </div>
+              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                {quotaData?.percentages?.eco?.toFixed(0) || 0}%
+              </span>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{quotaData?.remaining?.eco || 0}</p>
+              <p className="text-xs text-gray-500 mt-1">of {quotaData?.limits?.eco || 0} remaining</p>
+            </div>
+            <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-green-500 to-emerald-600 rounded-full transition-all duration-300"
+                style={{ width: `${quotaData?.percentages?.eco || 0}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Active Providers Card */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>

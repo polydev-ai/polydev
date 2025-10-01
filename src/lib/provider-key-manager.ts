@@ -42,14 +42,15 @@ export class ProviderKeyManager {
     userId: string
   ): Promise<ApiKeyInfo | null> {
     try {
-      // Get all active keys for this provider/user ordered by priority
+      // Get all active keys for this provider/user ordered by primary flag first, then priority
       const { data: keys, error } = await supabase
         .from('user_api_keys')
         .select('*')
         .eq('provider', provider.toLowerCase())
         .eq('user_id', userId)
         .eq('active', true)
-        .order('priority_order', { ascending: true })
+        .order('is_primary', { ascending: false, nullsLast: true }) // Primary keys first
+        .order('priority_order', { ascending: true, nullsFirst: false })
 
       if (error) {
         console.error('Error fetching provider keys:', error)

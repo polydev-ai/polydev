@@ -16,7 +16,7 @@ export async function PUT(
     
     const updates = await request.json()
     const { id } = await params
-    
+
     // Validate ownership
     const { data: existingKey, error: fetchError } = await supabase
       .from('user_api_keys')
@@ -24,11 +24,22 @@ export async function PUT(
       .eq('id', id)
       .eq('user_id', user.id)
       .single()
-    
+
     if (fetchError || !existingKey) {
       return NextResponse.json({ error: 'API key not found' }, { status: 404 })
     }
-    
+
+    // If marking as primary, unset other primary keys for this user+provider
+    if (updates.is_primary === true) {
+      await supabase
+        .from('user_api_keys')
+        .update({ is_primary: false })
+        .eq('user_id', user.id)
+        .eq('provider', existingKey.provider)
+        .eq('is_primary', true)
+        .neq('id', id) // Don't update the current key
+    }
+
     const { error } = await supabase
       .from('user_api_keys')
       .update(updates)

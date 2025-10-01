@@ -38,6 +38,7 @@ export async function GET() {
           default_model: 'gpt-4o',
           preferred_providers: ['openai', 'anthropic', 'google'],
           usage_preference: 'auto', // auto, api_keys, credits, cli
+          prefer_own_keys: false,
           model_preferences: {
             openai: {
               models: ['gpt-4o'],
@@ -110,7 +111,8 @@ export async function PUT(request: NextRequest) {
       'max_output_tokens_premium',
       'max_output_tokens_normal',
       'max_output_tokens_eco',
-      'max_output_tokens_custom'
+      'max_output_tokens_custom',
+      'prefer_own_keys'
     ]
     
     const filteredUpdates: any = {}

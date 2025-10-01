@@ -1,994 +1,739 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  CreditCard, 
-  DollarSign, 
-  TrendingUp, 
-  Zap, 
-  Settings,
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Activity
+import {
+  Zap,
+  TrendingUp,
+  Crown,
+  Star,
+  Leaf,
+  MessageCircle,
+  Calendar,
+  Activity,
+  RefreshCw,
+  Gift,
+  ArrowRight,
+  Terminal,
+  Globe,
+  Key,
+  Database
 } from 'lucide-react'
-import { toast } from 'sonner'
-import { formatDistanceToNow, isValid, parseISO } from 'date-fns'
+import Link from 'next/link'
 
-// Global cache for credits data
-const creditsCache = {
-  balance: null as CreditBalance | null,
-  budget: null as BudgetInfo | null,
-  transactions: null as any[] | null,
-  timestamps: {
-    balance: 0,
-    budget: 0,
-    transactions: 0,
-  },
-  CACHE_DURATION: 2 * 60 * 1000, // 2 minutes
-}
-
-let activeRequests: Record<string, Promise<any> | null> = {}
-
-interface CreditBalance {
-  balance: number
-  promotionalBalance: number
-  totalPurchased: number
-  totalSpent: number
-  hasOpenRouterKey: boolean
-  openRouterKeyActive: boolean
-  purchaseHistory: any[]
-  recentUsage: any[]
-  analytics: {
-    totalSpent: number
-    totalRequests: number
-    avgCostPerRequest: number
-    topModels: any[]
+interface QuotaData {
+  planTier: 'free' | 'plus' | 'pro'
+  currentMonth: string
+  limits: {
+    messages: number | null
+    premium: number
+    normal: number
+    eco: number
   }
-  createdAt: string
+  used: {
+    messages: number
+    premium: number
+    normal: number
+    eco: number
+  }
+  remaining: {
+    messages: number | null
+    bonusMessages: number
+    premium: number
+    normal: number
+    eco: number
+  }
+  percentages: {
+    messages: number
+    premium: number
+    normal: number
+    eco: number
+  }
+  bonusMessages: number
+  tierUsage: {
+    premium: { count: number, cost: number }
+    normal: { count: number, cost: number }
+    eco: { count: number, cost: number }
+  }
+  sourceUsage: {
+    cli: { count: number, cost: number, requests: number }
+    web: { count: number, cost: number, requests: number }
+    user_key: { count: number, cost: number, requests: number }
+    admin_credits: { count: number, cost: number, requests: number }
+  }
   updatedAt: string
 }
 
-interface BudgetInfo {
-  budget: {
-    daily_limit: number | null
-    weekly_limit: number | null
-    monthly_limit: number | null
-    preferred_models: string[]
-    auto_top_up_enabled: boolean
-    auto_top_up_threshold: number | null
-    auto_top_up_amount: number | null
-  }
-  currentSpending: {
-    daily: { amount: number, limit: number | null, percentage: number }
-    weekly: { amount: number, limit: number | null, percentage: number }
-    monthly: { amount: number, limit: number | null, percentage: number }
-  }
-  alerts: {
-    dailyWarning: boolean
-    weeklyWarning: boolean
-    monthlyWarning: boolean
-    dailyExceeded: boolean
-    weeklyExceeded: boolean
-    monthlyExceeded: boolean
-  }
+const PLAN_NAMES = {
+  free: 'Free Plan',
+  plus: 'Plus Plan',
+  pro: 'Pro Plan'
 }
 
-// Helper function for safe date formatting
-const formatSafeDate = (dateString: string | null | undefined) => {
-  if (!dateString) return 'Unknown date'
-
-  try {
-    const date = typeof dateString === 'string' ? parseISO(dateString) : new Date(dateString)
-    if (!isValid(date)) return 'Invalid date'
-    return formatDistanceToNow(date, { addSuffix: true })
-  } catch (error) {
-    console.warn('Invalid date:', dateString)
-    return 'Invalid date'
-  }
+const TIER_ICONS = {
+  premium: Crown,
+  normal: Star,
+  eco: Leaf
 }
 
-// Provider logo mapping using real models.dev logos
-const getProviderLogo = (provider: string, providersRegistry: Array<{ id: string, name: string, logo_url: string, display_name: string }>) => {
-  const providerKey = provider?.toLowerCase() || ''
-  const providerInfo = providersRegistry.find(p =>
-    p.id === providerKey ||
-    p.name.toLowerCase() === providerKey ||
-    providerKey.includes(p.id)
-  )
-  return providerInfo?.logo_url || 'https://models.dev/logos/default.svg'
-}
-
-// Get model logo based on actual model provider
-const getModelLogo = (model: string, provider: string, providersRegistry: Array<{ id: string, name: string, logo_url: string, display_name: string }>, modelsRegistry: Array<{ id: string, name: string, provider_id: string, actual_provider: string }>) => {
-  // Find the model in the registry
-  const modelInfo = modelsRegistry.find(m => m.id === model || m.name === model)
-
-  if (modelInfo?.actual_provider) {
-    // Use the actual provider (e.g., "anthropic" for Claude models)
-    return getProviderLogo(modelInfo.actual_provider, providersRegistry)
-  }
-
-  // Fallback to session provider
-  return getProviderLogo(provider, providersRegistry)
-}
-
-// Format timestamp with proper error handling
-const formatTimestamp = (timestamp: string | number | null | undefined): string => {
-  if (!timestamp) return '—'
-
-  try {
-    let date: Date
-
-    // Handle different timestamp formats
-    if (typeof timestamp === 'number') {
-      // Unix timestamp (seconds or milliseconds)
-      date = new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000)
-    } else if (typeof timestamp === 'string') {
-      // ISO string or other date string
-      date = new Date(timestamp)
-    } else {
-      return '—'
-    }
-
-    if (isNaN(date.getTime())) {
-      console.warn('Invalid timestamp:', timestamp)
-      return '—'
-    }
-
-    return date.toLocaleString()
-  } catch (error) {
-    console.warn('Error formatting timestamp:', timestamp, error)
-    return '—'
+const TIER_COLORS = {
+  premium: {
+    bg: 'from-purple-500 to-pink-600',
+    badge: 'bg-purple-100 text-purple-800',
+    progress: 'bg-purple-500'
+  },
+  normal: {
+    bg: 'from-blue-500 to-cyan-600',
+    badge: 'bg-blue-100 text-blue-800',
+    progress: 'bg-blue-500'
+  },
+  eco: {
+    bg: 'from-green-500 to-emerald-600',
+    badge: 'bg-green-100 text-green-800',
+    progress: 'bg-green-500'
   }
 }
 
 export default function CreditsPage() {
-  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null)
-  const [budgetInfo, setBudgetInfo] = useState<BudgetInfo | null>(null)
+  const [quotaData, setQuotaData] = useState<QuotaData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [purchasing, setPurchasing] = useState(false)
-  const [creditSessions, setCreditSessions] = useState<any[]>([])
-  const [csTimeframe, setCsTimeframe] = useState('month')
-  const [csLimit, setCsLimit] = useState(100)
-  const [csOffset, setCsOffset] = useState(0)
-  const [csTotal, setCsTotal] = useState<number | null>(null)
-  const [csProvider, setCsProvider] = useState<string>('')
-  const [csModel, setCsModel] = useState<string>('')
-  const [csProviderOptions, setCsProviderOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
-  const [csModelOptions, setCsModelOptions] = useState<Array<{ name: string, count: number, bySource: { api: number, cli: number, credits: number } }>>([])
-  const [csUseCustomRange, setCsUseCustomRange] = useState(false)
-  const [csFromDate, setCsFromDate] = useState<string>('')
-  const [csToDate, setCsToDate] = useState<string>('')
-  const [providersRegistry, setProvidersRegistry] = useState<Array<{ id: string, name: string, logo_url: string, display_name: string }>>([])
-  const [modelsRegistry, setModelsRegistry] = useState<Array<{ id: string, name: string, provider_id: string, actual_provider: string }>>([])
-  const isMountedRef = useRef(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Optimized data fetching with caching and deduplication
-  const fetchWithCache = useCallback(async (key: 'balance' | 'budget' | 'transactions', url: string) => {
-    const now = Date.now()
-
-    // Check cache first
-    if (creditsCache[key] &&
-        (now - creditsCache.timestamps[key]) < creditsCache.CACHE_DURATION) {
-      return creditsCache[key]
-    }
-
-    // Prevent duplicate requests
-    if (activeRequests[key]) {
-      return await activeRequests[key]
-    }
-
-    activeRequests[key] = (async () => {
-      try {
-        const response = await fetch(url, { credentials: 'include' })
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        const data = await response.json()
-
-        // Update cache
-        creditsCache[key] = data
-        creditsCache.timestamps[key] = now
-
-        return data
-      } catch (err) {
-        console.warn(`Failed to fetch ${key}:`, err)
-        return creditsCache[key] || null
-      } finally {
-        activeRequests[key] = null
-      }
-    })()
-
-    return await activeRequests[key]
-  }, [])
-
-  // Consolidated data loading function
-  const loadAllData = useCallback(async () => {
-    if (!isMountedRef.current) return
-
+  const fetchQuotaData = async () => {
     try {
       setLoading(true)
-
-      // Fetch all data in parallel with caching
-      const [balanceData, budgetData] = await Promise.allSettled([
-        fetchWithCache('balance', '/api/credits/balance'),
-        fetchWithCache('budget', '/api/credits/budget')
-      ])
-
-      if (!isMountedRef.current) return
-
-      if (balanceData.status === 'fulfilled' && balanceData.value) {
-        setCreditBalance(balanceData.value)
-      }
-
-      if (budgetData.status === 'fulfilled' && budgetData.value) {
-        setBudgetInfo(budgetData.value)
-      }
-    } catch (error) {
-      console.error('Error fetching credit data:', error)
-      toast.error('Failed to load credit information')
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false)
-      }
-    }
-  }, [fetchWithCache])
-
-  // Memoized purchase credits handler
-  const handlePurchaseCredits = useCallback(async (packageIndex: number) => {
-    try {
-      setPurchasing(true)
-
-      const response = await fetch('/api/credits/purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageIndex,
-          successUrl: `${window.location.origin}/dashboard/credits?success=true`,
-          cancelUrl: `${window.location.origin}/dashboard/credits?canceled=true`
-        })
-      })
+      const response = await fetch('/api/user/quota')
 
       if (!response.ok) {
-        throw new Error('Failed to create checkout session')
+        if (response.status === 401) {
+          window.location.href = '/auth/signin'
+          return
+        }
+        throw new Error(`HTTP ${response.status}`)
       }
 
-      const { url } = await response.json()
-      window.location.href = url
-
-    } catch (error) {
-      console.error('Error purchasing credits:', error)
-      toast.error('Failed to initiate purchase')
+      const data = await response.json()
+      setQuotaData(data)
+      setError(null)
+    } catch (err: any) {
+      console.error('Error fetching quota data:', err)
+      setError('Failed to load quota information')
     } finally {
-      setPurchasing(false)
-    }
-  }, [])
-
-  // Memoized registry data fetching
-  const fetchRegistryData = useCallback(async () => {
-    try {
-      const [providersRes, modelsRes] = await Promise.allSettled([
-        fetch('/api/providers/registry'),
-        fetch('/api/models/registry')
-      ])
-
-      if (providersRes.status === 'fulfilled' && providersRes.value.ok) {
-        const data = await providersRes.value.json()
-        setProvidersRegistry(data.providers || [])
-      }
-
-      if (modelsRes.status === 'fulfilled' && modelsRes.value.ok) {
-        const data = await modelsRes.value.json()
-        setModelsRegistry(data.models || [])
-      }
-    } catch (error) {
-      console.error('Error fetching registry data:', error)
-    }
-  }, [])
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'pending': return <Clock className="w-4 h-4 text-yellow-500" />
-      case 'failed': return <AlertCircle className="w-4 h-4 text-red-500" />
-      default: return <Clock className="w-4 h-4 text-gray-400" />
+      setLoading(false)
     }
   }
 
-  // Optimized credit sessions loading with memoization
-  const loadCreditSessions = useCallback(async () => {
-    try {
-      const now = new Date()
-      let from: string | undefined
-      let to: string | undefined
-      if (csUseCustomRange && csFromDate) from = new Date(csFromDate).toISOString()
-      if (csUseCustomRange && csToDate) to = new Date(csToDate).toISOString()
-      if (!csUseCustomRange) {
-        if (csTimeframe === 'day') from = new Date(now.getTime() - 24*60*60*1000).toISOString()
-        if (csTimeframe === 'week') from = new Date(now.getTime() - 7*24*60*60*1000).toISOString()
-        if (csTimeframe === 'month') from = new Date(now.getTime() - 30*24*60*60*1000).toISOString()
-        if (csTimeframe === 'year') from = new Date(now.getTime() - 365*24*60*60*1000).toISOString()
-      }
-      const params = new URLSearchParams()
-      params.set('onlyCredits', 'true')
-      params.set('limit', String(csLimit))
-      params.set('offset', String(csOffset))
-      params.set('includeCount', 'true')
-      if (csProvider) params.set('provider', csProvider)
-      if (csModel) params.set('model', csModel)
-      if (from) params.set('from', from)
-      if (to) params.set('to', to)
-      const res = await fetch(`/api/usage/sessions?${params.toString()}`)
-      if (res.ok) {
-        const data = await res.json()
-        setCreditSessions(data.items || [])
-        setCsTotal(typeof data.total === 'number' ? data.total : null)
-      }
-    } catch (e) {
-      console.error('Error loading credit sessions:', e)
-    }
-  }, [csTimeframe, csLimit, csOffset, csProvider, csModel, csUseCustomRange, csFromDate, csToDate])
-
-  // Main data loading effect
   useEffect(() => {
-    isMountedRef.current = true
-    loadAllData()
-    fetchRegistryData()
-
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [loadAllData, fetchRegistryData])
-
-  // Credit sessions loading effect
-  useEffect(() => {
-    loadCreditSessions()
-  }, [loadCreditSessions])
-
-  // Memoized computations for expensive operations
-  const memoizedComputations = useMemo(() => {
-    // Compute total credit balance
-    const totalCredits = (creditBalance?.balance || 0) + (creditBalance?.promotionalBalance || 0)
-
-    // Pre-compute provider logo lookup for performance
-    const providerLogoCache = new Map<string, string>()
-    providersRegistry.forEach(provider => {
-      const key = provider.id?.toLowerCase() || provider.name?.toLowerCase() || ''
-      if (key && provider.logo_url) {
-        providerLogoCache.set(key, provider.logo_url)
-      }
-    })
-
-    // Pre-compute model-to-provider mapping for performance
-    const modelProviderCache = new Map<string, string>()
-    modelsRegistry.forEach(model => {
-      if (model.id && model.actual_provider) {
-        modelProviderCache.set(model.id, model.actual_provider)
-      }
-      if (model.name && model.actual_provider) {
-        modelProviderCache.set(model.name, model.actual_provider)
-      }
-    })
-
-    // Memoized credit sessions rendering data
-    const renderedCreditSessions = creditSessions.map((session: any) => {
-      const providerLogo = providerLogoCache.get(session.provider?.toLowerCase()) || 'https://models.dev/logos/default.svg'
-      const actualProvider = modelProviderCache.get(session.model) || session.provider
-      const modelLogo = providerLogoCache.get(actualProvider?.toLowerCase()) || providerLogo
-
-      return {
-        ...session,
-        providerLogo,
-        modelLogo,
-        formattedDate: formatSafeDate(session.createdAt || session.timestamp || session.date)
-      }
-    })
-
-    return {
-      totalCredits,
-      renderedCreditSessions,
-      providerLogoCache,
-      modelProviderCache
-    }
-  }, [creditBalance, providersRegistry, modelsRegistry, creditSessions])
-
-  // Memoized event handlers to prevent re-renders
-  const handleTimeframeChange = useCallback((value: string) => {
-    setCsTimeframe(value)
-    setCsOffset(0) // Reset pagination
+    fetchQuotaData()
   }, [])
-
-  const handleProviderChange = useCallback((value: string) => {
-    setCsProvider(value)
-    setCsOffset(0) // Reset pagination
-  }, [])
-
-  const handleModelChange = useCallback((value: string) => {
-    setCsModel(value)
-    setCsOffset(0) // Reset pagination
-  }, [])
-
-  const handleCustomRangeToggle = useCallback((checked: boolean) => {
-    setCsUseCustomRange(checked)
-    setCsOffset(0) // Reset pagination
-  }, [])
-
-  const handleFromDateChange = useCallback((value: string) => {
-    setCsFromDate(value)
-    setCsOffset(0) // Reset pagination
-  }, [])
-
-  const handleToDateChange = useCallback((value: string) => {
-    setCsToDate(value)
-    setCsOffset(0) // Reset pagination
-  }, [])
-
-  const handleLimitChange = useCallback((value: string) => {
-    setCsLimit(parseInt(value))
-    setCsOffset(0) // Reset pagination
-  }, [])
-
-  const handlePageNext = useCallback(() => {
-    setCsOffset(prev => prev + csLimit)
-  }, [csLimit])
-
-  const handlePagePrev = useCallback(() => {
-    setCsOffset(prev => Math.max(0, prev - csLimit))
-  }, [csLimit])
-
-  // Load distinct provider/model options for dropdowns (narrow providers by model and models by provider)
-  useEffect(() => {
-    const loadDistinctOptions = async () => {
-      try {
-        const now = new Date()
-        let from: string | undefined
-        let to: string | undefined
-        if (csUseCustomRange && csFromDate) from = new Date(csFromDate).toISOString()
-        if (csUseCustomRange && csToDate) to = new Date(csToDate).toISOString()
-        if (!csUseCustomRange) {
-          if (csTimeframe === 'day') from = new Date(now.getTime() - 24*60*60*1000).toISOString()
-          if (csTimeframe === 'week') from = new Date(now.getTime() - 7*24*60*60*1000).toISOString()
-          if (csTimeframe === 'month') from = new Date(now.getTime() - 30*24*60*60*1000).toISOString()
-          if (csTimeframe === 'year') from = new Date(now.getTime() - 365*24*60*60*1000).toISOString()
-        }
-        const paramsBase = new URLSearchParams()
-        paramsBase.set('onlyCredits', 'true')
-        paramsBase.set('source', 'credits')
-        if (from) paramsBase.set('from', from)
-        if (to) paramsBase.set('to', to)
-
-        // Providers, narrowed by model if selected
-        const paramsProviders = new URLSearchParams(paramsBase)
-        if (csModel) paramsProviders.set('model', csModel)
-        const resProviders = await fetch(`/api/usage/distinct?${paramsProviders.toString()}`)
-        if (resProviders.ok) {
-          const dataP = await resProviders.json()
-          setCsProviderOptions((dataP.providers || []) as typeof csProviderOptions)
-        }
-
-        // Models, narrowed by provider if selected
-        const paramsModels = new URLSearchParams(paramsBase)
-        if (csProvider) paramsModels.set('provider', csProvider)
-        const resModels = await fetch(`/api/usage/distinct?${paramsModels.toString()}`)
-        if (resModels.ok) {
-          const dataM = await resModels.json()
-          setCsModelOptions((dataM.models || []) as typeof csModelOptions)
-        }
-      } catch (e) {
-        console.error('Error loading distinct options:', e)
-      }
-    }
-    loadDistinctOptions()
-  }, [csTimeframe, csUseCustomRange, csFromDate, csToDate, csProvider, csModel])
 
   if (loading) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       </div>
     )
   }
+
+  if (error || !quotaData) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-6">
+            <p className="text-red-600">{error || 'Failed to load quota data'}</p>
+            <Button onClick={fetchQuotaData} className="mt-4">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const currentPlan = PLAN_NAMES[quotaData.planTier]
+  const nextResetDate = quotaData.currentMonth
+    ? new Date(new Date(quotaData.currentMonth).setMonth(new Date(quotaData.currentMonth).getMonth() + 1))
+    : new Date()
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Credits & Billing</h1>
-          <p className="text-muted-foreground">
-            Manage your credits, view usage analytics, and configure budgets
+          <h1 className="text-3xl font-bold">Message & Perspective Quotas</h1>
+          <p className="text-muted-foreground mt-2">
+            Track your usage across Premium, Normal, and Eco perspectives
           </p>
         </div>
-        <Button onClick={() => window.location.reload()}>
-          <Activity className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Alert Messages */}
-      {budgetInfo?.alerts && (
-        <div className="space-y-2">
-          {budgetInfo.alerts.dailyExceeded && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800">
-              <AlertCircle className="w-5 h-5" />
-              Daily spending limit exceeded
-            </div>
-          )}
-          {budgetInfo.alerts.weeklyExceeded && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800">
-              <AlertCircle className="w-5 h-5" />
-              Weekly spending limit exceeded
-            </div>
-          )}
-          {budgetInfo.alerts.monthlyExceeded && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800">
-              <AlertCircle className="w-5 h-5" />
-              Monthly spending limit exceeded
-            </div>
-          )}
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="text-lg px-4 py-2">
+            <Calendar className="h-4 w-4 mr-2" />
+            {currentPlan}
+          </Badge>
+          <Button onClick={fetchQuotaData} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
         </div>
-      )}
-
-      {/* Credit Balance Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${((creditBalance?.balance || 0) + (creditBalance?.promotionalBalance || 0)).toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              Available credits
-            </p>
-            {creditBalance?.promotionalBalance && creditBalance.promotionalBalance > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                ${(creditBalance?.balance || 0).toFixed(2)} regular + ${creditBalance.promotionalBalance.toFixed(2)} promotional
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Purchased</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${creditBalance?.totalPurchased?.toFixed(2) || '0.00'}</div>
-            <p className="text-xs text-muted-foreground">
-              Lifetime purchases
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${creditBalance?.totalSpent?.toFixed(2) || '0.00'}</div>
-            <p className="text-xs text-muted-foreground">
-              On AI requests
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">API Status</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Badge variant={creditBalance?.hasOpenRouterKey && creditBalance?.openRouterKeyActive ? "default" : "secondary"}>
-                {creditBalance?.hasOpenRouterKey && creditBalance?.openRouterKeyActive ? "Active" : "Inactive"}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              OpenRouter integration
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
-      <Tabs defaultValue="purchase" className="space-y-6">
+      {/* Plan Overview */}
+      <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Your Plan</span>
+            {quotaData.planTier === 'free' && (
+              <Link href="/dashboard/subscription">
+                <Button size="sm" className="bg-gradient-to-r from-orange-500 to-amber-500">
+                  Upgrade <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            )}
+          </CardTitle>
+          <CardDescription>Current billing period and usage limits</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Messages this month</p>
+              <p className="text-2xl font-bold">
+                {quotaData.used.messages}
+                {quotaData.limits.messages && ` / ${quotaData.limits.messages}`}
+              </p>
+              {!quotaData.limits.messages && (
+                <Badge variant="secondary">Unlimited</Badge>
+              )}
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Bonus Messages</p>
+              <p className="text-2xl font-bold flex items-center">
+                <Gift className="h-5 w-5 mr-2 text-green-600" />
+                {quotaData.bonusMessages}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Reset Date</p>
+              <p className="text-lg font-semibold">{nextResetDate.toLocaleDateString()}</p>
+              <p className="text-xs text-muted-foreground">
+                {Math.ceil((nextResetDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days remaining
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Total API Calls</p>
+              <p className="text-2xl font-bold">
+                {quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count}
+              </p>
+            </div>
+          </div>
+
+          {quotaData.limits.messages && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>Monthly message usage</span>
+                <span className="font-medium">{quotaData.percentages.messages.toFixed(1)}%</span>
+              </div>
+              <Progress value={quotaData.percentages.messages} className="h-2" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="perspectives" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="purchase">Purchase Credits</TabsTrigger>
-          <TabsTrigger value="overview">Recent Purchases</TabsTrigger>
-          <TabsTrigger value="budget">Budget Settings</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="perspectives">Perspectives</TabsTrigger>
+          <TabsTrigger value="usage-breakdown">Usage Breakdown</TabsTrigger>
+          <TabsTrigger value="request-sources">Request Sources</TabsTrigger>
+          <TabsTrigger value="bonus-credits">Bonus Messages</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Purchases */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Purchases</CardTitle>
-                <CardDescription>Your latest credit purchases</CardDescription>
+        <TabsContent value="perspectives" className="space-y-4">
+          {/* Perspective Tier Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Premium Tier */}
+            <Card className="border-2 border-purple-200">
+              <CardHeader className={`bg-gradient-to-r ${TIER_COLORS.premium.bg} text-white rounded-t-lg`}>
+                <CardTitle className="flex items-center">
+                  <Crown className="h-5 w-5 mr-2" />
+                  Premium Perspectives
+                </CardTitle>
+                <CardDescription className="text-purple-100">
+                  Highest quality models (GPT-5, Claude Sonnet 4, Gemini Pro)
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {creditBalance?.purchaseHistory?.length ? (
-                    creditBalance.purchaseHistory.map((purchase) => (
-                      <div key={purchase.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
-                          {getStatusIcon(purchase.status)}
-                          <div>
-                            <p className="font-medium">${purchase.amount}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {formatSafeDate(purchase.date)}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge variant={purchase.status === 'completed' ? 'default' : 'secondary'}>
-                          {purchase.status}
-                        </Badge>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">No purchases yet</p>
-                  )}
+              <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Used</span>
+                    <span className="text-2xl font-bold">{quotaData.used.premium}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Limit</span>
+                    <span className="text-lg">{quotaData.limits.premium}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Remaining</span>
+                    <Badge className={TIER_COLORS.premium.badge}>{quotaData.remaining.premium}</Badge>
+                  </div>
+                </div>
+                <Progress value={quotaData.percentages.premium} className="h-2" />
+                <div className="text-xs text-muted-foreground">
+                  {quotaData.percentages.premium.toFixed(1)}% used
+                </div>
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">This Month</p>
+                  <p className="text-lg font-semibold">{quotaData.tierUsage.premium.count} API calls</p>
+                  <p className="text-xs text-muted-foreground">Est. cost: ${quotaData.tierUsage.premium.cost.toFixed(4)}</p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Recent Usage */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Usage</CardTitle>
-                <CardDescription>Your latest AI model requests</CardDescription>
+            {/* Normal Tier */}
+            <Card className="border-2 border-blue-200">
+              <CardHeader className={`bg-gradient-to-r ${TIER_COLORS.normal.bg} text-white rounded-t-lg`}>
+                <CardTitle className="flex items-center">
+                  <Star className="h-5 w-5 mr-2" />
+                  Normal Perspectives
+                </CardTitle>
+                <CardDescription className="text-blue-100">
+                  Balanced performance (GPT-5 Mini, Claude Haiku, Gemini Flash)
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {creditBalance?.recentUsage?.length ? (
-                    creditBalance.recentUsage.map((usage) => (
-                      <div key={usage.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{usage.model || 'Unknown Model'}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {usage.tokens || 0} tokens • {usage.tool || usage.type || 'Unknown'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">${(usage.cost || 0).toFixed(4)}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatSafeDate(usage.date)}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">No usage history yet</p>
-                  )}
+              <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Used</span>
+                    <span className="text-2xl font-bold">{quotaData.used.normal}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Limit</span>
+                    <span className="text-lg">{quotaData.limits.normal}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Remaining</span>
+                    <Badge className={TIER_COLORS.normal.badge}>{quotaData.remaining.normal}</Badge>
+                  </div>
+                </div>
+                <Progress value={quotaData.percentages.normal} className="h-2" />
+                <div className="text-xs text-muted-foreground">
+                  {quotaData.percentages.normal.toFixed(1)}% used
+                </div>
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">This Month</p>
+                  <p className="text-lg font-semibold">{quotaData.tierUsage.normal.count} API calls</p>
+                  <p className="text-xs text-muted-foreground">Est. cost: ${quotaData.tierUsage.normal.cost.toFixed(4)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Eco Tier */}
+            <Card className="border-2 border-green-200">
+              <CardHeader className={`bg-gradient-to-r ${TIER_COLORS.eco.bg} text-white rounded-t-lg`}>
+                <CardTitle className="flex items-center">
+                  <Leaf className="h-5 w-5 mr-2" />
+                  Eco Perspectives
+                </CardTitle>
+                <CardDescription className="text-green-100">
+                  Cost-effective models (Llama, Mistral, Phi)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Used</span>
+                    <span className="text-2xl font-bold">{quotaData.used.eco}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Limit</span>
+                    <span className="text-lg">{quotaData.limits.eco}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Remaining</span>
+                    <Badge className={TIER_COLORS.eco.badge}>{quotaData.remaining.eco}</Badge>
+                  </div>
+                </div>
+                <Progress value={quotaData.percentages.eco} className="h-2" />
+                <div className="text-xs text-muted-foreground">
+                  {quotaData.percentages.eco.toFixed(1)}% used
+                </div>
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground">This Month</p>
+                  <p className="text-lg font-semibold">{quotaData.tierUsage.eco.count} API calls</p>
+                  <p className="text-xs text-muted-foreground">Est. cost: ${quotaData.tierUsage.eco.cost.toFixed(4)}</p>
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="purchase" className="space-y-6">
-          <CreditPurchaseCards onPurchase={handlePurchaseCredits} purchasing={purchasing} />
-        </TabsContent>
-
-        <TabsContent value="budget" className="space-y-6">
-          <BudgetSettings budgetInfo={budgetInfo} onUpdate={loadAllData} />
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-6">
-          <AnalyticsDashboard creditBalance={creditBalance} providersRegistry={providersRegistry} modelsRegistry={modelsRegistry} />
-
-          {/* Credit Usage Only */}
-          <Card className="lg:col-span-2">
+        <TabsContent value="usage-breakdown" className="space-y-4">
+          <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Credit Usage (Polydev Credits)</CardTitle>
-                  <CardDescription>Only requests billed via Polydev credits</CardDescription>
+              <CardTitle>Monthly Usage Summary</CardTitle>
+              <CardDescription>Detailed breakdown of your API usage by perspective tier</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Usage Chart */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium flex items-center">
+                        <Crown className="h-4 w-4 mr-2 text-purple-600" />
+                        Premium
+                      </span>
+                      <Badge variant="outline">{quotaData.tierUsage.premium.count} calls</Badge>
+                    </div>
+                    <Progress
+                      value={(quotaData.tierUsage.premium.count / Math.max(1, quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count)) * 100}
+                      className="h-2"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ${quotaData.tierUsage.premium.cost.toFixed(4)} estimated cost
+                    </p>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium flex items-center">
+                        <Star className="h-4 w-4 mr-2 text-blue-600" />
+                        Normal
+                      </span>
+                      <Badge variant="outline">{quotaData.tierUsage.normal.count} calls</Badge>
+                    </div>
+                    <Progress
+                      value={(quotaData.tierUsage.normal.count / Math.max(1, quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count)) * 100}
+                      className="h-2"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ${quotaData.tierUsage.normal.cost.toFixed(4)} estimated cost
+                    </p>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium flex items-center">
+                        <Leaf className="h-4 w-4 mr-2 text-green-600" />
+                        Eco
+                      </span>
+                      <Badge variant="outline">{quotaData.tierUsage.eco.count} calls</Badge>
+                    </div>
+                    <Progress
+                      value={(quotaData.tierUsage.eco.count / Math.max(1, quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count)) * 100}
+                      className="h-2"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ${quotaData.tierUsage.eco.cost.toFixed(4)} estimated cost
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <select
-                    value={csTimeframe}
-                    onChange={(e) => { setCsTimeframe(e.target.value); setCsOffset(0) }}
-                    className="px-3 py-2 border rounded-md"
-                  >
-                    <option value="day">Today</option>
-                    <option value="week">This Week</option>
-                    <option value="month">This Month</option>
-                    <option value="year">This Year</option>
-                  </select>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={csUseCustomRange} onChange={(e) => { setCsUseCustomRange(e.target.checked); setCsOffset(0) }} /> Custom range
-                  </label>
-                  {csUseCustomRange && (
-                    <>
-                      <input type="datetime-local" value={csFromDate} onChange={(e) => { setCsFromDate(e.target.value); setCsOffset(0) }} className="px-3 py-2 border rounded-md" />
-                      <input type="datetime-local" value={csToDate} onChange={(e) => { setCsToDate(e.target.value); setCsOffset(0) }} className="px-3 py-2 border rounded-md" />
-                    </>
-                  )}
-                  <select
-                    value={csProvider}
-                    onChange={(e) => { setCsProvider(e.target.value); setCsOffset(0) }}
-                    className="px-3 py-2 border rounded-md"
-                  >
-                    <option value="">All Providers</option>
-                    {csProviderOptions.map((p) => (
-                      <option key={p.name} value={p.name}>{`${p.name} (${p.bySource.credits || 0})`}</option>
-                    ))}
-                  </select>
-                  <span className="text-xs text-muted-foreground">{csProviderOptions.length} providers</span>
-                  <select
-                    value={csModel}
-                    onChange={(e) => { setCsModel(e.target.value); setCsOffset(0) }}
-                    className="px-3 py-2 border rounded-md max-w-[260px]"
-                  >
-                    <option value="">All Models</option>
-                    {csModelOptions.map((m) => (
-                      <option key={m.name} value={m.name}>{`${m.name} (${m.bySource.credits || 0})`}</option>
-                    ))}
-                  </select>
-                  <span className="text-xs text-muted-foreground">{csModelOptions.length} models</span>
-                  <select
-                    value={csLimit}
-                    onChange={(e) => { setCsLimit(Number(e.target.value)); setCsOffset(0) }}
-                    className="px-3 py-2 border rounded-md"
-                  >
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                    <option value={200}>200</option>
-                  </select>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground hidden md:inline">
-                      Page {Math.floor(csOffset / csLimit) + 1}{csTotal ? ` of ${Math.max(1, Math.ceil(csTotal / csLimit))}` : ''}
-                    </span>
-                    <Button variant="outline" size="sm" onClick={() => setCsOffset(Math.max(0, csOffset - csLimit))} disabled={csOffset === 0}>Prev</Button>
-                    <Button variant="outline" size="sm" onClick={() => setCsOffset(csOffset + csLimit)} disabled={csTotal !== null ? (csOffset + csLimit >= (csTotal || 0)) : (creditSessions.length < csLimit)}>Next</Button>
+
+                {/* Total Cost */}
+                <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Estimated Cost</p>
+                      <p className="text-3xl font-bold">
+                        ${(quotaData.tierUsage.premium.cost + quotaData.tierUsage.normal.cost + quotaData.tierUsage.eco.cost).toFixed(4)}
+                      </p>
+                    </div>
+                    <Activity className="h-12 w-12 text-gray-400" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Based on {quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count} total API calls this month
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="request-sources" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Request Source Breakdown</CardTitle>
+              <CardDescription>Track your usage by request source: CLI, Web, API Keys, and Platform Credits</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Source Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* CLI Requests */}
+                  <div className="p-4 border rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium flex items-center">
+                        <Terminal className="h-4 w-4 mr-2 text-blue-600" />
+                        CLI Tools
+                      </span>
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                        {quotaData.sourceUsage?.cli?.requests || 0} requests
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Perspectives</span>
+                        <span className="text-lg font-bold">{quotaData.sourceUsage?.cli?.count || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Est. Cost</span>
+                        <span className="text-sm font-semibold">${(quotaData.sourceUsage?.cli?.cost || 0).toFixed(4)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Web Requests */}
+                  <div className="p-4 border rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium flex items-center">
+                        <Globe className="h-4 w-4 mr-2 text-green-600" />
+                        Web Dashboard
+                      </span>
+                      <Badge variant="outline" className="bg-green-100 text-green-800">
+                        {quotaData.sourceUsage?.web?.requests || 0} requests
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Perspectives</span>
+                        <span className="text-lg font-bold">{quotaData.sourceUsage?.web?.count || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Est. Cost</span>
+                        <span className="text-sm font-semibold">${(quotaData.sourceUsage?.web?.cost || 0).toFixed(4)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* User Keys */}
+                  <div className="p-4 border rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium flex items-center">
+                        <Key className="h-4 w-4 mr-2 text-purple-600" />
+                        Your API Keys
+                      </span>
+                      <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                        {quotaData.sourceUsage?.user_key?.requests || 0} requests
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Perspectives</span>
+                        <span className="text-lg font-bold">{quotaData.sourceUsage?.user_key?.count || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Est. Cost</span>
+                        <span className="text-sm font-semibold">${(quotaData.sourceUsage?.user_key?.cost || 0).toFixed(4)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Admin Credits */}
+                  <div className="p-4 border rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium flex items-center">
+                        <Database className="h-4 w-4 mr-2 text-amber-600" />
+                        Platform Credits
+                      </span>
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800">
+                        {quotaData.sourceUsage?.admin_credits?.requests || 0} requests
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Perspectives</span>
+                        <span className="text-lg font-bold">{quotaData.sourceUsage?.admin_credits?.count || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Est. Cost</span>
+                        <span className="text-sm font-semibold">${(quotaData.sourceUsage?.admin_credits?.cost || 0).toFixed(4)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Source Distribution */}
+                <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border">
+                  <h3 className="text-lg font-semibold mb-4">Request Distribution</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Total Requests by Source</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center">
+                            <Terminal className="h-3 w-3 mr-2 text-blue-600" />
+                            CLI
+                          </span>
+                          <span className="font-medium">{quotaData.sourceUsage?.cli?.requests || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center">
+                            <Globe className="h-3 w-3 mr-2 text-green-600" />
+                            Web
+                          </span>
+                          <span className="font-medium">{quotaData.sourceUsage?.web?.requests || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center">
+                            <Key className="h-3 w-3 mr-2 text-purple-600" />
+                            User Keys
+                          </span>
+                          <span className="font-medium">{quotaData.sourceUsage?.user_key?.requests || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center">
+                            <Database className="h-3 w-3 mr-2 text-amber-600" />
+                            Platform
+                          </span>
+                          <span className="font-medium">{quotaData.sourceUsage?.admin_credits?.requests || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Total Cost by Source</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span>CLI</span>
+                          <span className="font-medium">${(quotaData.sourceUsage?.cli?.cost || 0).toFixed(4)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Web</span>
+                          <span className="font-medium">${(quotaData.sourceUsage?.web?.cost || 0).toFixed(4)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>User Keys</span>
+                          <span className="font-medium">${(quotaData.sourceUsage?.user_key?.cost || 0).toFixed(4)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>Platform</span>
+                          <span className="font-medium">${(quotaData.sourceUsage?.admin_credits?.cost || 0).toFixed(4)}</span>
+                        </div>
+                        <div className="pt-2 border-t flex items-center justify-between font-bold">
+                          <span>Total</span>
+                          <span>${((quotaData.sourceUsage?.cli?.cost || 0) + (quotaData.sourceUsage?.web?.cost || 0) + (quotaData.sourceUsage?.user_key?.cost || 0) + (quotaData.sourceUsage?.admin_credits?.cost || 0)).toFixed(4)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start">
+                      <Terminal className="h-5 w-5 text-blue-600 mr-3 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">CLI Tools</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Requests made through CLI tools like Claude Code, Codex CLI, and Gemini CLI using MCP authentication tokens.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-start">
+                      <Globe className="h-5 w-5 text-green-600 mr-3 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Web Dashboard</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Requests made directly through the web dashboard interface using your browser session.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-start">
+                      <Key className="h-5 w-5 text-purple-600 mr-3 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Your API Keys</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Requests using your own configured API keys (OpenAI, Anthropic, Google, etc.) for direct provider access.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex items-start">
+                      <Database className="h-5 w-5 text-amber-600 mr-3 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-sm mb-1">Platform Credits</h4>
+                        <p className="text-xs text-muted-foreground">
+                          Requests fulfilled using platform-provided API keys when your keys are unavailable or not configured.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="bonus-credits" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Gift className="h-5 w-5 mr-2 text-green-600" />
+                Bonus Messages
+              </CardTitle>
+              <CardDescription>
+                Extra messages from promotions and bonuses
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-500 dark:text-gray-400">
-                      <th className="py-2 pr-4">Timestamp</th>
-                      <th className="py-2 pr-4">Provider / Model</th>
-                      <th className="py-2 pr-4">App</th>
-                      <th className="py-2 pr-4">Tokens</th>
-                      <th className="py-2 pr-4">Cost</th>
-                      <th className="py-2 pr-4">Speed</th>
-                      <th className="py-2 pr-4">Finish</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {memoizedComputations.renderedCreditSessions.map((u: any) => (
-                      <tr key={u.id} className="border-t border-gray-200 dark:border-gray-700">
-                        <td className="py-2 pr-4">{formatTimestamp(u.createdAt || u.timestamp || u.date)}</td>
-                        <td className="py-2 pr-4">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md">
-                              <img src={u.providerLogo} alt={u.provider} className="w-3 h-3" />
-                              <span className="text-xs font-medium">{u.provider || '—'}</span>
-                            </div>
-                            <span className="text-muted-foreground text-xs">→</span>
-                            <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-                              <img src={u.modelLogo} alt={u.model} className="w-3 h-3" />
-                              <span className="text-xs font-medium">{u.model || '—'}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-2 pr-4">{u.app || '—'}</td>
-                        <td className="py-2 pr-4">{u.tokens?.toLocaleString?.() || u.tokens || 0}</td>
-                        <td className="py-2 pr-4">${(u.cost || 0).toFixed(4)}</td>
-                        <td className="py-2 pr-4">{u.tps ? `${u.tps} tps` : '—'}</td>
-                        <td className="py-2 pr-4">{u.finish || '—'}</td>
-                      </tr>
-                    ))}
-                    {creditSessions.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="py-4 text-center text-muted-foreground">No credit-based requests yet</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+              <div className="space-y-6">
+                <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Available Bonus Messages</p>
+                      <p className="text-4xl font-bold text-green-600">{quotaData.bonusMessages}</p>
+                    </div>
+                    <Gift className="h-16 w-16 text-green-600 opacity-50" />
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Bonus messages are used automatically when your regular quota is exhausted
+                  </p>
+                </div>
+
+                {quotaData.bonusMessages === 0 && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      You don't have any bonus messages currently. Check back later for promotions!
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
-  )
-}
 
-// Credit Purchase Cards Component
-function CreditPurchaseCards({ onPurchase, purchasing }: { onPurchase: (index: number) => void, purchasing: boolean }) {
-  const [packages, setPackages] = useState([])
-
-  useEffect(() => {
-    fetch('/api/credits/purchase')
-      .then(res => res.json())
-      .then(data => setPackages(data.packages || []))
-      .catch(console.error)
-  }, [])
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {packages.map((pkg: any, index) => (
-        <Card key={index} className={`relative ${pkg.popular ? 'border-blue-500 shadow-lg' : ''}`}>
-          {pkg.popular && (
-            <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-              <Badge className="bg-blue-500">Most Popular</Badge>
+      {/* Upgrade CTA for Free Users */}
+      {quotaData.planTier === 'free' && (
+        <Card className="border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold mb-2">Need more perspectives?</h3>
+                <p className="text-muted-foreground">
+                  Upgrade to Plus or Pro for higher limits and more API calls
+                </p>
+              </div>
+              <Link href="/dashboard/subscription">
+                <Button className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                  <Zap className="h-4 w-4 mr-2" />
+                  Upgrade Now
+                </Button>
+              </Link>
             </div>
-          )}
-          <CardHeader className="text-center">
-            <CardTitle>${pkg.amount}</CardTitle>
-            <CardDescription>{pkg.description}</CardDescription>
-            {pkg.bonus > 0 && (
-              <Badge variant="secondary" className="mx-auto w-fit">
-                +${pkg.bonus} Bonus ({pkg.savings}% savings)
-              </Badge>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center">
-              <div className="text-3xl font-bold">${pkg.totalCredits}</div>
-              <p className="text-sm text-muted-foreground">Total Credits</p>
-            </div>
-            <div className="text-center text-2xl font-bold text-green-600">
-              ${(pkg.price / 100).toFixed(2)}
-            </div>
-            <Button 
-              onClick={() => onPurchase(index)} 
-              disabled={purchasing}
-              className="w-full"
-              variant={pkg.popular ? "default" : "outline"}
-            >
-              {purchasing ? 'Processing...' : 'Purchase Credits'}
-            </Button>
           </CardContent>
         </Card>
-      ))}
-    </div>
-  )
-}
-
-// Budget Settings Component (simplified for now)
-function BudgetSettings({ budgetInfo, onUpdate }: { budgetInfo: BudgetInfo | null, onUpdate: () => void }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Settings className="w-5 h-5" />
-          Budget Settings
-        </CardTitle>
-        <CardDescription>Configure spending limits and preferences</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {/* Daily Spending */}
-          {budgetInfo?.currentSpending.daily && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Daily Spending</label>
-                <span className="text-sm text-muted-foreground">
-                  ${budgetInfo.currentSpending.daily.amount.toFixed(2)}
-                  {budgetInfo.currentSpending.daily.limit && ` / $${budgetInfo.currentSpending.daily.limit.toFixed(2)}`}
-                </span>
-              </div>
-              {budgetInfo.currentSpending.daily.limit && (
-                <Progress value={budgetInfo.currentSpending.daily.percentage} className="h-2" />
-              )}
-            </div>
-          )}
-
-          {/* Weekly Spending */}
-          {budgetInfo?.currentSpending.weekly && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Weekly Spending</label>
-                <span className="text-sm text-muted-foreground">
-                  ${budgetInfo.currentSpending.weekly.amount.toFixed(2)}
-                  {budgetInfo.currentSpending.weekly.limit && ` / $${budgetInfo.currentSpending.weekly.limit.toFixed(2)}`}
-                </span>
-              </div>
-              {budgetInfo.currentSpending.weekly.limit && (
-                <Progress value={budgetInfo.currentSpending.weekly.percentage} className="h-2" />
-              )}
-            </div>
-          )}
-
-          {/* Monthly Spending */}
-          {budgetInfo?.currentSpending.monthly && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium">Monthly Spending</label>
-                <span className="text-sm text-muted-foreground">
-                  ${budgetInfo.currentSpending.monthly.amount.toFixed(2)}
-                  {budgetInfo.currentSpending.monthly.limit && ` / $${budgetInfo.currentSpending.monthly.limit.toFixed(2)}`}
-                </span>
-              </div>
-              {budgetInfo.currentSpending.monthly.limit && (
-                <Progress value={budgetInfo.currentSpending.monthly.percentage} className="h-2" />
-              )}
-            </div>
-          )}
-
-          <Button variant="outline" className="w-full">
-            Configure Budget Limits
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// Analytics Dashboard Component (simplified for now)
-function AnalyticsDashboard({
-  creditBalance,
-  providersRegistry,
-  modelsRegistry
-}: {
-  creditBalance: CreditBalance | null,
-  providersRegistry: Array<{ id: string, name: string, logo_url: string, display_name: string }>,
-  modelsRegistry: Array<{ id: string, name: string, provider_id: string, actual_provider: string }>
-}) {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Usage Summary</CardTitle>
-          <CardDescription>Last 30 days</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-between">
-            <span>Total Requests</span>
-            <span className="font-medium">{creditBalance?.analytics.totalRequests || 0}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Total Spent</span>
-            <span className="font-medium">${creditBalance?.analytics.totalSpent.toFixed(4) || '0.0000'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Avg Cost/Request</span>
-            <span className="font-medium">${creditBalance?.analytics.avgCostPerRequest.toFixed(4) || '0.0000'}</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Models</CardTitle>
-          <CardDescription>Most used models</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {creditBalance?.analytics.topModels?.length ? (
-              creditBalance.analytics.topModels.map((model: any, index) => (
-                <div key={index} className="flex items-center justify-between p-2 border rounded">
-                  <div className="flex items-center gap-2">
-                    <img src={getModelLogo(model.model, '', providersRegistry, modelsRegistry)} alt={model.model} className="w-4 h-4" />
-                    <span className="font-medium">{model.model}</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">
-                    {model.requests} requests • ${model.cost.toFixed(4)}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-muted-foreground py-4">No usage data yet</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      )}
     </div>
   )
 }

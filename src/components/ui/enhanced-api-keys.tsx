@@ -5,11 +5,12 @@ import { useAuth } from '../../hooks/useAuth'
 import { usePreferences } from '../../hooks/usePreferences'
 import { useEnhancedApiKeysData } from '../../hooks/useEnhancedApiKeysData'
 import { createClient } from '../../app/utils/supabase/client'
-import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw, Copy } from 'lucide-react'
+import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw, Copy, Crown, Leaf } from 'lucide-react'
 import { ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
 // Use API endpoint instead of direct modelsDevService import to avoid server-side imports in client component
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import { getModelTier } from '../../lib/model-tiers'
 
 interface ApiKey {
   id: string
@@ -983,7 +984,10 @@ export default function EnhancedApiKeysPage() {
                                       </span>
                                     </div>
                                     {key.is_preferred && (
-                                      <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                                      <Star className="w-4 h-4 text-yellow-500 fill-current" title="Preferred provider" />
+                                    )}
+                                    {key.is_primary && (
+                                      <Crown className="w-4 h-4 text-purple-600 fill-current" title="Primary key for this provider" />
                                     )}
                                     <button
                                       onClick={() => toggleProviderExpanded(key.id)}
@@ -1049,7 +1053,28 @@ export default function EnhancedApiKeysPage() {
                                       <div>Default Model: <span className="font-mono text-xs">{key.default_model}</span></div>
                                     </div>
                                     <div className="flex space-x-2 pt-2">
-                                      <button 
+                                      <button
+                                        className={`text-sm flex items-center space-x-1 ${key.is_primary ? 'text-purple-600 hover:text-purple-800' : 'text-gray-600 hover:text-purple-600'}`}
+                                        onClick={async () => {
+                                          try {
+                                            const response = await fetch(`/api/api-keys/${key.id}`, {
+                                              method: 'PUT',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({ is_primary: !key.is_primary })
+                                            })
+                                            if (response.ok) {
+                                              refreshData()
+                                            }
+                                          } catch (error) {
+                                            console.error('Error toggling primary key:', error)
+                                          }
+                                        }}
+                                        title={key.is_primary ? 'Remove as primary' : 'Mark as primary'}
+                                      >
+                                        <Crown className={`w-3 h-3 ${key.is_primary ? 'fill-current' : ''}`} />
+                                        <span>{key.is_primary ? 'Primary' : 'Set Primary'}</span>
+                                      </button>
+                                      <button
                                         className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
                                         onClick={() => {
                                           setEditingKey(key)
@@ -1069,7 +1094,7 @@ export default function EnhancedApiKeysPage() {
                                         <Edit3 className="w-3 h-3" />
                                         <span>Edit</span>
                                       </button>
-                                      <button 
+                                      <button
                                         className="text-red-600 hover:text-red-800 text-sm flex items-center space-x-1"
                                         onClick={() => deleteApiKey(key.id)}
                                       >
@@ -1311,29 +1336,66 @@ export default function EnhancedApiKeysPage() {
                   )}
                   {(providerModels[formData.provider] || []).map(model => {
                     const inputCost = (model.input_cost_per_million || 0) // Already per 1M tokens
-                    const outputCost = (model.output_cost_per_million || 0) // Already per 1M tokens  
-                    const priceText = inputCost > 0 || outputCost > 0 
-                      ? ` - $${inputCost.toFixed(2)}/$${outputCost.toFixed(2)} per 1M tokens`
+                    const outputCost = (model.output_cost_per_million || 0) // Already per 1M tokens
+                    const modelTierInfo = getModelTier(model.id)
+                    const tierBadge = modelTierInfo
+                      ? ` [${modelTierInfo.tier === 'premium' ? '👑 Premium' : modelTierInfo.tier === 'normal' ? '⭐ Normal' : '🌿 Eco'}]`
+                      : ''
+                    const priceText = inputCost > 0 || outputCost > 0
+                      ? ` - $${inputCost.toFixed(2)}/$${outputCost.toFixed(2)} per 1M`
                       : ''
                     return (
                       <option key={model.id} value={model.id}>
-                        {model.display_name || model.name}{priceText}
+                        {model.display_name || model.name}{tierBadge}{priceText}
                       </option>
                     )
                   })}
                 </select>
               </div>
 
+              {/* Model Tier Badge Display */}
+              {formData.default_model && (() => {
+                const selectedModel = (providerModels[formData.provider] || []).find(m => m.id === formData.default_model)
+                if (!selectedModel) return null
+
+                const modelTierInfo = getModelTier(selectedModel.id)
+                if (!modelTierInfo) return null
+
+                const tierColors = {
+                  premium: { bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-800 dark:text-purple-200', badge: 'bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200' },
+                  normal: { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', text: 'text-blue-800 dark:text-blue-200', badge: 'bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200' },
+                  eco: { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', text: 'text-green-800 dark:text-green-200', badge: 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' }
+                }
+                const colors = tierColors[modelTierInfo.tier]
+                const TierIcon = modelTierInfo.tier === 'premium' ? Crown : modelTierInfo.tier === 'normal' ? Star : Leaf
+
+                return (
+                  <div className={`${colors.bg} border ${colors.border} rounded-lg p-3 mb-3`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <TierIcon className={`w-4 h-4 ${colors.text}`} />
+                        <span className={`text-sm font-medium ${colors.text}`}>
+                          {modelTierInfo.tier.charAt(0).toUpperCase() + modelTierInfo.tier.slice(1)} Perspective Tier
+                        </span>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${colors.badge}`}>
+                        Uses {modelTierInfo.tier} quota
+                      </span>
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* Model Pricing Display */}
               {formData.default_model && (() => {
                 const selectedModel = (providerModels[formData.provider] || []).find(m => m.id === formData.default_model)
                 if (!selectedModel) return null
-                
+
                 const inputCost = (selectedModel.input_cost_per_million || 0) // Already per 1M tokens
                 const outputCost = (selectedModel.output_cost_per_million || 0) // Already per 1M tokens
-                
+
                 if (inputCost === 0 && outputCost === 0) return null
-                
+
                 return (
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <div className="flex items-center space-x-2 mb-2">
