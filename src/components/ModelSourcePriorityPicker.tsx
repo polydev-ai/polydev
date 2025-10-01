@@ -40,7 +40,11 @@ export default function ModelSourcePriorityPicker() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const currentPriority = (preferences?.source_priority as SourceType[]) || ['cli', 'api', 'admin']
+  // Filter out invalid source types (e.g., old 'credits' values) and ensure valid defaults
+  const rawPriority = (preferences?.source_priority as any[]) || ['cli', 'api', 'admin']
+  const currentPriority = rawPriority.filter((sourceId): sourceId is SourceType =>
+    sourceId === 'cli' || sourceId === 'api' || sourceId === 'admin'
+  )
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return

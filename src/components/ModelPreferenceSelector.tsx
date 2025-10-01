@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Check, Search, Star, AlertCircle, Zap, Lock } from 'lucide-react'
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import { ChevronDown, ChevronRight, Check, Search, Star, AlertCircle, Zap, Lock, GripVertical } from 'lucide-react'
 import { usePreferences } from '../hooks/usePreferences'
 import { useChatModels } from '../hooks/useChatModels'
 import { useEnhancedApiKeysData } from '../hooks/useEnhancedApiKeysData'
@@ -17,7 +18,7 @@ interface SelectedModelsConfig {
 export default function ModelPreferenceSelector() {
   const { preferences, updatePreferences } = usePreferences()
   const { models: allModels, loading: modelsLoading } = useChatModels()
-  const { modelsDevProviders } = useEnhancedApiKeysData()
+  const { modelsDevProviders, apiKeys } = useEnhancedApiKeysData()
   const [isExpanded, setIsExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSaving, setIsSaving] = useState(false)
@@ -107,13 +108,44 @@ export default function ModelPreferenceSelector() {
     }
   }
 
+  // Sort models based on API keys display_order, then by tier for admin keys
+  const sortedModels = useMemo(() => {
+    return [...allModels].sort((a, b) => {
+      // Find API keys for each model
+      const aApiKey = apiKeys.find(k => k.provider.toLowerCase() === a.provider.toLowerCase())
+      const bApiKey = apiKeys.find(k => k.provider.toLowerCase() === b.provider.toLowerCase())
+
+      // If both have API keys, sort by display_order
+      if (aApiKey && bApiKey) {
+        const aOrder = aApiKey.display_order ?? 999
+        const bOrder = bApiKey.display_order ?? 999
+        if (aOrder !== bOrder) return aOrder - bOrder
+      }
+
+      // If only one has API key, prioritize it
+      if (aApiKey && !bApiKey) return -1
+      if (!aApiKey && bApiKey) return 1
+
+      // If neither has API keys, sort by tier (premium > normal > eco) then by name
+      if (!aApiKey && !bApiKey) {
+        const tierOrder = { premium: 1, normal: 2, eco: 3 }
+        const aTierOrder = tierOrder[a.tier as keyof typeof tierOrder] || 4
+        const bTierOrder = tierOrder[b.tier as keyof typeof tierOrder] || 4
+        if (aTierOrder !== bTierOrder) return aTierOrder - bTierOrder
+      }
+
+      // Final fallback: sort by name
+      return a.name.localeCompare(b.name)
+    })
+  }, [allModels, apiKeys])
+
   // Filter models by search query
-  const filteredModels = allModels.filter(model =>
+  const filteredModels = sortedModels.filter(model =>
     model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     model.provider.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  // Group models by provider
+  // Group models by provider, maintaining sorted order
   const modelsByProvider = filteredModels.reduce((acc, model) => {
     if (!acc[model.provider]) {
       acc[model.provider] = []
@@ -136,6 +168,26 @@ export default function ModelPreferenceSelector() {
         ? prev.filter(id => id !== modelId)
         : [...prev, modelId]
     )
+  }
+
+  const handleChatModelDragEnd = (result: DropResult) => {
+    if (!result.destination) return
+
+    const items = Array.from(selectedChatModels)
+    const [reorderedItem] = items.splice(result.source.index, 1)
+    items.splice(result.destination.index, 0, reorderedItem)
+
+    setSelectedChatModels(items)
+  }
+
+  const handleMcpModelDragEnd = (result: DropResult) => {
+    if (!result.destination) return
+
+    const items = Array.from(selectedMcpModels)
+    const [reorderedItem] = items.splice(result.source.index, 1)
+    items.splice(result.destination.index, 0, reorderedItem)
+
+    setSelectedMcpModels(items)
   }
 
   const savePreferences = async () => {
@@ -269,6 +321,10 @@ export default function ModelPreferenceSelector() {
     )
   }
 
+  const getModelDetails = (modelId: string) => {
+    return allModels.find(m => m.id === modelId)
+  }
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
       <button
@@ -284,7 +340,7 @@ export default function ModelPreferenceSelector() {
           <div className="text-left">
             <h3 className="text-lg font-semibold text-gray-900">Model Preferences</h3>
             <p className="text-sm text-gray-500 mt-0.5">
-              Select which models to use in Chat and MCP Client
+              Select and reorder models for Chat and MCP Client (drag to reorder)
             </p>
           </div>
         </div>
@@ -343,6 +399,118 @@ export default function ModelPreferenceSelector() {
                     />
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Selected Chat Models - Draggable */}
+            {selectedChatModels.length > 0 && (
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-gray-900 mb-3">Selected for Chat ({selectedChatModels.length}) - Drag to Reorder</h4>
+                <DragDropContext onDragEnd={handleChatModelDragEnd}>
+                  <Droppable droppableId="chat-models">
+                    {(provided, snapshot) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-blue-100 rounded-lg p-2' : ''}`}
+                      >
+                        {selectedChatModels.map((modelId, index) => {
+                          const model = getModelDetails(modelId)
+                          if (!model) return null
+
+                          return (
+                            <Draggable key={modelId} draggableId={modelId} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`flex items-center gap-3 p-3 bg-white border rounded-lg ${
+                                    snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500' : 'border-gray-200'
+                                  } transition-all cursor-move`}
+                                >
+                                  <GripVertical className="w-4 h-4 text-gray-400" />
+                                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+                                    {index + 1}
+                                  </div>
+                                  {getProviderLogo(model.provider, model.providerName, model.providerLogo)}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm text-gray-900 truncate">{model.name}</div>
+                                    <div className="text-xs text-gray-500">{model.providerName}</div>
+                                  </div>
+                                  <button
+                                    onClick={() => toggleModelForChat(modelId)}
+                                    className="p-1 text-red-600 hover:text-red-700"
+                                    title="Remove from chat"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              )}
+                            </Draggable>
+                          )
+                        })}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+              </div>
+            )}
+
+            {/* Selected MCP Models - Draggable */}
+            {selectedMcpModels.length > 0 && (
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <h4 className="font-semibold text-gray-900 mb-3">Selected for MCP ({selectedMcpModels.length}) - Drag to Reorder</h4>
+                <DragDropContext onDragEnd={handleMcpModelDragEnd}>
+                  <Droppable droppableId="mcp-models">
+                    {(provided, snapshot) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-purple-100 rounded-lg p-2' : ''}`}
+                      >
+                        {selectedMcpModels.map((modelId, index) => {
+                          const model = getModelDetails(modelId)
+                          if (!model) return null
+
+                          return (
+                            <Draggable key={modelId} draggableId={modelId} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`flex items-center gap-3 p-3 bg-white border rounded-lg ${
+                                    snapshot.isDragging ? 'shadow-lg ring-2 ring-purple-500' : 'border-gray-200'
+                                  } transition-all cursor-move`}
+                                >
+                                  <GripVertical className="w-4 h-4 text-gray-400" />
+                                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-xs font-semibold text-purple-700">
+                                    {index + 1}
+                                  </div>
+                                  {getProviderLogo(model.provider, model.providerName, model.providerLogo)}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm text-gray-900 truncate">{model.name}</div>
+                                    <div className="text-xs text-gray-500">{model.providerName}</div>
+                                  </div>
+                                  <button
+                                    onClick={() => toggleModelForMcp(modelId)}
+                                    className="p-1 text-red-600 hover:text-red-700"
+                                    title="Remove from MCP"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              )}
+                            </Draggable>
+                          )
+                        })}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
               </div>
             )}
 
