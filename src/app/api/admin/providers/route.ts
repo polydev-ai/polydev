@@ -2,10 +2,44 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
+
+// Get authenticated user from request
+async function getAuthenticatedUser(request: NextRequest) {
+  const cookieStore = await cookies()
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: false
+      },
+      global: {
+        headers: {
+          cookie: cookieStore.toString()
+        }
+      }
+    }
+  )
+
+  const { data: { user }, error } = await supabase.auth.getUser()
+
+  if (error || !user) {
+    return null
+  }
+
+  return user
+}
 
 // Admin API for managing all provider API keys
 export async function GET(request: NextRequest) {
   try {
+    // Get authenticated user
+    const user = await getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -13,16 +47,17 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url)
     const provider = url.searchParams.get('provider')
-    const userId = url.searchParams.get('userId')
+    const showAllAdmins = url.searchParams.get('showAll') === 'true'
 
-    // Admin user ID for system keys
-    const adminUserId = process.env.ADMIN_USER_ID || '00000000-0000-0000-0000-000000000000'
-
+    // By default, show current admin's keys. If showAll=true, show all admin keys
     let query = supabase
       .from('user_api_keys')
       .select('*')
-      .eq('user_id', userId || adminUserId) // Only show admin/system keys by default
       .order('created_at', { ascending: false })
+
+    if (!showAllAdmins) {
+      query = query.eq('user_id', user.id)
+    }
 
     if (provider) {
       query = query.eq('provider', provider)
@@ -38,11 +73,16 @@ export async function GET(request: NextRequest) {
     // No transformation needed for admin keys
     const transformedKeys = apiKeys || []
 
-    // Get provider statistics for admin keys only
-    const { data: providerStats, error: statsError } = await supabase
+    // Get provider statistics
+    const statsQuery = supabase
       .from('user_api_keys')
       .select('provider, current_usage, monthly_budget')
-      .eq('user_id', userId || adminUserId)
+
+    if (!showAllAdmins) {
+      statsQuery.eq('user_id', user.id)
+    }
+
+    const { data: providerStats } = await statsQuery
 
     const stats = providerStats?.reduce((acc: any, key) => {
       if (!acc[key.provider]) {
@@ -63,7 +103,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       apiKeys: transformedKeys,
-      stats
+      stats,
+      currentUser: user.id
     })
   } catch (error) {
     console.error('Error in admin providers API:', error)
@@ -73,6 +114,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user
+    const user = await getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -81,23 +128,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { action, ...data } = body
 
+    // Pass user ID to all functions
+    const dataWithUser = { ...data, authenticated_user_id: user.id }
+
     switch (action) {
       case 'add_key':
-        return await addProviderKey(supabase, data)
+        return await addProviderKey(supabase, dataWithUser)
       case 'update_key':
-        return await updateKey(supabase, data)
+        return await updateKey(supabase, dataWithUser)
       case 'update_budget':
-        return await updateKeyBudget(supabase, data)
+        return await updateKeyBudget(supabase, dataWithUser)
       case 'toggle_active':
-        return await toggleKeyActive(supabase, data)
+        return await toggleKeyActive(supabase, dataWithUser)
       case 'reset_usage':
-        return await resetKeyUsage(supabase, data)
+        return await resetKeyUsage(supabase, dataWithUser)
       case 'reorder_keys':
-        return await reorderKeys(supabase, data)
+        return await reorderKeys(supabase, dataWithUser)
       case 'delete_key':
-        return await deleteKey(supabase, data)
+        return await deleteKey(supabase, dataWithUser)
       case 'get_next_available_key':
-        return await getNextAvailableKey(supabase, data)
+        return await getNextAvailableKey(supabase, dataWithUser)
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
@@ -108,7 +158,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function addProviderKey(supabase: any, data: any) {
-  const { provider, key_name, encrypted_key, monthly_budget, rate_limit_rpm, priority_order, daily_limit } = data
+  const { provider, key_name, encrypted_key, monthly_budget, rate_limit_rpm, priority_order, daily_limit, authenticated_user_id } = data
 
   if (!provider) {
     return NextResponse.json({ error: 'Provider is required' }, { status: 400 })
@@ -119,8 +169,8 @@ async function addProviderKey(supabase: any, data: any) {
     return NextResponse.json({ error: 'Invalid provider name' }, { status: 400 })
   }
 
-  // For admin keys, use a system user ID or create a special admin user
-  const user_id = process.env.ADMIN_USER_ID || '00000000-0000-0000-0000-000000000000'
+  // Use authenticated admin's user ID - this allows tracking which admin added the key
+  const user_id = authenticated_user_id
 
   // Get the next priority order if not specified
   let finalPriorityOrder = priority_order
@@ -273,10 +323,10 @@ async function resetKeyUsage(supabase: any, data: any) {
 }
 
 async function reorderKeys(supabase: any, data: any) {
-  const { provider, user_id, keyOrders } = data
+  const { provider, authenticated_user_id, keyOrders } = data
 
-  if (!provider || !user_id || !keyOrders || !Array.isArray(keyOrders)) {
-    return NextResponse.json({ error: 'Provider, user_id, and keyOrders array are required' }, { status: 400 })
+  if (!provider || !authenticated_user_id || !keyOrders || !Array.isArray(keyOrders)) {
+    return NextResponse.json({ error: 'Provider, authenticated_user_id, and keyOrders array are required' }, { status: 400 })
   }
 
   try {
@@ -290,7 +340,7 @@ async function reorderKeys(supabase: any, data: any) {
         })
         .eq('id', keyId)
         .eq('provider', provider)
-        .eq('user_id', user_id)
+        .eq('user_id', authenticated_user_id)
 
       if (error) {
         console.error('Error updating key order:', error)
@@ -327,10 +377,10 @@ async function deleteKey(supabase: any, data: any) {
 }
 
 async function getNextAvailableKey(supabase: any, data: any) {
-  const { provider, user_id } = data
+  const { provider, authenticated_user_id } = data
 
-  if (!provider || !user_id) {
-    return NextResponse.json({ error: 'Provider and user_id are required' }, { status: 400 })
+  if (!provider || !authenticated_user_id) {
+    return NextResponse.json({ error: 'Provider and authenticated_user_id are required' }, { status: 400 })
   }
 
   try {
@@ -339,7 +389,7 @@ async function getNextAvailableKey(supabase: any, data: any) {
       .from('user_api_keys')
       .select('*')
       .eq('provider', provider)
-      .eq('user_id', user_id)
+      .eq('user_id', authenticated_user_id)
       .eq('active', true)
       .order('priority_order', { ascending: true })
 
