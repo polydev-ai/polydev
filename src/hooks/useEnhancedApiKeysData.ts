@@ -14,6 +14,7 @@ interface ApiKey {
   api_base?: string
   default_model?: string
   is_preferred?: boolean
+  is_primary?: boolean
   monthly_budget?: number
   display_order?: number
   created_at: string
