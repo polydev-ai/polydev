@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
-import { ArrowLeft, Search, Eye, Brain, Zap, Image, Settings, DollarSign, Edit, Plus, X, Home, Copy } from 'lucide-react'
+import { ArrowLeft, Search, Eye, Brain, Zap, Image, Settings, DollarSign, Edit, Plus, X, Home, Copy, Trash2 } from 'lucide-react'
 
 interface ModelRegistryEntry {
   id: string
@@ -278,6 +278,25 @@ export default function ModelsManagement() {
     } catch (error) {
       console.error('Error duplicating model:', error)
       alert('Error duplicating model: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    }
+  }
+
+  async function deleteModel(modelId: string) {
+    try {
+      const { error } = await supabase
+        .from('models_registry')
+        .delete()
+        .eq('id', modelId)
+
+      if (error) throw error
+
+      await logActivity('delete_model', `Deleted model: ${modelId}`)
+      setShowEditForm(false)
+      setEditingModel(null)
+      await loadModelsData()
+    } catch (error) {
+      console.error('Error deleting model:', error)
+      alert('Error deleting model: ' + (error instanceof Error ? error.message : 'Unknown error'))
     }
   }
 
@@ -598,6 +617,7 @@ export default function ModelsManagement() {
             setShowEditForm(false)
             setEditingModel(null)
           }}
+          onDelete={deleteModel}
         />
       )}
 
@@ -606,13 +626,19 @@ export default function ModelsManagement() {
 }
 
 // Model Edit Form Component
-function ModelEditForm({ model, onSave, onCancel }: {
+function ModelEditForm({ model, onSave, onCancel, onDelete }: {
   model: ModelRegistryEntry
   onSave: (model: Partial<ModelRegistryEntry>) => void
   onCancel: () => void
+  onDelete?: (modelId: string) => void
 }) {
   const [formData, setFormData] = useState({
+    name: model.name || '',
     display_name: model.display_name || '',
+    friendly_id: model.friendly_id || '',
+    provider_model_id: model.provider_model_id || '',
+    model_family: model.model_family || '',
+    model_version: model.model_version || '',
     input_cost_per_million: model.input_cost_per_million || 0,
     output_cost_per_million: model.output_cost_per_million || 0,
     cache_read_cost_per_million: model.cache_read_cost_per_million || null,
@@ -626,6 +652,12 @@ function ModelEditForm({ model, onSave, onCancel }: {
     reasoning_levels: model.reasoning_levels || null,
     is_active: model.is_active || false
   })
+
+  const handleDelete = () => {
+    if (confirm(`Are you sure you want to delete "${model.display_name}"? This action cannot be undone.`)) {
+      onDelete?.(model.id)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -656,7 +688,20 @@ function ModelEditForm({ model, onSave, onCancel }: {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Display Name
+                    Model Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="gpt-4o, claude-3-5-sonnet"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Display Name *
                   </label>
                   <input
                     type="text"
@@ -664,9 +709,58 @@ function ModelEditForm({ model, onSave, onCancel }: {
                     onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="GPT-4o, Claude 3.5 Sonnet"
+                    required
                   />
                 </div>
-                <div className="flex items-center space-x-4 pt-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Friendly ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.friendly_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, friendly_id: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="gpt4o, claude3-5-sonnet"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Provider Model ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.provider_model_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, provider_model_id: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Provider-specific model identifier"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Model Family
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.model_family}
+                    onChange={(e) => setFormData(prev => ({ ...prev, model_family: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="GPT, Claude, Gemini"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Model Version
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.model_version}
+                    onChange={(e) => setFormData(prev => ({ ...prev, model_version: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="4o, 3.5, pro"
+                  />
+                </div>
+                <div className="flex items-center pt-6">
                   <label className="flex items-center">
                     <input
                       type="checkbox"
@@ -674,7 +768,7 @@ function ModelEditForm({ model, onSave, onCancel }: {
                       onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                       className="mr-2"
                     />
-                    Active
+                    <span className="text-sm font-medium">Active</span>
                   </label>
                 </div>
               </div>
@@ -842,20 +936,32 @@ function ModelEditForm({ model, onSave, onCancel }: {
             </div>
 
             {/* Form Actions */}
-            <div className="flex justify-end space-x-3 pt-6 border-t">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Save Changes
-              </button>
+            <div className="flex justify-between pt-6 border-t">
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="px-6 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 inline-flex items-center"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Model
+                </button>
+              )}
+              <div className={`flex space-x-3 ${!onDelete ? 'ml-auto' : ''}`}>
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Save Changes
+                </button>
+              </div>
             </div>
           </form>
         </div>
