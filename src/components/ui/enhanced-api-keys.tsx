@@ -984,10 +984,14 @@ export default function EnhancedApiKeysPage() {
                                       </span>
                                     </div>
                                     {key.is_preferred && (
-                                      <Star className="w-4 h-4 text-yellow-500 fill-current" title="Preferred provider" />
+                                      <span title="Preferred provider">
+                                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                                      </span>
                                     )}
                                     {key.is_primary && (
-                                      <Crown className="w-4 h-4 text-purple-600 fill-current" title="Primary key for this provider" />
+                                      <span title="Primary key for this provider">
+                                        <Crown className="w-4 h-4 text-purple-600 fill-current" />
+                                      </span>
                                     )}
                                     <button
                                       onClick={() => toggleProviderExpanded(key.id)}
