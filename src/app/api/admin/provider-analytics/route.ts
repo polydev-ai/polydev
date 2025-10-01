@@ -1,144 +1,227 @@
 'use server'
 
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 
-// This endpoint now serves as a wrapper/aggregator for data retrieved via Supabase MCP
-// The actual data fetching will be done through MCP calls in the frontend components
-
-export async function GET(request: NextRequest) {
+// Get authenticated user from request
+async function getAuthenticatedUser(request: NextRequest) {
   try {
-    const url = new URL(request.url)
-    const provider = url.searchParams.get('provider')
-    const userId = url.searchParams.get('userId')
-    const timeRange = url.searchParams.get('timeRange') || '7d'
+    const cookieStore = await cookies()
+    const allCookies = cookieStore.getAll()
 
-    // Return metadata about available analytics queries
-    // The actual data will be fetched using MCP calls
-    const availableQueries = {
-      keyUsageStats: {
-        description: 'Get usage statistics for API keys',
-        mcpQuery: `
-          SELECT
-            uk.id,
-            uk.provider,
-            uk.key_name,
-            uk.priority_order,
-            uk.monthly_budget,
-            uk.daily_limit,
-            uk.current_usage,
-            uk.daily_usage,
-            uk.active,
-            uk.last_used_at,
-            COUNT(aul.id) as total_calls,
-            SUM(CASE WHEN aul.success THEN 1 ELSE 0 END) as successful_calls,
-            SUM(aul.cost) as total_cost,
-            SUM(aul.tokens_used) as total_tokens
-          FROM user_api_keys uk
-          LEFT JOIN api_key_usage_logs aul ON uk.id = aul.api_key_id
-          WHERE uk.provider = '${provider || 'anthropic'}'
-          ${userId ? `AND uk.user_id = '${userId}'` : ''}
-          AND aul.timestamp >= NOW() - INTERVAL '${timeRange}'
-          GROUP BY uk.id
-          ORDER BY uk.priority_order
-        `
-      },
+    let accessToken = null
 
-      providerOverview: {
-        description: 'Get overview statistics by provider',
-        mcpQuery: `
-          SELECT
-            provider,
-            COUNT(*) as total_keys,
-            COUNT(CASE WHEN active THEN 1 END) as active_keys,
-            SUM(current_usage) as total_usage,
-            SUM(monthly_budget) as total_budget,
-            AVG(current_usage / NULLIF(monthly_budget, 0) * 100) as avg_utilization
-          FROM user_api_keys
-          ${provider ? `WHERE provider = '${provider}'` : ''}
-          ${userId ? `${provider ? 'AND' : 'WHERE'} user_id = '${userId}'` : ''}
-          GROUP BY provider
-          ORDER BY total_usage DESC
-        `
-      },
+    for (const cookie of allCookies) {
+      if (cookie.name.includes('auth-token')) {
+        try {
+          let decoded = cookie.value
 
-      usageTrends: {
-        description: 'Get usage trends over time',
-        mcpQuery: `
-          SELECT
-            DATE_TRUNC('hour', aul.timestamp) as hour,
-            uk.provider,
-            uk.key_name,
-            COUNT(*) as calls,
-            SUM(aul.cost) as cost,
-            SUM(aul.tokens_used) as tokens,
-            AVG(CASE WHEN aul.success THEN 1.0 ELSE 0.0 END) as success_rate
-          FROM api_key_usage_logs aul
-          JOIN user_api_keys uk ON aul.api_key_id = uk.id
-          WHERE aul.timestamp >= NOW() - INTERVAL '${timeRange}'
-          ${provider ? `AND uk.provider = '${provider}'` : ''}
-          ${userId ? `AND uk.user_id = '${userId}'` : ''}
-          GROUP BY DATE_TRUNC('hour', aul.timestamp), uk.provider, uk.key_name
-          ORDER BY hour DESC
-        `
-      },
+          if (cookie.value.startsWith('base64-')) {
+            decoded = Buffer.from(cookie.value.substring(7), 'base64').toString('utf-8')
+          }
 
-      errorAnalysis: {
-        description: 'Analyze errors by type and key',
-        mcpQuery: `
-          SELECT
-            uk.provider,
-            uk.key_name,
-            aul.error_type,
-            COUNT(*) as error_count,
-            COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY uk.id) as error_percentage
-          FROM api_key_usage_logs aul
-          JOIN user_api_keys uk ON aul.api_key_id = uk.id
-          WHERE aul.success = false
-          AND aul.timestamp >= NOW() - INTERVAL '${timeRange}'
-          ${provider ? `AND uk.provider = '${provider}'` : ''}
-          ${userId ? `AND uk.user_id = '${userId}'` : ''}
-          GROUP BY uk.provider, uk.key_name, aul.error_type
-          ORDER BY error_count DESC
-        `
-      },
-
-      costBreakdown: {
-        description: 'Cost breakdown by provider and key',
-        mcpQuery: `
-          SELECT
-            uk.provider,
-            uk.key_name,
-            uk.monthly_budget,
-            uk.current_usage,
-            (uk.current_usage / NULLIF(uk.monthly_budget, 0) * 100) as budget_utilization,
-            COUNT(aul.id) as api_calls,
-            SUM(aul.cost) as total_cost,
-            AVG(aul.cost) as avg_cost_per_call
-          FROM user_api_keys uk
-          LEFT JOIN api_key_usage_logs aul ON uk.id = aul.api_key_id
-          WHERE aul.timestamp >= NOW() - INTERVAL '${timeRange}' OR aul.id IS NULL
-          ${provider ? `AND uk.provider = '${provider}'` : ''}
-          ${userId ? `AND uk.user_id = '${userId}'` : ''}
-          GROUP BY uk.id, uk.provider, uk.key_name, uk.monthly_budget, uk.current_usage
-          ORDER BY total_cost DESC
-        `
+          const parsed = JSON.parse(decoded)
+          if (parsed.access_token) {
+            accessToken = parsed.access_token
+            break
+          }
+        } catch (e) {
+          continue
+        }
       }
     }
 
+    if (!accessToken) {
+      return null
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data: { user }, error } = await supabase.auth.getUser(accessToken)
+
+    if (error || !user) {
+      return null
+    }
+
+    return user
+  } catch (error) {
+    console.error('Error in getAuthenticatedUser:', error)
+    return null
+  }
+}
+
+function getTimeRangeHours(timeRange: string): number {
+  const ranges: Record<string, number> = {
+    '1h': 1,
+    '6h': 6,
+    '1d': 24,
+    '7d': 168,
+    '30d': 720
+  }
+  return ranges[timeRange] || 168
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // Authenticate user
+    const user = await getAuthenticatedUser(request)
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const url = new URL(request.url)
+    const provider = url.searchParams.get('provider')
+    const timeRange = url.searchParams.get('timeRange') || '7d'
+    const showAll = url.searchParams.get('showAll') === 'true'
+
+    const hoursAgo = getTimeRangeHours(timeRange)
+    const startTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString()
+
+    // Get key usage stats with actual data from usage logs
+    let keysQuery = supabase
+      .from('user_api_keys')
+      .select('id, provider, key_name, priority_order, monthly_budget, daily_limit, current_usage, daily_usage, active, last_used_at')
+      .eq('is_admin_key', true)
+
+    if (!showAll) {
+      keysQuery = keysQuery.eq('user_id', user.id)
+    }
+
+    if (provider && provider !== 'all') {
+      keysQuery = keysQuery.eq('provider', provider)
+    }
+
+    const { data: keys, error: keysError } = await keysQuery
+
+    if (keysError) {
+      console.error('Error fetching keys:', keysError)
+      return NextResponse.json({ error: 'Failed to fetch keys' }, { status: 500 })
+    }
+
+    // Fetch usage logs for each key
+    const keyUsageStats = await Promise.all(
+      (keys || []).map(async (key) => {
+        const { data: logs } = await supabase
+          .from('api_key_usage_logs')
+          .select('cost, tokens_used, success, error_type')
+          .eq('api_key_id', key.id)
+          .gte('timestamp', startTime)
+
+        const totalCalls = logs?.length || 0
+        const successfulCalls = logs?.filter(l => l.success).length || 0
+        const totalCost = logs?.reduce((sum, l) => sum + (l.cost || 0), 0) || 0
+        const totalTokens = logs?.reduce((sum, l) => sum + (l.tokens_used || 0), 0) || 0
+
+        return {
+          ...key,
+          total_calls: totalCalls,
+          successful_calls: successfulCalls,
+          total_cost: totalCost,
+          total_tokens: totalTokens,
+          success_rate: totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0
+        }
+      })
+    )
+
+    // Calculate provider overview
+    const providerGroups = keyUsageStats.reduce((acc: any, key) => {
+      if (!acc[key.provider]) {
+        acc[key.provider] = {
+          provider: key.provider,
+          total_keys: 0,
+          active_keys: 0,
+          total_usage: 0,
+          total_budget: 0,
+          total_calls: 0,
+          successful_calls: 0
+        }
+      }
+
+      acc[key.provider].total_keys++
+      if (key.active) acc[key.provider].active_keys++
+      acc[key.provider].total_usage += key.current_usage || 0
+      acc[key.provider].total_budget += key.monthly_budget || 0
+      acc[key.provider].total_calls += key.total_calls || 0
+      acc[key.provider].successful_calls += key.successful_calls || 0
+
+      return acc
+    }, {})
+
+    const providerOverview = Object.values(providerGroups).map((p: any) => ({
+      ...p,
+      avg_utilization: p.total_budget > 0 ? (p.total_usage / p.total_budget) * 100 : 0,
+      success_rate: p.total_calls > 0 ? (p.successful_calls / p.total_calls) * 100 : 0
+    }))
+
+    // Get error analysis
+    const keyIds = (keys || []).map(k => k.id)
+    let errorQuery = supabase
+      .from('api_key_usage_logs')
+      .select('api_key_id, error_type')
+      .eq('success', false)
+      .gte('timestamp', startTime)
+
+    if (keyIds.length > 0) {
+      errorQuery = errorQuery.in('api_key_id', keyIds)
+    }
+
+    const { data: errorLogs } = await errorQuery
+
+    const errorsByKey = (errorLogs || []).reduce((acc: any, log) => {
+      const key = keys?.find(k => k.id === log.api_key_id)
+      if (!key) return acc
+
+      const errorKey = `${key.provider}:${key.key_name}:${log.error_type}`
+      if (!acc[errorKey]) {
+        acc[errorKey] = {
+          provider: key.provider,
+          key_name: key.key_name,
+          error_type: log.error_type || 'unknown',
+          error_count: 0
+        }
+      }
+      acc[errorKey].error_count++
+      return acc
+    }, {})
+
+    const errorAnalysis = Object.values(errorsByKey)
+
+    // Cost breakdown
+    const costBreakdown = keyUsageStats.map(key => ({
+      provider: key.provider,
+      key_name: key.key_name,
+      monthly_budget: key.monthly_budget,
+      current_usage: key.current_usage,
+      budget_utilization: key.monthly_budget ? (key.current_usage / key.monthly_budget) * 100 : 0,
+      api_calls: key.total_calls,
+      total_cost: key.total_cost,
+      avg_cost_per_call: key.total_calls > 0 ? key.total_cost / key.total_calls : 0
+    }))
+
+    // Get available providers from actual data
+    const availableProviders = [...new Set((keys || []).map(k => k.provider))]
+      .sort()
+      .map(p => ({ id: p, name: p.charAt(0).toUpperCase() + p.slice(1) }))
+
     return NextResponse.json({
       success: true,
-      message: 'Use Supabase MCP server to execute these queries',
-      availableQueries,
-      instructions: {
-        note: 'Use the mcp__supabase__execute_sql tool with the provided queries',
-        timeRanges: {
-          '1h': '1 hour',
-          '6h': '6 hours',
-          '1d': '1 day',
-          '7d': '7 days',
-          '30d': '30 days'
-        },
-        providers: ['anthropic', 'openai', 'xai', 'google', 'cerebras', 'zai']
+      data: {
+        keyUsageStats,
+        providerOverview,
+        errorAnalysis,
+        costBreakdown,
+        availableProviders,
+        timeRange,
+        startTime
       }
     })
 

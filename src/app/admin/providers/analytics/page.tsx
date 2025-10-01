@@ -6,27 +6,19 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { AlertCircle, BarChart3, TrendingUp, AlertTriangle, DollarSign, Activity, Clock } from 'lucide-react'
+import { AlertCircle, BarChart3, TrendingUp, AlertTriangle, DollarSign, Activity, RefreshCw } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 
-interface ProviderAnalytics {
+interface AnalyticsData {
   keyUsageStats: any[]
   providerOverview: any[]
-  usageTrends: any[]
   errorAnalysis: any[]
   costBreakdown: any[]
+  availableProviders: { id: string; name: string }[]
+  timeRange: string
+  startTime: string
 }
-
-const PROVIDERS = [
-  { id: 'all', name: 'All Providers' },
-  { id: 'anthropic', name: 'Anthropic' },
-  { id: 'openai', name: 'OpenAI' },
-  { id: 'xai', name: 'xAI' },
-  { id: 'google', name: 'Google' },
-  { id: 'cerebras', name: 'Cerebras' },
-  { id: 'zai', name: 'ZAI' }
-]
 
 const TIME_RANGES = [
   { id: '1h', name: 'Last Hour' },
@@ -37,164 +29,73 @@ const TIME_RANGES = [
 ]
 
 export default function ProviderAnalyticsPage() {
-  const [analytics, setAnalytics] = useState<ProviderAnalytics>({
+  const [analytics, setAnalytics] = useState<AnalyticsData>({
     keyUsageStats: [],
     providerOverview: [],
-    usageTrends: [],
     errorAnalysis: [],
-    costBreakdown: []
+    costBreakdown: [],
+    availableProviders: [],
+    timeRange: '7d',
+    startTime: ''
   })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [selectedProvider, setSelectedProvider] = useState('all')
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d')
-  const [availableQueries, setAvailableQueries] = useState<any>(null)
 
   useEffect(() => {
-    loadAvailableQueries()
-  }, [])
+    loadAnalytics()
+  }, [selectedProvider, selectedTimeRange])
 
-  useEffect(() => {
-    if (availableQueries) {
-      loadAnalytics()
+  const loadAnalytics = async (forceRefresh = false) => {
+    if (forceRefresh) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
     }
-  }, [selectedProvider, selectedTimeRange, availableQueries])
-
-  const loadAvailableQueries = async () => {
-    try {
-      const response = await fetch(`/api/admin/provider-analytics?provider=${selectedProvider}&timeRange=${selectedTimeRange}`)
-      const data = await response.json()
-
-      if (data.success) {
-        setAvailableQueries(data.availableQueries)
-      } else {
-        setError('Failed to load query templates')
-      }
-    } catch (err) {
-      setError('Error loading query templates')
-    }
-  }
-
-  const loadAnalytics = async () => {
-    if (!availableQueries) return
-
-    setLoading(true)
     setError('')
 
     try {
-      // Note: In a real implementation, these queries would be executed
-      // using the Supabase MCP server tools like mcp__supabase__execute_sql
-      // For now, we'll show the query structure and mock some data
-
-      console.log('Available MCP Queries:')
-      Object.entries(availableQueries).forEach(([key, query]: [string, any]) => {
-        console.log(`${key}:`, query.mcpQuery)
+      const params = new URLSearchParams({
+        timeRange: selectedTimeRange
       })
 
-      // Mock data for demonstration
-      const mockAnalytics = {
-        keyUsageStats: [
-          {
-            id: '1',
-            provider: 'anthropic',
-            key_name: 'Claude Primary Key',
-            priority_order: 1,
-            monthly_budget: 500,
-            current_usage: 125.50,
-            total_calls: 1250,
-            successful_calls: 1225,
-            total_cost: 125.50,
-            total_tokens: 2500000
-          },
-          {
-            id: '2',
-            provider: 'anthropic',
-            key_name: 'Claude Backup Key',
-            priority_order: 2,
-            monthly_budget: 300,
-            current_usage: 45.25,
-            total_calls: 450,
-            successful_calls: 445,
-            total_cost: 45.25,
-            total_tokens: 900000
-          }
-        ],
-        providerOverview: [
-          {
-            provider: 'anthropic',
-            total_keys: 3,
-            active_keys: 2,
-            total_usage: 170.75,
-            total_budget: 800,
-            avg_utilization: 21.34
-          },
-          {
-            provider: 'openai',
-            total_keys: 2,
-            active_keys: 2,
-            total_usage: 85.30,
-            total_budget: 400,
-            avg_utilization: 21.33
-          }
-        ],
-        usageTrends: [],
-        errorAnalysis: [
-          {
-            provider: 'anthropic',
-            key_name: 'Claude Primary Key',
-            error_type: 'rate_limit',
-            error_count: 25,
-            error_percentage: 2.0
-          }
-        ],
-        costBreakdown: [
-          {
-            provider: 'anthropic',
-            key_name: 'Claude Primary Key',
-            monthly_budget: 500,
-            current_usage: 125.50,
-            budget_utilization: 25.1,
-            api_calls: 1250,
-            total_cost: 125.50,
-            avg_cost_per_call: 0.10
-          }
-        ]
-      }
-
-      // Filter by selected provider if not 'all'
       if (selectedProvider !== 'all') {
-        const filteredAnalytics = { ...mockAnalytics }
-
-        filteredAnalytics.keyUsageStats = mockAnalytics.keyUsageStats.filter(
-          (item: any) => item.provider === selectedProvider
-        )
-        filteredAnalytics.providerOverview = mockAnalytics.providerOverview.filter(
-          (item: any) => item.provider === selectedProvider
-        )
-        filteredAnalytics.usageTrends = mockAnalytics.usageTrends.filter(
-          (item: any) => item.provider === selectedProvider
-        )
-        filteredAnalytics.errorAnalysis = mockAnalytics.errorAnalysis.filter(
-          (item: any) => item.provider === selectedProvider
-        )
-        filteredAnalytics.costBreakdown = mockAnalytics.costBreakdown.filter(
-          (item: any) => item.provider === selectedProvider
-        )
-
-        setAnalytics(filteredAnalytics)
-      } else {
-        setAnalytics(mockAnalytics)
+        params.set('provider', selectedProvider)
       }
 
-    } catch (err) {
-      setError('Error loading analytics data')
+      const response = await fetch(`/api/admin/provider-analytics?${params}`)
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to load analytics')
+      }
+
+      if (result.success && result.data) {
+        setAnalytics(result.data)
+      } else {
+        setError('Failed to load analytics data')
+      }
+    } catch (err: any) {
+      console.error('Error loading analytics:', err)
+      setError(err.message || 'Error loading analytics data')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`
   const formatPercentage = (value: number) => `${value.toFixed(1)}%`
+  const formatNumber = (num: number) => num.toLocaleString()
+
+  const totalCost = analytics.providerOverview.reduce((sum, p) => sum + (p.total_usage || 0), 0)
+  const totalCalls = analytics.keyUsageStats.reduce((sum, k) => sum + (k.total_calls || 0), 0)
+  const successfulCalls = analytics.keyUsageStats.reduce((sum, k) => sum + (k.successful_calls || 0), 0)
+  const totalKeys = analytics.providerOverview.reduce((sum, p) => sum + (p.total_keys || 0), 0)
+  const activeKeys = analytics.providerOverview.reduce((sum, p) => sum + (p.active_keys || 0), 0)
+  const avgSuccessRate = totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : 0
 
   if (loading) {
     return (
@@ -209,18 +110,28 @@ export default function ProviderAnalyticsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      <div className="mb-4">
+        <button
+          onClick={() => window.location.href = '/admin/providers'}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          ← Back to Provider Keys
+        </button>
+      </div>
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Provider Analytics</h1>
-          <p className="text-gray-600 mt-2">Monitor API key usage, costs, and performance</p>
+          <p className="text-gray-600 mt-2">Monitor admin API key usage, costs, and performance</p>
         </div>
-        <div className="flex space-x-4">
+        <div className="flex space-x-3">
           <Select value={selectedProvider} onValueChange={setSelectedProvider}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {PROVIDERS.map(provider => (
+              <SelectItem value="all">All Providers</SelectItem>
+              {analytics.availableProviders.map(provider => (
                 <SelectItem key={provider.id} value={provider.id}>
                   {provider.name}
                 </SelectItem>
@@ -239,6 +150,14 @@ export default function ProviderAnalyticsPage() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            onClick={() => loadAnalytics(true)}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
       </div>
 
@@ -257,11 +176,9 @@ export default function ProviderAnalyticsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(analytics.providerOverview.reduce((sum, p) => sum + (p.total_usage || 0), 0))}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(totalCost)}</div>
             <p className="text-xs text-muted-foreground">
-              This {selectedTimeRange}
+              {TIME_RANGES.find(r => r.id === selectedTimeRange)?.name}
             </p>
           </CardContent>
         </Card>
@@ -272,11 +189,9 @@ export default function ProviderAnalyticsPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {analytics.keyUsageStats.reduce((sum, k) => sum + (k.total_calls || 0), 0).toLocaleString()}
-            </div>
+            <div className="text-2xl font-bold">{formatNumber(totalCalls)}</div>
             <p className="text-xs text-muted-foreground">
-              {analytics.keyUsageStats.reduce((sum, k) => sum + (k.successful_calls || 0), 0).toLocaleString()} successful
+              {formatNumber(successfulCalls)} successful
             </p>
           </CardContent>
         </Card>
@@ -287,12 +202,8 @@ export default function ProviderAnalyticsPage() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {analytics.providerOverview.reduce((sum, p) => sum + (p.active_keys || 0), 0)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              of {analytics.providerOverview.reduce((sum, p) => sum + (p.total_keys || 0), 0)} total
-            </p>
+            <div className="text-2xl font-bold">{activeKeys}</div>
+            <p className="text-xs text-muted-foreground">of {totalKeys} total admin keys</p>
           </CardContent>
         </Card>
 
@@ -302,73 +213,86 @@ export default function ProviderAnalyticsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {analytics.keyUsageStats.length > 0 ?
-                formatPercentage(
-                  analytics.keyUsageStats.reduce((sum, k) =>
-                    sum + ((k.successful_calls || 0) / (k.total_calls || 1) * 100), 0
-                  ) / analytics.keyUsageStats.length
-                ) : '0%'
-              }
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Across all keys
-            </p>
+            <div className="text-2xl font-bold">{formatPercentage(avgSuccessRate)}</div>
+            <p className="text-xs text-muted-foreground">Across all keys</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="usage" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="usage">Key Usage</TabsTrigger>
-          <TabsTrigger value="costs">Cost Breakdown</TabsTrigger>
-          <TabsTrigger value="errors">Error Analysis</TabsTrigger>
-          <TabsTrigger value="queries">MCP Queries</TabsTrigger>
-        </TabsList>
+      {analytics.keyUsageStats.length === 0 ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center space-y-4">
+              <BarChart3 className="w-12 h-12 mx-auto text-gray-400" />
+              <div>
+                <h3 className="text-lg font-semibold">No Analytics Data</h3>
+                <p className="text-gray-600 mt-2">
+                  No usage data found for the selected time range. Add admin API keys and use them to see analytics.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Tabs defaultValue="usage" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="usage">Key Usage</TabsTrigger>
+            <TabsTrigger value="costs">Cost Breakdown</TabsTrigger>
+            <TabsTrigger value="errors">Error Analysis</TabsTrigger>
+            <TabsTrigger value="providers">Provider Overview</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="usage" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>API Key Usage Statistics</CardTitle>
-              <CardDescription>Usage metrics for each API key</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {analytics.keyUsageStats.map((key, index) => (
-                  <Card key={key.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-2">
-                          <div className="flex items-center space-x-2">
-                            <h3 className="font-medium">{key.key_name}</h3>
-                            <Badge variant="outline">#{key.priority_order}</Badge>
-                            <Badge variant="secondary">{key.provider}</Badge>
+          <TabsContent value="usage" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>API Key Usage Statistics</CardTitle>
+                <CardDescription>Detailed usage metrics for each admin API key</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {analytics.keyUsageStats.map((key) => (
+                    <Card key={key.id}>
+                      <CardContent className="pt-6">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-medium">{key.key_name}</h3>
+                              <Badge variant="outline">#{key.priority_order}</Badge>
+                              <Badge variant="secondary">{key.provider}</Badge>
+                              {key.active ? (
+                                <Badge variant="default">Active</Badge>
+                              ) : (
+                                <Badge variant="secondary">Inactive</Badge>
+                              )}
+                            </div>
                           </div>
+
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <p className="text-gray-500">API Calls</p>
-                              <p className="font-medium">{key.total_calls?.toLocaleString()}</p>
+                              <p className="font-medium text-lg">{formatNumber(key.total_calls)}</p>
                             </div>
                             <div>
                               <p className="text-gray-500">Success Rate</p>
-                              <p className="font-medium">
-                                {formatPercentage((key.successful_calls || 0) / (key.total_calls || 1) * 100)}
-                              </p>
+                              <p className="font-medium text-lg">{formatPercentage(key.success_rate)}</p>
                             </div>
                             <div>
                               <p className="text-gray-500">Total Cost</p>
-                              <p className="font-medium">{formatCurrency(key.total_cost || 0)}</p>
+                              <p className="font-medium text-lg">{formatCurrency(key.total_cost)}</p>
                             </div>
                             <div>
                               <p className="text-gray-500">Tokens Used</p>
-                              <p className="font-medium">{key.total_tokens?.toLocaleString()}</p>
+                              <p className="font-medium text-lg">{formatNumber(key.total_tokens)}</p>
                             </div>
                           </div>
+
                           {key.monthly_budget && (
                             <div className="space-y-1">
                               <div className="flex justify-between text-sm">
-                                <span>Budget Usage</span>
-                                <span>{formatCurrency(key.current_usage)} / {formatCurrency(key.monthly_budget)}</span>
+                                <span className="text-gray-500">Monthly Budget Usage</span>
+                                <span className="font-medium">
+                                  {formatCurrency(key.current_usage)} / {formatCurrency(key.monthly_budget)}
+                                </span>
                               </div>
                               <Progress
                                 value={(key.current_usage / key.monthly_budget) * 100}
@@ -377,109 +301,155 @@ export default function ProviderAnalyticsPage() {
                             </div>
                           )}
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="costs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cost Breakdown</CardTitle>
-              <CardDescription>Detailed cost analysis by provider and key</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {analytics.costBreakdown.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium">{item.key_name}</span>
-                        <Badge variant="secondary">{item.provider}</Badge>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {item.api_calls} calls • {formatCurrency(item.avg_cost_per_call)} avg/call
-                      </div>
-                    </div>
-                    <div className="text-right space-y-1">
-                      <div className="text-lg font-bold">{formatCurrency(item.total_cost)}</div>
-                      <div className="text-sm text-gray-500">
-                        {formatPercentage(item.budget_utilization)} of budget
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="errors" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Error Analysis</CardTitle>
-              <CardDescription>API errors by type and frequency</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {analytics.errorAnalysis.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No errors found in the selected time range
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              ) : (
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="costs" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Cost Breakdown</CardTitle>
+                <CardDescription>Detailed cost analysis by provider and key</CardDescription>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-4">
-                  {analytics.errorAnalysis.map((error, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <AlertTriangle className="h-5 w-5 text-orange-500" />
-                        <div>
-                          <div className="font-medium">{error.key_name}</div>
-                          <div className="text-sm text-gray-500">{error.provider}</div>
+                  {analytics.costBreakdown
+                    .sort((a, b) => b.total_cost - a.total_cost)
+                    .map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">{item.key_name}</span>
+                            <Badge variant="secondary">{item.provider}</Badge>
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {formatNumber(item.api_calls)} calls • {formatCurrency(item.avg_cost_per_call)} avg/call
+                          </div>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <div className="text-lg font-bold">{formatCurrency(item.total_cost)}</div>
+                          {item.monthly_budget && (
+                            <div className="text-sm text-gray-500">
+                              {formatPercentage(item.budget_utilization)} of budget
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold text-red-600">{error.error_type}</div>
-                        <div className="text-sm text-gray-500">
-                          {error.error_count} errors ({formatPercentage(error.error_percentage)})
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <TabsContent value="queries" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Available MCP Queries</CardTitle>
-              <CardDescription>
-                Use these SQL queries with the Supabase MCP server (mcp__supabase__execute_sql)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {availableQueries && (
-                <div className="space-y-6">
-                  {Object.entries(availableQueries).map(([key, query]: [string, any]) => (
-                    <div key={key} className="space-y-2">
-                      <h3 className="font-medium">{key}</h3>
-                      <p className="text-sm text-gray-600">{query.description}</p>
-                      <pre className="bg-gray-100 p-4 rounded-lg text-sm overflow-x-auto">
-                        <code>{query.mcpQuery}</code>
-                      </pre>
-                    </div>
-                  ))}
+          <TabsContent value="errors" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Error Analysis</CardTitle>
+                <CardDescription>API errors by type and frequency</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {analytics.errorAnalysis.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <TrendingUp className="w-12 h-12 mx-auto mb-3 text-green-500" />
+                    <p className="font-medium">No errors found</p>
+                    <p className="text-sm mt-1">All API calls were successful in the selected time range</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {analytics.errorAnalysis
+                      .sort((a: any, b: any) => b.error_count - a.error_count)
+                      .map((error: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-red-50 transition-colors">
+                          <div className="flex items-center space-x-3">
+                            <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
+                            <div>
+                              <div className="font-medium">{error.key_name}</div>
+                              <div className="text-sm text-gray-500">{error.provider}</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge variant="destructive" className="font-mono">{error.error_type}</Badge>
+                            <div className="text-sm text-gray-500 mt-1">
+                              {formatNumber(error.error_count)} errors
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="providers" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Provider Overview</CardTitle>
+                <CardDescription>Aggregated statistics by provider</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {analytics.providerOverview
+                    .sort((a, b) => b.total_usage - a.total_usage)
+                    .map((provider, index) => (
+                      <Card key={index}>
+                        <CardContent className="pt-6">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-lg font-semibold capitalize">{provider.provider}</h3>
+                              <div className="text-right">
+                                <div className="text-2xl font-bold">{formatCurrency(provider.total_usage)}</div>
+                                <div className="text-sm text-gray-500">Total Cost</div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div>
+                                <p className="text-gray-500">Total Keys</p>
+                                <p className="font-medium text-lg">{provider.total_keys}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Active Keys</p>
+                                <p className="font-medium text-lg">{provider.active_keys}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">API Calls</p>
+                                <p className="font-medium text-lg">{formatNumber(provider.total_calls)}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Success Rate</p>
+                                <p className="font-medium text-lg">{formatPercentage(provider.success_rate)}</p>
+                              </div>
+                            </div>
+
+                            {provider.total_budget > 0 && (
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-500">Budget Utilization</span>
+                                  <span className="font-medium">
+                                    {formatCurrency(provider.total_usage)} / {formatCurrency(provider.total_budget)}
+                                  </span>
+                                </div>
+                                <Progress
+                                  value={provider.avg_utilization}
+                                  className="h-2"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   )
 }
