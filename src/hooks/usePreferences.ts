@@ -18,6 +18,9 @@ export interface UserPreferences {
     default_max_tokens: number
     auto_select_model: boolean
     saved_chat_models?: string[]
+    saved_mcp_models?: string[]
+    max_chat_models?: number
+    max_mcp_models?: number
     memory_settings: {
       enable_conversation_memory: boolean
       enable_project_memory: boolean

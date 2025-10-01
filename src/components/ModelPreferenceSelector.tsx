@@ -5,7 +5,6 @@ import { ChevronDown, ChevronRight, Check, Search, Star } from 'lucide-react'
 import { usePreferences } from '../hooks/usePreferences'
 import { useChatModels } from '../hooks/useChatModels'
 import { PROVIDER_ICONS } from '../lib/openrouter-providers'
-import Image from 'next/image'
 
 interface SelectedModelsConfig {
   chat_models: string[]  // Models selected for chat
@@ -79,7 +78,15 @@ export default function ModelPreferenceSelector() {
       setIsSaving(true)
       await updatePreferences({
         mcp_settings: {
-          ...preferences?.mcp_settings,
+          default_temperature: preferences?.mcp_settings?.default_temperature ?? 0.7,
+          default_max_tokens: preferences?.mcp_settings?.default_max_tokens ?? 4000,
+          auto_select_model: preferences?.mcp_settings?.auto_select_model ?? false,
+          memory_settings: preferences?.mcp_settings?.memory_settings ?? {
+            enable_conversation_memory: true,
+            enable_project_memory: true,
+            max_conversation_history: 10,
+            auto_extract_patterns: true
+          },
           saved_chat_models: selectedChatModels,
           saved_mcp_models: selectedMcpModels,
           max_chat_models: maxChatModels,
@@ -94,17 +101,12 @@ export default function ModelPreferenceSelector() {
   }
 
   const getProviderLogo = (provider: string) => {
-    const providerConfig = PROVIDER_ICONS[provider.toLowerCase()]
+    const providerIcon = PROVIDER_ICONS[provider.toLowerCase()]
 
-    if (providerConfig?.logo) {
+    if (providerIcon) {
       return (
-        <div className="w-6 h-6 relative">
-          <Image
-            src={providerConfig.logo}
-            alt={provider}
-            fill
-            className="object-contain"
-          />
+        <div className="w-6 h-6 flex items-center justify-center text-lg">
+          {providerIcon}
         </div>
       )
     }
