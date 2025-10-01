@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect, Suspense, useMemo, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '../../../hooks/useAuth'
-import { useDashboardModels, type DashboardModel } from '../../../hooks/useDashboardModels'
+import { useChatModels } from '../../../hooks/useChatModels'
+import { type DashboardModel } from '../../../hooks/useDashboardModels'
 import { useChatSessions, type ChatSession, type ChatMessage } from '../../../hooks/useChatSessions'
 import { usePreferences } from '../../../hooks/usePreferences'
 import MessageContent from '../../../components/MessageContent'
@@ -40,7 +41,7 @@ export default function Chat() {
   const sessionId = params.sessionId as string
   
   const { user, loading, isAuthenticated } = useAuth()
-  const { models: dashboardModels, loading: modelsLoading, error: modelsError, hasModels, refresh: refreshModels } = useDashboardModels()
+  const { models: dashboardModels, loading: modelsLoading, error: modelsError, hasModels, refresh: refreshModels } = useChatModels()
   const { 
     sessions, 
     loading: sessionsLoading, 

@@ -38,6 +38,7 @@ export async function GET() {
           default_model: 'gpt-4o',
           preferred_providers: ['openai', 'anthropic', 'google'],
           usage_preference: 'auto', // auto, api_keys, credits, cli
+          source_priority: ['cli', 'api', 'admin', 'credits'], // Default priority order
           prefer_own_keys: false,
           model_preferences: {
             openai: {
@@ -106,6 +107,7 @@ export async function PUT(request: NextRequest) {
       'default_model',
       'preferred_providers',
       'usage_preference',
+      'source_priority',
       'model_preferences',
       'mcp_settings',
       'max_output_tokens_premium',

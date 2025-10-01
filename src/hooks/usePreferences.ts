@@ -6,6 +6,7 @@ export interface UserPreferences {
   default_model: string
   preferred_providers: string[]
   usage_preference: 'auto' | 'api_keys' | 'credits' | 'cli'
+  source_priority?: ('cli' | 'api' | 'admin' | 'credits')[] // Priority order for model sources (default: ['cli', 'api', 'admin', 'credits'])
   model_preferences: {
     [provider: string]: {
       models: string[]
