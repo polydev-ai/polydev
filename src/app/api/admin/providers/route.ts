@@ -20,17 +20,24 @@ async function getAuthenticatedUser(request: NextRequest) {
     for (const cookie of allCookies) {
       if (cookie.name.includes('auth-token')) {
         try {
-          const parsed = JSON.parse(cookie.value)
+          // Supabase stores auth as base64-encoded JSON
+          let decoded = cookie.value
+
+          // Try to decode if it's base64
+          if (cookie.value.startsWith('base64-')) {
+            decoded = Buffer.from(cookie.value.substring(7), 'base64').toString('utf-8')
+          }
+
+          // Parse as JSON to get the access_token
+          const parsed = JSON.parse(decoded)
           if (parsed.access_token) {
             accessToken = parsed.access_token
             console.log('Found access token in cookie:', cookie.name)
             break
           }
         } catch (e) {
-          // Not JSON, might be plain token
-          accessToken = cookie.value
-          console.log('Using plain cookie value:', cookie.name)
-          break
+          console.error('Failed to parse auth cookie:', e)
+          continue
         }
       }
     }
