@@ -114,14 +114,13 @@ async function addProviderKey(supabase: any, data: any) {
     return NextResponse.json({ error: 'Provider is required' }, { status: 400 })
   }
 
+  // Basic validation: provider should be a non-empty string with reasonable length
+  if (typeof provider !== 'string' || provider.trim().length === 0 || provider.length > 50) {
+    return NextResponse.json({ error: 'Invalid provider name' }, { status: 400 })
+  }
+
   // For admin keys, use a system user ID or create a special admin user
   const user_id = process.env.ADMIN_USER_ID || '00000000-0000-0000-0000-000000000000'
-
-  // Validate provider
-  const validProviders = ['anthropic', 'openai', 'xai', 'google', 'cerebras', 'zai']
-  if (!validProviders.includes(provider.toLowerCase())) {
-    return NextResponse.json({ error: 'Invalid provider. Must be one of: ' + validProviders.join(', ') }, { status: 400 })
-  }
 
   // Get the next priority order if not specified
   let finalPriorityOrder = priority_order
