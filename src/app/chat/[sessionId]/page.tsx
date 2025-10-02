@@ -443,7 +443,7 @@ export default function Chat() {
     }
   }
 
-  const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'admin') => {
+  const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'admin' | 'premium' | 'normal' | 'eco') => {
     switch (tier) {
       case 'cli':
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
@@ -451,6 +451,12 @@ export default function Chat() {
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
       case 'admin':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+      case 'premium':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
+      case 'normal':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      case 'eco':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
     }
   }, [])
 
@@ -460,7 +466,7 @@ export default function Chat() {
     fallbackMethod?: 'cli' | 'api' | 'admin',
     creditsUsed?: number
   ):
-    | { type: 'cli' | 'api' | 'admin'; label: string; cost?: string }
+    | { type: 'cli' | 'api' | 'admin' | 'premium' | 'normal' | 'eco'; label: string; cost?: string }
     | null => {
     // Prefer explicit fallback method from server
     if (fallbackMethod) {
