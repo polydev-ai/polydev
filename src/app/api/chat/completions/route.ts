@@ -362,7 +362,32 @@ async function resolveProviderModelId(inputModelId: string, providerId: string):
 
 async function getProviderFromModel(model: string, supabase: any, userId: string): Promise<string> {
   try {
-    // Get all providers that support this model from models_registry
+    // FIRST: Check if this model is from admin-provided keys via model_tiers
+    const { data: modelTier } = await supabase
+      .from('model_tiers')
+      .select('provider, tier')
+      .eq('model_name', model)
+      .eq('active', true)
+      .single()
+
+    if (modelTier) {
+      // Found in model_tiers - check for admin-provided keys with this provider
+      const { data: adminKeys } = await supabase
+        .from('user_api_keys')
+        .select('provider, priority_order')
+        .eq('is_admin_key', true)
+        .eq('active', true)
+        .ilike('provider', modelTier.provider) // Case-insensitive match
+        .order('priority_order', { ascending: true })
+        .limit(1)
+
+      if (adminKeys && adminKeys.length > 0) {
+        console.log(`Found admin-provided key for ${model}: ${adminKeys[0].provider}`)
+        return adminKeys[0].provider
+      }
+    }
+
+    // SECOND: Check models_registry for user's personal API keys
     const { data: modelProviders } = await supabase
       .from('models_registry')
       .select('provider_id')
@@ -380,6 +405,7 @@ async function getProviderFromModel(model: string, supabase: any, userId: string
       .select('provider, default_model, display_order, active')
       .eq('user_id', userId)
       .eq('active', true)
+      .eq('is_admin_key', false) // Only personal keys here
 
     if (userApiKeys && userApiKeys.length > 0) {
       // Normalize provider IDs
@@ -584,11 +610,13 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .eq('active', true)
 
-    // Step 2.5: Get admin system API keys
+    // Step 2.5: Get admin-provided API keys (from user_api_keys with is_admin_key = true)
     const { data: adminKeys } = await supabase
-      .from('admin_system_api_keys')
-      .select('id, provider_id, encrypted_api_key, api_base_url, active')
+      .from('user_api_keys')
+      .select('id, provider, encrypted_key, api_base, active, priority_order')
+      .eq('is_admin_key', true)
       .eq('active', true)
+      .order('priority_order', { ascending: true })
     
     // Step 3: Get model mappings for OpenRouter credits fallback
     const { data: modelMappings } = await supabase
@@ -647,16 +675,16 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Process admin system API keys (priority 3 - before credits)
+    // Process admin-provided API keys (priority 3 - before credits)
     ;(adminKeys || []).forEach(key => {
-      if (!providerConfigs[key.provider_id]) {
-        providerConfigs[key.provider_id] = {}
+      if (!providerConfigs[key.provider]) {
+        providerConfigs[key.provider] = {}
       }
-      providerConfigs[key.provider_id].admin = {
+      providerConfigs[key.provider].admin = {
         type: 'admin',
         priority: 3,
-        apiKey: atob(key.encrypted_api_key),
-        baseUrl: key.api_base_url,
+        apiKey: atob(key.encrypted_key),
+        baseUrl: key.api_base,
         keyId: key.id,
         sourceType: 'admin_key'
       }
