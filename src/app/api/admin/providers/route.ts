@@ -208,6 +208,19 @@ async function addProviderKey(supabase: any, data: any) {
     return NextResponse.json({ error: 'Invalid provider name' }, { status: 400 })
   }
 
+  // Validate provider exists in model_tiers
+  const { data: providerExists } = await supabase
+    .from('model_tiers')
+    .select('provider')
+    .eq('provider', provider)
+    .limit(1)
+
+  if (!providerExists || providerExists.length === 0) {
+    return NextResponse.json({
+      error: `Invalid provider: "${provider}". Provider must match exactly with a provider in model_tiers.`
+    }, { status: 400 })
+  }
+
   // Use authenticated admin's user ID - this allows tracking which admin added the key
   const user_id = authenticated_user_id
 
@@ -236,7 +249,7 @@ async function addProviderKey(supabase: any, data: any) {
 
   const keyData = {
     user_id,
-    provider: provider.toLowerCase(),
+    provider: provider, // Use exact provider name, no toLowerCase()
     key_name: key_name || `${provider} Admin Key #${finalPriorityOrder}`,
     encrypted_key: encrypted_key || '',
     key_preview: keyPreview,

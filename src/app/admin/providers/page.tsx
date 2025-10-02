@@ -43,7 +43,7 @@ export default function ProvidersAdminPage() {
   const [stats, setStats] = useState<Record<string, ProviderStats>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [selectedProvider, setSelectedProvider] = useState<string>('anthropic')
+  const [selectedProvider, setSelectedProvider] = useState<string>('Anthropic')
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [editingKey, setEditingKey] = useState<ApiKey | null>(null)
@@ -52,7 +52,7 @@ export default function ProvidersAdminPage() {
 
   // Form state
   const [formData, setFormData] = useState({
-    provider: 'anthropic',
+    provider: 'Anthropic',
     key_name: '',
     encrypted_key: '',
     monthly_budget: '',
@@ -78,22 +78,21 @@ export default function ProvidersAdminPage() {
 
   const loadProvidersRegistry = async () => {
     try {
-      const response = await fetch('/api/models-dev/providers?rich=true')
+      // Load exact provider names from model_tiers table
+      const response = await fetch('/api/admin/available-providers')
       if (!response.ok) {
         throw new Error('Failed to fetch providers')
       }
       const data = await response.json()
-      if (Array.isArray(data)) {
-        // Normalize provider data and sort alphabetically
-        const normalizedProviders = data
-          .map(p => ({
-            id: p.id,
-            name: p.name || p.display_name || p.id,
-            display_name: p.display_name || p.name || p.id,
-            logo: p.logo || p.logo_url || 'https://models.dev/logos/default.svg',
-            description: p.description || ''
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name))
+      if (data.success && Array.isArray(data.providers)) {
+        // Map provider names to registry format
+        const normalizedProviders = data.providers.map((p: string) => ({
+          id: p,
+          name: p,
+          display_name: p,
+          logo: 'https://models.dev/logos/default.svg',
+          description: `${p} provider`
+        }))
         setProvidersRegistry(normalizedProviders)
       }
     } catch (err) {
@@ -154,7 +153,7 @@ export default function ProvidersAdminPage() {
       if (data.success) {
         setShowAddDialog(false)
         setFormData({
-          provider: 'anthropic',
+          provider: 'Anthropic',
           key_name: '',
           encrypted_key: '',
           monthly_budget: '',
@@ -196,7 +195,7 @@ export default function ProvidersAdminPage() {
         setShowEditDialog(false)
         setEditingKey(null)
         setFormData({
-          provider: 'anthropic',
+          provider: 'Anthropic',
           key_name: '',
           encrypted_key: '',
           monthly_budget: '',
