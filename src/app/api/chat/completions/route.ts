@@ -665,10 +665,15 @@ export async function POST(request: NextRequest) {
 
     // Process user API key configurations
     ;(apiKeys || []).forEach(key => {
-      if (!providerConfigs[key.provider]) {
-        providerConfigs[key.provider] = {}
+      // Normalize provider name for consistency with admin keys
+      let providerKey = key.provider.toLowerCase()
+      // Special case mappings for API handlers
+      if (providerKey === 'xai') providerKey = 'x-ai'
+
+      if (!providerConfigs[providerKey]) {
+        providerConfigs[providerKey] = {}
       }
-      providerConfigs[key.provider].api = {
+      providerConfigs[providerKey].api = {
         type: 'api',
         priority: 2,
         apiKey: atob(key.encrypted_key),
