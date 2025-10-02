@@ -525,7 +525,7 @@ export async function POST(request: NextRequest) {
     // Get tier priority and prefer_own_keys setting
     const tierPriority = (userPrefs?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
     const providerPriority = (userPrefs?.mcp_settings as any)?.provider_priority || []
-    const preferOwnKeys = userPrefs?.prefer_own_keys || false
+    const preferOwnKeys = (userPrefs as any)?.prefer_own_keys || false
     const useCliTools = (userPrefs?.mcp_settings as any)?.use_cli_tools !== false
 
     // MCP CLIENT DETECTION: Detect which MCP client is making this request
