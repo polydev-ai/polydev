@@ -48,7 +48,7 @@ export function useChatModels() {
         const transformedAdminModels: DashboardModel[] = []
 
         // Batch fetch provider data for all unique providers
-        const uniqueProviders = [...new Set(rawAdminModels.map((m: any) => m.provider))]
+        const uniqueProviders = [...new Set(rawAdminModels.map((m: any) => m.provider as string))] as string[]
         const providerDataMap = new Map<string, any>()
 
         await Promise.allSettled(
