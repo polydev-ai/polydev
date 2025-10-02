@@ -441,9 +441,13 @@ class ModelsDevService {
 
   async getModelLimits(friendlyId: string, providerId: string): Promise<{ maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } | null> {
     const supabase = await this.getSupabaseClient()
-    
+
     // Clean provider ID - extract actual ID from display names like "openai (API)"
     const cleanProviderId = this.extractProviderIdFromDisplayName(providerId)
+
+    // Apply models.dev specific mappings (e.g., zai-coding-plan → zhipuai)
+    const { normalizeProviderForModelsDevAPI } = await import('@/lib/provider-utils')
+    const normalizedProviderId = normalizeProviderForModelsDevAPI(cleanProviderId)
     
     // First try to get from model_mappings table which has provider-specific pricing
     const { data: mappingArr, error: mappingError } = await supabase
@@ -453,8 +457,8 @@ class ModelsDevService {
       .limit(1)
 
     const mappingData = Array.isArray(mappingArr) && mappingArr.length > 0 ? mappingArr[0] : null
-    if (!mappingError && mappingData && (mappingData as any).providers_mapping && (mappingData as any).providers_mapping[cleanProviderId]) {
-      const providerMapping = (mappingData as any).providers_mapping[cleanProviderId]
+    if (!mappingError && mappingData && (mappingData as any).providers_mapping && (mappingData as any).providers_mapping[normalizedProviderId]) {
+      const providerMapping = (mappingData as any).providers_mapping[normalizedProviderId]
       const result: { maxTokens: number; contextLength: number; pricing?: { input: number; output: number } } = {
         maxTokens: providerMapping.capabilities?.max_tokens || 4096,
         contextLength: providerMapping.capabilities?.context_length || 32768
@@ -477,7 +481,7 @@ class ModelsDevService {
       .from('models_registry')
       .select('max_tokens, context_length, input_cost_per_million, output_cost_per_million')
       .eq('friendly_id', friendlyId)
-      .eq('provider_id', cleanProviderId)
+      .eq('provider_id', normalizedProviderId)
       .eq('is_active', true)
       .limit(1)
 
@@ -492,6 +496,7 @@ class ModelsDevService {
           input: Number(data.input_cost_per_million),
           output: Number(data.output_cost_per_million)
         }
+        console.log(`[getModelLimits] models_registry pricing for ${friendlyId} (${normalizedProviderId}): input=$${result.pricing.input}/M, output=$${result.pricing.output}/M`)
       }
       return result
     }
@@ -501,7 +506,7 @@ class ModelsDevService {
       .from('models_registry')
       .select('max_tokens, context_length, input_cost_per_million, output_cost_per_million')
       .eq('provider_model_id', friendlyId)
-      .eq('provider_id', cleanProviderId)
+      .eq('provider_id', normalizedProviderId)
       .eq('is_active', true)
       .limit(1)
 

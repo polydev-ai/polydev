@@ -96,7 +96,7 @@ export const MODEL_TIERS: Record<string, ModelTierInfo> = {
     modelId: 'glm-4.5',
     tier: 'normal',
     displayName: 'GLM-4.5',
-    costPer1k: { input: 0.03, output: 0.12 },
+    costPer1k: { input: 0.0006, output: 0.0022 }, // $0.6/$2.2 per million tokens
     routingStrategy: 'unlimited_account'
   },
 
