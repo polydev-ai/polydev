@@ -526,17 +526,56 @@ export async function POST(request: NextRequest) {
     const tierPriority = (userPrefs?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
     const providerPriority = (userPrefs?.mcp_settings as any)?.provider_priority || []
     const preferOwnKeys = userPrefs?.prefer_own_keys || false
+    const useCliTools = (userPrefs?.mcp_settings as any)?.use_cli_tools !== false
+
+    // MCP CLIENT DETECTION: Detect which MCP client is making this request
+    // and exclude that client's CLI provider to prevent circular loops
+    const userAgent = request.headers.get('user-agent') || ''
+    const xRequestSource = request.headers.get('x-request-source') || ''
+    const xClientSource = request.headers.get('x-client-source') || ''
+
+    let excludedCliProvider: string | null = null
+
+    // Map MCP client signatures to their CLI provider IDs
+    const mcpClientMappings: Record<string, string> = {
+      'claude-code': 'claude_code',
+      'cline': 'cline',
+      'codex': 'codex_cli',
+      'cursor': 'cursor',
+      'continue': 'continue',
+      'aider': 'aider'
+    }
+
+    // Check user-agent and headers for MCP client signatures
+    const detectedClient = Object.keys(mcpClientMappings).find(client =>
+      userAgent.toLowerCase().includes(client) ||
+      xClientSource.toLowerCase().includes(client) ||
+      xRequestSource.toLowerCase().includes(client)
+    )
+
+    if (detectedClient) {
+      excludedCliProvider = mcpClientMappings[detectedClient]
+      console.log(`[MCP Detection] Detected MCP client: ${detectedClient}, excluding CLI provider: ${excludedCliProvider}`)
+    }
 
     // PRIORITY SYSTEM: CLI > USER API KEYS > ADMIN API KEYS > CREDITS
-    
-    // Step 1: Get all CLI configurations
-    const { data: cliConfigs } = await supabase
+
+    // Step 1: Get all CLI configurations (excluding detected MCP client to prevent circular loops)
+    let cliQuery = supabase
       .from('cli_provider_configurations')
       .select('provider, custom_path, enabled, status')
       .eq('user_id', user.id)
       .eq('enabled', true)
       .eq('status', 'available')
       .in('provider', ['claude_code', 'codex_cli', 'gemini_cli'])
+
+    // Exclude the MCP client's own CLI provider if detected
+    if (excludedCliProvider) {
+      cliQuery = cliQuery.neq('provider', excludedCliProvider)
+    }
+
+    // Skip CLI configs entirely if user disabled CLI tools
+    const { data: cliConfigs } = useCliTools ? await cliQuery : { data: [] }
     
     // Step 2: Get ALL API keys (including OpenRouter as a provider)
     const { data: apiKeys } = await supabase
