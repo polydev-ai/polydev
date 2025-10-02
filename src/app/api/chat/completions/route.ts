@@ -382,8 +382,12 @@ async function getProviderFromModel(model: string, supabase: any, userId: string
         .limit(1)
 
       if (adminKeys && adminKeys.length > 0) {
-        console.log(`Found admin-provided key for ${model}: ${adminKeys[0].provider}`)
-        return adminKeys[0].provider
+        let normalizedProvider = adminKeys[0].provider.toLowerCase()
+        // Special case mappings for API handlers
+        if (normalizedProvider === 'xai') normalizedProvider = 'x-ai'
+        if (normalizedProvider === 'zai-coding-plan') normalizedProvider = 'zhipuai'
+        console.log(`Found admin-provided key for ${model}: ${normalizedProvider}`)
+        return normalizedProvider
       }
     }
 
@@ -677,10 +681,16 @@ export async function POST(request: NextRequest) {
 
     // Process admin-provided API keys (priority 3 - before credits)
     ;(adminKeys || []).forEach(key => {
-      if (!providerConfigs[key.provider]) {
-        providerConfigs[key.provider] = {}
+      // Normalize provider name for API handler compatibility
+      let providerKey = key.provider.toLowerCase()
+      // Special case mappings for API handlers
+      if (providerKey === 'xai') providerKey = 'x-ai'
+      if (providerKey === 'zai-coding-plan') providerKey = 'zhipuai'
+
+      if (!providerConfigs[providerKey]) {
+        providerConfigs[providerKey] = {}
       }
-      providerConfigs[key.provider].admin = {
+      providerConfigs[providerKey].admin = {
         type: 'admin',
         priority: 3,
         apiKey: atob(key.encrypted_key),

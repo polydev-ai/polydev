@@ -54,10 +54,16 @@ export function useChatModels() {
         await Promise.allSettled(
           uniqueProviders.map(async (providerId: string) => {
             try {
-              const response = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(providerId)}&rich=true`)
+              // Normalize provider ID to lowercase for models.dev API
+              let normalizedProviderId = providerId.toLowerCase()
+              // Special case mappings for models.dev API
+              if (normalizedProviderId === 'xai') normalizedProviderId = 'x-ai'
+              if (normalizedProviderId === 'zai-coding-plan') normalizedProviderId = 'zhipuai'
+              const response = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(normalizedProviderId)}&rich=true`)
               if (response.ok) {
                 const data = await response.json()
                 const providerData = Array.isArray(data) ? data[0] : data
+                // Store using original case from database as key
                 providerDataMap.set(providerId, providerData)
               }
             } catch (error) {
