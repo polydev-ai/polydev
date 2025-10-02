@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../../hooks/useAuth'
 import { Settings, Save, RefreshCw, Check, AlertCircle } from 'lucide-react'
+import TierPriorityPicker from '../../../components/TierPriorityPicker'
 
 interface UserPreferences {
   id?: string
@@ -14,6 +15,8 @@ interface UserPreferences {
     default_temperature?: number
     default_max_tokens?: number
     auto_select_model?: boolean
+    perspectives_per_message?: number
+    use_cli_tools?: boolean
   }
 }
 
@@ -280,6 +283,36 @@ export default function PreferencesPage() {
               </div>
             </div>
           </div>
+
+          {/* CLI Tools Toggle */}
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="use_cli_tools"
+                checked={preferences.mcp_settings.use_cli_tools !== false}
+                onChange={(e) => updateMCPSetting('use_cli_tools', e.target.checked)}
+                className="mt-1 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 w-4 h-4"
+              />
+              <div className="flex-1">
+                <label htmlFor="use_cli_tools" className="block text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                  Enable CLI Tools Integration
+                </label>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  When enabled, the platform will detect and use local CLI tools (Claude Code, Cline, etc.) for MCP requests when available.
+                  This provides faster response times and doesn't count against your API quota.
+                </p>
+                {preferences.mcp_settings.use_cli_tools !== false && (
+                  <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                    <p className="text-xs text-blue-800 dark:text-blue-300">
+                      ℹ️ <strong>Note:</strong> CLI tools will only be used when they are detected and properly configured on your system.
+                      The platform will automatically fallback to API-based models if CLI tools are unavailable.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* MCP Settings */}
@@ -288,7 +321,7 @@ export default function PreferencesPage() {
             MCP Client Settings
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Default Temperature
@@ -325,6 +358,23 @@ export default function PreferencesPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Perspectives per Message
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={preferences.mcp_settings.perspectives_per_message || 2}
+                onChange={(e) => updateMCPSetting('perspectives_per_message', parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Number of models to query (1-10)
+              </p>
+            </div>
+
+            <div>
               <label className="flex items-center space-x-2 mt-6">
                 <input
                   type="checkbox"
@@ -343,6 +393,8 @@ export default function PreferencesPage() {
           </div>
         </div>
 
+        {/* Tier Fallback Priority */}
+        <TierPriorityPicker />
 
         {/* Save Button */}
         <div className="flex justify-end">
