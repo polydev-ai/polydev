@@ -69,15 +69,36 @@ export function useChatModels() {
         for (const adminModel of rawAdminModels || []) {
           const providerData = providerDataMap.get(adminModel.provider)
 
+          // Find model-specific data from provider's models array
+          let modelData: any = null
+          if (providerData?.models && Array.isArray(providerData.models)) {
+            // Try to find exact match by model ID
+            modelData = providerData.models.find((m: any) =>
+              m.id === adminModel.id || m.friendly_id === adminModel.id
+            )
+          }
+
           transformedAdminModels.push({
             id: adminModel.id,
-            name: adminModel.displayName || formatModelName(adminModel.id),
+            name: adminModel.displayName || modelData?.name || formatModelName(adminModel.id),
             provider: adminModel.provider,
             providerName: providerData?.name || formatProviderName(adminModel.provider),
             providerLogo: providerData?.logo || providerData?.logo_url,
             tier: adminModel.tier || 'admin',
             isConfigured: true,
-            description: `${adminModel.displayName || formatModelName(adminModel.id)} - Admin Provided (${adminModel.keyName})`
+            price: modelData?.pricing ? {
+              input: modelData.pricing.input,
+              output: modelData.pricing.output
+            } : undefined,
+            features: modelData ? {
+              supportsImages: modelData.supportsVision,
+              supportsTools: modelData.supportsTools,
+              supportsStreaming: modelData.supportsStreaming,
+              supportsReasoning: modelData.supportsReasoning
+            } : undefined,
+            contextWindow: modelData?.contextWindow,
+            maxTokens: modelData?.maxTokens,
+            description: `${adminModel.displayName || modelData?.name || formatModelName(adminModel.id)} - Admin Provided (${adminModel.keyName})`
           })
         }
 
