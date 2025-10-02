@@ -71,13 +71,13 @@ export function useChatModels() {
 
           transformedAdminModels.push({
             id: adminModel.id,
-            name: formatModelName(adminModel.id),
+            name: adminModel.displayName || formatModelName(adminModel.id),
             provider: adminModel.provider,
             providerName: providerData?.name || formatProviderName(adminModel.provider),
             providerLogo: providerData?.logo || providerData?.logo_url,
-            tier: 'api',
+            tier: adminModel.tier || 'admin',
             isConfigured: true,
-            description: `${formatModelName(adminModel.id)} - Admin Provided (${adminModel.keyName})`
+            description: `${adminModel.displayName || formatModelName(adminModel.id)} - Admin Provided (${adminModel.keyName})`
           })
         }
 

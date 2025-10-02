@@ -7,7 +7,7 @@ export interface DashboardModel {
   provider: string
   providerName: string
   providerLogo?: string
-  tier: 'cli' | 'api' | 'admin'
+  tier: 'cli' | 'api' | 'admin' | 'premium' | 'normal' | 'eco'
   isConfigured?: boolean
   price?: {
     input: number
