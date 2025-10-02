@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { modelsDevClientService } from '../lib/models-dev-client'
+import { normalizeProviderName } from '@/lib/provider-utils'
 
 export interface DashboardModel {
   id: string
@@ -89,12 +90,9 @@ export function useDashboardModels() {
 
         const dashboardModels: DashboardModel[] = []
 
-        // Normalize certain provider IDs to avoid duplicates and missing data
-        const normalizeProviderId = (pid: string) => pid === 'xai' ? 'x-ai' : pid
-
         // Batch provider data fetching to prevent duplicate requests
         const providerDataCache = new Map<string, any>()
-        const uniqueProviders: string[] = [...new Set(apiKeys.map((key: any) => normalizeProviderId(key.provider)))] as string[]
+        const uniqueProviders: string[] = [...new Set(apiKeys.map((key: any) => normalizeProviderName(key.provider)))] as string[]
 
         // Pre-fetch all provider data in parallel
         await Promise.allSettled(
@@ -134,7 +132,7 @@ export function useDashboardModels() {
 
         // Process each API key to create models
         for (const apiKey of apiKeys) {
-          const providerId = normalizeProviderId(apiKey.provider)
+          const providerId = normalizeProviderName(apiKey.provider)
           const defaultModel = apiKey.default_model
 
           if (!defaultModel) continue
@@ -270,8 +268,8 @@ export function useDashboardModels() {
 
         // Sort by API key display_order, then by name
         dashboardModels.sort((a, b) => {
-          const aApiKey = apiKeys.find((k: any) => normalizeProviderId(k.provider) === a.provider)
-          const bApiKey = apiKeys.find((k: any) => normalizeProviderId(k.provider) === b.provider)
+          const aApiKey = apiKeys.find((k: any) => normalizeProviderName(k.provider) === a.provider)
+          const bApiKey = apiKeys.find((k: any) => normalizeProviderName(k.provider) === b.provider)
           const aOrder = aApiKey?.display_order ?? 999
           const bOrder = bApiKey?.display_order ?? 999
           if (aOrder !== bOrder) return aOrder - bOrder

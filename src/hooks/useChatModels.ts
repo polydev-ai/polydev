@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useDashboardModels, type DashboardModel } from './useDashboardModels'
+import { normalizeProviderForModelsDevAPI } from '@/lib/provider-utils'
 
 interface AdminProvidedModel {
   id: string
@@ -54,12 +55,8 @@ export function useChatModels() {
         await Promise.allSettled(
           uniqueProviders.map(async (providerId: string) => {
             try {
-              // Normalize provider ID to lowercase for models.dev API
-              let normalizedProviderId = providerId.toLowerCase()
-              // Special case mappings for models.dev API
-              if (normalizedProviderId === 'xai') normalizedProviderId = 'x-ai'
-              // zai-coding-plan maps to zhipuai provider
-              if (normalizedProviderId === 'zai-coding-plan') normalizedProviderId = 'zhipuai'
+              // Normalize provider ID for models.dev API
+              const normalizedProviderId = normalizeProviderForModelsDevAPI(providerId)
               const response = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(normalizedProviderId)}&rich=true`)
               if (response.ok) {
                 const data = await response.json()

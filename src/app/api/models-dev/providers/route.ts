@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { modelsDevService } from '@/lib/models-dev-integration'
-
-const normalizeId = (pid: string) => (pid === 'xai' ? 'x-ai' : pid)
+import { normalizeProviderName } from '@/lib/provider-utils'
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,7 +25,7 @@ export async function GET(req: NextRequest) {
     // Normalize and de-duplicate providers by id
     const providerMap = new Map<string, any>()
     for (const p of providers || []) {
-      const id = normalizeId(p.id)
+      const id = normalizeProviderName(p.id)
       const existing = providerMap.get(id)
       if (!existing) {
         providerMap.set(id, { ...p, id })
@@ -42,7 +41,7 @@ export async function GET(req: NextRequest) {
     // If a specific provider requested, filter early
     let filteredProviders = allProviders
     if (providerParam) {
-      const pid = normalizeId(providerParam)
+      const pid = normalizeProviderName(providerParam)
       filteredProviders = allProviders.filter(p => p.id === pid)
     }
 
@@ -52,7 +51,7 @@ export async function GET(req: NextRequest) {
       const selectedIds = filteredProviders.map(p => p.id)
       // Also include original provider IDs to handle normalization mismatch
       const originalIds = filteredProviders.map(p => {
-        const originalProvider = (providers || []).find(orig => normalizeId(orig.id) === p.id)
+        const originalProvider = (providers || []).find(orig => normalizeProviderName(orig.id) === p.id)
         return originalProvider?.id
       }).filter(Boolean)
       const allIds = [...selectedIds, ...originalIds]
@@ -71,7 +70,7 @@ export async function GET(req: NextRequest) {
       const enriched = await Promise.all(modelsArr.map(async (m: any) => {
         if (m.input_cost_per_million == null || m.output_cost_per_million == null) {
           try {
-            const limits = await modelsDevService.getModelLimits(m.friendly_id || m.id, normalizeId(m.provider_id))
+            const limits = await modelsDevService.getModelLimits(m.friendly_id || m.id, normalizeProviderName(m.provider_id))
             if (limits?.pricing) {
               m.input_cost_per_million = limits.pricing.input
               m.output_cost_per_million = limits.pricing.output
@@ -82,7 +81,7 @@ export async function GET(req: NextRequest) {
       }))
 
       modelsByProvider = enriched.reduce((acc: Record<string, any[]>, m: any) => {
-        const pid = normalizeId(m.provider_id)
+        const pid = normalizeProviderName(m.provider_id)
         if (!acc[pid]) acc[pid] = []
         acc[pid].push(m)
         return acc
@@ -92,7 +91,7 @@ export async function GET(req: NextRequest) {
     // Models-only response
     if (modelsOnly) {
       const list = (providerParam
-        ? (modelsByProvider[normalizeId(providerParam)] || [])
+        ? (modelsByProvider[normalizeProviderName(providerParam)] || [])
         : Object.values(modelsByProvider).flat())
         .map(toClientModel)
 
@@ -101,7 +100,7 @@ export async function GET(req: NextRequest) {
 
     // Single provider response
     if (providerParam && includeModels) {
-      const pid = normalizeId(providerParam)
+      const pid = normalizeProviderName(providerParam)
       const provider = filteredProviders[0]
       if (!provider) {
         return NextResponse.json({ error: 'Provider not found' }, { status: 404 })
@@ -143,7 +142,7 @@ function toClientProvider(p: any) {
 function toClientModel(m: any) {
   return {
     id: m.friendly_id || m.id,
-    provider_id: normalizeId(m.provider_id),
+    provider_id: normalizeProviderName(m.provider_id),
     name: m.display_name || m.name,
     maxTokens: m.max_tokens || undefined,
     contextWindow: m.context_length || undefined,

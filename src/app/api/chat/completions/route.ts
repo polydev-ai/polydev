@@ -8,6 +8,7 @@ import { ResponseValidator } from '@/lib/api/utils/response-validator'
 import { computeCostUSD } from '@/utils/modelUtils'
 import { checkQuotaMiddleware, deductQuotaMiddleware, generateSessionId, extractUsageFromResponse, calculateEstimatedCost } from '@/lib/api/middleware/quota-middleware'
 import { getModelTier } from '@/lib/model-tiers'
+import { normalizeProviderName } from '@/lib/provider-utils'
 // OpenRouterManager available if we later switch to per-user keys
 
 // Generate a title from conversation context using AI
@@ -382,9 +383,7 @@ async function getProviderFromModel(model: string, supabase: any, userId: string
         .limit(1)
 
       if (adminKeys && adminKeys.length > 0) {
-        let normalizedProvider = adminKeys[0].provider.toLowerCase()
-        // Special case mappings for API handlers
-        if (normalizedProvider === 'xai') normalizedProvider = 'x-ai'
+        const normalizedProvider = normalizeProviderName(adminKeys[0].provider)
         console.log(`Found admin-provided key for ${model}: ${normalizedProvider}`)
         return normalizedProvider
       }
@@ -411,16 +410,13 @@ async function getProviderFromModel(model: string, supabase: any, userId: string
       .eq('is_admin_key', false) // Only personal keys here
 
     if (userApiKeys && userApiKeys.length > 0) {
-      // Normalize provider IDs
-      const normalizeProviderId = (pid: string) => pid === 'xai' ? 'x-ai' : pid
-
       // Check if any user's API key has this model as default_model
       for (const apiKey of userApiKeys) {
-        const normalizedProvider = normalizeProviderId(apiKey.provider)
+        const normalizedProvider = normalizeProviderName(apiKey.provider)
         if (apiKey.default_model === model) {
           // Verify this provider actually supports the model in registry
           const isProviderInRegistry = modelProviders.some((mp: any) =>
-            normalizeProviderId(mp.provider_id) === normalizedProvider
+            normalizeProviderName(mp.provider_id) === normalizedProvider
           )
 
           if (isProviderInRegistry) {
@@ -432,16 +428,16 @@ async function getProviderFromModel(model: string, supabase: any, userId: string
 
       // If no direct match, check if any configured provider supports this model
       const userProviders = userApiKeys
-        .map((key: any) => normalizeProviderId(key.provider))
+        .map((key: any) => normalizeProviderName(key.provider))
         .sort((a: string, b: string) => {
-          const aApiKey = userApiKeys.find((k: any) => normalizeProviderId(k.provider) === a)
-          const bApiKey = userApiKeys.find((k: any) => normalizeProviderId(k.provider) === b)
+          const aApiKey = userApiKeys.find((k: any) => normalizeProviderName(k.provider) === a)
+          const bApiKey = userApiKeys.find((k: any) => normalizeProviderName(k.provider) === b)
           return (aApiKey?.display_order ?? 999) - (bApiKey?.display_order ?? 999)
         })
 
       for (const userProvider of userProviders) {
         const isProviderInRegistry = modelProviders.some((mp: any) =>
-          normalizeProviderId(mp.provider_id) === userProvider
+          normalizeProviderName(mp.provider_id) === userProvider
         )
 
         if (isProviderInRegistry) {
@@ -665,10 +661,7 @@ export async function POST(request: NextRequest) {
 
     // Process user API key configurations
     ;(apiKeys || []).forEach(key => {
-      // Normalize provider name for consistency with admin keys
-      let providerKey = key.provider.toLowerCase()
-      // Special case mappings for API handlers
-      if (providerKey === 'xai') providerKey = 'x-ai'
+      const providerKey = normalizeProviderName(key.provider)
 
       if (!providerConfigs[providerKey]) {
         providerConfigs[providerKey] = {}
@@ -685,10 +678,7 @@ export async function POST(request: NextRequest) {
 
     // Process admin-provided API keys (priority 3 - before credits)
     ;(adminKeys || []).forEach(key => {
-      // Normalize provider name for API handler compatibility
-      let providerKey = key.provider.toLowerCase()
-      // Special case mappings for API handlers
-      if (providerKey === 'xai') providerKey = 'x-ai'
+      const providerKey = normalizeProviderName(key.provider)
 
       if (!providerConfigs[providerKey]) {
         providerConfigs[providerKey] = {}
