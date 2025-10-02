@@ -901,8 +901,8 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
 
   'zai-coding-plan': {
     id: 'zai-coding-plan',
-    name: 'Zhipu AI (Zai Coding Plan)',
-    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    name: 'Z.AI (GLM Coding Plan)',
+    baseUrl: 'https://api.z.ai/api/coding/paas/v4',
     authType: 'api_key',
     headers: {
       'Content-Type': 'application/json',
