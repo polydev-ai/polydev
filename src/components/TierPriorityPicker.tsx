@@ -55,9 +55,9 @@ export default function TierPriorityPicker() {
       setIsSaving(true)
       await updatePreferences({
         mcp_settings: {
-          ...preferences?.mcp_settings,
+          ...(preferences?.mcp_settings as any),
           tier_priority: items
-        }
+        } as any
       })
     } catch (error) {
       console.error('Failed to update tier priority:', error)
