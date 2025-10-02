@@ -8,6 +8,7 @@ export interface DashboardModel {
   provider: string
   providerName: string
   providerLogo?: string
+  providerWebsite?: string
   tier: 'cli' | 'api' | 'admin' | 'premium' | 'normal' | 'eco'
   isConfigured?: boolean
   price?: {
@@ -106,6 +107,7 @@ export function useDashboardModels() {
                   providerDataCache.set(providerId, {
                     name: rich.name || providerId,
                     logo: rich.logo || rich.logo_url,
+                    website: rich.website,
                     models: rich.models.map((m: any) => ({
                       friendly_id: m.id,
                       id: m.id,
@@ -141,12 +143,14 @@ export function useDashboardModels() {
             // Use cached provider data
             let providerName = providerId
             let providerLogo: string | undefined
+            let providerWebsite: string | undefined
             let providerModels: any[] = []
 
             const cachedData = providerDataCache.get(providerId)
             if (cachedData) {
               providerName = cachedData.name
               providerLogo = cachedData.logo
+              providerWebsite = cachedData.website
               providerModels = cachedData.models
             } else {
               // Fallback to registry-based API only if cache miss
@@ -155,6 +159,7 @@ export function useDashboardModels() {
                 providerModels = models || []
                 providerName = (provider as any)?.display_name || (provider as any)?.name || providerId
                 providerLogo = (provider as any)?.logo || (provider as any)?.logo_url
+                providerWebsite = (provider as any)?.website
               } catch (e) {
                 console.warn(`[useDashboardModels] Failed to fetch fallback for ${providerId}:`, e)
               }
@@ -231,6 +236,7 @@ export function useDashboardModels() {
                 provider: providerId,
                 providerName,
                 providerLogo,
+                providerWebsite,
                 tier: 'api' as const,
                 isConfigured: apiKey.active, // Mark as configured if API key is active
                 price,
@@ -253,6 +259,7 @@ export function useDashboardModels() {
                 provider: providerId,
                 providerName,
                 providerLogo,
+                providerWebsite,
                 tier: 'api',
                 isConfigured: apiKey.active,
                 price: (mappingPricing && mappingPricing.input != null && mappingPricing.output != null)

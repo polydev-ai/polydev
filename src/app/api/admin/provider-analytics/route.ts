@@ -107,19 +107,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch keys' }, { status: 500 })
     }
 
-    // Fetch usage logs for each key
+    // Fetch usage logs for each key from perspective_usage
     const keyUsageStats = await Promise.all(
       (keys || []).map(async (key) => {
         const { data: logs } = await supabase
-          .from('api_key_usage_logs')
-          .select('cost, tokens_used, success, error_type')
-          .eq('api_key_id', key.id)
-          .gte('timestamp', startTime)
+          .from('perspective_usage')
+          .select('estimated_cost, input_tokens, output_tokens, status')
+          .eq('provider_source_id', key.id)
+          .gte('created_at', startTime)
 
         const totalCalls = logs?.length || 0
-        const successfulCalls = logs?.filter(l => l.success).length || 0
-        const totalCost = logs?.reduce((sum, l) => sum + (l.cost || 0), 0) || 0
-        const totalTokens = logs?.reduce((sum, l) => sum + (l.tokens_used || 0), 0) || 0
+        const successfulCalls = logs?.filter(l => l.status !== 'error').length || 0
+        const totalCost = logs?.reduce((sum, l) => sum + (l.estimated_cost || 0), 0) || 0
+        const totalTokens = logs?.reduce((sum, l) => sum + (l.input_tokens || 0) + (l.output_tokens || 0), 0) || 0
 
         return {
           ...key,
@@ -162,30 +162,32 @@ export async function GET(request: NextRequest) {
       success_rate: p.total_calls > 0 ? (p.successful_calls / p.total_calls) * 100 : 0
     }))
 
-    // Get error analysis
+    // Get error analysis from perspective_usage
     const keyIds = (keys || []).map(k => k.id)
     let errorQuery = supabase
-      .from('api_key_usage_logs')
-      .select('api_key_id, error_type')
-      .eq('success', false)
-      .gte('timestamp', startTime)
+      .from('perspective_usage')
+      .select('provider_source_id, error_message, status')
+      .eq('status', 'error')
+      .gte('created_at', startTime)
 
     if (keyIds.length > 0) {
-      errorQuery = errorQuery.in('api_key_id', keyIds)
+      errorQuery = errorQuery.in('provider_source_id', keyIds)
     }
 
     const { data: errorLogs } = await errorQuery
 
     const errorsByKey = (errorLogs || []).reduce((acc: any, log) => {
-      const key = keys?.find(k => k.id === log.api_key_id)
+      const key = keys?.find(k => k.id === log.provider_source_id)
       if (!key) return acc
 
-      const errorKey = `${key.provider}:${key.key_name}:${log.error_type}`
+      // Extract error type from error message (e.g., "HTTP 401", "timeout", etc.)
+      const errorType = log.error_message?.split(':')[0]?.trim() || 'unknown'
+      const errorKey = `${key.provider}:${key.key_name}:${errorType}`
       if (!acc[errorKey]) {
         acc[errorKey] = {
           provider: key.provider,
           key_name: key.key_name,
-          error_type: log.error_type || 'unknown',
+          error_type: errorType,
           error_count: 0
         }
       }

@@ -88,6 +88,7 @@ export function useChatModels() {
             provider: adminModel.provider,
             providerName: providerData?.name || formatProviderName(adminModel.provider),
             providerLogo: providerData?.logo || providerData?.logo_url,
+            providerWebsite: providerData?.website,
             tier: adminModel.tier || 'admin',
             isConfigured: true,
             price: modelData?.pricing ? {

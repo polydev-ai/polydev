@@ -433,10 +433,22 @@ export default function ModelPreferenceSelector() {
                                   <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
                                     {index + 1}
                                   </div>
-                                  {getProviderLogo(model.provider, model.providerName, model.providerLogo)}
+                                  {model.providerWebsite ? (
+                                    <a href={model.providerWebsite} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" title={`Visit ${model.providerName} website`}>
+                                      {getProviderLogo(model.provider, model.providerName, model.providerLogo)}
+                                    </a>
+                                  ) : (
+                                    getProviderLogo(model.provider, model.providerName, model.providerLogo)
+                                  )}
                                   <div className="flex-1 min-w-0">
                                     <div className="font-medium text-sm text-gray-900 truncate">{model.name}</div>
-                                    <div className="text-xs text-gray-500">{model.providerName}</div>
+                                    {model.providerWebsite ? (
+                                      <a href={model.providerWebsite} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                                        {model.providerName}
+                                      </a>
+                                    ) : (
+                                      <div className="text-xs text-gray-500">{model.providerName}</div>
+                                    )}
                                   </div>
                                   <button
                                     onClick={() => toggleModelForChat(modelId)}
@@ -489,10 +501,22 @@ export default function ModelPreferenceSelector() {
                                   <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-xs font-semibold text-purple-700">
                                     {index + 1}
                                   </div>
-                                  {getProviderLogo(model.provider, model.providerName, model.providerLogo)}
+                                  {model.providerWebsite ? (
+                                    <a href={model.providerWebsite} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" title={`Visit ${model.providerName} website`}>
+                                      {getProviderLogo(model.provider, model.providerName, model.providerLogo)}
+                                    </a>
+                                  ) : (
+                                    getProviderLogo(model.provider, model.providerName, model.providerLogo)
+                                  )}
                                   <div className="flex-1 min-w-0">
                                     <div className="font-medium text-sm text-gray-900 truncate">{model.name}</div>
-                                    <div className="text-xs text-gray-500">{model.providerName}</div>
+                                    {model.providerWebsite ? (
+                                      <a href={model.providerWebsite} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                                        {model.providerName}
+                                      </a>
+                                    ) : (
+                                      <div className="text-xs text-gray-500">{model.providerName}</div>
+                                    )}
                                   </div>
                                   <button
                                     onClick={() => toggleModelForMcp(modelId)}
@@ -566,8 +590,20 @@ export default function ModelPreferenceSelector() {
                   return (
                     <div key={provider} className="border border-gray-200 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
-                        {getProviderLogo(firstModel.provider, firstModel.providerName, firstModel.providerLogo)}
-                        <h4 className="font-semibold text-gray-900">{firstModel.providerName}</h4>
+                        {firstModel.providerWebsite ? (
+                          <a href={firstModel.providerWebsite} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" title={`Visit ${firstModel.providerName} website`}>
+                            {getProviderLogo(firstModel.provider, firstModel.providerName, firstModel.providerLogo)}
+                          </a>
+                        ) : (
+                          getProviderLogo(firstModel.provider, firstModel.providerName, firstModel.providerLogo)
+                        )}
+                        {firstModel.providerWebsite ? (
+                          <a href={firstModel.providerWebsite} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:text-blue-800 hover:underline">
+                            {firstModel.providerName}
+                          </a>
+                        ) : (
+                          <h4 className="font-semibold text-gray-900">{firstModel.providerName}</h4>
+                        )}
                         <span className="text-sm text-gray-500">({models.length} models)</span>
                       </div>
 

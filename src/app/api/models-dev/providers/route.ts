@@ -12,17 +12,35 @@ export async function GET(req: NextRequest) {
     const modelsOnly = searchParams.get('models_only') === 'true'
     const rich = searchParams.get('rich') === 'true'
 
-    // Fetch providers
-    const { data: providers, error: pErr } = await supabase
-      .from('providers_registry')
-      .select('*')
-      .eq('is_active', true)
+    // If specific provider requested, fetch it directly without normalization conflicts
+    let providers
+    if (providerParam) {
+      const normalizedParam = normalizeProviderName(providerParam)
+      const { data, error: pErr } = await supabase
+        .from('providers_registry')
+        .select('*')
+        .eq('is_active', true)
+        .eq('id', normalizedParam)
+        .limit(1)
 
-    if (pErr) {
-      return NextResponse.json({ error: pErr.message }, { status: 500 })
+      if (pErr) {
+        return NextResponse.json({ error: pErr.message }, { status: 500 })
+      }
+      providers = data
+    } else {
+      // Fetch all providers
+      const { data, error: pErr } = await supabase
+        .from('providers_registry')
+        .select('*')
+        .eq('is_active', true)
+
+      if (pErr) {
+        return NextResponse.json({ error: pErr.message }, { status: 500 })
+      }
+      providers = data
     }
 
-    // Normalize and de-duplicate providers by id
+    // Normalize and de-duplicate providers by id (only for listing all providers)
     const providerMap = new Map<string, any>()
     for (const p of providers || []) {
       const id = normalizeProviderName(p.id)
@@ -30,20 +48,16 @@ export async function GET(req: NextRequest) {
       if (!existing) {
         providerMap.set(id, { ...p, id })
       } else {
-        // Prefer entry with non-empty description or base_url
-        const score = (val: any) => ((val?.description?.length || 0) + (val?.base_url?.length || 0))
-        providerMap.set(id, score(p) > score(existing) ? { ...p, id } : existing)
+        // When multiple providers normalize to same ID, prefer the base one (shortest ID)
+        // e.g., prefer "google" over "google-vertex"
+        if (p.id.length < existing.original_id?.length || p.id.length < existing.id?.length) {
+          providerMap.set(id, { ...p, id, original_id: p.id })
+        }
       }
     }
 
     const allProviders = Array.from(providerMap.values())
-
-    // If a specific provider requested, filter early
-    let filteredProviders = allProviders
-    if (providerParam) {
-      const pid = normalizeProviderName(providerParam)
-      filteredProviders = allProviders.filter(p => p.id === pid)
-    }
+    const filteredProviders = allProviders
 
     // Optionally fetch models for the selected set
     let modelsByProvider: Record<string, any[]> = {}
