@@ -68,12 +68,15 @@ export default function Navigation() {
   // Close dropdown and mobile menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Element
+
+      // Close user dropdown if clicking outside
+      if (dropdownRef.current && !dropdownRef.current.contains(target as Node)) {
         setUserDropdownOpen(false)
       }
-      // Close mobile menu when clicking outside
-      const target = event.target as Element
-      if (isOpen && !target.closest('nav')) {
+
+      // Close mobile menu when clicking outside nav (but not on navigation links)
+      if (isOpen && !target.closest('nav') && !target.closest('a[href]')) {
         setIsOpen(false)
       }
     }
@@ -108,7 +111,7 @@ export default function Navigation() {
   }
 
   return (
-    <nav className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-lg border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-50">
+    <nav className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-lg border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-[100]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -128,7 +131,7 @@ export default function Navigation() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 touch-manipulation active:scale-95 ${
                     isActive(item.href)
                       ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
                       : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -179,7 +182,7 @@ export default function Navigation() {
                   </button>
 
                   {userDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-50">
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-[110]">
                       <div className="px-4 py-3">
                         <p className="text-sm text-gray-900 dark:text-white">Signed in as</p>
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.email}</p>
@@ -335,7 +338,7 @@ export default function Navigation() {
                   key={item.name}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-all duration-200 touch-manipulation active:scale-95 ${
                     isActive(item.href)
                       ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
                       : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'

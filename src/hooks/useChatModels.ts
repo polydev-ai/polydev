@@ -58,7 +58,8 @@ export function useChatModels() {
               let normalizedProviderId = providerId.toLowerCase()
               // Special case mappings for models.dev API
               if (normalizedProviderId === 'xai') normalizedProviderId = 'x-ai'
-              if (normalizedProviderId === 'zai-coding-plan') normalizedProviderId = 'zhipuai'
+              // zai-coding-plan is a custom provider, skip fetching from models.dev
+              if (normalizedProviderId === 'zai-coding-plan') return
               const response = await fetch(`/api/models-dev/providers?provider=${encodeURIComponent(normalizedProviderId)}&rich=true`)
               if (response.ok) {
                 const data = await response.json()
