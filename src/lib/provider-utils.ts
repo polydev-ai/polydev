@@ -12,7 +12,8 @@
 export const PROVIDER_NAME_MAPPINGS: Record<string, string> = {
   'xai': 'x-ai',
   'x.ai': 'x-ai',
-  'togetherai': 'together',
+  'together': 'togetherai',
+  'together-ai': 'togetherai',
   'google-vertex': 'google',
   'google-vertex-anthropic': 'google',
   'openai-native': 'openai',
