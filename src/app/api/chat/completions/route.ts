@@ -522,89 +522,12 @@ export async function POST(request: NextRequest) {
       targetModels = targetModels.slice(0, perspectivesPerMessage)
     }
 
-    // QUOTA CHECK WITH TIER FALLBACK: Verify quota and fallback to lower tiers if needed
+    // Get tier priority and prefer_own_keys setting
     const tierPriority = (userPrefs?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
     const providerPriority = (userPrefs?.mcp_settings as any)?.provider_priority || []
+    const preferOwnKeys = userPrefs?.prefer_own_keys || false
 
-    // Get all available models from model_tiers table for fallback
-    const { data: availableModels } = await supabase
-      .from('model_tiers')
-      .select('tier, provider, model_name, display_name')
-      .eq('active', true)
-
-    // Build lookup map: tier -> provider -> model
-    const modelsByTierAndProvider = new Map<string, Map<string, any>>()
-    for (const model of availableModels || []) {
-      if (!modelsByTierAndProvider.has(model.tier)) {
-        modelsByTierAndProvider.set(model.tier, new Map())
-      }
-      modelsByTierAndProvider.get(model.tier)!.set(model.provider.toLowerCase(), model)
-    }
-
-    // Check quota for each model and apply tier fallback if needed
-    const resolvedModels: string[] = []
-    for (const modelName of targetModels) {
-      let quotaCheck = await checkQuotaMiddleware(request, user.id, modelName)
-
-      if (!quotaCheck.allowed) {
-        // Quota exceeded for this tier - try fallback
-        const modelInfo = getModelTier(modelName)
-        if (modelInfo) {
-          const currentTierIndex = tierPriority.indexOf(modelInfo.tier)
-          let fallbackModel: string | null = null
-
-          // Try each tier in priority order
-          for (let i = currentTierIndex + 1; i < tierPriority.length; i++) {
-            const fallbackTier = tierPriority[i]
-            const tierModels = modelsByTierAndProvider.get(fallbackTier)
-
-            if (tierModels) {
-              // Try providers in priority order
-              for (const provider of providerPriority) {
-                const model = tierModels.get(provider)
-                if (model) {
-                  // Check if this fallback model has quota
-                  const fallbackQuotaCheck = await checkQuotaMiddleware(request, user.id, model.model_name)
-                  if (fallbackQuotaCheck.allowed) {
-                    fallbackModel = model.model_name
-                    break
-                  }
-                }
-              }
-
-              // If no provider match, try first available model in tier
-              if (!fallbackModel && tierModels.size > 0) {
-                const firstModel = Array.from(tierModels.values())[0]
-                const fallbackQuotaCheck = await checkQuotaMiddleware(request, user.id, firstModel.model_name)
-                if (fallbackQuotaCheck.allowed) {
-                  fallbackModel = firstModel.model_name
-                }
-              }
-
-              if (fallbackModel) break
-            }
-          }
-
-          if (fallbackModel) {
-            resolvedModels.push(fallbackModel)
-          } else {
-            // No fallback available - return quota exceeded error
-            return quotaCheck.response
-          }
-        } else {
-          // Unknown model - return quota error
-          return quotaCheck.response
-        }
-      } else {
-        // Quota available - use original model
-        resolvedModels.push(modelName)
-      }
-    }
-
-    // Replace targetModels with resolved models (after fallback)
-    targetModels = resolvedModels
-
-    // PRIORITY SYSTEM: CLI > API KEYS > OPENROUTER (CREDITS)
+    // PRIORITY SYSTEM: CLI > USER API KEYS > ADMIN API KEYS > CREDITS
     
     // Step 1: Get all CLI configurations
     const { data: cliConfigs } = await supabase
@@ -701,19 +624,155 @@ export async function POST(request: NextRequest) {
     })
     
     // PRIORITY 3: OpenRouter credits will be handled per-model in the loop below
-    
+
     // Get model mappings for provider selection
     const modelMappingMap = new Map()
-    
+
     for (const modelId of targetModels) {
       // Store model mapping for this model
       const mapping = modelMappings?.find(m => m.friendly_id === modelId)
       if (mapping) {
         modelMappingMap.set(modelId, mapping.providers_mapping)
       }
-      
+
       // Model pricing will be fetched on-demand during cost calculations
     }
+
+    // Helper to determine provider source for a model (used for quota checking)
+    const getProviderSourceType = async (modelId: string): Promise<'cli' | 'user_key' | 'admin_key' | 'admin_credits' | null> => {
+      const requiredProvider = await getProviderFromModel(modelId, supabase, user.id)
+
+      // Check in priority order
+      if (providerConfigs[requiredProvider]?.cli) return 'cli'
+      if (providerConfigs[requiredProvider]?.api) return 'user_key'
+      if (providerConfigs[requiredProvider]?.admin) return 'admin_key'
+
+      // Check OpenRouter special case
+      if (requiredProvider === 'openrouter' && providerConfigs['openrouter']?.api) return 'user_key'
+
+      // Check credits availability
+      if (totalCredits > 0) {
+        const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
+        if (openrouterModelId !== modelId) return 'admin_credits'
+      }
+
+      return null
+    }
+
+    // QUOTA CHECK: Only check quota for admin-provided sources (admin_key and admin_credits)
+    // CLI and user API keys bypass quota checks
+    const resolvedModels: string[] = []
+
+    // Get all available models from model_tiers table for tier fallback
+    const { data: availableModels } = await supabase
+      .from('model_tiers')
+      .select('tier, provider, model_name, display_name')
+      .eq('active', true)
+
+    // Build lookup map: tier -> provider -> model for fallback
+    const modelsByTierAndProvider = new Map<string, Map<string, any>>()
+    for (const model of availableModels || []) {
+      if (!modelsByTierAndProvider.has(model.tier)) {
+        modelsByTierAndProvider.set(model.tier, new Map())
+      }
+      modelsByTierAndProvider.get(model.tier)!.set(model.provider.toLowerCase(), model)
+    }
+
+    for (const modelName of targetModels) {
+      const sourceType = await getProviderSourceType(modelName)
+
+      // Skip quota check for CLI and user API keys
+      if (sourceType === 'cli' || sourceType === 'user_key') {
+        resolvedModels.push(modelName)
+        continue
+      }
+
+      // If prefer_own_keys is enabled, skip admin sources
+      if (preferOwnKeys && (sourceType === 'admin_key' || sourceType === 'admin_credits')) {
+        // Skip this model - user wants own keys only
+        continue
+      }
+
+      // Check quota only for admin sources
+      if (sourceType === 'admin_key' || sourceType === 'admin_credits') {
+        const quotaCheck = await checkQuotaMiddleware(request, user.id, modelName)
+
+        if (!quotaCheck.allowed) {
+          // Quota exceeded - try tier fallback
+          const modelInfo = getModelTier(modelName)
+          if (modelInfo) {
+            const currentTierIndex = tierPriority.indexOf(modelInfo.tier)
+            let fallbackModel: string | null = null
+
+            // Try each tier in priority order (skip current tier)
+            for (let i = currentTierIndex + 1; i < tierPriority.length; i++) {
+              const fallbackTier = tierPriority[i]
+              const tierModels = modelsByTierAndProvider.get(fallbackTier)
+
+              if (tierModels) {
+                // Try providers in priority order
+                for (const provider of providerPriority) {
+                  const model = tierModels.get(provider)
+                  if (model) {
+                    // Check if this fallback model has quota
+                    const fallbackSourceType = await getProviderSourceType(model.model_name)
+                    if (fallbackSourceType === 'admin_key' || fallbackSourceType === 'admin_credits') {
+                      const fallbackQuotaCheck = await checkQuotaMiddleware(request, user.id, model.model_name)
+                      if (fallbackQuotaCheck.allowed) {
+                        fallbackModel = model.model_name
+                        break
+                      }
+                    } else if (fallbackSourceType === 'cli' || fallbackSourceType === 'user_key') {
+                      // User key or CLI available for this fallback - use it without quota check
+                      fallbackModel = model.model_name
+                      break
+                    }
+                  }
+                }
+
+                // If no provider match, try first available model in tier
+                if (!fallbackModel && tierModels.size > 0) {
+                  for (const model of Array.from(tierModels.values())) {
+                    const fallbackSourceType = await getProviderSourceType(model.model_name)
+                    if (fallbackSourceType === 'admin_key' || fallbackSourceType === 'admin_credits') {
+                      const fallbackQuotaCheck = await checkQuotaMiddleware(request, user.id, model.model_name)
+                      if (fallbackQuotaCheck.allowed) {
+                        fallbackModel = model.model_name
+                        break
+                      }
+                    } else if (fallbackSourceType === 'cli' || fallbackSourceType === 'user_key') {
+                      fallbackModel = model.model_name
+                      break
+                    }
+                  }
+                }
+
+                if (fallbackModel) break
+              }
+            }
+
+            if (fallbackModel) {
+              resolvedModels.push(fallbackModel)
+            } else {
+              // No fallback available with quota - return error
+              return quotaCheck.response
+            }
+          } else {
+            // Unknown model tier - return quota error
+            return quotaCheck.response
+          }
+        } else {
+          // Quota available - use original model
+          resolvedModels.push(modelName)
+        }
+      } else {
+        // No source available for this model
+        resolvedModels.push(modelName)
+      }
+    }
+
+    // Replace targetModels with quota-checked and fallback-resolved models
+    targetModels = resolvedModels
 
     let currentSessionId: string | null = null // For chat history tracking
 
