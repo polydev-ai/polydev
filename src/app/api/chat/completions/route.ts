@@ -602,11 +602,12 @@ export async function POST(request: NextRequest) {
     // Skip CLI configs entirely if user disabled CLI tools
     const { data: cliConfigs } = useCliTools ? await cliQuery : { data: [] }
     
-    // Step 2: Get ALL API keys (including OpenRouter as a provider)
+    // Step 2: Get user's own API keys (exclude admin-provided keys)
     const { data: apiKeys } = await supabase
       .from('user_api_keys')
       .select('id, provider, encrypted_key, api_base, active')
       .eq('user_id', user.id)
+      .eq('is_admin_key', false)
       .eq('active', true)
 
     // Step 2.5: Get admin-provided API keys (from user_api_keys with is_admin_key = true)
@@ -2567,7 +2568,7 @@ export async function POST(request: NextRequest) {
             provider_info: r.provider ? { provider: r.provider, fallback_method: r.fallback_method } : null,
             usage_info: r.usage || null,
             cost_info: (r as any).costInfo || null,
-            metadata: r.credits_used ? { credits_used: r.credits_used } : null
+            metadata: (r.credits_used || r.fallback_method) ? { credits_used: r.credits_used || 0, fallback_method: r.fallback_method } : null
           }))
         
         if (assistantMessages.length > 0) {
