@@ -470,19 +470,20 @@ export default function Chat() {
     | null => {
     // Prefer explicit fallback method from server
     if (fallbackMethod) {
-      return { type: fallbackMethod, label: fallbackMethod.toUpperCase(), cost: fallbackMethod === 'cli' ? '$0.00' : undefined }
+      const label = fallbackMethod === 'admin' ? 'PLAN' : fallbackMethod.toUpperCase()
+      return { type: fallbackMethod, label, cost: fallbackMethod === 'cli' ? '$0.00' : undefined }
     }
     // Backward-compatible: infer Admin (Perspectives) if creditsUsed > 0
     if (typeof creditsUsed === 'number' && creditsUsed > 0) {
-      return { type: 'admin', label: 'ADMIN' }
+      return { type: 'admin', label: 'PLAN' }
     }
     if (!provider) return null
 
     // Check explicit provider suffixes first
     if (provider.includes('(CLI)') || provider.includes('CLI')) return { type: 'cli', label: 'CLI', cost: '$0.00' }
     if (provider.includes('(API)') || provider.includes('API')) return { type: 'api', label: 'API' }
-    if (provider.includes('(Admin)') || provider.includes('Admin') || provider.includes('(Perspectives)') || provider.includes('Perspectives')) {
-      return { type: 'admin', label: 'ADMIN' }
+    if (provider.includes('(Admin)') || provider.includes('Admin') || provider.includes('(Perspectives)') || provider.includes('Perspectives') || provider.includes('Plan')) {
+      return { type: 'admin', label: 'PLAN' }
     }
 
     // Try to match with dashboard models for better accuracy
