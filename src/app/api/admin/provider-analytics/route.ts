@@ -112,12 +112,16 @@ export async function GET(request: NextRequest) {
       (keys || []).map(async (key) => {
         const { data: logs } = await supabase
           .from('perspective_usage')
-          .select('estimated_cost, input_tokens, output_tokens, status')
+          .select('estimated_cost, input_tokens, output_tokens, request_metadata, response_metadata')
           .eq('provider_source_id', key.id)
           .gte('created_at', startTime)
 
         const totalCalls = logs?.length || 0
-        const successfulCalls = logs?.filter(l => l.status !== 'error').length || 0
+        // Count calls with cost > 0 or tokens > 0 as successful
+        const successfulCalls = logs?.filter(l =>
+          (l.estimated_cost && l.estimated_cost > 0) ||
+          ((l.input_tokens || 0) + (l.output_tokens || 0) > 0)
+        ).length || 0
         const totalCost = logs?.reduce((sum, l) => sum + (l.estimated_cost || 0), 0) || 0
         const totalTokens = logs?.reduce((sum, l) => sum + (l.input_tokens || 0) + (l.output_tokens || 0), 0) || 0
 
@@ -162,12 +166,11 @@ export async function GET(request: NextRequest) {
       success_rate: p.total_calls > 0 ? (p.successful_calls / p.total_calls) * 100 : 0
     }))
 
-    // Get error analysis from perspective_usage
+    // Get error analysis from perspective_usage metadata
     const keyIds = (keys || []).map(k => k.id)
     let errorQuery = supabase
       .from('perspective_usage')
-      .select('provider_source_id, error_message, status')
-      .eq('status', 'error')
+      .select('provider_source_id, request_metadata, response_metadata')
       .gte('created_at', startTime)
 
     if (keyIds.length > 0) {
@@ -177,11 +180,16 @@ export async function GET(request: NextRequest) {
     const { data: errorLogs } = await errorQuery
 
     const errorsByKey = (errorLogs || []).reduce((acc: any, log) => {
+      // Check if there's error info in metadata
+      const hasError = log.response_metadata?.error || log.request_metadata?.error
+      if (!hasError) return acc
+
       const key = keys?.find(k => k.id === log.provider_source_id)
       if (!key) return acc
 
-      // Extract error type from error message (e.g., "HTTP 401", "timeout", etc.)
-      const errorType = log.error_message?.split(':')[0]?.trim() || 'unknown'
+      // Extract error type from metadata
+      const errorInfo = log.response_metadata?.error || log.request_metadata?.error
+      const errorType = typeof errorInfo === 'string' ? errorInfo.split(':')[0]?.trim() : 'unknown'
       const errorKey = `${key.provider}:${key.key_name}:${errorType}`
       if (!acc[errorKey]) {
         acc[errorKey] = {
