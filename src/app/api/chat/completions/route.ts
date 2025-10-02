@@ -507,13 +507,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // QUOTA CHECK WITH TIER FALLBACK: Verify quota and fallback to lower tiers if needed
+    // Get user preferences for perspectives per message
     const { data: userPrefs } = await supabase
       .from('user_preferences')
       .select('mcp_settings')
       .eq('user_id', user.id)
       .single()
 
+    const perspectivesPerMessage = (userPrefs?.mcp_settings as any)?.perspectives_per_message || 2
+
+    // Limit models to perspectives_per_message if not explicitly provided
+    if (!model && !models) {
+      // User didn't specify models - limit to perspectives setting
+      targetModels = targetModels.slice(0, perspectivesPerMessage)
+    }
+
+    // QUOTA CHECK WITH TIER FALLBACK: Verify quota and fallback to lower tiers if needed
     const tierPriority = (userPrefs?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
     const providerPriority = (userPrefs?.mcp_settings as any)?.provider_priority || []
 
