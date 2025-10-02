@@ -873,7 +873,7 @@ export class EnhancedHandlerFactory {
       'github-copilot', 'github-models', 'inception', 'inference', 'llama', 'lmstudio',
       'modelscope', 'moonshotai', 'moonshotai-cn', 'morph', 'nvidia', 'opencode',
       'requesty', 'submodel', 'synthetic', 'upstage', 'v0', 'venice', 'vercel',
-      'wandb', 'zai', 'zhipuai'
+      'wandb', 'zai', 'zai-coding-plan', 'zhipuai'
     ]
   }
 }

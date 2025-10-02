@@ -897,6 +897,17 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
       'Content-Type': 'application/json',
       'Authorization': (options) => `Bearer ${options.apiKey || ''}`
     }
+  },
+
+  'zai-coding-plan': {
+    id: 'zai-coding-plan',
+    name: 'Zhipu AI (Zai Coding Plan)',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    authType: 'api_key',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': (options) => `Bearer ${options.apiKey || ''}`
+    }
   }
 }
 
@@ -1012,7 +1023,7 @@ export class UniversalProviderHandler {
 
   private getEndpoint(config: ProviderConfig, options: ApiHandlerOptions): string {
     let endpoint = config.baseUrl
-    
+
     // Provider-specific endpoint logic
     switch (config.id) {
       case 'anthropic':
@@ -1023,6 +1034,8 @@ export class UniversalProviderHandler {
       case 'groq':
       case 'deepseek':
       case 'mistral':
+      case 'zhipuai':
+      case 'zai-coding-plan':
         endpoint += '/chat/completions'
         break
       case 'gemini':

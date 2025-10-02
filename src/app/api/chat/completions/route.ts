@@ -385,7 +385,6 @@ async function getProviderFromModel(model: string, supabase: any, userId: string
         let normalizedProvider = adminKeys[0].provider.toLowerCase()
         // Special case mappings for API handlers
         if (normalizedProvider === 'xai') normalizedProvider = 'x-ai'
-        if (normalizedProvider === 'zai-coding-plan') normalizedProvider = 'zhipuai'
         console.log(`Found admin-provided key for ${model}: ${normalizedProvider}`)
         return normalizedProvider
       }
@@ -685,7 +684,6 @@ export async function POST(request: NextRequest) {
       let providerKey = key.provider.toLowerCase()
       // Special case mappings for API handlers
       if (providerKey === 'xai') providerKey = 'x-ai'
-      if (providerKey === 'zai-coding-plan') providerKey = 'zhipuai'
 
       if (!providerConfigs[providerKey]) {
         providerConfigs[providerKey] = {}
