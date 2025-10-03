@@ -182,15 +182,42 @@ export default function Chat() {
         }
       }
 
+      // If waterfall found models, use them
       if (priorityModels.length > 0) {
         setSelectedModels(priorityModels)
       } else {
-        // Final fallback: Get top N configured models
+        // Final fallback: Get top N configured models (prioritize admin models for users without API keys)
         const configuredModels = dashboardModels
           .filter(model => model.isConfigured)
+          .sort((a, b) => {
+            // Prioritize admin models (tier-based) over others
+            const aIsAdmin = ['normal', 'eco', 'premium'].includes(a.tier || '')
+            const bIsAdmin = ['normal', 'eco', 'premium'].includes(b.tier || '')
+            if (aIsAdmin && !bIsAdmin) return -1
+            if (!aIsAdmin && bIsAdmin) return 1
+
+            // Within admin models, prioritize by tier (normal > eco > premium)
+            if (aIsAdmin && bIsAdmin) {
+              const tierOrder = { normal: 0, eco: 1, premium: 2 }
+              const aTier = tierOrder[a.tier as keyof typeof tierOrder] ?? 999
+              const bTier = tierOrder[b.tier as keyof typeof tierOrder] ?? 999
+              return aTier - bTier
+            }
+
+            return 0
+          })
           .slice(0, perspectivesPerMessage)
           .map(m => m.id)
+
         setSelectedModels(configuredModels)
+
+        // Log for debugging
+        console.log('[Chat] Model selection fallback:', {
+          totalModels: dashboardModels.length,
+          configuredModels: dashboardModels.filter(m => m.isConfigured).length,
+          selectedModels: configuredModels,
+          models: dashboardModels.map(m => ({ id: m.id, tier: m.tier, provider: m.provider, isConfigured: m.isConfigured }))
+        })
       }
     }
   }, [dashboardModels, preferences, apiKeys, cliStatuses])
