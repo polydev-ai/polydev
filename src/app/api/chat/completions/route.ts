@@ -607,13 +607,21 @@ export async function POST(request: NextRequest) {
       .eq('active', true)
 
     // Step 2.5: Get admin-provided API keys (from user_api_keys with is_admin_key = true)
-    const { data: adminKeys } = await supabase
+    // Use service role client to bypass RLS since admin keys are global
+    const supabaseAdmin = createClient({ useServiceRole: true })
+    const { data: adminKeys, error: adminKeysError } = await supabaseAdmin
       .from('user_api_keys')
       .select('id, provider, encrypted_key, api_base, active, priority_order')
       .eq('is_admin_key', true)
       .eq('active', true)
       .order('priority_order', { ascending: true })
-    
+
+    if (adminKeysError) {
+      console.error('[Admin Keys] Error fetching admin keys:', adminKeysError)
+    } else {
+      console.log('[Admin Keys] Fetched admin keys:', adminKeys?.map(k => ({ provider: k.provider, active: k.active })))
+    }
+
     // Step 3: Get model mappings for OpenRouter credits fallback
     const { data: modelMappings } = await supabase
       .from('model_mappings')
@@ -688,7 +696,15 @@ export async function POST(request: NextRequest) {
         keyId: key.id,
         sourceType: 'admin_key'
       }
+      console.log(`[Admin Keys] Added admin config for provider: ${providerKey}`)
     })
+
+    console.log('[Provider Configs] Final provider configs:', Object.keys(providerConfigs).map(p => ({
+      provider: p,
+      hasCli: !!providerConfigs[p].cli,
+      hasApi: !!providerConfigs[p].api,
+      hasAdmin: !!providerConfigs[p].admin
+    })))
     
     // PRIORITY 3: OpenRouter credits will be handled per-model in the loop below
 
