@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="antialiased font-sans text-slate-900 bg-white selection:bg-violet-100 selection:text-violet-900">
-        <ProductionSafeRenderer />
+        {/* <ProductionSafeRenderer /> */}
         <PostHogProvider>
           <Navigation />
           <main>
