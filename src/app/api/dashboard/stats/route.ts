@@ -70,7 +70,6 @@ export async function GET(request: NextRequest) {
       requestLogsResult,
       usageLogsResult,
       chatLogsResult,
-      chatMessagesResult,
       providersRegistryResult
     ] = await Promise.allSettled([
       // 0. User credits
@@ -126,7 +125,7 @@ export async function GET(request: NextRequest) {
         .gte('created_at', monthStart.toISOString())
         .limit(500),
 
-      // 8. Chat logs (this month only)
+      // 8. Chat logs (this month only) - 1 row = 1 user message
       supabase
         .from('chat_logs')
         .select('total_tokens, total_cost, created_at, models_used, response_time_ms')
@@ -134,17 +133,7 @@ export async function GET(request: NextRequest) {
         .gte('created_at', monthStart.toISOString())
         .limit(500),
 
-      // 9. Chat messages for this month (count actual user messages, not model responses)
-      supabase
-        .from('chat_messages')
-        .select('id, role, created_at, session_id, chat_sessions!inner(user_id)')
-        .eq('role', 'user')  // Only count user messages, not assistant responses
-        .eq('chat_sessions.user_id', user.id)  // Filter by user through session
-        .gte('created_at', monthStart.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1000),
-
-      // 10. Providers registry for display names/logos
+      // 9. Providers registry for display names/logos
       supabase
         .from('providers_registry')
         .select('*')
@@ -161,7 +150,6 @@ export async function GET(request: NextRequest) {
     const requestLogs = requestLogsResult.status === 'fulfilled' ? requestLogsResult.value.data : []
     const usageLogs = usageLogsResult.status === 'fulfilled' ? usageLogsResult.value.data : []
     const chatLogs = chatLogsResult.status === 'fulfilled' ? chatLogsResult.value.data : []
-    const chatMessages = chatMessagesResult.status === 'fulfilled' ? chatMessagesResult.value.data : []
     const modelsDevProviders = providersRegistryResult.status === 'fulfilled' ? providersRegistryResult.value.data : []
 
     console.log('[Dashboard Stats] Parallel queries completed:', {
@@ -174,7 +162,6 @@ export async function GET(request: NextRequest) {
       requestLogs: requestLogs?.length || 0,
       usageLogs: usageLogs?.length || 0,
       chatLogs: chatLogs?.length || 0,
-      chatMessages: chatMessages?.length || 0,
       modelsDevProviders: modelsDevProviders?.length || 0
     })
 
@@ -216,8 +203,9 @@ export async function GET(request: NextRequest) {
     const activeConnections = activeTokens.length
 
     // Calculate TOTAL messages from BOTH MCP calls AND web chat sessions
+    // Use chat_logs count (1 row = 1 user message) instead of chat_messages (which has multiple rows per message)
     const mcpMessages = (requestLogs || []).length
-    const chatMessages_count = Array.isArray(chatMessages) ? chatMessages.length : (chatMessages || 0)
+    const chatMessages_count = (chatLogs || []).length // Count from chat_logs, not chat_messages
     const totalMessages = mcpMessages + chatMessages_count // Total user interactions (MCP + Chat)
 
     // Calculate ACTUAL API calls (sum of all model/provider calls across all messages)
@@ -262,25 +250,8 @@ export async function GET(request: NextRequest) {
       totalApiCalls,
       requestLogsRaw: requestLogs?.slice(0, 2),
       chatLogsRaw: chatLogs?.slice(0, 2),
-      chatMessagesRaw: chatMessages?.slice(0, 5).map((m: any) => ({
-        id: m.id,
-        role: m.role,
-        created_at: m.created_at,
-        session_id: m.session_id
-      })),
-      chatMessagesFullCount: chatMessages?.length,
       description: `${totalMessages} user requests resulted in ${totalApiCalls} model/provider API calls`
     })
-
-    // Additional debug: Check if we're getting the role filter correctly
-    if (chatMessages && chatMessages.length > 0) {
-      const roleDistribution = chatMessages.reduce((acc: any, msg: any) => {
-        const role = msg.role || 'unknown'
-        acc[role] = (acc[role] || 0) + 1
-        return acc
-      }, {})
-      console.log('[Dashboard Stats] Chat messages role distribution:', roleDistribution)
-    }
 
     // Count MCP token usage for reference (not the same as client calls)
     const mcpTokenUsage = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
@@ -352,7 +323,7 @@ export async function GET(request: NextRequest) {
       return hasTokens || hasCost
     }).length
 
-    // For chat sessions, if chatLogs has cost tracking, use that. Otherwise, assume chatMessages are successful
+    // For chat sessions, if chatLogs has cost tracking, use that. Otherwise, assume all chat logs are successful
     const chatSuccessfulRequests = (chatLogs || []).length > 0
       ? (chatLogs || []).filter(log => {
           // Chat logs assume success if entry exists with tokens
@@ -360,7 +331,7 @@ export async function GET(request: NextRequest) {
           const hasCost = log.total_cost && log.total_cost > 0
           return hasTokens || hasCost
         }).length
-      : (chatMessages || []).length // If no chat logs with cost data, assume all chat messages are successful
+      : (chatLogs || []).length // If no chat logs with cost data, assume all chat logs are successful
 
     const totalSuccessfulRequests = mcpSuccessfulRequests + chatSuccessfulRequests
     const systemUptime = totalApiCalls > 0 ? `${((totalSuccessfulRequests / totalApiCalls) * 100).toFixed(1)}%` : '99.9%'
