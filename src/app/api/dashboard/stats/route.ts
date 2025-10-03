@@ -253,12 +253,16 @@ export async function GET(request: NextRequest) {
     const totalApiCalls = mcpApiCalls + chatApiCalls // Total model/provider calls
 
     console.log('[Dashboard Stats] Messages vs API calls breakdown:', {
+      userId: user.id,
       mcpMessages,
       chatMessages: chatMessages_count,
       totalMessages: totalMessages,
       mcpApiCalls,
       chatApiCalls,
       totalApiCalls,
+      requestLogsRaw: requestLogs?.slice(0, 2),
+      chatLogsRaw: chatLogs?.slice(0, 2),
+      chatMessagesRaw: chatMessages?.slice(0, 2),
       description: `${totalMessages} user requests resulted in ${totalApiCalls} model/provider API calls`
     })
 
