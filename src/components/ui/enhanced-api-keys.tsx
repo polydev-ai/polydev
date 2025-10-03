@@ -370,7 +370,8 @@ export default function EnhancedApiKeysPage() {
         )
       }
     }
-  }, [apiKeys, providerModels, loadingModels, fetchProviderModels])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKeys.length, fetchProviderModels])
 
   // Preload models for all available providers to show in "All Available Models" section
   useEffect(() => {
@@ -385,7 +386,8 @@ export default function EnhancedApiKeysPage() {
         })
       }
     }
-  }, [modelsDevProviders, loadingModels, fetchProviderModels])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelsDevProviders.length, fetchProviderModels])
 
   const updatePreferenceOrder = async (newPreferences: Record<string, ModelPreference>) => {
     try {
