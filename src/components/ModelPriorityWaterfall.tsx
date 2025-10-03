@@ -15,15 +15,15 @@ interface ApiKey {
 
 interface PerspectiveQuota {
   user_id: string
-  total_quota: number
-  used_quota: number
-  premium_quota: number
-  premium_used: number
-  normal_quota: number
-  normal_used: number
-  eco_quota: number
-  eco_used: number
-  reset_date: string
+  messages_per_month: number
+  messages_used: number
+  premium_perspectives_limit: number
+  premium_perspectives_used: number
+  normal_perspectives_limit: number
+  normal_perspectives_used: number
+  eco_perspectives_limit: number
+  eco_perspectives_used: number
+  last_reset_date: string
 }
 
 interface ModelTier {
@@ -155,11 +155,11 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     if (!quota) return { total: 0, used: 0 }
     switch (tier) {
       case 'premium':
-        return { total: quota.premium_quota, used: quota.premium_used }
+        return { total: quota.premium_perspectives_limit, used: quota.premium_perspectives_used }
       case 'normal':
-        return { total: quota.normal_quota, used: quota.normal_used }
+        return { total: quota.normal_perspectives_limit, used: quota.normal_perspectives_used }
       case 'eco':
-        return { total: quota.eco_quota, used: quota.eco_used }
+        return { total: quota.eco_perspectives_limit, used: quota.eco_perspectives_used }
       default:
         return { total: 0, used: 0 }
     }

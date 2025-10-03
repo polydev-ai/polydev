@@ -66,15 +66,15 @@ interface ModelsDevProvider {
 
 interface PerspectiveQuota {
   user_id: string
-  total_quota: number
-  used_quota: number
-  premium_quota: number
-  premium_used: number
-  normal_quota: number
-  normal_used: number
-  eco_quota: number
-  eco_used: number
-  reset_date: string
+  messages_per_month: number
+  messages_used: number
+  premium_perspectives_limit: number
+  premium_perspectives_used: number
+  normal_perspectives_limit: number
+  normal_perspectives_used: number
+  eco_perspectives_limit: number
+  eco_perspectives_used: number
+  last_reset_date: string
 }
 
 interface ModelTier {
