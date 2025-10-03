@@ -256,6 +256,9 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm font-medium text-blue-100">Messages Used</p>
                 <p className="text-2xl font-bold text-white">{quotaData?.used?.messages || 0} / {quotaData?.limits?.messages || '∞'}</p>
+                {quotaData?.allTimeMessages && (
+                  <p className="text-xs text-blue-100 mt-1">All-time: {quotaData.allTimeMessages}</p>
+                )}
                 {(quotaData?.bonusMessages || 0) > 0 && (<p className="text-xs text-blue-100">+{quotaData.bonusMessages} bonus messages</p>)}
               </div>
               <div className="p-3 bg-white bg-opacity-20 rounded-full">
