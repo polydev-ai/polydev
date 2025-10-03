@@ -134,12 +134,15 @@ export async function GET(request: NextRequest) {
         .gte('created_at', thirtyDaysAgo)
         .limit(500),
 
-      // 9. Chat messages for this month
+      // 9. Chat messages for this month (count actual user messages, not model responses)
       supabase
-        .from('chat_logs')
-        .select('id, created_at')
-        .eq('user_id', user.id)
-        .gte('created_at', monthStart.toISOString()),
+        .from('chat_messages')
+        .select('id, created_at, session_id, chat_sessions!inner(user_id)')
+        .eq('role', 'user')  // Only count user messages, not assistant responses
+        .eq('chat_sessions.user_id', user.id)  // Filter by user through session
+        .gte('created_at', monthStart.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1000),
 
       // 10. Providers registry for display names/logos
       supabase
