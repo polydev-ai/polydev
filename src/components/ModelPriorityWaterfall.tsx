@@ -36,7 +36,7 @@ interface ModelTier {
 
 interface CLIStatus {
   provider: string
-  status: 'available' | 'unavailable' | 'not_installed' | 'unchecked'
+  status: 'available' | 'unavailable' | 'not_installed' | 'unchecked' | 'checking'
 }
 
 interface Props {
@@ -167,7 +167,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
 
   // Get unique providers from active tiers
   const activeProviders = [...new Set(modelTiers.map(t => t.provider))]
-  const sortedProviders = providerPriority.filter(p => activeProviders.includes(p))
+  const sortedProviders = providerPriority.filter((p: string) => activeProviders.includes(p))
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
@@ -189,7 +189,9 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
             disabled={saving}
           />
           <span className="text-sm font-medium text-gray-900 w-8">{perspectivesPerMessage}</span>
-          <Info className="w-4 h-4 text-gray-400" title="Number of models to query simultaneously" />
+          <span title="Number of models to query simultaneously">
+            <Info className="w-4 h-4 text-gray-400" />
+          </span>
         </div>
       </div>
 
@@ -259,7 +261,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         <div className="ml-8 mb-3">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Tier Priority:</h5>
           <div className="space-y-1">
-            {tierPriority.map((tier, idx) => {
+            {tierPriority.map((tier: string, idx: number) => {
               const { total, used } = getTierQuota(tier)
               const percentage = total > 0 ? (used / total) * 100 : 0
               return (
@@ -305,7 +307,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         <div className="ml-8">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Provider Priority (applies to all tiers):</h5>
           <div className="space-y-1">
-            {sortedProviders.map((provider, idx) => (
+            {sortedProviders.map((provider: string, idx: number) => (
               <div key={provider} className="flex items-center gap-2 text-sm">
                 <span className="text-gray-500">{idx + 1}.</span>
                 <span className="text-gray-900 capitalize">{provider}</span>

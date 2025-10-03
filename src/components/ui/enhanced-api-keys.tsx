@@ -138,9 +138,11 @@ export default function EnhancedApiKeysPage() {
     apiKeyUsage,
     providerModels,
     loadingModels,
+    quota,
+    modelTiers,
     loading: dataLoading,
     error: dataError,
-    refresh: refreshData,
+    refresh,
     fetchProviderModels
   } = useEnhancedApiKeysData()
 
@@ -564,7 +566,7 @@ export default function EnhancedApiKeysPage() {
         await addModelToProvider(formData.provider, formData.default_model)
       }
 
-      await refreshData()
+      await refresh()
       setShowAddForm(false)
       setEditingKey(null)
       setUpdateApiKey(false)
@@ -591,7 +593,7 @@ export default function EnhancedApiKeysPage() {
       setSaving(true)
       const response = await fetch(`/api/api-keys/${id}`, { method: 'DELETE' })
       if (!response.ok) throw new Error('Failed to delete API key')
-      await refreshData()
+      await refresh()
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -621,7 +623,7 @@ export default function EnhancedApiKeysPage() {
         await removeModelFromProvider(apiKey.provider, apiKey.default_model)
       }
 
-      await refreshData()
+      await refresh()
     } catch (err: any) {
       setError(err.message)
     }
@@ -1112,7 +1114,7 @@ export default function EnhancedApiKeysPage() {
                                               body: JSON.stringify({ is_primary: !key.is_primary })
                                             })
                                             if (response.ok) {
-                                              refreshData()
+                                              refresh()
                                             }
                                           } catch (error) {
                                             console.error('Error toggling primary key:', error)
