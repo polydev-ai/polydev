@@ -39,15 +39,24 @@ interface CLIStatus {
   status: 'available' | 'unavailable' | 'not_installed' | 'unchecked' | 'checking'
 }
 
+interface ModelsDevProvider {
+  id: string
+  name: string
+  display_name?: string
+  logo?: string
+  logo_url?: string
+}
+
 interface Props {
   apiKeys: ApiKey[]
   quota: PerspectiveQuota | null
   modelTiers: ModelTier[]
   cliStatuses: CLIStatus[]
+  modelsDevProviders: ModelsDevProvider[]
   onRefresh: () => Promise<void>
 }
 
-export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cliStatuses, onRefresh }: Props) {
+export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cliStatuses, modelsDevProviders, onRefresh }: Props) {
   const { preferences, updatePreferences } = usePreferences()
   const [saving, setSaving] = useState(false)
 
@@ -166,6 +175,31 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
   const activeProviders = [...new Set((modelTiers || []).map(t => t.provider))]
   const sortedProviders = providerPriority.filter((p: string) => activeProviders.includes(p))
 
+  // Helper to get provider logo
+  const getProviderLogo = (providerId: string) => {
+    const provider = modelsDevProviders.find(p =>
+      p.id.toLowerCase() === providerId.toLowerCase() ||
+      p.name.toLowerCase() === providerId.toLowerCase()
+    )
+    return provider?.logo || provider?.logo_url
+  }
+
+  // Helper to get provider display name
+  const getProviderDisplayName = (providerId: string) => {
+    const provider = modelsDevProviders.find(p =>
+      p.id.toLowerCase() === providerId.toLowerCase() ||
+      p.name.toLowerCase() === providerId.toLowerCase()
+    )
+    return provider?.display_name || provider?.name || providerId
+  }
+
+  // Helper to get models for a tier
+  const getModelsForTier = (tier: string) => {
+    return (modelTiers || [])
+      .filter(m => m.tier === tier)
+      .map(m => m.display_name || m.provider)
+  }
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Model Routing Priority</h3>
@@ -217,29 +251,36 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         </div>
         {apiKeys.length > 0 ? (
           <div className="ml-8 space-y-1">
-            {apiKeys.map((key, idx) => (
-              <div key={key.id} className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500">{idx + 1}.</span>
-                <span className="text-gray-900">{key.provider}</span>
-                <span className="text-gray-400">- {key.key_preview}</span>
-                <div className="flex gap-1 ml-auto">
-                  <button
-                    onClick={() => moveApiKey(idx, 'up')}
-                    disabled={idx === 0 || saving}
-                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => moveApiKey(idx, 'down')}
-                    disabled={idx === apiKeys.length - 1 || saving}
-                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
+            {apiKeys.map((key, idx) => {
+              const logo = getProviderLogo(key.provider)
+              const displayName = getProviderDisplayName(key.provider)
+              const modelName = key.default_model || 'Default'
+              return (
+                <div key={key.id} className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-500">{idx + 1}.</span>
+                  {logo && <img src={logo} alt={displayName} className="w-5 h-5 rounded" />}
+                  <span className="text-gray-900">{displayName}</span>
+                  <span className="text-gray-500">({modelName})</span>
+                  <span className="text-gray-400">- {key.key_preview}</span>
+                  <div className="flex gap-1 ml-auto">
+                    <button
+                      onClick={() => moveApiKey(idx, 'up')}
+                      disabled={idx === 0 || saving}
+                      className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => moveApiKey(idx, 'down')}
+                      disabled={idx === apiKeys.length - 1 || saving}
+                      className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <div className="ml-8 text-sm text-gray-400">No API keys configured</div>
@@ -257,43 +298,51 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         {/* Tier Priority */}
         <div className="ml-8 mb-3">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Tier Priority:</h5>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {tierPriority.map((tier: string, idx: number) => {
               const { total, used } = getTierQuota(tier)
               const percentage = total > 0 ? (used / total) * 100 : 0
+              const tierModels = getModelsForTier(tier)
               return (
-                <div key={tier} className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">{idx + 1}.</span>
-                  <span className="text-gray-900 capitalize w-20">{tier}</span>
-                  <div className="flex-1 max-w-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            percentage >= 90 ? 'bg-red-500' : percentage >= 70 ? 'bg-yellow-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${Math.min(percentage, 100)}%` }}
-                        />
+                <div key={tier} className="border border-gray-200 rounded p-2">
+                  <div className="flex items-center gap-2 text-sm mb-1">
+                    <span className="text-gray-500">{idx + 1}.</span>
+                    <span className="text-gray-900 capitalize font-medium w-20">{tier}</span>
+                    <div className="flex-1 max-w-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${
+                              percentage >= 90 ? 'bg-red-500' : percentage >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+                            }`}
+                            style={{ width: `${Math.min(percentage, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 w-24">{used}/{total}</span>
                       </div>
-                      <span className="text-xs text-gray-500 w-24">{used}/{total}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => moveTier(tier, 'up')}
+                        disabled={idx === 0 || saving}
+                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => moveTier(tier, 'down')}
+                        disabled={idx === tierPriority.length - 1 || saving}
+                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => moveTier(tier, 'up')}
-                      disabled={idx === 0 || saving}
-                      className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                    >
-                      <ChevronUp className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => moveTier(tier, 'down')}
-                      disabled={idx === tierPriority.length - 1 || saving}
-                      className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {tierModels.length > 0 && (
+                    <div className="ml-8 text-xs text-gray-600">
+                      Models: {tierModels.join(', ')}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -304,28 +353,43 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         <div className="ml-8">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Provider Priority (applies to all tiers):</h5>
           <div className="space-y-1">
-            {sortedProviders.map((provider: string, idx: number) => (
-              <div key={provider} className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500">{idx + 1}.</span>
-                <span className="text-gray-900 capitalize">{provider}</span>
-                <div className="flex gap-1 ml-auto">
-                  <button
-                    onClick={() => moveProvider(provider, 'up')}
-                    disabled={idx === 0 || saving}
-                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                  >
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => moveProvider(provider, 'down')}
-                    disabled={idx === sortedProviders.length - 1 || saving}
-                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                  >
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
+            {sortedProviders.map((provider: string, idx: number) => {
+              const logo = getProviderLogo(provider)
+              const displayName = getProviderDisplayName(provider)
+              const providerModels = (modelTiers || [])
+                .filter(m => m.provider.toLowerCase() === provider.toLowerCase())
+                .map(m => `${m.display_name} (${m.tier})`)
+              return (
+                <div key={provider} className="border border-gray-200 rounded p-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-500">{idx + 1}.</span>
+                    {logo && <img src={logo} alt={displayName} className="w-5 h-5 rounded" />}
+                    <span className="text-gray-900">{displayName}</span>
+                    <div className="flex gap-1 ml-auto">
+                      <button
+                        onClick={() => moveProvider(provider, 'up')}
+                        disabled={idx === 0 || saving}
+                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => moveProvider(provider, 'down')}
+                        disabled={idx === sortedProviders.length - 1 || saving}
+                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {providerModels.length > 0 && (
+                    <div className="ml-8 text-xs text-gray-600 mt-1">
+                      {providerModels.join(', ')}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>

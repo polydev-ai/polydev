@@ -751,6 +751,7 @@ export default function EnhancedApiKeysPage() {
           quota={quota}
           modelTiers={modelTiers}
           cliStatuses={cliStatuses}
+          modelsDevProviders={modelsDevProviders}
           onRefresh={refresh}
         />
       )}
