@@ -15,7 +15,7 @@ export async function GET() {
       .from('user_api_keys')
       .select('*')
       .eq('user_id', user.id)
-      .is('is_admin_key', null) // Only fetch user's personal keys (is_admin_key should be NULL for personal keys)
+      .neq('is_admin_key', true) // Only fetch user's personal keys (exclude admin keys)
       .order('display_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
     
