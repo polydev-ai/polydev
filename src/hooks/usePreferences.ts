@@ -21,6 +21,9 @@ export interface UserPreferences {
     saved_mcp_models?: string[]
     max_chat_models?: number
     max_mcp_models?: number
+    perspectives_per_message?: number // Number of models to query simultaneously (1-10)
+    tier_priority?: string[] // Order of tiers: ['normal', 'eco', 'premium']
+    provider_priority?: string[] // Global provider order: ['anthropic', 'openai', 'google', ...]
     memory_settings: {
       enable_conversation_memory: boolean
       enable_project_memory: boolean
