@@ -70,6 +70,8 @@ export async function GET(request: NextRequest) {
       requestLogsResult,
       usageLogsResult,
       chatLogsResult,
+      allTimeRequestLogsResult,
+      allTimeChatLogsResult,
       providersRegistryResult
     ] = await Promise.allSettled([
       // 0. User credits
@@ -164,9 +166,9 @@ export async function GET(request: NextRequest) {
     const requestLogs = requestLogsResult.status === 'fulfilled' ? requestLogsResult.value.data : []
     const usageLogs = usageLogsResult.status === 'fulfilled' ? usageLogsResult.value.data : []
     const chatLogs = chatLogsResult.status === 'fulfilled' ? chatLogsResult.value.data : []
-    const allTimeRequestLogs = results[9].status === 'fulfilled' ? results[9].value.data : []
-    const allTimeChatLogs = results[10].status === 'fulfilled' ? results[10].value.data : []
-    const modelsDevProviders = results[11].status === 'fulfilled' ? results[11].value.data : []
+    const allTimeRequestLogs = allTimeRequestLogsResult.status === 'fulfilled' ? allTimeRequestLogsResult.value.data : []
+    const allTimeChatLogs = allTimeChatLogsResult.status === 'fulfilled' ? allTimeChatLogsResult.value.data : []
+    const modelsDevProviders = providersRegistryResult.status === 'fulfilled' ? providersRegistryResult.value.data : []
 
     console.log('[Dashboard Stats] Parallel queries completed:', {
       userCredits: !!userCredits,
@@ -220,11 +222,11 @@ export async function GET(request: NextRequest) {
     const totalTokens = (allTokens?.length || 0) + (userTokens?.length || 0)
     const activeConnections = activeTokens.length
 
-    // Calculate TOTAL messages from BOTH MCP calls AND web chat sessions
-    // Use chat_logs count (1 row = 1 user message) instead of chat_messages (which has multiple rows per message)
-    const mcpMessages = (requestLogs || []).length
-    const chatMessages_count = (chatLogs || []).length // Count from chat_logs, not chat_messages
-    const totalMessages = mcpMessages + chatMessages_count // Total user interactions (MCP + Chat)
+    // Calculate TOTAL messages from BOTH MCP calls AND web chat sessions (ALL-TIME to match subscription/profile)
+    // Use all-time logs (no date filter) to match subscription and profile pages
+    const mcpMessages = (allTimeRequestLogs || []).length
+    const chatMessages_count = (allTimeChatLogs || []).length
+    const totalMessages = mcpMessages + chatMessages_count // Total user interactions (MCP + Chat, all-time)
 
     // Calculate ACTUAL API calls (sum of all model/provider calls across ALL TIME)
     // Use all-time logs instead of month-filtered logs for API calls count
@@ -538,7 +540,7 @@ export async function GET(request: NextRequest) {
       responseTime: avgResponseTime,
 
       // Additional detailed stats - calculate today's usage from BOTH sources
-      messagesThisMonth: totalMessages,
+      messagesThisMonth: totalMessages, // Actually all-time now to match subscription/profile
       apiCallsToday: mcpApiCalls + chatApiCalls, // Total API calls today from both sources
       requestsToday: ((requestLogs || []).filter(log => {
         const logDate = new Date(log.created_at)
