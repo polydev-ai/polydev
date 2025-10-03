@@ -1,3 +1,4 @@
+// Root layout - force rebuild to invalidate Next.js cache
 import type { Metadata } from 'next'
 import './globals.css'
 import '@/lib/crypto-polyfill'
