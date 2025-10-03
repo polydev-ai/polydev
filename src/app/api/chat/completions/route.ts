@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/app/utils/supabase/server'
+import { createClient, createAdminClient } from '@/app/utils/supabase/server'
 import { apiManager } from '@/lib/api'
 import { createHash, randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
@@ -608,7 +608,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2.5: Get admin-provided API keys (from user_api_keys with is_admin_key = true)
     // Use service role client to bypass RLS since admin keys are global
-    const supabaseAdmin = createClient({ useServiceRole: true })
+    const supabaseAdmin = createAdminClient()
     const { data: adminKeys, error: adminKeysError } = await supabaseAdmin
       .from('user_api_keys')
       .select('id, provider, encrypted_key, api_base, active, priority_order')
