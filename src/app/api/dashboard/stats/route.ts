@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
         .from('provider_configurations')
         .select('*'),
 
-      // 6. Request logs (this month only)
+      // 6. Request logs (this month only) - for message counting
       supabase
         .from('mcp_request_logs')
         .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs')
@@ -133,7 +133,21 @@ export async function GET(request: NextRequest) {
         .gte('created_at', monthStart.toISOString())
         .limit(500),
 
-      // 9. Providers registry for display names/logos
+      // 9. All-time request logs for API calls count (no date filter)
+      supabase
+        .from('mcp_request_logs')
+        .select('provider_responses, successful_providers, total_cost, total_tokens')
+        .eq('user_id', user.id)
+        .limit(5000),
+
+      // 10. All-time chat logs for API calls count (no date filter)
+      supabase
+        .from('chat_logs')
+        .select('models_used, total_cost, total_tokens')
+        .eq('user_id', user.id)
+        .limit(5000),
+
+      // 11. Providers registry for display names/logos
       supabase
         .from('providers_registry')
         .select('*')
@@ -150,7 +164,9 @@ export async function GET(request: NextRequest) {
     const requestLogs = requestLogsResult.status === 'fulfilled' ? requestLogsResult.value.data : []
     const usageLogs = usageLogsResult.status === 'fulfilled' ? usageLogsResult.value.data : []
     const chatLogs = chatLogsResult.status === 'fulfilled' ? chatLogsResult.value.data : []
-    const modelsDevProviders = providersRegistryResult.status === 'fulfilled' ? providersRegistryResult.value.data : []
+    const allTimeRequestLogs = results[9].status === 'fulfilled' ? results[9].value.data : []
+    const allTimeChatLogs = results[10].status === 'fulfilled' ? results[10].value.data : []
+    const modelsDevProviders = results[11].status === 'fulfilled' ? results[11].value.data : []
 
     console.log('[Dashboard Stats] Parallel queries completed:', {
       userCredits: !!userCredits,
@@ -162,6 +178,8 @@ export async function GET(request: NextRequest) {
       requestLogs: requestLogs?.length || 0,
       usageLogs: usageLogs?.length || 0,
       chatLogs: chatLogs?.length || 0,
+      allTimeRequestLogs: allTimeRequestLogs?.length || 0,
+      allTimeChatLogs: allTimeChatLogs?.length || 0,
       modelsDevProviders: modelsDevProviders?.length || 0
     })
 
@@ -208,8 +226,9 @@ export async function GET(request: NextRequest) {
     const chatMessages_count = (chatLogs || []).length // Count from chat_logs, not chat_messages
     const totalMessages = mcpMessages + chatMessages_count // Total user interactions (MCP + Chat)
 
-    // Calculate ACTUAL API calls (sum of all model/provider calls across all messages)
-    const mcpApiCalls = (requestLogs || []).reduce((sum, log) => {
+    // Calculate ACTUAL API calls (sum of all model/provider calls across ALL TIME)
+    // Use all-time logs instead of month-filtered logs for API calls count
+    const mcpApiCalls = (allTimeRequestLogs || []).reduce((sum, log) => {
       // Count providers in provider_responses format (this is what we select in the query)
       if (log.provider_responses && typeof log.provider_responses === 'object') {
         return sum + Object.keys(log.provider_responses).length
@@ -225,7 +244,7 @@ export async function GET(request: NextRequest) {
       return sum
     }, 0)
 
-    const chatApiCalls = (chatLogs || []).reduce((sum, log) => {
+    const chatApiCalls = (allTimeChatLogs || []).reduce((sum, log) => {
       // Count models in models_used format
       if (log.models_used && typeof log.models_used === 'object') {
         const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
@@ -238,7 +257,7 @@ export async function GET(request: NextRequest) {
       return sum
     }, 0)
 
-    const totalApiCalls = mcpApiCalls + chatApiCalls // Total model/provider calls
+    const totalApiCalls = mcpApiCalls + chatApiCalls // Total model/provider calls (all-time)
 
     console.log('[Dashboard Stats] Messages vs API calls breakdown:', {
       userId: user.id,
@@ -247,6 +266,8 @@ export async function GET(request: NextRequest) {
       totalMessages: totalMessages,
       mcpApiCalls,
       chatApiCalls,
+      allTimeRequestLogsCount: allTimeRequestLogs?.length || 0,
+      allTimeChatLogsCount: allTimeChatLogs?.length || 0,
       totalApiCalls,
       requestLogsRaw: requestLogs?.slice(0, 2),
       chatLogsRaw: chatLogs?.slice(0, 2),
