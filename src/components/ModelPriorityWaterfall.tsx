@@ -80,18 +80,15 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     const [moved] = reordered.splice(index, 1)
     reordered.splice(newIndex, 0, moved)
 
-    // Update display_order for all keys
-    const updates = reordered.map((key, idx) => ({
-      id: key.id,
-      display_order: idx
-    }))
+    // API expects just an array of IDs - order determines display_order
+    const apiKeyIds = reordered.map(key => key.id)
 
     try {
       setSaving(true)
       const response = await fetch('/api/api-keys/reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keys: updates })
+        body: JSON.stringify({ apiKeyIds })
       })
 
       if (!response.ok) throw new Error('Failed to reorder')
