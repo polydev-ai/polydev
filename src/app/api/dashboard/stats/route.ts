@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
       // 9. Chat messages for this month (count actual user messages, not model responses)
       supabase
         .from('chat_messages')
-        .select('id, created_at, session_id, chat_sessions!inner(user_id)')
+        .select('id, role, created_at, session_id, chat_sessions!inner(user_id)')
         .eq('role', 'user')  // Only count user messages, not assistant responses
         .eq('chat_sessions.user_id', user.id)  // Filter by user through session
         .gte('created_at', monthStart.toISOString())
@@ -262,9 +262,25 @@ export async function GET(request: NextRequest) {
       totalApiCalls,
       requestLogsRaw: requestLogs?.slice(0, 2),
       chatLogsRaw: chatLogs?.slice(0, 2),
-      chatMessagesRaw: chatMessages?.slice(0, 2),
+      chatMessagesRaw: chatMessages?.slice(0, 5).map((m: any) => ({
+        id: m.id,
+        role: m.role,
+        created_at: m.created_at,
+        session_id: m.session_id
+      })),
+      chatMessagesFullCount: chatMessages?.length,
       description: `${totalMessages} user requests resulted in ${totalApiCalls} model/provider API calls`
     })
+
+    // Additional debug: Check if we're getting the role filter correctly
+    if (chatMessages && chatMessages.length > 0) {
+      const roleDistribution = chatMessages.reduce((acc: any, msg: any) => {
+        const role = msg.role || 'unknown'
+        acc[role] = (acc[role] || 0) + 1
+        return acc
+      }, {})
+      console.log('[Dashboard Stats] Chat messages role distribution:', roleDistribution)
+    }
 
     // Count MCP token usage for reference (not the same as client calls)
     const mcpTokenUsage = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
