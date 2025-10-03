@@ -213,22 +213,59 @@ export async function GET(request: NextRequest) {
     const activeConnections = activeTokens.length
 
     // Calculate TOTAL messages from BOTH MCP calls AND web chat sessions
-    const mcpApiCalls = (requestLogs || []).length
-    const chatApiCalls = Array.isArray(chatMessages) ? chatMessages.length : (chatMessages || 0)
-    const totalMessages = mcpApiCalls + chatApiCalls // Total of ALL user interactions (MCP + Chat)
+    const mcpMessages = (requestLogs || []).length
+    const chatMessages_count = Array.isArray(chatMessages) ? chatMessages.length : (chatMessages || 0)
+    const totalMessages = mcpMessages + chatMessages_count // Total user interactions (MCP + Chat)
 
-    console.log('[Dashboard Stats] Total messages breakdown:', {
+    // Calculate ACTUAL API calls (sum of all model/provider calls across all messages)
+    const mcpApiCalls = (requestLogs || []).reduce((sum, log) => {
+      // Count providers in provider_responses format
+      if (log.provider_responses && typeof log.provider_responses === 'object') {
+        return sum + Object.keys(log.provider_responses).length
+      }
+      // Count providers in providers array format
+      if (log.providers && Array.isArray(log.providers)) {
+        return sum + log.providers.length
+      }
+      // Count models in models_used format
+      if (log.models_used && typeof log.models_used === 'object') {
+        const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
+        return sum + modelsUsed.length
+      }
+      // Fallback: count as 1 API call if we have cost/tokens
+      if (log.total_cost || log.total_tokens) {
+        return sum + 1
+      }
+      return sum
+    }, 0)
+
+    const chatApiCalls = (chatLogs || []).reduce((sum, log) => {
+      // Count models in models_used format
+      if (log.models_used && typeof log.models_used === 'object') {
+        const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
+        return sum + modelsUsed.length
+      }
+      // Fallback: count as 1 API call if we have cost/tokens
+      if (log.total_cost || log.total_tokens) {
+        return sum + 1
+      }
+      return sum
+    }, 0)
+
+    const totalApiCalls = mcpApiCalls + chatApiCalls // Total model/provider calls
+
+    console.log('[Dashboard Stats] Messages vs API calls breakdown:', {
+      mcpMessages,
+      chatMessages: chatMessages_count,
+      totalMessages: totalMessages,
       mcpApiCalls,
       chatApiCalls,
-      totalMessages: totalMessages,
-      description: 'MCP calls + web chat sessions'
+      totalApiCalls,
+      description: `${totalMessages} user requests resulted in ${totalApiCalls} model/provider API calls`
     })
 
     // Count MCP token usage for reference (not the same as client calls)
     const mcpTokenUsage = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
-
-    // Total API calls is the same as total messages (each message = one API call)
-    const totalApiCalls = totalMessages
 
     // Calculate total tokens from both sources
     const mcpTokenCount = (requestLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
