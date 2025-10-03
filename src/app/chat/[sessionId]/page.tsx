@@ -7,6 +7,7 @@ import { useChatModels } from '../../../hooks/useChatModels'
 import { type DashboardModel } from '../../../hooks/useDashboardModels'
 import { useChatSessions, type ChatSession, type ChatMessage } from '../../../hooks/useChatSessions'
 import { usePreferences } from '../../../hooks/usePreferences'
+import { useEnhancedApiKeysData } from '../../../hooks/useEnhancedApiKeysData'
 import MessageContent from '../../../components/MessageContent'
 
 interface Message {
@@ -42,15 +43,16 @@ export default function Chat() {
   
   const { user, loading, isAuthenticated } = useAuth()
   const { models: dashboardModels, loading: modelsLoading, error: modelsError, hasModels, refresh: refreshModels } = useChatModels()
-  const { 
-    sessions, 
-    loading: sessionsLoading, 
-    error: sessionsError, 
-    createSession, 
+  const {
+    sessions,
+    loading: sessionsLoading,
+    error: sessionsError,
+    createSession,
     getSessionWithMessages,
     deleteSession
   } = useChatSessions()
   const { preferences, updatePreferences } = usePreferences()
+  const { apiKeys, cliStatuses, modelTiers } = useEnhancedApiKeysData()
   
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -66,11 +68,12 @@ export default function Chat() {
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Set selected models from model preferences (top X models based on order)
+  // Set selected models using waterfall priority logic
+  // Priority: CLI Tools → User API Keys → Admin Keys (with tier + provider priority)
   useEffect(() => {
     if (dashboardModels.length > 0 && preferences) {
-      // Get max number of chat models to show (default to 3)
-      const maxChatModels = preferences.mcp_settings?.max_chat_models || 3
+      // Get perspectives_per_message setting (default to 2)
+      const perspectivesPerMessage = preferences.mcp_settings?.perspectives_per_message || 2
 
       // Check if we have saved chat models preference
       const savedChatModels = preferences.mcp_settings?.saved_chat_models
@@ -86,42 +89,111 @@ export default function Chat() {
         }
       }
 
-      // Extract top X models from model_preferences ordered by priority
-      const modelPreferences = preferences.model_preferences || {}
+      // Apply waterfall priority logic
+      const priorityModels: string[] = []
 
-      // Get all provider entries sorted by order
-      const sortedProviders = Object.entries(modelPreferences)
-        .sort(([, a], [, b]) => (a.order || 0) - (b.order || 0))
+      // Get source priority (default: CLI > API > Admin)
+      const sourcePriority = preferences.source_priority || ['cli', 'api', 'admin']
 
-      // Extract model IDs from sorted providers
-      const topModels: string[] = []
-      for (const [provider, config] of sortedProviders) {
-        if (topModels.length >= maxChatModels) break
+      // Get tier and provider priorities
+      const tierPriority = preferences.mcp_settings?.tier_priority || ['normal', 'eco', 'premium']
+      const providerPriority = preferences.mcp_settings?.provider_priority || []
 
-        // Add models from this provider
-        for (const modelId of config.models || []) {
-          if (topModels.length >= maxChatModels) break
+      for (const source of sourcePriority) {
+        if (priorityModels.length >= perspectivesPerMessage) break
 
-          // Check if model is configured in dashboard
-          const model = dashboardModels.find(m => m.id === modelId && m.isConfigured)
-          if (model) {
-            topModels.push(modelId)
+        if (source === 'cli') {
+          // 1. CLI Tools (highest priority, free)
+          const availableCLI = (cliStatuses || []).filter(cli => cli.status === 'available')
+
+          for (const cli of availableCLI) {
+            if (priorityModels.length >= perspectivesPerMessage) break
+
+            // Find CLI models in dashboardModels
+            const cliModels = dashboardModels.filter(m =>
+              m.isConfigured && m.tier === 'cli' && m.provider === cli.provider
+            )
+
+            for (const model of cliModels) {
+              if (priorityModels.length >= perspectivesPerMessage) break
+              if (!priorityModels.includes(model.id)) {
+                priorityModels.push(model.id)
+              }
+            }
+          }
+        } else if (source === 'api') {
+          // 2. User API Keys (sorted by display_order, free)
+          const sortedApiKeys = [...(apiKeys || [])].sort((a, b) =>
+            (a.display_order ?? 999) - (b.display_order ?? 999)
+          )
+
+          for (const apiKey of sortedApiKeys) {
+            if (priorityModels.length >= perspectivesPerMessage) break
+            if (!apiKey.active) continue
+
+            // Find models for this API key's default_model
+            if (apiKey.default_model) {
+              const keyModel = dashboardModels.find(m =>
+                m.isConfigured &&
+                m.id === apiKey.default_model &&
+                m.provider === apiKey.provider
+              )
+
+              if (keyModel && !priorityModels.includes(keyModel.id)) {
+                priorityModels.push(keyModel.id)
+              }
+            }
+          }
+        } else if (source === 'admin') {
+          // 3. Admin Keys (uses quota, apply tier + provider priority)
+          for (const tier of tierPriority) {
+            if (priorityModels.length >= perspectivesPerMessage) break
+
+            for (const provider of providerPriority) {
+              if (priorityModels.length >= perspectivesPerMessage) break
+
+              // Find admin models for this tier + provider combination
+              const adminModels = dashboardModels.filter(m =>
+                m.isConfigured &&
+                m.tier === tier &&
+                m.provider === provider
+              )
+
+              for (const model of adminModels) {
+                if (priorityModels.length >= perspectivesPerMessage) break
+                if (!priorityModels.includes(model.id)) {
+                  priorityModels.push(model.id)
+                }
+              }
+            }
+
+            // Also check for any tier models not yet ordered by provider
+            const tierModels = dashboardModels.filter(m =>
+              m.isConfigured &&
+              m.tier === tier &&
+              !priorityModels.includes(m.id)
+            )
+
+            for (const model of tierModels) {
+              if (priorityModels.length >= perspectivesPerMessage) break
+              priorityModels.push(model.id)
+            }
           }
         }
       }
 
-      if (topModels.length > 0) {
-        setSelectedModels(topModels)
+      if (priorityModels.length > 0) {
+        setSelectedModels(priorityModels)
       } else {
-        // Final fallback: Get top X configured models
+        // Final fallback: Get top N configured models
         const configuredModels = dashboardModels
           .filter(model => model.isConfigured)
-          .slice(0, maxChatModels)
+          .slice(0, perspectivesPerMessage)
           .map(m => m.id)
         setSelectedModels(configuredModels)
       }
     }
-  }, [dashboardModels, preferences])
+  }, [dashboardModels, preferences, apiKeys, cliStatuses])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
