@@ -710,7 +710,10 @@ export default function Chat() {
           </div>
           
           <button
-            onClick={startNewSession}
+            onClick={() => {
+              console.log('[New Chat] Button clicked, isCreatingSession:', isCreatingSession)
+              startNewSession()
+            }}
             disabled={isCreatingSession}
             className="w-full mb-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transform"
           >
@@ -732,9 +735,13 @@ export default function Chat() {
               }`}>
                 <button
                   onClick={() => {
+                    console.log('[Chat Navigation] Clicked session:', session.id, 'Current session:', sessionId)
                     // Only navigate if not already on this session
                     if (session.id !== sessionId) {
+                      console.log('[Chat Navigation] Navigating to:', `/chat/${session.id}`)
                       router.push(`/chat/${session.id}`)
+                    } else {
+                      console.log('[Chat Navigation] Already on this session, skipping navigation')
                     }
                   }}
                   className="flex-1 text-left"
@@ -1374,7 +1381,10 @@ export default function Chat() {
                       className="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-800 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <button
-                      onClick={sendMessage}
+                      onClick={() => {
+                        console.log('[Send Message] Button clicked, input:', input, 'models:', selectedModels.length, 'loading:', isLoading, 'streaming:', isStreaming)
+                        sendMessage()
+                      }}
                       disabled={!input.trim() || selectedModels.length === 0 || isLoading || isStreaming}
                       className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                     >
