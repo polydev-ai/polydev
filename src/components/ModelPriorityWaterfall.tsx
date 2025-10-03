@@ -149,7 +149,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     }
   }, [providerPriority, preferences, updatePreferences])
 
-  const detectedCLI = cliStatuses.filter(cli => cli.status === 'available')
+  const detectedCLI = (cliStatuses || []).filter(cli => cli.status === 'available')
 
   const getTierQuota = (tier: string) => {
     if (!quota) return { total: 0, used: 0 }
@@ -166,7 +166,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
   }
 
   // Get unique providers from active tiers
-  const activeProviders = [...new Set(modelTiers.map(t => t.provider))]
+  const activeProviders = [...new Set((modelTiers || []).map(t => t.provider))]
   const sortedProviders = providerPriority.filter((p: string) => activeProviders.includes(p))
 
   return (
