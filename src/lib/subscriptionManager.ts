@@ -354,7 +354,7 @@ export class SubscriptionManager {
     }
   }
 
-  // Get actual total message count (chat logs + MCP client calls) - consistent across all pages
+  // Get actual total message count (chat logs + MCP client calls) - THIS MONTH ONLY
   async getActualMessageCount(userId: string, useServiceRole: boolean = false): Promise<{
     totalMessages: number
     chatMessages: number
@@ -362,18 +362,21 @@ export class SubscriptionManager {
   }> {
     try {
       const supabase = await this.getSupabase(useServiceRole)
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
 
-      // 1. Count chat messages
+      // 1. Count chat messages THIS MONTH
       const { data: chatLogs, error: chatError } = await supabase
         .from('chat_logs')
         .select('id, created_at')
         .eq('user_id', userId)
+        .gte('created_at', monthStart)
 
-      // 2. Count MCP client calls from request logs
+      // 2. Count MCP client calls from request logs THIS MONTH
       const { data: mcpCalls, error: mcpError } = await supabase
         .from('mcp_request_logs')
         .select('id, created_at')
         .eq('user_id', userId)
+        .gte('created_at', monthStart)
 
       const totalChatMessages = chatLogs?.length || 0
       const totalMcpCalls = mcpCalls?.length || 0
