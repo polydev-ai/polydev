@@ -700,8 +700,9 @@ export default function Chat() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat History</h2>
             <button
+              type="button"
               onClick={() => setShowSidebar(false)}
-              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 pointer-events-auto z-10"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -710,12 +711,13 @@ export default function Chat() {
           </div>
           
           <button
+            type="button"
             onClick={() => {
               console.log('[New Chat] Button clicked, isCreatingSession:', isCreatingSession)
               startNewSession()
             }}
             disabled={isCreatingSession}
-            className="w-full mb-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transform"
+            className="w-full mb-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transform pointer-events-auto z-10"
           >
             {isCreatingSession ? 'Creating...' : 'New Chat'}
           </button>
@@ -734,6 +736,7 @@ export default function Chat() {
                   : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
               }`}>
                 <button
+                  type="button"
                   onClick={() => {
                     console.log('[Chat Navigation] Clicked session:', session.id, 'Current session:', sessionId)
                     // Only navigate if not already on this session
@@ -744,7 +747,7 @@ export default function Chat() {
                       console.log('[Chat Navigation] Already on this session, skipping navigation')
                     }
                   }}
-                  className="flex-1 text-left"
+                  className="flex-1 text-left pointer-events-auto z-10"
                 >
                   <div className="text-sm font-medium truncate">{session.title}</div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -752,6 +755,7 @@ export default function Chat() {
                   </div>
                 </button>
                 <button
+                  type="button"
                   onClick={async (e) => {
                     e.stopPropagation()
                     if (!confirm('Delete this conversation?')) return
@@ -765,7 +769,7 @@ export default function Chat() {
                     }
                   }}
                   title="Delete conversation"
-                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-600 transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-600 transition-opacity pointer-events-auto z-10"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7h12M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2m-1 0v12a2 2 0 01-2 2h-4a2 2 0 01-2-2V7h8z" />
@@ -785,8 +789,9 @@ export default function Chat() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <button
+                  type="button"
                   onClick={() => setShowSidebar(true)}
-                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors pointer-events-auto z-10"
                   title="Show chat history"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -798,8 +803,9 @@ export default function Chat() {
                 </h1>
                 <div className="flex items-center space-x-2">
                   <button
+                    type="button"
                     onClick={() => setShowModelSelector(!showModelSelector)}
-                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors pointer-events-auto z-10"
                   >
                     <span className="mr-2">{selectedModels.length} models</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -809,8 +815,9 @@ export default function Chat() {
                   
                   {selectedModels.length > 1 && (
                     <button
+                      type="button"
                       onClick={() => setViewMode(viewMode === 'unified' ? 'split' : 'unified')}
-                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors pointer-events-auto z-10"
                       title={viewMode === 'unified' ? 'Switch to split view' : 'Switch to unified view'}
                     >
                       {viewMode === 'unified' ? (
@@ -834,8 +841,9 @@ export default function Chat() {
               </div>
               <div className="flex items-center space-x-2">
                 <button
+                  type="button"
                   onClick={clearChat}
-                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors pointer-events-auto z-10"
                   title="New chat"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -856,8 +864,9 @@ export default function Chat() {
                     Your Dashboard Models ({selectedModels.length} selected)
                   </h3>
                   <button
+                    type="button"
                     onClick={() => setShowModelSelector(false)}
-                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 pointer-events-auto z-10"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1117,9 +1126,10 @@ export default function Chat() {
                         </div>
                         {message.reasoning && message.role === 'assistant' && (
                           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <button 
+                            <button
+                              type="button"
                               onClick={() => toggleReasoning(message.id)}
-                              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 pointer-events-auto z-10"
                             >
                               <svg 
                                 className={`w-4 h-4 transform transition-transform ${expandedReasoning.has(message.id) ? 'rotate-90' : ''}`}
@@ -1251,9 +1261,10 @@ export default function Chat() {
                               />
                               {message.reasoning && (
                                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                                  <button 
+                                  <button
+                                    type="button"
                                     onClick={() => toggleReasoning(message.id)}
-                                    className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                                    className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 pointer-events-auto z-10"
                                   >
                                     <svg 
                                       className={`w-4 h-4 transform transition-transform ${expandedReasoning.has(message.id) ? 'rotate-90' : ''}`}
@@ -1381,12 +1392,13 @@ export default function Chat() {
                       className="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-800 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <button
+                      type="button"
                       onClick={() => {
                         console.log('[Send Message] Button clicked, input:', input, 'models:', selectedModels.length, 'loading:', isLoading, 'streaming:', isStreaming)
                         sendMessage()
                       }}
                       disabled={!input.trim() || selectedModels.length === 0 || isLoading || isStreaming}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors pointer-events-auto z-10"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
