@@ -64,6 +64,27 @@ interface ModelsDevProvider {
   models?: any[]
 }
 
+interface PerspectiveQuota {
+  user_id: string
+  total_quota: number
+  used_quota: number
+  premium_quota: number
+  premium_used: number
+  normal_quota: number
+  normal_used: number
+  eco_quota: number
+  eco_used: number
+  reset_date: string
+}
+
+interface ModelTier {
+  id: string
+  provider: string
+  display_name: string
+  tier: string
+  active: boolean
+}
+
 // Global cache for enhanced API keys data to prevent duplicate fetching
 const enhancedApiKeysCache = {
   apiKeys: null as ApiKey[] | null,
@@ -72,12 +93,16 @@ const enhancedApiKeysCache = {
   cliStatuses: null as CLIConfig[] | null,
   apiKeyUsage: null as Record<string, ApiKeyUsage> | null,
   providerModels: null as Record<string, any[]> | null,
+  quota: null as PerspectiveQuota | null,
+  modelTiers: null as ModelTier[] | null,
   timestamps: {
     apiKeys: 0,
     providers: 0,
     cliStatuses: 0,
     apiKeyUsage: 0,
     providerModels: 0,
+    quota: 0,
+    modelTiers: 0,
   },
   CACHE_DURATION: 3 * 60 * 1000, // 3 minutes for API keys data
   LONG_CACHE_DURATION: 10 * 60 * 1000, // 10 minutes for provider registry
@@ -95,6 +120,8 @@ export function useEnhancedApiKeysData() {
   const [apiKeyUsage, setApiKeyUsage] = useState<Record<string, ApiKeyUsage>>({})
   const [providerModels, setProviderModels] = useState<Record<string, any[]>>({})
   const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({})
+  const [quota, setQuota] = useState<PerspectiveQuota | null>(null)
+  const [modelTiers, setModelTiers] = useState<ModelTier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const isMountedRef = useRef(true)
@@ -198,7 +225,9 @@ export function useEnhancedApiKeysData() {
         apiKeysData,
         providersData,
         cliStatusData,
-        usageData
+        usageData,
+        quotaData,
+        tiersData
       ] = await Promise.allSettled([
         fetchWithCache('apiKeys', async () => {
           const result = await supabase
@@ -244,6 +273,34 @@ export function useEnhancedApiKeysData() {
           }
           const result = await response.json()
           return result.usage || {}
+        }),
+
+        fetchWithCache('quota', async () => {
+          const result = await supabase
+            .from('user_perspective_quotas')
+            .select('*')
+            .eq('user_id', user.id)
+            .single()
+
+          if (result.error) {
+            // If no quota exists yet, return null instead of throwing
+            if (result.error.code === 'PGRST116') {
+              console.warn('No perspective quota found for user')
+              return null
+            }
+            throw result.error
+          }
+          return result.data
+        }),
+
+        fetchWithCache('modelTiers', async () => {
+          const result = await supabase
+            .from('model_tiers')
+            .select('id, provider, display_name, tier, active')
+            .eq('active', true)
+
+          if (result.error) throw result.error
+          return result.data || []
         })
       ])
 
@@ -337,6 +394,16 @@ export function useEnhancedApiKeysData() {
         setApiKeyUsage(usageData.value)
       }
 
+      // Process perspective quota
+      if (quotaData.status === 'fulfilled' && quotaData.value) {
+        setQuota(quotaData.value)
+      }
+
+      // Process model tiers
+      if (tiersData.status === 'fulfilled' && tiersData.value) {
+        setModelTiers(tiersData.value)
+      }
+
     } catch (err: any) {
       console.error('Failed to load enhanced API keys data:', err)
       if (isMountedRef.current) {
@@ -398,6 +465,8 @@ export function useEnhancedApiKeysData() {
     enhancedApiKeysCache.cliStatuses = null
     enhancedApiKeysCache.apiKeyUsage = null
     enhancedApiKeysCache.providerModels = null
+    enhancedApiKeysCache.quota = null
+    enhancedApiKeysCache.modelTiers = null
 
     await loadAllData()
   }, [loadAllData])
@@ -411,6 +480,8 @@ export function useEnhancedApiKeysData() {
     apiKeyUsage,
     providerModels,
     loadingModels,
+    quota,
+    modelTiers,
     loading,
     error,
     refresh,
