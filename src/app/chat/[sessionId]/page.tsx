@@ -731,7 +731,12 @@ export default function Chat() {
                   : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
               }`}>
                 <button
-                  onClick={() => router.push(`/chat/${session.id}`)}
+                  onClick={() => {
+                    // Only navigate if not already on this session
+                    if (session.id !== sessionId) {
+                      router.push(`/chat/${session.id}`)
+                    }
+                  }}
                   className="flex-1 text-left"
                 >
                   <div className="text-sm font-medium truncate">{session.title}</div>
