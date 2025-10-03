@@ -288,13 +288,16 @@ export default function EnhancedApiKeysPage() {
 
   // Auto-sync existing API key models to preferences
   const syncExistingModelsToPreferences = useCallback(async () => {
-    if (syncingModels) {
-      console.log('[EnhancedApiKeys] Sync already in progress, skipping')
-      return
-    }
+    // Use functional update to avoid stale closure
+    setSyncingModels(prev => {
+      if (prev) {
+        console.log('[EnhancedApiKeys] Sync already in progress, skipping')
+        return prev
+      }
+      return true
+    })
 
     try {
-      setSyncingModels(true)
       console.log('[EnhancedApiKeys] Calling model sync endpoint...')
 
       const response = await fetch('/api/sync-models', {
@@ -323,36 +326,28 @@ export default function EnhancedApiKeysPage() {
       }
     } catch (error) {
       console.error('[EnhancedApiKeys] Error during sync:', error)
+      setHasCompletedInitialSync(true) // Mark as completed even on error to prevent infinite retries
     } finally {
       setSyncingModels(false)
     }
-  }, [syncingModels, refetchPreferences])
+  }, [refetchPreferences]) // Removed syncingModels from dependencies to prevent infinite loop
 
 
-  // Sync existing models to preferences when API keys are loaded
+  // Sync existing models to preferences when API keys are loaded (ONCE only)
   useEffect(() => {
-    console.log('[EnhancedApiKeys] useEffect triggered for auto-sync with:', {
-      apiKeysLength: apiKeys.length,
-      hasPreferences: !!preferences,
-      preferencesLoading,
-      user: !!user,
-      syncingModels
-    })
-
-    if (apiKeys.length > 0 && preferences && !preferencesLoading && !syncingModels && user && !hasCompletedInitialSync) {
-      console.log('[EnhancedApiKeys] Conditions met, calling syncExistingModelsToPreferences')
-      syncExistingModelsToPreferences()
-    } else {
-      console.log('[EnhancedApiKeys] Conditions not met for auto-sync', {
-        hasApiKeys: apiKeys.length > 0,
-        hasPreferences: !!preferences,
-        notLoading: !preferencesLoading,
-        notSyncing: !syncingModels,
-        hasUser: !!user,
-        notCompletedSync: !hasCompletedInitialSync
-      })
+    // Only run if we haven't completed initial sync
+    if (hasCompletedInitialSync) {
+      return
     }
-  }, [apiKeys, preferencesLoading, user, syncExistingModelsToPreferences, syncingModels, hasCompletedInitialSync])
+
+    // Check all conditions
+    const shouldSync = apiKeys.length > 0 && preferences && !preferencesLoading && !syncingModels && user
+
+    if (shouldSync) {
+      console.log('[EnhancedApiKeys] Starting initial model sync...')
+      syncExistingModelsToPreferences()
+    }
+  }, [apiKeys.length, preferences, preferencesLoading, syncingModels, user, hasCompletedInitialSync]) // Removed function from dependencies
 
   // Preload models for existing providers in parallel
   useEffect(() => {
