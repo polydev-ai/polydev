@@ -292,19 +292,17 @@ export default function ModelPreferenceSelector() {
     } else if (primary_source === 'api') {
       sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">API • FREE</span>
     } else if (primary_source === 'admin') {
-      if (tier === 'premium') {
-        sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-700">
-          {perspectives_needed} PREMIUM
-        </span>
-      } else if (tier === 'normal') {
-        sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
-          {perspectives_needed} NORMAL
-        </span>
-      } else if (tier === 'eco') {
-        sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700">
-          {perspectives_needed} ECO
-        </span>
+      // Use tier-based colors but show generic "PLAN" label instead of internal tier names
+      const tierStyles = {
+        premium: 'bg-purple-100 text-purple-700',
+        normal: 'bg-blue-100 text-blue-700',
+        eco: 'bg-green-100 text-green-700'
       }
+      const tierStyle = tierStyles[tier as keyof typeof tierStyles] || 'bg-gray-100 text-gray-700'
+
+      sourceBadge = <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs ${tierStyle}`}>
+        {perspectives_needed} PLAN
+      </span>
     } else if (status === 'locked') {
       sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">Upgrade Required</span>
     } else if (status === 'unavailable') {
