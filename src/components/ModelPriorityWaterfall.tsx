@@ -140,13 +140,19 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
   }, [tierPriority, preferences, updatePreferences])
 
   // Provider reordering (GLOBAL across all tiers)
+  // Works with allProviders (all admin providers), not just providerPriority
   const moveProvider = useCallback(async (provider: string, direction: 'up' | 'down') => {
-    const index = providerPriority.indexOf(provider)
+    // Build current full list: providers in priority order + new unsorted providers
+    const currentSorted = providerPriority.filter((p: string) => activeProviders.includes(p))
+    const currentUnsorted = activeProviders.filter(p => !providerPriority.includes(p))
+    const currentAll = [...currentSorted, ...currentUnsorted]
+
+    const index = currentAll.indexOf(provider)
     if (direction === 'up' && index === 0) return
-    if (direction === 'down' && index === providerPriority.length - 1) return
+    if (direction === 'down' && index === currentAll.length - 1) return
 
     const newIndex = direction === 'up' ? index - 1 : index + 1
-    const reordered = [...providerPriority]
+    const reordered = [...currentAll]
     const [moved] = reordered.splice(index, 1)
     reordered.splice(newIndex, 0, moved)
 
@@ -155,13 +161,13 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       await updatePreferences({
         mcp_settings: {
           ...(preferences?.mcp_settings as any),
-          provider_priority: reordered
+          provider_priority: reordered  // Save complete new order
         }
       })
     } finally {
       setSaving(false)
     }
-  }, [providerPriority, preferences, updatePreferences])
+  }, [providerPriority, activeProviders, preferences, updatePreferences])
 
   const detectedCLI = (cliStatuses || []).filter(cli => cli.status === 'available')
 
@@ -179,25 +185,34 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     }
   }
 
-  // Get unique providers from active tiers
+  // Get unique providers from active tiers (these are ALL admin-provided models)
   const activeProviders = [...new Set((modelTiers || []).map(t => t.provider))]
-  const sortedProviders = providerPriority.filter((p: string) => activeProviders.includes(p))
 
-  // Helper to get provider logo
+  // Show ALL admin providers, sorted by providerPriority where available
+  // Providers in providerPriority come first (in that order), then any new providers at the end
+  const sortedProviders = providerPriority.filter((p: string) => activeProviders.includes(p))
+  const unsortedProviders = activeProviders.filter(p => !providerPriority.includes(p))
+  const allProviders = [...sortedProviders, ...unsortedProviders]
+
+  // Helper to get provider logo - improved matching
   const getProviderLogo = (providerId: string) => {
-    const provider = modelsDevProviders.find(p =>
-      p.id.toLowerCase() === providerId.toLowerCase() ||
-      p.name.toLowerCase() === providerId.toLowerCase()
-    )
+    const pid = providerId.toLowerCase().replace(/[-_\s]/g, '')
+    const provider = modelsDevProviders.find(p => {
+      const pId = p.id.toLowerCase().replace(/[-_\s]/g, '')
+      const pName = p.name.toLowerCase().replace(/[-_\s]/g, '')
+      return pId === pid || pName === pid || pId.includes(pid) || pid.includes(pId)
+    })
     return provider?.logo || provider?.logo_url
   }
 
-  // Helper to get provider display name
+  // Helper to get provider display name - improved matching
   const getProviderDisplayName = (providerId: string) => {
-    const provider = modelsDevProviders.find(p =>
-      p.id.toLowerCase() === providerId.toLowerCase() ||
-      p.name.toLowerCase() === providerId.toLowerCase()
-    )
+    const pid = providerId.toLowerCase().replace(/[-_\s]/g, '')
+    const provider = modelsDevProviders.find(p => {
+      const pId = p.id.toLowerCase().replace(/[-_\s]/g, '')
+      const pName = p.name.toLowerCase().replace(/[-_\s]/g, '')
+      return pId === pid || pName === pid || pId.includes(pid) || pid.includes(pId)
+    })
     return provider?.display_name || provider?.name || providerId
   }
 
@@ -361,7 +376,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         <div className="ml-8">
           <h5 className="text-sm font-medium text-gray-700 mb-2">Provider Priority (applies to all tiers):</h5>
           <div className="space-y-1">
-            {sortedProviders.map((provider: string, idx: number) => {
+            {allProviders.map((provider: string, idx: number) => {
               const logo = getProviderLogo(provider)
               const displayName = getProviderDisplayName(provider)
               const providerModels = (modelTiers || [])
@@ -383,7 +398,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                       </button>
                       <button
                         onClick={() => moveProvider(provider, 'down')}
-                        disabled={idx === sortedProviders.length - 1 || saving}
+                        disabled={idx === allProviders.length - 1 || saving}
                         className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
                       >
                         <ChevronDown className="w-4 h-4" />
