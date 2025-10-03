@@ -26,6 +26,12 @@ export async function GET(request: NextRequest) {
         breakdown: {
           chat_messages: actualMessageCount.chatMessages,
           mcp_calls: actualMessageCount.mcpCalls
+        },
+        // All-time counts for display
+        allTime: {
+          total_messages: actualMessageCount.allTimeTotalMessages,
+          chat_messages: actualMessageCount.allTimeChatMessages,
+          mcp_calls: actualMessageCount.allTimeMcpCalls
         }
       },
       credits: credits || {

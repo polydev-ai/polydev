@@ -354,11 +354,14 @@ export class SubscriptionManager {
     }
   }
 
-  // Get actual total message count (chat logs + MCP client calls) - THIS MONTH ONLY
+  // Get actual total message count (chat logs + MCP client calls) - MONTHLY AND ALL-TIME
   async getActualMessageCount(userId: string, useServiceRole: boolean = false): Promise<{
     totalMessages: number
     chatMessages: number
     mcpCalls: number
+    allTimeTotalMessages: number
+    allTimeChatMessages: number
+    allTimeMcpCalls: number
   }> {
     try {
       const supabase = await this.getSupabase(useServiceRole)
@@ -378,21 +381,43 @@ export class SubscriptionManager {
         .eq('user_id', userId)
         .gte('created_at', monthStart)
 
+      // 3. Count ALL-TIME chat messages
+      const { data: allTimeChatLogs } = await supabase
+        .from('chat_logs')
+        .select('id')
+        .eq('user_id', userId)
+
+      // 4. Count ALL-TIME MCP client calls
+      const { data: allTimeMcpCalls } = await supabase
+        .from('mcp_request_logs')
+        .select('id')
+        .eq('user_id', userId)
+
       const totalChatMessages = chatLogs?.length || 0
       const totalMcpCalls = mcpCalls?.length || 0
       const totalMessages = totalChatMessages + totalMcpCalls
 
+      const allTimeTotalChatMessages = allTimeChatLogs?.length || 0
+      const allTimeTotalMcpCalls = allTimeMcpCalls?.length || 0
+      const allTimeTotalMessages = allTimeTotalChatMessages + allTimeTotalMcpCalls
+
       return {
         totalMessages,
         chatMessages: totalChatMessages,
-        mcpCalls: totalMcpCalls
+        mcpCalls: totalMcpCalls,
+        allTimeTotalMessages,
+        allTimeChatMessages: allTimeTotalChatMessages,
+        allTimeMcpCalls: allTimeTotalMcpCalls
       }
     } catch (error) {
       console.error('Error getting actual message count:', error)
       return {
         totalMessages: 0,
         chatMessages: 0,
-        mcpCalls: 0
+        mcpCalls: 0,
+        allTimeTotalMessages: 0,
+        allTimeChatMessages: 0,
+        allTimeMcpCalls: 0
       }
     }
   }
