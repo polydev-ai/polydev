@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePreferences } from '../../hooks/usePreferences'
 import { useEnhancedApiKeysData } from '../../hooks/useEnhancedApiKeysData'
@@ -12,8 +12,10 @@ import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { getModelTier } from '../../lib/model-tiers'
 import ModelSourcePriorityPicker from '../ModelSourcePriorityPicker'
-import ModelPreferenceSelector from '../ModelPreferenceSelector'
 import ModelPriorityWaterfall from '../ModelPriorityWaterfall'
+
+// Lazy load Advanced mode components to reduce initial bundle size
+const ModelPreferenceSelector = lazy(() => import('../ModelPreferenceSelector'))
 
 interface ApiKey {
   id: string
@@ -753,13 +755,20 @@ export default function EnhancedApiKeysPage() {
 
       {/* Advanced Mode: Detailed Controls */}
       {viewMode === 'advanced' && (
-        <>
+        <Suspense fallback={
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600 dark:text-gray-400">Loading advanced settings...</span>
+            </div>
+          </div>
+        }>
           {/* Model Source Priority Picker */}
           <ModelSourcePriorityPicker />
 
           {/* Model Preference Selector */}
           <ModelPreferenceSelector />
-        </>
+        </Suspense>
       )}
 
       {/* CLI Tools Status Section */}
