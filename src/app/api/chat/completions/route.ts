@@ -364,29 +364,25 @@ async function resolveProviderModelId(inputModelId: string, providerId: string):
 async function getProviderFromModel(model: string, supabase: any, userId: string): Promise<string> {
   try {
     // FIRST: Check if this model is from admin-provided keys via model_tiers
-    const { data: modelTier } = await supabase
+    const { data: modelTier, error: tierError } = await supabase
       .from('model_tiers')
-      .select('provider, tier')
+      .select('provider, tier, id')
       .eq('model_name', model)
       .eq('active', true)
-      .single()
+      .maybeSingle()
 
     if (modelTier) {
-      // Found in model_tiers - check for admin-provided keys with this provider
-      const { data: adminKeys } = await supabase
-        .from('user_api_keys')
-        .select('provider, priority_order')
-        .eq('is_admin_key', true)
-        .eq('active', true)
-        .ilike('provider', modelTier.provider) // Case-insensitive match
-        .order('priority_order', { ascending: true })
-        .limit(1)
+      // Return the provider directly from model_tiers
+      // This provider indicates which admin API key to use
+      const normalizedProvider = normalizeProviderName(modelTier.provider)
+      console.log(`[Model Routing] Found model ${model} in model_tiers, using admin key via provider: ${normalizedProvider}`)
+      return normalizedProvider
+    }
 
-      if (adminKeys && adminKeys.length > 0) {
-        const normalizedProvider = normalizeProviderName(adminKeys[0].provider)
-        console.log(`Found admin-provided key for ${model}: ${normalizedProvider}`)
-        return normalizedProvider
-      }
+    if (tierError) {
+      console.error(`[Model Routing] Error checking model_tiers for ${model}:`, tierError)
+    } else {
+      console.log(`[Model Routing] Model ${model} not found in model_tiers, checking models_registry`)
     }
 
     // SECOND: Check models_registry for user's personal API keys
@@ -397,7 +393,7 @@ async function getProviderFromModel(model: string, supabase: any, userId: string
       .eq('is_active', true)
 
     if (!modelProviders || modelProviders.length === 0) {
-      console.log(`No providers found for model: ${model} in models_registry`)
+      console.log(`[Model Routing] No providers found for model: ${model} in models_registry, using openrouter fallback`)
       return 'openrouter' // Default fallback
     }
 
