@@ -13,6 +13,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import { getModelTier } from '../../lib/model-tiers'
 import ModelSourcePriorityPicker from '../ModelSourcePriorityPicker'
 import ModelPreferenceSelector from '../ModelPreferenceSelector'
+import ModelPriorityWaterfall from '../ModelPriorityWaterfall'
 
 interface ApiKey {
   id: string
@@ -158,6 +159,7 @@ export default function EnhancedApiKeysPage() {
   const [syncingModels, setSyncingModels] = useState(false)
   const [hasCompletedInitialSync, setHasCompletedInitialSync] = useState(false)
   const [cliStatusLoading, setCliStatusLoading] = useState(false)
+  const [viewMode, setViewMode] = useState<'simple' | 'advanced'>('simple')
 
   // Combine loading states
   const loading = dataLoading || authLoading || preferencesLoading
@@ -678,6 +680,28 @@ export default function EnhancedApiKeysPage() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
+          <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('simple')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'simple'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Simple
+            </button>
+            <button
+              onClick={() => setViewMode('advanced')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'advanced'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Advanced
+            </button>
+          </div>
           <button
             onClick={() => setShowAddForm(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
@@ -714,11 +738,27 @@ export default function EnhancedApiKeysPage() {
         </div>
       )}
 
-      {/* Model Source Priority Picker */}
-      <ModelSourcePriorityPicker />
+      {/* Simple Mode: Unified Priority Waterfall */}
+      {viewMode === 'simple' && (
+        <ModelPriorityWaterfall
+          apiKeys={apiKeys}
+          quota={quota}
+          modelTiers={modelTiers}
+          cliStatuses={cliStatuses}
+          onRefresh={refresh}
+        />
+      )}
 
-      {/* Model Preference Selector */}
-      <ModelPreferenceSelector />
+      {/* Advanced Mode: Detailed Controls */}
+      {viewMode === 'advanced' && (
+        <>
+          {/* Model Source Priority Picker */}
+          <ModelSourcePriorityPicker />
+
+          {/* Model Preference Selector */}
+          <ModelPreferenceSelector />
+        </>
+      )}
 
       {/* CLI Tools Status Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
