@@ -473,6 +473,169 @@ src/
 - **CLI Always Wins** - When MCP client detected, CLI tools take precedence
 - **Perspectives Setting is Shared** - Same value used for both Chat and MCP endpoints
 
+## 🔄 COMPLETE MODEL SELECTION WATERFALL LOGIC
+
+### Comprehensive Priority System
+
+This section documents the complete waterfall logic used throughout Polydev AI for model selection in both Chat and MCP contexts.
+
+### Decision Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ User makes a request (Chat or MCP)                             │
+│ Get perspectives_per_message setting (how many models to use)  │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ Get source_priority from user preferences                      │
+│ Default: ['cli', 'api', 'admin']                              │
+│ (User can reorder these on Models page)                       │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+         ┌───────────────┴───────────────┐
+         │ For each source in order:    │
+         │ 1. CLI                        │
+         │ 2. API (User Keys)           │
+         │ 3. Admin Keys                │
+         └───────────────┬───────────────┘
+                         │
+    ┌────────────────────┼────────────────────┐
+    │                    │                    │
+    ▼                    ▼                    ▼
+┌───────┐          ┌──────────┐        ┌─────────────┐
+│  CLI  │          │   API    │        │    ADMIN    │
+│ Tools │          │   Keys   │        │    Keys     │
+└───┬───┘          └────┬─────┘        └──────┬──────┘
+    │                   │                     │
+    │                   │                     │
+    │                   │                     ▼
+    │                   │         ┌───────────────────────┐
+    │                   │         │ Get tier_priority     │
+    │                   │         │ Default:              │
+    │                   │         │ ['normal',           │
+    │                   │         │  'eco',              │
+    │                   │         │  'premium']          │
+    │                   │         └──────────┬────────────┘
+    │                   │                    │
+    │                   │         ┌──────────▼────────────┐
+    │                   │         │ For each tier:        │
+    │                   │         │                       │
+    │                   │         │ Get provider_priority │
+    │                   │         │ Default:              │
+    │                   │         │ ['anthropic',        │
+    │                   │         │  'openai',           │
+    │                   │         │  'google', ...]      │
+    │                   │         └──────────┬────────────┘
+    │                   │                    │
+    ▼                   ▼                    ▼
+┌──────────────────────────────────────────────────────────┐
+│ Build priority list of models:                          │
+│                                                          │
+│ 1. CLI models (if available)                           │
+│    - Detected from system                               │
+│    - Always FREE                                        │
+│                                                          │
+│ 2. User API Key models (sorted by display_order)      │
+│    - User's personal API keys                           │
+│    - Ordered as configured on Models page               │
+│    - Always FREE                                        │
+│                                                          │
+│ 3. Admin-provided models (sorted by priority)          │
+│    - For each tier (Normal → Eco → Premium):          │
+│      - For each provider (Anthropic → OpenAI → ...):  │
+│        - Add models from this tier+provider           │
+│      - Add remaining tier models not yet ordered       │
+│    - Uses user's quota                                 │
+│    - Charged based on tier                             │
+└──────────────────────────┬───────────────────────────────┘
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────────┐
+│ Select TOP N models from priority list                  │
+│ (N = perspectives_per_message setting)                  │
+│                                                          │
+│ User can still manually override and pick from all      │
+│ available models in Chat UI                             │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Example Scenarios
+
+#### Scenario 1: User has Claude Code CLI + OpenAI API Key
+**Configuration:**
+- perspectives_per_message: 2
+- source_priority: ['cli', 'api', 'admin']
+- User's API Keys:
+  1. OpenAI (GPT-4)
+  2. Anthropic (Claude Sonnet)
+
+**Result:**
+1. Claude Code CLI model (from detected CLI)
+2. OpenAI GPT-4 (from user's API key #1)
+
+**Cost:** FREE (both are user-provided)
+
+#### Scenario 2: User has no CLI, 1 API key, needs 3 perspectives
+**Configuration:**
+- perspectives_per_message: 3
+- User's API Keys:
+  1. Anthropic (Claude Sonnet 4)
+- tier_priority: ['normal', 'eco', 'premium']
+- provider_priority: ['anthropic', 'openai', 'google']
+
+**Result:**
+1. Anthropic Claude Sonnet 4 (from user's API key)
+2. Anthropic Claude Sonnet 3.5 (from admin Normal tier, provider #1)
+3. OpenAI GPT-4o (from admin Normal tier, provider #2)
+
+**Cost:** FREE for #1, quota charged for #2 and #3
+
+#### Scenario 3: Admin keys only, Normal tier exhausted
+**Configuration:**
+- perspectives_per_message: 2
+- No CLI detected
+- No user API keys
+- tier_priority: ['normal', 'eco', 'premium']
+- provider_priority: ['anthropic', 'openai', 'google']
+- Normal tier quota: 0/200 (exhausted)
+- Eco tier quota: 45/100
+
+**Result:**
+1. Anthropic Claude Haiku (from admin Eco tier, provider #1)
+2. OpenAI GPT-4o mini (from admin Eco tier, provider #2)
+
+**Cost:** Quota charged at Eco tier rates
+
+### Implementation Details
+
+**Database Tables Used:**
+- `user_preferences.source_priority` - Order of sources [cli, api, admin]
+- `user_preferences.mcp_settings.perspectives_per_message` - Number of models (1-10)
+- `user_preferences.mcp_settings.tier_priority` - Order of tiers [normal, eco, premium]
+- `user_preferences.mcp_settings.provider_priority` - Global provider order [anthropic, openai, google, ...]
+- `user_api_keys.display_order` - Order of user's API keys
+- `user_api_keys.default_model` - Which model to use from this key
+- `user_perspective_quotas` - Quota limits and usage per tier
+- `model_tiers` - Available admin models by tier and provider
+
+**Code Locations:**
+- `/src/app/chat/[sessionId]/page.tsx` lines 71-196 - Chat model selection
+- `/src/app/api/mcp/route.ts` - MCP model selection
+- `/src/components/ModelPriorityWaterfall.tsx` - Models page UI
+
+### Key Principles
+
+1. **Fallback Cascading**: If top priority source doesn't have enough models, continue to next source
+2. **Provider Priority is GLOBAL**: Same provider order applies to ALL tiers (Normal, Eco, Premium)
+3. **Tier Priority is for Exhaustion**: When Normal quota runs out, fall back to Eco, then Premium
+4. **User Always Has Control**: This is the DEFAULT selection; user can manually override in Chat UI
+5. **Cost Transparency**: UI clearly shows which models are FREE vs quota-charged
+6. **Quota Awareness**: System checks quota before using admin keys
+7. **Grace Degradation**: If preferred models unavailable, system picks next best automatically
+
 ## 🚀 READY TO PROCEED
 
 After rollback, we'll implement this plan incrementally:
