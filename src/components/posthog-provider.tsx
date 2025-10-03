@@ -1,5 +1,6 @@
 'use client'
 
+// PostHog analytics provider - tracks page views on pathname changes only
 import { Suspense, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { initPostHog, analytics } from '@/lib/posthog'
