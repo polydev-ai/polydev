@@ -430,6 +430,8 @@ export function useEnhancedApiKeysData() {
 
   // Preload models for existing providers in parallel (optimized)
   useEffect(() => {
+    const timeoutIds: NodeJS.Timeout[] = []
+
     if (apiKeys.length > 0 && !loading) {
       const uniqueProviders = [...new Set(apiKeys.map(key => key.provider))]
       const providersToFetch = uniqueProviders.filter(provider =>
@@ -445,11 +447,17 @@ export function useEnhancedApiKeysData() {
         }
 
         batches.forEach((batch, index) => {
-          setTimeout(() => {
+          const timeoutId = setTimeout(() => {
             Promise.allSettled(batch.map(provider => fetchProviderModels(provider)))
           }, index * 100) // Stagger requests to avoid overwhelming the API
+          timeoutIds.push(timeoutId)
         })
       }
+    }
+
+    // Cleanup: clear all scheduled timeouts on unmount or dependency change
+    return () => {
+      timeoutIds.forEach(id => clearTimeout(id))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiKeys.length, loading, fetchProviderModels])
