@@ -219,18 +219,13 @@ export async function GET(request: NextRequest) {
 
     // Calculate ACTUAL API calls (sum of all model/provider calls across all messages)
     const mcpApiCalls = (requestLogs || []).reduce((sum, log) => {
-      // Count providers in provider_responses format
+      // Count providers in provider_responses format (this is what we select in the query)
       if (log.provider_responses && typeof log.provider_responses === 'object') {
         return sum + Object.keys(log.provider_responses).length
       }
-      // Count providers in providers array format
-      if (log.providers && Array.isArray(log.providers)) {
-        return sum + log.providers.length
-      }
-      // Count models in models_used format
-      if (log.models_used && typeof log.models_used === 'object') {
-        const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
-        return sum + modelsUsed.length
+      // Count from successful_providers array
+      if (log.successful_providers && Array.isArray(log.successful_providers)) {
+        return sum + log.successful_providers.length
       }
       // Fallback: count as 1 API call if we have cost/tokens
       if (log.total_cost || log.total_tokens) {
