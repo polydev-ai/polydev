@@ -139,6 +139,9 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     }
   }, [tierPriority, preferences, updatePreferences])
 
+  // Get unique providers from active tiers (these are ALL admin-provided models)
+  const activeProviders = [...new Set((modelTiers || []).map(t => t.provider))]
+
   // Provider reordering (GLOBAL across all tiers)
   // Works with allProviders (all admin providers), not just providerPriority
   const moveProvider = useCallback(async (provider: string, direction: 'up' | 'down') => {
@@ -184,9 +187,6 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         return { total: 0, used: 0 }
     }
   }
-
-  // Get unique providers from active tiers (these are ALL admin-provided models)
-  const activeProviders = [...new Set((modelTiers || []).map(t => t.provider))]
 
   // Show ALL admin providers, sorted by providerPriority where available
   // Providers in providerPriority come first (in that order), then any new providers at the end
