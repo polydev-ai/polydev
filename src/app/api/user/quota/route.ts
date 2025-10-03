@@ -39,6 +39,10 @@ export async function GET() {
     const { bonusManager } = await import('@/lib/bonus-manager')
     const bonusBalance = await bonusManager.getAvailableBonusBalance(user.id)
 
+    // Get ACTUAL message count from chat_logs + mcp_request_logs (monthly)
+    const { subscriptionManager } = await import('@/lib/subscriptionManager')
+    const actualMessageCount = await subscriptionManager.getActualMessageCount(user.id, true)
+
     // Get recent perspective usage breakdown
     const { data: usageStats, error: usageError } = await supabase
       .from('perspective_usage')
@@ -94,10 +98,13 @@ export async function GET() {
       })
     }
 
+    // Use ACTUAL message count instead of quota table's messages_used
+    const actualMessagesUsed = actualMessageCount.totalMessages
+
     // Calculate remaining quotas
     const remaining = {
       messages: quota.messages_per_month
-        ? Math.max(0, quota.messages_per_month - quota.messages_used)
+        ? Math.max(0, quota.messages_per_month - actualMessagesUsed)
         : null, // null means unlimited
       bonusMessages: bonusBalance,
       premium: Math.max(0, quota.premium_perspectives_limit - quota.premium_perspectives_used),
@@ -108,7 +115,7 @@ export async function GET() {
     // Calculate usage percentages
     const percentages = {
       messages: quota.messages_per_month
-        ? Math.min(100, (quota.messages_used / quota.messages_per_month) * 100)
+        ? Math.min(100, (actualMessagesUsed / quota.messages_per_month) * 100)
         : 0,
       premium: quota.premium_perspectives_limit
         ? Math.min(100, (quota.premium_perspectives_used / quota.premium_perspectives_limit) * 100)
@@ -131,7 +138,7 @@ export async function GET() {
         eco: quota.eco_perspectives_limit
       },
       used: {
-        messages: quota.messages_used,
+        messages: actualMessagesUsed, // Use actual count from chat_logs + mcp_request_logs
         premium: quota.premium_perspectives_used,
         normal: quota.normal_perspectives_used,
         eco: quota.eco_perspectives_used
@@ -141,7 +148,9 @@ export async function GET() {
       bonusMessages: bonusBalance,
       tierUsage,
       sourceUsage,
-      updatedAt: quota.updated_at
+      updatedAt: quota.updated_at,
+      // Include all-time count for display
+      allTimeMessages: actualMessageCount.allTimeTotalMessages
     })
   } catch (error) {
     console.error('Error fetching user quota:', error)

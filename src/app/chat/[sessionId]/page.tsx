@@ -743,6 +743,8 @@ export default function Chat() {
                     if (session.id !== sessionId) {
                       console.log('[Chat Navigation] Navigating to:', `/chat/${session.id}`)
                       router.push(`/chat/${session.id}`)
+                      // Force page refresh to re-render with new session
+                      setTimeout(() => router.refresh(), 100)
                     } else {
                       console.log('[Chat Navigation] Already on this session, skipping navigation')
                     }
