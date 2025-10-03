@@ -451,7 +451,8 @@ export function useEnhancedApiKeysData() {
         })
       }
     }
-  }, [apiKeys, providerModels, loadingModels, loading, fetchProviderModels])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKeys.length, loading, fetchProviderModels])
 
   // Manual refresh function that clears cache
   const refresh = useCallback(async () => {
