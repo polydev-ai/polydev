@@ -1213,10 +1213,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   const cliSummary = smartCache.getClimiStatusSummary(cliConfigs);
 
   console.log(`[MCP] Smart cache CLI summary:`, {
-    total: cliSummary.total,
-    available: cliSummary.available,
-    authenticated: cliSummary.authenticated,
-    stale: cliSummary.stale
+    hasAnyCli: cliSummary.hasAnyCli,
+    totalAvailable: cliSummary.totalAvailable,
+    totalAuthenticated: cliSummary.totalAuthenticated,
+    availableProviders: cliSummary.availableProviders,
+    authenticatedProviders: cliSummary.authenticatedProviders
   });
   
   console.log(`[MCP] Service role client created successfully`)
