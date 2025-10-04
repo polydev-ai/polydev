@@ -5,14 +5,17 @@ import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboardData } from '../../hooks/useDashboardData'
 import {
-  MessageSquare, TrendingUp, Zap, DollarSign,
-  Activity, Crown, Star, Leaf, BarChart3,
-  Clock, CheckCircle, Database, Sparkles
+  MessageSquare, Zap, DollarSign, Database,
+  Activity, Clock, CheckCircle, TrendingUp,
+  ChevronRight, RefreshCw, Filter, Download
 } from 'lucide-react'
 
 export default function Dashboard() {
   const { user, loading } = useAuth()
   const [quotaData, setQuotaData] = useState<any>(null)
+  const [requestLogs, setRequestLogs] = useState<any[]>([])
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [logsFilter, setLogsFilter] = useState('all')
 
   const {
     stats: realTimeData,
@@ -37,6 +40,31 @@ export default function Dashboard() {
     fetchQuotaData()
   }, [user])
 
+  // Fetch request logs
+  useEffect(() => {
+    const fetchRequestLogs = async () => {
+      if (!user) return
+      setLogsLoading(true)
+      try {
+        const params = new URLSearchParams({ limit: '20', offset: '0' })
+        if (logsFilter !== 'all') params.append('status', logsFilter)
+
+        const response = await fetch(`/api/dashboard/request-logs?${params}`, {
+          credentials: 'include'
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setRequestLogs(data.logs || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch request logs:', error)
+      } finally {
+        setLogsLoading(false)
+      }
+    }
+    fetchRequestLogs()
+  }, [user, logsFilter])
+
   // Refresh data periodically
   useEffect(() => {
     if (user) {
@@ -47,9 +75,9 @@ export default function Dashboard() {
 
   if (loading || dataLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           <p className="text-gray-600 text-sm">Loading dashboard...</p>
         </div>
       </div>
@@ -62,337 +90,316 @@ export default function Dashboard() {
     return num.toString()
   }
 
+  const formatTimeAgo = (timestamp: string) => {
+    const now = new Date()
+    const time = new Date(timestamp)
+    const diffMs = now.getTime() - time.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+
+    if (diffMins < 1) return 'just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours}h ago`
+
+    const diffDays = Math.floor(diffHours / 24)
+    return `${diffDays}d ago`
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">
-            Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
+            Dashboard
           </h1>
-          <p className="text-sm text-gray-600 mt-1">Track your usage, costs, and model performance</p>
+          <p className="text-sm text-gray-500 mt-1">Monitor usage, costs, and performance</p>
         </div>
 
-        {/* Main Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Main Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
-          {/* Messages Used */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <MessageSquare className="h-5 w-5 text-blue-600" />
-              </div>
+          {/* Messages */}
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Messages</span>
+              <MessageSquare className="h-4 w-4 text-gray-400" />
             </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-gray-900">
-                {quotaData?.used?.messages || 0}
-              </p>
-              <p className="text-sm text-gray-600">
-                of {quotaData?.limits?.messages || '∞'} used
-                {quotaData?.allTimeMessages && (
-                  <span className="text-xs text-gray-500 ml-2">({quotaData.allTimeMessages} all-time)</span>
-                )}
-              </p>
-            </div>
-            {quotaData?.bonusMessages > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <p className="text-xs text-emerald-600 font-medium">+{quotaData.bonusMessages} bonus</p>
-              </div>
-            )}
+            <p className="text-2xl font-semibold text-gray-900">{quotaData?.used?.messages || 0}</p>
+            <p className="text-xs text-gray-500 mt-1">
+              of {quotaData?.limits?.messages || '∞'}
+              {quotaData?.bonusMessages > 0 && <span className="text-emerald-600 ml-1">+{quotaData.bonusMessages}</span>}
+            </p>
           </div>
 
           {/* API Calls */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-purple-50 rounded-lg">
-                <Zap className="h-5 w-5 text-purple-600" />
-              </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">API Calls</span>
+              <Zap className="h-4 w-4 text-gray-400" />
             </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-gray-900">
-                {formatNumber(realTimeData?.totalApiCalls || 0)}
-              </p>
-              <p className="text-sm text-gray-600">model invocations</p>
-            </div>
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500">
-                {realTimeData?.totalMessages || 0} messages × avg {((realTimeData?.totalApiCalls || 0) / Math.max(realTimeData?.totalMessages || 1, 1)).toFixed(1)} models
-              </p>
-            </div>
+            <p className="text-2xl font-semibold text-gray-900">{formatNumber(realTimeData?.totalApiCalls || 0)}</p>
+            <p className="text-xs text-gray-500 mt-1">model invocations</p>
           </div>
 
-          {/* Cost (User-Paid Only) */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-emerald-50 rounded-lg">
-                <DollarSign className="h-5 w-5 text-emerald-600" />
-              </div>
+          {/* Cost */}
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Your Cost</span>
+              <DollarSign className="h-4 w-4 text-gray-400" />
             </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-gray-900">
-                ${(realTimeData?.totalCost || 0).toFixed(2)}
-              </p>
-              <p className="text-sm text-gray-600">API keys + CLI only</p>
-            </div>
-            {realTimeData?.costBreakdown && (
-              <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
-                {realTimeData.costBreakdown.userApiKeys > 0 && (
-                  <p className="text-xs text-gray-500">API: ${realTimeData.costBreakdown.userApiKeys.toFixed(3)}</p>
-                )}
-                {realTimeData.costBreakdown.userCli > 0 && (
-                  <p className="text-xs text-gray-500">CLI: ${realTimeData.costBreakdown.userCli.toFixed(3)}</p>
-                )}
-              </div>
-            )}
+            <p className="text-2xl font-semibold text-gray-900">${(realTimeData?.totalCost || 0).toFixed(2)}</p>
+            <p className="text-xs text-gray-500 mt-1">API keys + CLI only</p>
           </div>
 
           {/* Tokens */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 bg-orange-50 rounded-lg">
-                <Database className="h-5 w-5 text-orange-600" />
-              </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tokens</span>
+              <Database className="h-4 w-4 text-gray-400" />
             </div>
-            <div className="space-y-1">
-              <p className="text-3xl font-bold text-gray-900">
-                {formatNumber(realTimeData?.tokenBreakdown?.total || 0)}
-              </p>
-              <p className="text-sm text-gray-600">total processed</p>
-            </div>
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500">
-                MCP: {formatNumber(realTimeData?.tokenBreakdown?.mcp || 0)} | Chat: {formatNumber(realTimeData?.tokenBreakdown?.chat || 0)}
-              </p>
-            </div>
+            <p className="text-2xl font-semibold text-gray-900">{formatNumber(realTimeData?.tokenBreakdown?.total || 0)}</p>
+            <p className="text-xs text-gray-500 mt-1">all sources</p>
           </div>
         </div>
 
-        {/* Perspectives Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Perspectives */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 
           {/* Premium */}
-          <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-md p-6 text-white">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                <Crown className="h-5 w-5" />
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Premium</p>
+                <p className="text-xs text-gray-500">Highest quality</p>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium opacity-90">Premium Perspectives</p>
-                <p className="text-xs opacity-75">Highest quality models</p>
-              </div>
+              <span className="text-xs text-gray-400">{quotaData?.percentages?.premium?.toFixed(0) || 0}%</span>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold">{quotaData?.remaining?.premium || 0}</p>
-                  <p className="text-sm opacity-75">remaining</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{quotaData?.used?.premium || 0} / {quotaData?.limits?.premium || 0}</p>
-                  <p className="text-xs opacity-75">{quotaData?.percentages?.premium?.toFixed(0) || 0}% used</p>
-                </div>
-              </div>
-              <div className="h-2 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                <div
-                  className="h-full bg-white rounded-full transition-all duration-300"
-                  style={{ width: `${quotaData?.percentages?.premium || 0}%` }}
-                />
-              </div>
+            <div className="flex items-baseline justify-between">
+              <p className="text-2xl font-semibold text-gray-900">{quotaData?.remaining?.premium || 0}</p>
+              <p className="text-sm text-gray-500">{quotaData?.used?.premium || 0} / {quotaData?.limits?.premium || 0}</p>
+            </div>
+            <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                style={{ width: `${quotaData?.percentages?.premium || 0}%` }}
+              />
             </div>
           </div>
 
           {/* Normal */}
-          <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-md p-6 text-white">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                <Star className="h-5 w-5" />
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Normal</p>
+                <p className="text-xs text-gray-500">Balanced</p>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium opacity-90">Normal Perspectives</p>
-                <p className="text-xs opacity-75">Balanced performance</p>
-              </div>
+              <span className="text-xs text-gray-400">{quotaData?.percentages?.normal?.toFixed(0) || 0}%</span>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold">{quotaData?.remaining?.normal || 0}</p>
-                  <p className="text-sm opacity-75">remaining</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{quotaData?.used?.normal || 0} / {quotaData?.limits?.normal || 0}</p>
-                  <p className="text-xs opacity-75">{quotaData?.percentages?.normal?.toFixed(0) || 0}% used</p>
-                </div>
-              </div>
-              <div className="h-2 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                <div
-                  className="h-full bg-white rounded-full transition-all duration-300"
-                  style={{ width: `${quotaData?.percentages?.normal || 0}%` }}
-                />
-              </div>
+            <div className="flex items-baseline justify-between">
+              <p className="text-2xl font-semibold text-gray-900">{quotaData?.remaining?.normal || 0}</p>
+              <p className="text-sm text-gray-500">{quotaData?.used?.normal || 0} / {quotaData?.limits?.normal || 0}</p>
+            </div>
+            <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                style={{ width: `${quotaData?.percentages?.normal || 0}%` }}
+              />
             </div>
           </div>
 
           {/* Eco */}
-          <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md p-6 text-white">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                <Leaf className="h-5 w-5" />
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Eco</p>
+                <p className="text-xs text-gray-500">Cost-effective</p>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium opacity-90">Eco Perspectives</p>
-                <p className="text-xs opacity-75">Cost-effective models</p>
-              </div>
+              <span className="text-xs text-gray-400">{quotaData?.percentages?.eco?.toFixed(0) || 0}%</span>
             </div>
-            <div className="space-y-3">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold">{quotaData?.remaining?.eco || 0}</p>
-                  <p className="text-sm opacity-75">remaining</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{quotaData?.used?.eco || 0} / {quotaData?.limits?.eco || 0}</p>
-                  <p className="text-xs opacity-75">{quotaData?.percentages?.eco?.toFixed(0) || 0}% used</p>
-                </div>
-              </div>
-              <div className="h-2 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                <div
-                  className="h-full bg-white rounded-full transition-all duration-300"
-                  style={{ width: `${quotaData?.percentages?.eco || 0}%` }}
-                />
-              </div>
+            <div className="flex items-baseline justify-between">
+              <p className="text-2xl font-semibold text-gray-900">{quotaData?.remaining?.eco || 0}</p>
+              <p className="text-sm text-gray-500">{quotaData?.used?.eco || 0} / {quotaData?.limits?.eco || 0}</p>
+            </div>
+            <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                style={{ width: `${quotaData?.percentages?.eco || 0}%` }}
+              />
             </div>
           </div>
         </div>
 
         {/* Performance Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2 bg-indigo-50 rounded-lg">
-                <Clock className="h-5 w-5 text-indigo-600" />
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center space-x-3">
+              <Clock className="h-5 w-5 text-gray-400" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Avg Response Time</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">{realTimeData?.avgResponseTime || 0}ms</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Avg Response</p>
-                <p className="text-2xl font-bold text-gray-900">{realTimeData?.responseTime || 0}ms</p>
-              </div>
-            </div>
-            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-indigo-500 rounded-full"
-                style={{ width: `${Math.min((realTimeData?.responseTime || 0) / 10, 100)}%` }}
-              />
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2 bg-green-50 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center space-x-3">
+              <CheckCircle className="h-5 w-5 text-gray-400" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Success Rate</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">{realTimeData?.uptime || 'N/A'}</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Success Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{realTimeData?.uptime || '99.9%'}</p>
-              </div>
-            </div>
-            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 rounded-full" style={{ width: realTimeData?.uptime || '99.9%' }} />
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 group relative">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Activity className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Active Providers</p>
-                <p className="text-2xl font-bold text-gray-900">{realTimeData?.activeProviders || 0}</p>
+          <div className="bg-white border border-gray-200 rounded-lg p-5">
+            <div className="flex items-center space-x-3">
+              <Activity className="h-5 w-5 text-gray-400" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">Active Providers</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">{realTimeData?.activeProviders || 0}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500">{realTimeData?.totalApiKeys || 0} user API keys</p>
+          </div>
+        </div>
 
-            {/* Hover details */}
-            {realTimeData?.providerDetails && realTimeData.providerDetails.length > 0 && (
-              <div className="absolute left-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                <p className="text-xs font-semibold text-gray-700 mb-2">Provider Details:</p>
-                <div className="space-y-2">
-                  {realTimeData.providerDetails.map((provider: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-gray-900">{provider.name}</span>
-                      <span className="text-gray-500">
-                        {provider.source.includes('admin') && provider.source.includes('user')
-                          ? 'Admin + User'
-                          : provider.source.includes('admin')
-                          ? 'Admin'
-                          : 'User'}
-                      </span>
-                    </div>
-                  ))}
+        {/* Request Logs */}
+        <div className="bg-white border border-gray-200 rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <h2 className="text-lg font-semibold text-gray-900">Recent Requests</h2>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setLogsFilter('all')}
+                    className={`px-3 py-1 text-xs font-medium rounded ${
+                      logsFilter === 'all'
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setLogsFilter('success')}
+                    className={`px-3 py-1 text-xs font-medium rounded ${
+                      logsFilter === 'success'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Success
+                  </button>
+                  <button
+                    onClick={() => setLogsFilter('error')}
+                    className={`px-3 py-1 text-xs font-medium rounded ${
+                      logsFilter === 'error'
+                        ? 'bg-red-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    Errors
+                  </button>
                 </div>
               </div>
+              <Link
+                href="/dashboard/activity"
+                className="text-sm text-gray-600 hover:text-gray-900 flex items-center space-x-1"
+              >
+                <span>View all</span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="divide-y divide-gray-200">
+            {logsLoading ? (
+              <div className="px-6 py-8 text-center">
+                <RefreshCw className="h-6 w-6 text-gray-400 animate-spin mx-auto" />
+                <p className="text-sm text-gray-500 mt-2">Loading requests...</p>
+              </div>
+            ) : requestLogs.length === 0 ? (
+              <div className="px-6 py-8 text-center">
+                <p className="text-sm text-gray-500">No requests found</p>
+              </div>
+            ) : (
+              requestLogs.map((log: any, idx: number) => (
+                <div key={idx} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          log.status === 'success' || log.total_tokens > 0
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {log.status === 'success' || log.total_tokens > 0 ? 'Success' : 'Error'}
+                        </span>
+                        <span className="text-sm font-medium text-gray-900 truncate">
+                          {log.provider_responses && Object.keys(log.provider_responses).length > 0
+                            ? Object.keys(log.provider_responses).join(', ')
+                            : log.source || 'Unknown'}
+                        </span>
+                        {log.source && (
+                          <span className="text-xs text-gray-500">
+                            {log.source === 'mcp' ? 'MCP' : 'Chat'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500">
+                        <span>{log.total_tokens?.toLocaleString() || 0} tokens</span>
+                        <span>${(log.total_cost || 0).toFixed(4)}</span>
+                        {log.response_time_ms && (
+                          <span>{log.response_time_ms}ms</span>
+                        )}
+                        <span>{formatTimeAgo(log.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Sparkles className="h-5 w-5 mr-2 text-blue-600" />
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Link
-              href="/chat"
-              className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all group"
-            >
-              <MessageSquare className="h-5 w-5 text-gray-400 group-hover:text-blue-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">New Chat</p>
-                <p className="text-xs text-gray-500">Start conversation</p>
-              </div>
-            </Link>
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link
+            href="/dashboard/activity"
+            className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all group"
+          >
+            <div className="flex items-center space-x-3">
+              <TrendingUp className="h-5 w-5 text-gray-400" />
+              <span className="text-sm font-medium text-gray-900">View Analytics</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+          </Link>
 
-            <Link
-              href="/dashboard/models"
-              className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all group"
-            >
-              <BarChart3 className="h-5 w-5 text-gray-400 group-hover:text-purple-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">API Keys</p>
-                <p className="text-xs text-gray-500">Manage providers</p>
-              </div>
-            </Link>
+          <Link
+            href="/dashboard/models"
+            className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all group"
+          >
+            <div className="flex items-center space-x-3">
+              <Zap className="h-5 w-5 text-gray-400" />
+              <span className="text-sm font-medium text-gray-900">Manage Models</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+          </Link>
 
-            <Link
-              href="/dashboard/subscription"
-              className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all group"
-            >
-              <Crown className="h-5 w-5 text-gray-400 group-hover:text-emerald-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">Subscription</p>
-                <p className="text-xs text-gray-500">Manage plan</p>
-              </div>
-            </Link>
-
-            <Link
-              href="/dashboard/usage"
-              className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-all group"
-            >
-              <TrendingUp className="h-5 w-5 text-gray-400 group-hover:text-orange-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">View Usage</p>
-                <p className="text-xs text-gray-500">Detailed analytics</p>
-              </div>
-            </Link>
-          </div>
+          <Link
+            href="/dashboard/subscription"
+            className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all group"
+          >
+            <div className="flex items-center space-x-3">
+              <DollarSign className="h-5 w-5 text-gray-400" />
+              <span className="text-sm font-medium text-gray-900">Subscription</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+          </Link>
         </div>
-
       </div>
     </div>
   )
