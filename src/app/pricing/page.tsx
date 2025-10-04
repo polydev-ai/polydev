@@ -77,8 +77,8 @@ export default function Pricing() {
       cta: 'Start Free',
       highlighted: false,
       icon: (
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 border-2 border-slate-300 flex items-center justify-center">
-          <svg className="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-16 h-16 rounded-lg border border-slate-200 flex items-center justify-center">
+          <svg className="w-8 h-8 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         </div>
@@ -99,7 +99,7 @@ export default function Pricing() {
       cta: 'Upgrade to Plus',
       highlighted: true,
       icon: (
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg">
+        <div className="w-16 h-16 rounded-lg bg-slate-900 flex items-center justify-center">
           <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
@@ -122,8 +122,8 @@ export default function Pricing() {
       cta: 'Upgrade to Pro',
       highlighted: false,
       icon: (
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-16 h-16 rounded-lg border border-slate-200 flex items-center justify-center">
+          <svg className="w-8 h-8 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
           </svg>
         </div>
@@ -165,7 +165,7 @@ export default function Pricing() {
   const FeatureValue = ({ value }: { value: string | boolean }) => {
     if (typeof value === 'boolean') {
       return value ? (
-        <span className="inline-flex items-center justify-center w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm font-bold">
+        <span className="inline-flex items-center justify-center w-6 h-6 bg-slate-900 text-white rounded-full text-sm font-bold">
           ✓
         </span>
       ) : (
@@ -178,14 +178,12 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-orange-50 via-white to-violet-50">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.02)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-
+      <section className="relative overflow-hidden bg-white border-b border-slate-200">
         <div className="relative max-w-7xl mx-auto px-6 pt-20 pb-16">
           <div className="text-center">
             <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-8">
               Simple pricing.<br />
-              <span className="bg-gradient-to-r from-orange-600 to-violet-600 bg-clip-text text-transparent">No surprises.</span>
+              <span className="text-slate-900">No surprises.</span>
             </h1>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-12 leading-relaxed">
               Try for free with 200 messages, then upgrade to Plus for $25/month or Pro for $60/month.
@@ -202,15 +200,15 @@ export default function Pricing() {
             {plans.map((plan, index) => (
               <div
                 key={index}
-                className={`bg-white rounded-3xl p-8 relative transition-all duration-300 hover:scale-105 hover:shadow-2xl ${
+                className={`rounded-xl p-8 relative border ${
                   plan.highlighted
-                    ? 'ring-2 ring-orange-500 shadow-xl shadow-orange-500/20 bg-gradient-to-br from-orange-50 to-violet-50'
-                    : 'border-2 border-slate-200 hover:border-orange-200 shadow-lg'
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white border-slate-200'
                 }`}
               >
                 {plan.highlighted && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-orange-500 to-violet-500 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg">
+                    <span className="bg-white text-slate-900 px-6 py-1 rounded-full text-sm font-semibold">
                       Most Popular
                     </span>
                   </div>
@@ -218,23 +216,23 @@ export default function Pricing() {
 
                 <div className="text-center mb-8">
                   <div className="flex justify-center mb-6">{plan.icon}</div>
-                  <h3 className="text-3xl font-bold text-slate-900 mb-4">
+                  <h3 className={`text-3xl font-bold mb-4 ${plan.highlighted ? 'text-white' : 'text-slate-900'}`}>
                     {plan.name}
                   </h3>
                   <div className="mb-6">
-                    <span className="text-5xl font-bold text-slate-900">
+                    <span className={`text-5xl font-bold ${plan.highlighted ? 'text-white' : 'text-slate-900'}`}>
                       {plan.price}
                     </span>
-                    <span className="text-xl text-slate-600 ml-2">
+                    <span className={`text-xl ml-2 ${plan.highlighted ? 'text-slate-400' : 'text-slate-600'}`}>
                       {plan.period}
                     </span>
                     {plan.annualPrice && (
-                      <div className="text-sm text-emerald-600 font-medium mt-2">
+                      <div className={`text-sm font-medium mt-2 ${plan.highlighted ? 'text-slate-400' : 'text-slate-600'}`}>
                         or {plan.annualPrice}/month billed annually
                       </div>
                     )}
                   </div>
-                  <p className="text-slate-600 text-lg">
+                  <p className={`text-lg ${plan.highlighted ? 'text-slate-400' : 'text-slate-600'}`}>
                     {plan.description}
                   </p>
                 </div>
@@ -242,20 +240,20 @@ export default function Pricing() {
                 <ul className="space-y-4 mb-8">
                   {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-start">
-                      <svg className="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-5 h-5 mr-3 mt-0.5 flex-shrink-0 ${plan.highlighted ? 'text-white' : 'text-slate-900'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-slate-700 text-sm leading-relaxed">{feature}</span>
+                      <span className={`text-sm leading-relaxed ${plan.highlighted ? 'text-slate-300' : 'text-slate-700'}`}>{feature}</span>
                     </li>
                   ))}
                 </ul>
 
                 <Link
                   href={plan.highlighted ? "/dashboard/subscription" : (isAuthenticated ? "/dashboard" : "/auth")}
-                  className={`block w-full py-4 px-6 rounded-xl font-semibold text-center transition-all duration-300 transform hover:scale-105 ${
+                  className={`block w-full py-4 px-6 rounded-lg font-semibold text-center transition-colors ${
                     plan.highlighted
-                      ? 'bg-gradient-to-r from-orange-500 to-violet-500 text-white hover:from-orange-600 hover:to-violet-600 shadow-lg shadow-orange-500/25'
-                      : 'bg-slate-900 text-white hover:bg-slate-800 shadow-lg'
+                      ? 'bg-white text-slate-900 hover:bg-slate-100'
+                      : 'bg-slate-900 text-white hover:bg-slate-800'
                   }`}
                 >
                   {plan.cta}
@@ -267,7 +265,7 @@ export default function Pricing() {
       </section>
 
       {/* Feature Comparison Table */}
-      <section className="py-16 bg-gradient-to-br from-orange-50 to-violet-50">
+      <section className="py-16 bg-white border-t border-slate-200">
         <div className="max-w-5xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
@@ -278,8 +276,8 @@ export default function Pricing() {
             </p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="px-8 py-6 bg-gradient-to-r from-orange-500 to-violet-500">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-8 py-6 bg-slate-900">
               <h3 className="text-2xl font-bold text-white">
                 Feature Comparison
               </h3>
@@ -309,7 +307,7 @@ export default function Pricing() {
                       <tr key={`category-${categoryIndex}`}>
                         <td
                           colSpan={4}
-                          className="px-6 py-4 bg-gradient-to-r from-orange-50 to-violet-50 text-sm font-bold text-slate-900"
+                          className="px-6 py-4 bg-slate-50 text-sm font-bold text-slate-900"
                         >
                           {category.category}
                         </td>
@@ -416,12 +414,12 @@ export default function Pricing() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 bg-gradient-to-r from-orange-500 to-violet-500">
+      <section className="py-24 bg-slate-900">
         <div className="max-w-5xl mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Ready to get unstuck faster?
           </h2>
-          <p className="text-xl text-orange-100 max-w-3xl mx-auto mb-12">
+          <p className="text-xl text-slate-400 max-w-3xl mx-auto mb-12">
             Start with 200 free messages and see how multiple AI models can help you
             debug better, design smarter, and code more efficiently.
           </p>
@@ -429,19 +427,19 @@ export default function Pricing() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
             <Link
               href={isAuthenticated ? "/dashboard" : "/auth"}
-              className="bg-white text-orange-600 hover:bg-orange-50 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
+              className="bg-white text-slate-900 hover:bg-slate-100 font-bold py-4 px-8 rounded-lg text-lg transition-colors"
             >
               Start Free Today →
             </Link>
             <Link
               href="/dashboard/subscription"
-              className="border-2 border-white text-white hover:bg-white hover:text-orange-600 font-bold py-4 px-8 rounded-xl text-lg transition-all duration-200"
+              className="border border-white text-white hover:bg-white hover:text-slate-900 font-bold py-4 px-8 rounded-lg text-lg transition-colors"
             >
               Upgrade to Pro
             </Link>
           </div>
 
-          <div className="text-orange-100 text-sm">
+          <div className="text-slate-400 text-sm">
             ✓ 200 free messages  ✓ No credit card required  ✓ Cancel anytime
           </div>
         </div>
