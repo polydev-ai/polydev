@@ -82,19 +82,19 @@ const TIER_ICONS = {
 
 const TIER_COLORS = {
   premium: {
-    bg: 'from-purple-500 to-pink-600',
-    badge: 'bg-purple-100 text-purple-800',
-    progress: 'bg-purple-500'
+    bg: 'bg-slate-900',
+    badge: 'bg-slate-100 text-slate-900',
+    progress: 'bg-slate-900'
   },
   normal: {
-    bg: 'from-blue-500 to-cyan-600',
-    badge: 'bg-blue-100 text-blue-800',
-    progress: 'bg-blue-500'
+    bg: 'bg-slate-900',
+    badge: 'bg-slate-100 text-slate-900',
+    progress: 'bg-slate-900'
   },
   eco: {
-    bg: 'from-green-500 to-emerald-600',
-    badge: 'bg-green-100 text-green-800',
-    progress: 'bg-green-500'
+    bg: 'bg-slate-900',
+    badge: 'bg-slate-100 text-slate-900',
+    progress: 'bg-slate-900'
   }
 }
 
@@ -135,7 +135,7 @@ export default function CreditsPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+          <RefreshCw className="h-8 w-8 animate-spin text-slate-900" />
         </div>
       </div>
     )
@@ -146,7 +146,7 @@ export default function CreditsPage() {
       <div className="container mx-auto p-6">
         <Card>
           <CardContent className="p-6">
-            <p className="text-red-600">{error || 'Failed to load quota data'}</p>
+            <p className="text-slate-900 font-medium">{error || 'Failed to load quota data'}</p>
             <Button onClick={fetchQuotaData} className="mt-4">
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry
@@ -185,13 +185,13 @@ export default function CreditsPage() {
       </div>
 
       {/* Plan Overview */}
-      <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+      <Card className="border border-slate-200 bg-white">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Your Plan</span>
             {quotaData.planTier === 'free' && (
               <Link href="/dashboard/subscription">
-                <Button size="sm" className="bg-gradient-to-r from-orange-500 to-amber-500">
+                <Button size="sm" className="bg-slate-900 text-white hover:bg-slate-700">
                   Upgrade <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               </Link>
@@ -214,7 +214,7 @@ export default function CreditsPage() {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Bonus Messages</p>
               <p className="text-2xl font-bold flex items-center">
-                <Gift className="h-5 w-5 mr-2 text-green-600" />
+                <Gift className="h-5 w-5 mr-2 text-slate-900" />
                 {quotaData.bonusMessages}
               </p>
             </div>
@@ -257,13 +257,13 @@ export default function CreditsPage() {
           {/* Perspective Tier Cards */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Premium Tier */}
-            <Card className="border-2 border-purple-200">
-              <CardHeader className={`bg-gradient-to-r ${TIER_COLORS.premium.bg} text-white rounded-t-lg`}>
+            <Card className="border border-slate-200">
+              <CardHeader className={`${TIER_COLORS.premium.bg} text-white rounded-t-lg`}>
                 <CardTitle className="flex items-center">
                   <Crown className="h-5 w-5 mr-2" />
                   Premium Perspectives
                 </CardTitle>
-                <CardDescription className="text-purple-100">
+                <CardDescription className="text-slate-100">
                   Highest quality models (GPT-5, Claude Sonnet 4, Gemini Pro)
                 </CardDescription>
               </CardHeader>
@@ -295,13 +295,13 @@ export default function CreditsPage() {
             </Card>
 
             {/* Normal Tier */}
-            <Card className="border-2 border-blue-200">
-              <CardHeader className={`bg-gradient-to-r ${TIER_COLORS.normal.bg} text-white rounded-t-lg`}>
+            <Card className="border border-slate-200">
+              <CardHeader className={`${TIER_COLORS.normal.bg} text-white rounded-t-lg`}>
                 <CardTitle className="flex items-center">
                   <Star className="h-5 w-5 mr-2" />
                   Normal Perspectives
                 </CardTitle>
-                <CardDescription className="text-blue-100">
+                <CardDescription className="text-slate-100">
                   Balanced performance (GPT-5 Mini, Claude Haiku, Gemini Flash)
                 </CardDescription>
               </CardHeader>
@@ -333,13 +333,13 @@ export default function CreditsPage() {
             </Card>
 
             {/* Eco Tier */}
-            <Card className="border-2 border-green-200">
-              <CardHeader className={`bg-gradient-to-r ${TIER_COLORS.eco.bg} text-white rounded-t-lg`}>
+            <Card className="border border-slate-200">
+              <CardHeader className={`${TIER_COLORS.eco.bg} text-white rounded-t-lg`}>
                 <CardTitle className="flex items-center">
                   <Leaf className="h-5 w-5 mr-2" />
                   Eco Perspectives
                 </CardTitle>
-                <CardDescription className="text-green-100">
+                <CardDescription className="text-slate-100">
                   Cost-effective models (Llama, Mistral, Phi)
                 </CardDescription>
               </CardHeader>
@@ -385,7 +385,7 @@ export default function CreditsPage() {
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium flex items-center">
-                        <Crown className="h-4 w-4 mr-2 text-purple-600" />
+                        <Crown className="h-4 w-4 mr-2 text-slate-900" />
                         Premium
                       </span>
                       <Badge variant="outline">{quotaData.tierUsage.premium.count} calls</Badge>
@@ -402,7 +402,7 @@ export default function CreditsPage() {
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium flex items-center">
-                        <Star className="h-4 w-4 mr-2 text-blue-600" />
+                        <Star className="h-4 w-4 mr-2 text-slate-900" />
                         Normal
                       </span>
                       <Badge variant="outline">{quotaData.tierUsage.normal.count} calls</Badge>
@@ -419,7 +419,7 @@ export default function CreditsPage() {
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium flex items-center">
-                        <Leaf className="h-4 w-4 mr-2 text-green-600" />
+                        <Leaf className="h-4 w-4 mr-2 text-slate-900" />
                         Eco
                       </span>
                       <Badge variant="outline">{quotaData.tierUsage.eco.count} calls</Badge>
@@ -435,7 +435,7 @@ export default function CreditsPage() {
                 </div>
 
                 {/* Total Cost */}
-                <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border">
+                <div className="p-6 bg-white rounded-lg border border-slate-200">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Total Estimated Cost</p>
@@ -443,7 +443,7 @@ export default function CreditsPage() {
                         ${(quotaData.tierUsage.premium.cost + quotaData.tierUsage.normal.cost + quotaData.tierUsage.eco.cost).toFixed(4)}
                       </p>
                     </div>
-                    <Activity className="h-12 w-12 text-gray-400" />
+                    <Activity className="h-12 w-12 text-slate-200" />
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     Based on {quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count} total API calls this month
@@ -465,13 +465,13 @@ export default function CreditsPage() {
                 {/* Source Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* CLI Requests */}
-                  <div className="p-4 border rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                  <div className="p-4 border rounded-lg bg-white border-slate-200">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-medium flex items-center">
-                        <Terminal className="h-4 w-4 mr-2 text-blue-600" />
+                        <Terminal className="h-4 w-4 mr-2 text-slate-900" />
                         CLI Tools
                       </span>
-                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                      <Badge variant="outline" className="bg-slate-100 text-slate-900">
                         {quotaData.sourceUsage?.cli?.requests || 0} requests
                       </Badge>
                     </div>
@@ -488,13 +488,13 @@ export default function CreditsPage() {
                   </div>
 
                   {/* Web Requests */}
-                  <div className="p-4 border rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+                  <div className="p-4 border rounded-lg bg-white border-slate-200">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-medium flex items-center">
-                        <Globe className="h-4 w-4 mr-2 text-green-600" />
+                        <Globe className="h-4 w-4 mr-2 text-slate-900" />
                         Web Dashboard
                       </span>
-                      <Badge variant="outline" className="bg-green-100 text-green-800">
+                      <Badge variant="outline" className="bg-slate-100 text-slate-900">
                         {quotaData.sourceUsage?.web?.requests || 0} requests
                       </Badge>
                     </div>
@@ -511,13 +511,13 @@ export default function CreditsPage() {
                   </div>
 
                   {/* User Keys */}
-                  <div className="p-4 border rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                  <div className="p-4 border rounded-lg bg-white border-slate-200">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-medium flex items-center">
-                        <Key className="h-4 w-4 mr-2 text-purple-600" />
+                        <Key className="h-4 w-4 mr-2 text-slate-900" />
                         Your API Keys
                       </span>
-                      <Badge variant="outline" className="bg-purple-100 text-purple-800">
+                      <Badge variant="outline" className="bg-slate-100 text-slate-900">
                         {quotaData.sourceUsage?.user_key?.requests || 0} requests
                       </Badge>
                     </div>
@@ -534,13 +534,13 @@ export default function CreditsPage() {
                   </div>
 
                   {/* Admin Credits */}
-                  <div className="p-4 border rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
+                  <div className="p-4 border rounded-lg bg-white border-slate-200">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-sm font-medium flex items-center">
-                        <Database className="h-4 w-4 mr-2 text-amber-600" />
+                        <Database className="h-4 w-4 mr-2 text-slate-900" />
                         Platform Credits
                       </span>
-                      <Badge variant="outline" className="bg-amber-100 text-amber-800">
+                      <Badge variant="outline" className="bg-slate-100 text-slate-900">
                         {quotaData.sourceUsage?.admin_credits?.requests || 0} requests
                       </Badge>
                     </div>
@@ -558,7 +558,7 @@ export default function CreditsPage() {
                 </div>
 
                 {/* Source Distribution */}
-                <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border">
+                <div className="p-6 bg-white rounded-lg border border-slate-200">
                   <h3 className="text-lg font-semibold mb-4">Request Distribution</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -566,28 +566,28 @@ export default function CreditsPage() {
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="flex items-center">
-                            <Terminal className="h-3 w-3 mr-2 text-blue-600" />
+                            <Terminal className="h-3 w-3 mr-2 text-slate-900" />
                             CLI
                           </span>
                           <span className="font-medium">{quotaData.sourceUsage?.cli?.requests || 0}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="flex items-center">
-                            <Globe className="h-3 w-3 mr-2 text-green-600" />
+                            <Globe className="h-3 w-3 mr-2 text-slate-900" />
                             Web
                           </span>
                           <span className="font-medium">{quotaData.sourceUsage?.web?.requests || 0}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="flex items-center">
-                            <Key className="h-3 w-3 mr-2 text-purple-600" />
+                            <Key className="h-3 w-3 mr-2 text-slate-900" />
                             User Keys
                           </span>
                           <span className="font-medium">{quotaData.sourceUsage?.user_key?.requests || 0}</span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span className="flex items-center">
-                            <Database className="h-3 w-3 mr-2 text-amber-600" />
+                            <Database className="h-3 w-3 mr-2 text-slate-900" />
                             Platform
                           </span>
                           <span className="font-medium">{quotaData.sourceUsage?.admin_credits?.requests || 0}</span>
@@ -624,9 +624,9 @@ export default function CreditsPage() {
 
                 {/* Info Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="p-4 bg-white border border-slate-200 rounded-lg">
                     <div className="flex items-start">
-                      <Terminal className="h-5 w-5 text-blue-600 mr-3 mt-0.5" />
+                      <Terminal className="h-5 w-5 text-slate-900 mr-3 mt-0.5" />
                       <div>
                         <h4 className="font-semibold text-sm mb-1">CLI Tools</h4>
                         <p className="text-xs text-muted-foreground">
@@ -635,9 +635,9 @@ export default function CreditsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="p-4 bg-white border border-slate-200 rounded-lg">
                     <div className="flex items-start">
-                      <Globe className="h-5 w-5 text-green-600 mr-3 mt-0.5" />
+                      <Globe className="h-5 w-5 text-slate-900 mr-3 mt-0.5" />
                       <div>
                         <h4 className="font-semibold text-sm mb-1">Web Dashboard</h4>
                         <p className="text-xs text-muted-foreground">
@@ -646,9 +646,9 @@ export default function CreditsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="p-4 bg-white border border-slate-200 rounded-lg">
                     <div className="flex items-start">
-                      <Key className="h-5 w-5 text-purple-600 mr-3 mt-0.5" />
+                      <Key className="h-5 w-5 text-slate-900 mr-3 mt-0.5" />
                       <div>
                         <h4 className="font-semibold text-sm mb-1">Your API Keys</h4>
                         <p className="text-xs text-muted-foreground">
@@ -657,9 +657,9 @@ export default function CreditsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="p-4 bg-white border border-slate-200 rounded-lg">
                     <div className="flex items-start">
-                      <Database className="h-5 w-5 text-amber-600 mr-3 mt-0.5" />
+                      <Database className="h-5 w-5 text-slate-900 mr-3 mt-0.5" />
                       <div>
                         <h4 className="font-semibold text-sm mb-1">Platform Credits</h4>
                         <p className="text-xs text-muted-foreground">
@@ -678,7 +678,7 @@ export default function CreditsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Gift className="h-5 w-5 mr-2 text-green-600" />
+                <Gift className="h-5 w-5 mr-2 text-slate-900" />
                 Bonus Messages
               </CardTitle>
               <CardDescription>
@@ -687,13 +687,13 @@ export default function CreditsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-200">
+                <div className="p-6 bg-white rounded-lg border border-slate-200">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Available Bonus Messages</p>
-                      <p className="text-4xl font-bold text-green-600">{quotaData.bonusMessages}</p>
+                      <p className="text-4xl font-bold text-slate-900">{quotaData.bonusMessages}</p>
                     </div>
-                    <Gift className="h-16 w-16 text-green-600 opacity-50" />
+                    <Gift className="h-16 w-16 text-slate-200 opacity-50" />
                   </div>
                   <p className="text-sm text-muted-foreground mt-4">
                     Bonus messages are used automatically when your regular quota is exhausted
@@ -701,8 +701,8 @@ export default function CreditsPage() {
                 </div>
 
                 {quotaData.bonusMessages === 0 && (
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                    <p className="text-sm text-slate-900">
                       You don't have any bonus messages currently. Check back later for promotions!
                     </p>
                   </div>
@@ -715,7 +715,7 @@ export default function CreditsPage() {
 
       {/* Upgrade CTA for Free Users */}
       {quotaData.planTier === 'free' && (
-        <Card className="border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50">
+        <Card className="border border-slate-200 bg-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -725,7 +725,7 @@ export default function CreditsPage() {
                 </p>
               </div>
               <Link href="/dashboard/subscription">
-                <Button className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                <Button className="bg-slate-900 text-white hover:bg-slate-700">
                   <Zap className="h-4 w-4 mr-2" />
                   Upgrade Now
                 </Button>
