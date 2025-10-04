@@ -101,7 +101,7 @@ export default function BillingPage() {
     switch (status) {
       case 'paid':
       case 'completed':
-        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Paid</Badge>
+        return <Badge variant="default" className="bg-slate-100 text-slate-900"><CheckCircle className="w-3 h-3 mr-1" />Paid</Badge>
       case 'pending':
         return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Pending</Badge>
       case 'failed':
@@ -131,10 +131,10 @@ export default function BillingPage() {
     return (
       <div className="max-w-6xl mx-auto p-6">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-300 rounded w-1/4 mb-6"></div>
+          <div className="h-8 bg-slate-200 rounded w-1/4 mb-6"></div>
           <div className="space-y-4">
             {[1,2,3].map(i => (
-              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+              <div key={i} className="h-20 bg-slate-100 rounded"></div>
             ))}
           </div>
         </div>
@@ -145,8 +145,8 @@ export default function BillingPage() {
   return (
     <div className="max-w-6xl mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Billing & Subscriptions</h1>
-        <p className="text-gray-600 dark:text-gray-400">Manage your subscription and view billing history</p>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">Billing & Subscriptions</h1>
+        <p className="text-slate-600">Manage your subscription and view billing history</p>
       </div>
 
       {error && (
@@ -210,7 +210,7 @@ export default function BillingPage() {
         </CardHeader>
         <CardContent>
           {billingHistory.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-8 text-slate-500">
               <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No billing history found</p>
             </div>
@@ -221,10 +221,10 @@ export default function BillingPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="flex-1">
-                        <h3 className="font-medium text-gray-900 dark:text-white">
+                        <h3 className="font-medium text-slate-900">
                           {item.description}
                         </h3>
-                        <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <div className="flex items-center gap-4 text-sm text-slate-600 mt-1">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
                             {formatDate(item.date)}
