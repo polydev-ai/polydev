@@ -337,6 +337,8 @@ export async function GET(request: NextRequest) {
       ? Math.round(allResponseTimes.reduce((sum, time) => sum + time, 0) / allResponseTimes.length)
       : 0
 
+    console.log(`[Dashboard Stats] Response time calculation: ${allResponseTimes.length} samples, avg: ${avgResponseTime}ms`)
+
     // Calculate uptime based on success rate from BOTH MCP and chat sources
     const mcpSuccessfulRequests = (requestLogs || []).filter(log => {
       // Explicit success status
@@ -360,8 +362,9 @@ export async function GET(request: NextRequest) {
       : (chatLogs || []).length // If no chat logs with cost data, assume all chat logs are successful
 
     const totalSuccessfulRequests = mcpSuccessfulRequests + chatSuccessfulRequests
-    const systemUptime = totalApiCalls > 0 ? `${((totalSuccessfulRequests / totalApiCalls) * 100).toFixed(1)}%` : '99.9%'
+    const systemUptime = totalApiCalls > 0 ? `${((totalSuccessfulRequests / totalApiCalls) * 100).toFixed(1)}%` : 'N/A'
 
+    console.log(`[Dashboard Stats] Success rate: ${totalSuccessfulRequests}/${totalApiCalls} = ${systemUptime}`)
 
     // Get provider breakdown based on actual user API keys and usage
     const providerStats = apiKeys?.map(apiKey => {
