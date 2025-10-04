@@ -713,7 +713,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section className="py-20 bg-slate-50">
+      <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
             className="text-center mb-16"
@@ -722,118 +722,119 @@ export default function LandingPage() {
             viewport={{ once: true }}
           >
             <h2 className="text-4xl font-bold text-slate-900 mb-4">Simple Pricing</h2>
-            <p className="text-xl text-slate-600">Credits or your own API keys</p>
+            <p className="text-lg text-slate-600">Credits or your own API keys</p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             <motion.div
-              className="bg-white rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-shadow"
-              initial={{ opacity: 0, y: 30 }}
+              className="border border-slate-200 rounded-xl p-8"
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: 0 }}
             >
-              <div className="text-center mb-8">
+              <div className="mb-8">
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Free</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$0</div>
-                <div className="text-slate-600">Try it out</div>
+                <p className="text-sm text-slate-600">Try it out</p>
               </div>
 
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-slate-700" />
-                  <span>200 Messages</span>
+              <ul className="space-y-3 mb-8 text-sm">
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-slate-900" />
+                  <span className="text-slate-700">200 Messages</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-slate-700" />
-                  <span>10 Premium</span>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-slate-900" />
+                  <span className="text-slate-700">10 Premium</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-slate-700" />
-                  <span>40 Normal</span>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-slate-900" />
+                  <span className="text-slate-700">40 Normal</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-slate-700" />
-                  <span>150 Eco</span>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-slate-900" />
+                  <span className="text-slate-700">150 Eco</span>
                 </li>
               </ul>
 
-              <Link href="/auth" className="w-full block text-center px-6 py-4 border-2 border-slate-200 rounded-xl font-semibold hover:border-slate-300 transition-all hover:shadow-md">
+              <Link href="/auth" className="w-full block text-center px-6 py-3 border border-slate-900 text-slate-900 rounded-lg font-medium hover:bg-slate-900 hover:text-white transition-colors">
                 Get Started
               </Link>
             </motion.div>
 
             <motion.div
-              className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-8 scale-105 shadow-2xl"
-              initial={{ opacity: 0, y: 30 }}
+              className="bg-slate-900 text-white rounded-xl p-8 relative"
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
             >
-              <div className="text-center mb-8">
-                <div className="inline-block bg-white text-slate-900 px-4 py-1 rounded-full text-sm font-bold mb-4">Popular</div>
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white text-slate-900 px-4 py-1 rounded-full text-sm font-semibold">
+                Popular
+              </div>
+              <div className="mb-8">
                 <h3 className="text-2xl font-bold mb-2">Plus</h3>
                 <div className="text-4xl font-bold mb-1">$25</div>
-                <div className="text-slate-400">per month</div>
+                <p className="text-sm text-slate-400">per month</p>
               </div>
 
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+              <ul className="space-y-3 mb-8 text-sm">
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4" />
                   <span>Unlimited Messages</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4" />
                   <span>400 Premium</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4" />
                   <span>1,600 Normal</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4" />
                   <span>4,000 Eco</span>
                 </li>
               </ul>
 
-              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-4 bg-white text-slate-900 rounded-xl font-bold hover:bg-slate-100 transition-all hover:shadow-lg">
+              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-3 bg-white text-slate-900 rounded-lg font-medium hover:bg-slate-100 transition-colors">
                 Upgrade
               </Link>
             </motion.div>
 
             <motion.div
-              className="bg-white rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-shadow"
-              initial={{ opacity: 0, y: 30 }}
+              className="border border-slate-200 rounded-xl p-8"
+              initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
             >
-              <div className="text-center mb-8">
+              <div className="mb-8">
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Pro</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$60</div>
-                <div className="text-slate-600">per month</div>
+                <p className="text-sm text-slate-600">per month</p>
               </div>
 
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-slate-700" />
-                  <span>Unlimited Messages</span>
+              <ul className="space-y-3 mb-8 text-sm">
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-slate-900" />
+                  <span className="text-slate-700">Unlimited Messages</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-slate-700" />
-                  <span>1,200 Premium</span>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-slate-900" />
+                  <span className="text-slate-700">1,200 Premium</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-slate-700" />
-                  <span>4,800 Normal</span>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-slate-900" />
+                  <span className="text-slate-700">4,800 Normal</span>
                 </li>
-                <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-slate-700" />
-                  <span>10,000 Eco</span>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-slate-900" />
+                  <span className="text-slate-700">10,000 Eco</span>
                 </li>
               </ul>
 
-              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-4 bg-gradient-to-r from-slate-900 to-slate-700 text-white rounded-xl font-semibold hover:from-slate-800 hover:to-slate-600 transition-all hover:shadow-lg">
+              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors">
                 Upgrade
               </Link>
             </motion.div>
