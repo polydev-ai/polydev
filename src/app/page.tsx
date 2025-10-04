@@ -244,12 +244,12 @@ export default function LandingPage() {
             className="text-center max-w-4xl mx-auto mb-16"
           >
             <h1 className="text-5xl sm:text-7xl font-bold text-slate-900 mb-6 leading-tight">
-              Get Multiple AI Perspectives
+              Stuck? Get Multiple
               <br />
-              <span className="text-slate-600">Instantly</span>
+              <span className="text-slate-600">AI Solutions Instantly</span>
             </h1>
             <p className="text-xl text-slate-600 mb-8 leading-relaxed">
-              Query Claude, GPT, Gemini, and {stats.models}+ other models simultaneously. Get diverse solutions when you're stuck, all from your editor.
+              When debugging gets tough, query Claude, GPT, Gemini, and {stats.models}+ models at once. Different problems need different perspectives—get them all from your editor.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
@@ -476,8 +476,8 @@ export default function LandingPage() {
                   <div className="space-y-3">
                     <div>
                       <div className="text-sm font-medium text-slate-700 mb-2">Claude Code / Cline</div>
-                      <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs overflow-x-auto">
-                        <pre className="text-slate-300">{`{
+                      <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 text-sm overflow-x-auto">
+                        <pre className="text-slate-100 font-mono">{`{
   "mcpServers": {
     "polydev": {
       "command": "npx",

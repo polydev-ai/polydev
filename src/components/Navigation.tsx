@@ -107,6 +107,11 @@ export default function Navigation() {
     return pathname.startsWith(href)
   }
 
+  // Don't render navigation on landing page - it has its own custom nav
+  if (pathname === '/') {
+    return null
+  }
+
   return (
     <nav className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-lg border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-[100]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
