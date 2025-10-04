@@ -19,6 +19,8 @@ export default function Dashboard() {
 
   const {
     stats: realTimeData,
+    providerAnalytics,
+    modelAnalytics,
     loading: dataLoading,
     refresh
   } = useDashboardData()
@@ -240,7 +242,7 @@ export default function Dashboard() {
               <Clock className="h-5 w-5 text-gray-400" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-900">Avg Response Time</p>
-                <p className="text-xl font-semibold text-gray-900 mt-1">{realTimeData?.avgResponseTime || 0}ms</p>
+                <p className="text-xl font-semibold text-gray-900 mt-1">{realTimeData?.responseTime || 0}ms</p>
               </div>
             </div>
           </div>
@@ -332,16 +334,16 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          log.status === 'success' || log.total_tokens > 0
+                          log.status === 'success' || log.totalTokens > 0
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {log.status === 'success' || log.total_tokens > 0 ? 'Success' : 'Error'}
+                          {log.status === 'success' || log.totalTokens > 0 ? 'Success' : 'Error'}
                         </span>
                         <span className="text-sm font-medium text-gray-900 truncate">
-                          {log.provider_responses && Object.keys(log.provider_responses).length > 0
-                            ? Object.keys(log.provider_responses).join(', ')
-                            : log.source || 'Unknown'}
+                          {log.models && log.models.length > 0
+                            ? log.models.join(', ')
+                            : log.client || 'Unknown'}
                         </span>
                         {log.source && (
                           <span className="text-xs text-gray-500">
@@ -350,12 +352,12 @@ export default function Dashboard() {
                         )}
                       </div>
                       <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500">
-                        <span>{log.total_tokens?.toLocaleString() || 0} tokens</span>
-                        <span>${(log.total_cost || 0).toFixed(4)}</span>
-                        {log.response_time_ms && (
-                          <span>{log.response_time_ms}ms</span>
+                        <span>{log.totalTokens?.toLocaleString() || 0} tokens</span>
+                        <span>${(log.cost || 0).toFixed(4)}</span>
+                        {log.responseTime && (
+                          <span>{log.responseTime}ms</span>
                         )}
-                        <span>{formatTimeAgo(log.created_at)}</span>
+                        <span>{formatTimeAgo(log.timestamp)}</span>
                       </div>
                     </div>
                   </div>
@@ -364,6 +366,99 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+
+        {/* Provider Analytics */}
+        {providerAnalytics && providerAnalytics.length > 0 && (
+          <div className="mt-8 bg-white border border-gray-200 rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Provider Analytics</h2>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {providerAnalytics.slice(0, 5).map((provider: any, idx: number) => (
+                <div key={idx} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 flex-1">
+                      {provider.logo ? (
+                        <img src={provider.logo} alt={provider.name} className="w-6 h-6 object-contain" />
+                      ) : (
+                        <div className="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                          {(provider.name || 'P').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="text-sm font-medium text-gray-900">{provider.name}</span>
+                    </div>
+                    <div className="flex items-center space-x-6 text-sm text-gray-600">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Requests</p>
+                        <p className="font-medium text-gray-900">{provider.requests?.toLocaleString() || 0}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Tokens</p>
+                        <p className="font-medium text-gray-900">{formatNumber(provider.totalTokens || 0)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Avg Latency</p>
+                        <p className="font-medium text-gray-900">{provider.avgLatency || 0}ms</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Success Rate</p>
+                        <p className="font-medium text-gray-900">{provider.successRate || 0}%</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Model Analytics */}
+        {modelAnalytics && modelAnalytics.length > 0 && (
+          <div className="mt-8 bg-white border border-gray-200 rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Model Analytics</h2>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {modelAnalytics.slice(0, 5).map((model: any, idx: number) => (
+                <div key={idx} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3 flex-1">
+                      {model.providerLogo ? (
+                        <img src={model.providerLogo} alt={model.provider} className="w-6 h-6 object-contain" />
+                      ) : (
+                        <div className="w-6 h-6 rounded bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                          {(model.provider || 'M').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{model.model}</p>
+                        <p className="text-xs text-gray-500">{model.provider}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-6 text-sm text-gray-600">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Requests</p>
+                        <p className="font-medium text-gray-900">{model.requests?.toLocaleString() || 0}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Tokens</p>
+                        <p className="font-medium text-gray-900">{formatNumber(model.totalTokens || 0)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Avg Latency</p>
+                        <p className="font-medium text-gray-900">{model.avgLatency || 0}ms</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Cost</p>
+                        <p className="font-medium text-gray-900">${(model.totalCost || 0).toFixed(4)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">

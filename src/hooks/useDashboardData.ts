@@ -36,6 +36,8 @@ export function useDashboardData() {
     totalMcpTokens: 0,
     providerStats: [],
     recentActivity: [],
+    totalApiCalls: 0,
+    tokenBreakdown: { total: 0, mcp: 0, chat: 0 },
   })
   const [creditBalance, setCreditBalance] = useState<any>({
     balance: 0,
@@ -123,6 +125,8 @@ export function useDashboardData() {
           totalMcpTokens: data.totalMcpTokens || 0,
           providerStats: data.providerStats || [],
           recentActivity: data.recentActivity || [],
+          totalApiCalls: data.totalApiCalls || 0,
+          tokenBreakdown: data.tokenBreakdown || { total: 0, mcp: 0, chat: 0 },
         })
 
         // Set provider analytics from stats endpoint if available
