@@ -597,8 +597,8 @@ export default function LandingPage() {
 
                 <div className="bg-white rounded-xl p-6 border border-slate-200">
                   <h4 className="font-semibold text-slate-900 mb-4">2. Add to MCP config</h4>
-                  <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 overflow-x-auto">
-                    <pre className="text-sm text-slate-100 font-mono whitespace-pre">{`{
+                  <div className="relative bg-slate-900 border border-slate-700 rounded-lg p-4 overflow-x-auto">
+                    <pre className="text-sm text-slate-100 font-mono whitespace-pre leading-relaxed">{`{
   "mcpServers": {
     "polydev": {
       "command": "npx",
