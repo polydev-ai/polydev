@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Code2, Sparkles, Zap, Check, ChevronRight, ChevronDown } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
-// Typewriter component for cycling problems
+// Enhanced Typewriter with gradient cursor
 function TypewriterText({ texts, delay = 50, pauseDuration = 3000 }: {
   texts: string[]
   delay?: number
@@ -51,7 +51,7 @@ function TypewriterText({ texts, delay = 50, pauseDuration = 3000 }: {
   return (
     <span className="inline-block min-h-[1.5em]">
       {displayedText}
-      <span className="animate-pulse">|</span>
+      <span className="inline-block w-0.5 h-8 bg-gradient-to-b from-blue-500 to-purple-500 ml-1 animate-pulse"></span>
     </span>
   )
 }
@@ -197,20 +197,40 @@ const FAQ_DATA = [
 ]
 
 const FAQItem = ({ question, answer, isOpen, onToggle }: any) => (
-  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 transition-colors">
+  <motion.div
+    className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 transition-colors"
+    initial={false}
+    animate={{
+      borderColor: isOpen ? 'rgb(148 163 184)' : 'rgb(226 232 240)'
+    }}
+  >
     <button
       onClick={onToggle}
       className="w-full flex items-center justify-between p-6 text-left hover:bg-slate-50 transition-colors"
     >
       <span className="font-semibold text-slate-900">{question}</span>
-      <ChevronDown className={`w-5 h-5 text-slate-600 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      <motion.div
+        animate={{ rotate: isOpen ? 180 : 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        <ChevronDown className="w-5 h-5 text-slate-600" />
+      </motion.div>
     </button>
-    {isOpen && (
-      <div className="px-6 pb-6 text-slate-600 leading-relaxed">
-        {answer}
-      </div>
-    )}
-  </div>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="px-6 pb-6 text-slate-600 leading-relaxed">
+            {answer}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </motion.div>
 )
 
 export default function LandingPage() {
@@ -241,7 +261,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-slate-900 to-slate-700 rounded-md flex items-center justify-center">
                 <span className="text-white font-bold">P</span>
               </div>
               <span className="font-semibold text-lg">Polydev</span>
@@ -250,7 +270,10 @@ export default function LandingPage() {
             <div className="hidden md:flex items-center gap-8">
               <Link href="/docs" className="text-slate-600 hover:text-slate-900 transition-colors">Docs</Link>
               <Link href="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
-              <Link href="/auth" className="px-4 py-2 bg-black text-white rounded-lg hover:bg-slate-800 transition-colors">
+              <Link
+                href="/auth"
+                className="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-700 text-white rounded-lg hover:from-slate-800 hover:to-slate-600 transition-all transform hover:scale-105"
+              >
                 {user ? 'Dashboard' : 'Get Started'}
               </Link>
             </div>
@@ -260,8 +283,8 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden">
-        {/* Grid background */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.03)_1px,transparent_1px)] bg-[size:64px_64px] opacity-60"></div>
+        {/* Animated grid background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.03)_1px,transparent_1px)] bg-[size:64px_64px] opacity-60 animate-grid-flow"></div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 relative">
           <motion.div
@@ -273,7 +296,7 @@ export default function LandingPage() {
             <h1 className="text-5xl sm:text-7xl font-bold text-slate-900 mb-6 leading-tight">
               <TypewriterText texts={PROBLEM_SCENARIOS} />
               <br />
-              <span className="bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">
                 Get Multiple Solutions
               </span>
             </h1>
@@ -284,14 +307,14 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
               <Link
                 href="/auth"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white rounded-lg font-semibold hover:bg-slate-800 transition-all hover:scale-105"
+                className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-slate-900 to-slate-700 text-white rounded-lg font-semibold hover:from-slate-800 hover:to-slate-600 transition-all hover:scale-105 shadow-lg hover:shadow-xl"
               >
                 Start Free
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
                 href="/docs"
-                className="inline-flex items-center gap-2 px-8 py-4 border-2 border-slate-200 text-slate-900 rounded-lg font-semibold hover:border-slate-300 transition-all"
+                className="inline-flex items-center gap-2 px-8 py-4 border-2 border-slate-200 text-slate-900 rounded-lg font-semibold hover:border-slate-300 transition-all hover:shadow-md"
               >
                 View Docs
                 <ChevronRight className="w-5 h-5" />
@@ -299,29 +322,48 @@ export default function LandingPage() {
             </div>
 
             <div className="flex items-center justify-center gap-8 text-sm text-slate-600">
-              <div>
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
                 <div className="text-2xl font-bold text-slate-900">{stats.models}+</div>
                 <div>Models</div>
-              </div>
+              </motion.div>
               <div className="w-px h-12 bg-slate-200"></div>
-              <div>
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
                 <div className="text-2xl font-bold text-slate-900">{stats.providers}+</div>
                 <div>Providers</div>
-              </div>
+              </motion.div>
               <div className="w-px h-12 bg-slate-200"></div>
-              <div>
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+              >
                 <div className="text-2xl font-bold text-slate-900">Zero</div>
                 <div>Setup</div>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
 
           {/* Provider Logos */}
           <div className="flex items-center justify-center gap-12 flex-wrap opacity-60">
-            {PROVIDERS.map((provider) => (
-              <div key={provider.name} className="relative w-8 h-8 grayscale hover:grayscale-0 transition-all">
+            {PROVIDERS.map((provider, i) => (
+              <motion.div
+                key={provider.name}
+                className="relative w-8 h-8 grayscale hover:grayscale-0 transition-all"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 0.6, y: 0 }}
+                transition={{ delay: 0.1 * i }}
+                whileHover={{ scale: 1.2, opacity: 1 }}
+              >
                 <Image src={provider.logo} alt={provider.name} fill className="object-contain" />
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -331,27 +373,24 @@ export default function LandingPage() {
       <section className="py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors">
-              <Sparkles className="w-12 h-12 mb-4" />
-              <h3 className="text-xl font-semibold mb-3">Multi-Model Perspectives</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Query Claude, GPT, Gemini simultaneously. Get diverse solutions when you're stuck.
-              </p>
-            </div>
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors">
-              <Zap className="w-12 h-12 mb-4" />
-              <h3 className="text-xl font-semibold mb-3">Intelligent Routing</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Auto fallback: CLI tools → API keys → credits. Always best response, lowest cost.
-              </p>
-            </div>
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors">
-              <Code2 className="w-12 h-12 mb-4" />
-              <h3 className="text-xl font-semibold mb-3">Zero Setup</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Works instantly with Claude Code, Cline, or Cursor. No configuration needed.
-              </p>
-            </div>
+            {[
+              { icon: Sparkles, title: "Multi-Model Perspectives", desc: "Query Claude, GPT, Gemini simultaneously. Get diverse solutions when you're stuck." },
+              { icon: Zap, title: "Intelligent Routing", desc: "Auto fallback: CLI tools → API keys → credits. Always best response, lowest cost." },
+              { icon: Code2, title: "Zero Setup", desc: "Works instantly with Claude Code, Cline, or Cursor. No configuration needed." }
+            ].map((feature, i) => (
+              <motion.div
+                key={feature.title}
+                className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-slate-300 transition-all hover:shadow-lg"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 * i }}
+              >
+                <feature.icon className="w-12 h-12 mb-4 text-slate-700" />
+                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
+                <p className="text-slate-600 leading-relaxed">{feature.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -359,130 +398,186 @@ export default function LandingPage() {
       {/* How It Works */}
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
             <h2 className="text-4xl font-bold text-slate-900 mb-4">How It Works</h2>
             <p className="text-xl text-slate-600">Three simple steps to better solutions</p>
-          </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-3 gap-12">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold">1</div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">Ask in your editor</h3>
-              <p className="text-slate-600 leading-relaxed">
-                When debugging in Claude Code, Cursor, or Cline, ask for perspectives on your code problem.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold">2</div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">Models analyze context</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Each model sees your files, dependencies, changes. They understand what you're working on.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold">3</div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">Compare solutions</h3>
-              <p className="text-slate-600 leading-relaxed">
-                See different approaches. One model might catch edge cases others missed.
-              </p>
-            </div>
+            {[
+              { num: "1", title: "Ask in your editor", desc: "When debugging in Claude Code, Cursor, or Cline, ask for perspectives on your code problem." },
+              { num: "2", title: "Models analyze context", desc: "Each model sees your files, dependencies, changes. They understand what you're working on." },
+              { num: "3", title: "Compare solutions", desc: "See different approaches. One model might catch edge cases others missed." }
+            ].map((step, i) => (
+              <motion.div
+                key={step.num}
+                className="text-center"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 * i }}
+              >
+                <div className="w-16 h-16 bg-gradient-to-br from-slate-900 to-slate-700 text-white rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold shadow-lg">
+                  {step.num}
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-4">{step.title}</h3>
+                <p className="text-slate-600 leading-relaxed">{step.desc}</p>
+              </motion.div>
+            ))}
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 mt-20">
-            <div className="text-center p-6 bg-slate-50 rounded-2xl">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Better solutions</h3>
-              <p className="text-slate-600">Different models excel at different things. Get the best of each.</p>
-            </div>
-            <div className="text-center p-6 bg-slate-50 rounded-2xl">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Stay in flow</h3>
-              <p className="text-slate-600">No tab switching, no copy-pasting. Everything in your editor.</p>
-            </div>
-            <div className="text-center p-6 bg-slate-50 rounded-2xl">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Full context</h3>
-              <p className="text-slate-600">Models see your actual project, not just snippets.</p>
-            </div>
+            {[
+              { title: "Better solutions", desc: "Different models excel at different things. Get the best of each." },
+              { title: "Stay in flow", desc: "No tab switching, no copy-pasting. Everything in your editor." },
+              { title: "Full context", desc: "Models see your actual project, not just snippets." }
+            ].map((benefit, i) => (
+              <motion.div
+                key={benefit.title}
+                className="text-center p-6 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors"
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.15 * i }}
+              >
+                <h3 className="text-lg font-semibold text-slate-900 mb-3">{benefit.title}</h3>
+                <p className="text-slate-600">{benefit.desc}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Code Examples Demo */}
+      {/* Code Examples Demo - FIXED */}
       <section className="py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
               Multiple Problems, Multiple Perspectives
             </h2>
             <p className="text-xl text-slate-600 max-w-4xl mx-auto">
               See how different AI models approach the same challenge. Each brings unique insights.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xl">
+          <motion.div
+            className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl overflow-hidden shadow-2xl"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
             <div className="grid lg:grid-cols-2 gap-0">
-              {/* Code Side */}
-              <div className="relative bg-slate-900">
-                <div className="flex items-center justify-between p-4 bg-slate-800 border-b border-slate-700">
+              {/* Code Side - COMPLETELY FIXED */}
+              <div className="relative">
+                {/* Terminal header */}
+                <div className="flex items-center justify-between p-4 bg-slate-800/50 border-b border-slate-700/50">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-red-400"></div>
                     <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
                     <div className="w-3 h-3 rounded-full bg-green-400"></div>
                   </div>
-                  <div className="text-slate-400 text-sm">{currentExample.filename}</div>
-                  <div className="text-xs text-slate-500 bg-slate-700 px-2 py-1 rounded">
+                  <div className="text-slate-400 text-sm font-mono">{currentExample.filename}</div>
+                  <div className="text-xs text-slate-400 bg-slate-700/50 px-3 py-1 rounded-md">
                     {currentExampleIndex + 1}/3
                   </div>
                 </div>
 
-                <div className="p-6 font-mono text-sm h-[500px] overflow-y-auto">
-                  <div className="text-red-400 mb-4 italic text-xs">{currentExample.problem}</div>
-                  <pre className="text-slate-100 whitespace-pre-wrap leading-relaxed">{currentExample.code}</pre>
+                {/* Code display - FIXED with explicit dark background */}
+                <div className="bg-slate-900 p-6">
+                  <div className="font-mono text-sm min-h-[500px]">
+                    {/* Problem comment */}
+                    <div className="text-red-400 mb-4 italic text-xs opacity-90">
+                      {currentExample.problem}
+                    </div>
+
+                    {/* Code with AnimatePresence for smooth transitions */}
+                    <AnimatePresence mode="wait">
+                      <motion.pre
+                        key={currentExampleIndex}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.3 }}
+                        className="text-slate-100 whitespace-pre-wrap leading-relaxed"
+                      >
+                        {currentExample.code}
+                      </motion.pre>
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
 
               {/* Responses Side */}
-              <div className="bg-slate-50 p-6 h-[500px] overflow-y-auto">
+              <div className="bg-white p-6 min-h-[500px] flex flex-col">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">AI Perspectives</h3>
                   <div className="flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span className="text-green-700 text-xs font-medium">3 responses</span>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  {currentExample.responses.map((response, index) => (
-                    <div key={index} className="flex items-start gap-3 p-4 rounded-xl bg-white border border-slate-200">
-                      <div className="relative w-8 h-8 rounded-full overflow-hidden bg-white shadow-sm flex-shrink-0">
-                        <Image src={response.avatar} alt={response.model} fill className="object-contain p-1" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-slate-900 mb-2">{response.model}</div>
-                        <div className="text-slate-600 text-sm leading-relaxed">{response.text}</div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="space-y-4 flex-1 overflow-y-auto">
+                  <AnimatePresence mode="wait">
+                    {currentExample.responses.map((response, index) => (
+                      <motion.div
+                        key={`${currentExampleIndex}-${index}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ delay: 0.1 * index }}
+                        className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all"
+                      >
+                        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-white shadow-sm flex-shrink-0">
+                          <Image src={response.avatar} alt={response.model} fill className="object-contain p-1" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-slate-900 mb-2">{response.model}</div>
+                          <div className="text-slate-600 text-sm leading-relaxed">{response.text}</div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Setup Section */}
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
             <h2 className="text-4xl font-bold text-slate-900 mb-4">Get Started in 30 Seconds</h2>
             <p className="text-xl text-slate-600">Choose your setup method</p>
-          </div>
+          </motion.div>
 
           <div className="grid lg:grid-cols-2 gap-8">
             {/* CLI Tools */}
-            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-8">
+            <motion.div
+              className="bg-slate-50 rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-shadow"
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-900 to-slate-700 rounded-2xl flex items-center justify-center shadow-lg">
                   <Check className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -519,19 +614,24 @@ export default function LandingPage() {
 
                 <div className="bg-white rounded-xl p-6 border border-slate-200">
                   <h4 className="font-semibold text-slate-900 mb-4">3. Ask in editor</h4>
-                  <div className="bg-slate-50 rounded-xl p-4 border-l-4 border-black">
+                  <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl p-4 border-l-4 border-slate-900">
                     <p className="text-slate-800 font-medium italic">
                       "Can you get multiple perspectives on this?"
                     </p>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* API Keys */}
-            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-8">
+            <motion.div
+              className="bg-slate-50 rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-shadow"
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-slate-900 to-slate-700 rounded-2xl flex items-center justify-center shadow-lg">
                   <Zap className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -544,19 +644,19 @@ export default function LandingPage() {
                 <div className="bg-white rounded-xl p-6 border border-slate-200">
                   <h4 className="font-semibold text-slate-900 mb-4">1. Get API keys</h4>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
                       <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={20} height={20} />
                       <span className="text-sm font-medium">OpenAI</span>
                     </div>
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
                       <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" width={20} height={20} />
                       <span className="text-sm font-medium">Anthropic</span>
                     </div>
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
                       <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" width={20} height={20} />
                       <span className="text-sm font-medium">Google AI</span>
                     </div>
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
                       <Image src="https://models.dev/logos/xai.svg" alt="xAI" width={20} height={20} />
                       <span className="text-sm font-medium">xAI</span>
                     </div>
@@ -573,13 +673,13 @@ export default function LandingPage() {
 
                 <Link
                   href="/auth"
-                  className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-black text-white rounded-xl font-semibold hover:bg-slate-800 transition-all"
+                  className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-slate-900 to-slate-700 text-white rounded-xl font-semibold hover:from-slate-800 hover:to-slate-600 transition-all hover:shadow-lg transform hover:scale-105"
                 >
                   Go to Dashboard
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -587,13 +687,24 @@ export default function LandingPage() {
       {/* Pricing */}
       <section className="py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
             <h2 className="text-4xl font-bold text-slate-900 mb-4">Simple Pricing</h2>
             <p className="text-xl text-slate-600">Credits or your own API keys</p>
-          </div>
+          </motion.div>
 
           <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <div className="bg-white rounded-2xl border border-slate-200 p-8">
+            <motion.div
+              className="bg-white rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-shadow"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0 }}
+            >
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Free</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$0</div>
@@ -602,29 +713,35 @@ export default function LandingPage() {
 
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                  <Check className="w-5 h-5 text-slate-700" />
                   <span>200 Messages</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                  <Check className="w-5 h-5 text-slate-700" />
                   <span>10 Premium</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                  <Check className="w-5 h-5 text-slate-700" />
                   <span>40 Normal</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                  <Check className="w-5 h-5 text-slate-700" />
                   <span>150 Eco</span>
                 </li>
               </ul>
 
-              <Link href="/auth" className="w-full block text-center px-6 py-4 border-2 border-slate-200 rounded-xl font-semibold hover:border-slate-300 transition-all">
+              <Link href="/auth" className="w-full block text-center px-6 py-4 border-2 border-slate-200 rounded-xl font-semibold hover:border-slate-300 transition-all hover:shadow-md">
                 Get Started
               </Link>
-            </div>
+            </motion.div>
 
-            <div className="bg-slate-900 text-white rounded-2xl p-8 scale-105 shadow-xl">
+            <motion.div
+              className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-8 scale-105 shadow-2xl"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+            >
               <div className="text-center mb-8">
                 <div className="inline-block bg-white text-slate-900 px-4 py-1 rounded-full text-sm font-bold mb-4">Popular</div>
                 <h3 className="text-2xl font-bold mb-2">Plus</h3>
@@ -651,12 +768,18 @@ export default function LandingPage() {
                 </li>
               </ul>
 
-              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-4 bg-white text-slate-900 rounded-xl font-bold hover:bg-slate-100 transition-all">
+              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-4 bg-white text-slate-900 rounded-xl font-bold hover:bg-slate-100 transition-all hover:shadow-lg">
                 Upgrade
               </Link>
-            </div>
+            </motion.div>
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-8">
+            <motion.div
+              className="bg-white rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-shadow"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Pro</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$60</div>
@@ -665,27 +788,27 @@ export default function LandingPage() {
 
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                  <Check className="w-5 h-5 text-slate-700" />
                   <span>Unlimited Messages</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                  <Check className="w-5 h-5 text-slate-700" />
                   <span>1,200 Premium</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                  <Check className="w-5 h-5 text-slate-700" />
                   <span>4,800 Normal</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Check className="w-5 h-5" />
+                  <Check className="w-5 h-5 text-slate-700" />
                   <span>10,000 Eco</span>
                 </li>
               </ul>
 
-              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-4 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all">
+              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-4 bg-gradient-to-r from-slate-900 to-slate-700 text-white rounded-xl font-semibold hover:from-slate-800 hover:to-slate-600 transition-all hover:shadow-lg">
                 Upgrade
               </Link>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -693,10 +816,15 @@ export default function LandingPage() {
       {/* FAQ */}
       <section className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
             <h2 className="text-4xl font-bold text-slate-900 mb-4">FAQ</h2>
             <p className="text-xl text-slate-600">Common questions answered</p>
-          </div>
+          </motion.div>
 
           <div className="space-y-4">
             {FAQ_DATA.map((faq, index) => (
@@ -713,19 +841,25 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-slate-900 text-white">
+      <section className="py-20 bg-gradient-to-br from-slate-900 to-slate-800 text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-4xl font-bold mb-6">Ready to Get Started?</h2>
-          <p className="text-xl text-slate-300 mb-8">
-            Join developers using Polydev for better solutions
-          </p>
-          <Link
-            href="/auth"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 rounded-lg font-semibold hover:bg-slate-100 transition-all"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
           >
-            Start Free
-            <ArrowRight className="w-5 h-5" />
-          </Link>
+            <h2 className="text-4xl font-bold mb-6">Ready to Get Started?</h2>
+            <p className="text-xl text-slate-300 mb-8">
+              Join developers using Polydev for better solutions
+            </p>
+            <Link
+              href="/auth"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-900 rounded-lg font-semibold hover:bg-slate-100 transition-all hover:scale-105 shadow-lg"
+            >
+              Start Free
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </motion.div>
         </div>
       </section>
 
@@ -781,6 +915,28 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Add custom animations */}
+      <style jsx global>{`
+        @keyframes grid-flow {
+          0% { background-position: 0 0, 0 0; }
+          100% { background-position: 64px 64px, 64px 64px; }
+        }
+
+        .animate-grid-flow {
+          animation: grid-flow 20s linear infinite;
+        }
+
+        @keyframes gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 3s ease infinite;
+        }
+      `}</style>
     </div>
   )
 }
