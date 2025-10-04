@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
       // 6. Request logs (this month only) - for message counting and API calls
       supabase
         .from('mcp_request_logs')
-        .select('total_tokens, total_cost, created_at, provider_responses, status, successful_providers, failed_providers, provider_costs')
+        .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs')
         .eq('user_id', user.id)
         .gte('created_at', monthStart.toISOString())
         .limit(500), // Limit to prevent excessive processing
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       // 7. Usage logs fallback (this month only)
       supabase
         .from('mcp_usage_logs')
-        .select('total_tokens, total_cost, created_at, models_used, status')
+        .select('total_tokens, total_cost, created_at, models_used, response_time_ms, status')
         .eq('user_id', user.id)
         .gte('created_at', monthStart.toISOString())
         .limit(500),
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
       // 8. Chat logs (this month only) - 1 row = 1 user message
       supabase
         .from('chat_logs')
-        .select('total_tokens, total_cost, created_at, models_used')
+        .select('total_tokens, total_cost, created_at, models_used, response_time_ms')
         .eq('user_id', user.id)
         .gte('created_at', monthStart.toISOString())
         .limit(500),
