@@ -9,6 +9,7 @@ import { OpenRouterManager } from '@/lib/openrouterManager'
 import { modelsDevService } from '@/lib/models-dev-integration'
 import { resolveProviderModelId } from '@/lib/model-resolver'
 import { apiManager } from '@/lib/api'
+import { SmartCliCache } from '@/lib/smartCliCache'
 
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
@@ -1205,6 +1206,18 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       }
     }
   )
+
+  // Initialize smart cache for CLI status
+  const smartCache = new SmartCliCache(serviceRoleSupabase);
+  const cliConfigs = await smartCache.getCliStatusWithCache(user.id);
+  const cliSummary = smartCache.getClimiStatusSummary(cliConfigs);
+
+  console.log(`[MCP] Smart cache CLI summary:`, {
+    total: cliSummary.total,
+    available: cliSummary.available,
+    authenticated: cliSummary.authenticated,
+    stale: cliSummary.stale
+  });
   
   console.log(`[MCP] Service role client created successfully`)
   console.log(`[MCP] Service role key starts with:`, serviceRoleKey.substring(0, 20))
@@ -1410,12 +1423,64 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         const providerName = apiKeyForModel.provider
         console.log(`[MCP] Found model ${model} configured for provider ${providerName}`)
 
+        // CLI-FIRST ROUTING: Skip API keys if local CLI is available for this provider
+        // Map provider names to CLI tool names
+        const providerToCliMap: Record<string, string> = {
+          'openai': 'codex_cli',
+          'anthropic': 'claude_code', 
+          'google': 'gemini_cli',
+          'gemini': 'gemini_cli'
+        }
+
+        const cliToolName = providerToCliMap[providerName.toLowerCase()]
+        let skipApiKey = false
+        let cliConfig = null
+
+        if (cliToolName) {
+          // Check if CLI tool is available and authenticated from the database
+          cliConfig = cliConfigs.find((config: any) => 
+            config.provider === cliToolName && 
+            config.status === 'available' && 
+            config.authenticated === true
+          )
+
+          if (cliConfig) {
+            skipApiKey = true
+            console.log(`[MCP] ✅ CLI tool ${cliToolName} is available and authenticated - SKIPPING API key for ${providerName}`)
+            return {
+              model,
+              provider: `${providerName} (CLI Available)`,
+              content: `Local CLI tool ${cliToolName} is available and will be used instead of API keys for ${providerName}. This model will be handled by the CLI tool.`,
+              tokens_used: 0,
+              latency_ms: 0,
+              cli_available: true
+            }
+          } else {
+            // Check if CLI exists but is not available or authenticated
+            const cliExists = cliConfigs.find((config: any) => config.provider === cliToolName)
+            if (cliExists) {
+              console.log(`[MCP] ⚠️  CLI tool ${cliToolName} found in database but not available/authenticated - using API keys`)
+              console.log(`[MCP] CLI Status - Status: ${cliExists.status}, Authenticated: ${cliExists.authenticated}`)
+            } else {
+              console.log(`[MCP] ❌ CLI tool ${cliToolName} not found in database - using API keys`)
+            }
+          }
+        } else {
+          console.log(`[MCP] ❓ No CLI tool mapping for provider ${providerName} - using API keys`)
+        }
+
         // Create a provider object with necessary fields (similar to what we had from provider_configurations)
         const provider = {
           provider_name: providerName,
           display_name: getProviderDisplayName(providerName),
           base_url: getProviderBaseUrl(providerName)
         }
+
+        // Log the routing decision
+        console.log(`[MCP] Routing Decision - Provider: ${providerName}, CLI Tool: ${cliToolName || 'none'}, Skip API Key: ${skipApiKey}, Reason: ${
+          skipApiKey ? 'CLI available' : 
+          cliToolName ? 'CLI not available/authenticated' : 'No CLI mapping'
+        }`)
 
         // Calculate provider settings
         const providerSettings = args.provider_settings?.[providerName] || {}

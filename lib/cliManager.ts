@@ -34,6 +34,9 @@ export interface CLIStatus {
   path?: string
   lastChecked: Date
   error?: string
+  default_model?: string
+  available_models?: string[]
+  model_detection_method?: 'interactive' | 'fallback'
 }
 
 export interface CLIResponse {
@@ -280,12 +283,30 @@ export class CLIManager {
       authenticated = true
     }
 
+    // Detect available models for this CLI tool
+    let default_model: string | undefined
+    let available_models: string[] | undefined
+    let model_detection_method: 'interactive' | 'fallback' | undefined
+
+    try {
+      const modelDetection = await this.detectDefaultModel(provider.id);
+      default_model = modelDetection.defaultModel;
+      available_models = modelDetection.availableModels;
+      model_detection_method = modelDetection.detectionMethod;
+    } catch (error) {
+      console.error(`[CLI Manager] Model detection failed for ${provider.name}:`, error);
+      // Continue without model info - fallback will be used
+    }
+
     return {
       available: true,
       authenticated,
       version,
       path: executablePath,
-      lastChecked: new Date()
+      lastChecked: new Date(),
+      default_model,
+      available_models,
+      model_detection_method
     }
   }
 
@@ -422,6 +443,127 @@ export class CLIManager {
    */
   getProvider(providerId: string): CLIProvider | undefined {
     return this.providers.get(providerId)
+  }
+
+  /**
+   * Detect available models for a CLI provider using interactive commands
+   */
+  async detectDefaultModel(providerId: string): Promise<{
+    defaultModel: string;
+    availableModels: string[];
+    detectionMethod: 'interactive' | 'fallback';
+  }> {
+    try {
+      // Try interactive detection using CLI commands
+      let command = '';
+      switch (providerId) {
+        case 'claude_code':
+          command = 'models'; // Claude Code model listing command
+          break;
+        case 'codex_cli':
+          command = 'list-models'; // Codex CLI model listing command
+          break;
+        case 'gemini_cli':
+          command = 'models'; // Gemini CLI model listing command
+          break;
+      }
+      
+      if (!command) {
+        throw new Error(`No model detection command for ${providerId}`);
+      }
+      
+      const result = await this.sendCliPrompt(providerId, command, 'args', 10000);
+      
+      if (result.success && result.content) {
+        const models = this.parseModelsFromOutput(providerId, result.content);
+        if (models.length > 0) {
+          return {
+            defaultModel: this.extractDefaultModel(providerId, models),
+            availableModels: models,
+            detectionMethod: 'interactive'
+          };
+        }
+      }
+    } catch (error) {
+      console.error(`Interactive model detection failed for ${providerId}:`, error);
+    }
+
+    // Fallback to known defaults if interactive detection fails
+    return {
+      defaultModel: this.getDefaultModelFallback(providerId),
+      availableModels: [this.getDefaultModelFallback(providerId)],
+      detectionMethod: 'fallback'
+    };
+  }
+
+  /**
+   * Parse model names from CLI output
+   */
+  private parseModelsFromOutput(providerId: string, output: string): string[] {
+    const models: string[] = [];
+    const lines = output.split('\n');
+    
+    switch (providerId) {
+      case 'claude_code':
+        // Parse Claude Code output format
+        lines.forEach(line => {
+          const matches = line.match(/claude-[\w\-.]+/gi);
+          if (matches) models.push(...matches);
+        });
+        break;
+      case 'codex_cli':
+        // Parse Codex CLI output format
+        lines.forEach(line => {
+          const matches = line.match(/gpt-[\w\-.]+|o1-[\w\-.]+/gi);
+          if (matches) models.push(...matches);
+        });
+        break;
+      case 'gemini_cli':
+        // Parse Gemini CLI output format
+        lines.forEach(line => {
+          const matches = line.match(/gemini-[\w\-.]+/gi);
+          if (matches) models.push(...matches);
+        });
+        break;
+    }
+    
+    return [...new Set(models)]; // Remove duplicates
+  }
+
+  /**
+   * Extract the default model from available models
+   */
+  private extractDefaultModel(providerId: string, models: string[]): string {
+    if (models.length === 0) return this.getDefaultModelFallback(providerId);
+    
+    switch (providerId) {
+      case 'claude_code':
+        // Prefer Claude 3.5 Sonnet, then Claude 3 Sonnet
+        return models.find(m => m.includes('claude-3-5-sonnet')) || 
+               models.find(m => m.includes('claude-3-sonnet')) || 
+               models[0];
+      case 'codex_cli':
+        // Prefer GPT-4, then GPT-3.5
+        return models.find(m => m.includes('gpt-4')) || models[0];
+      case 'gemini_cli':
+        // Prefer Gemini Pro, then Gemini Flash
+        return models.find(m => m.includes('gemini-1.5-pro')) || 
+               models.find(m => m.includes('gemini-pro')) || 
+               models[0];
+    }
+    return models[0];
+  }
+
+  /**
+   * Get fallback default model for a provider
+   */
+  private getDefaultModelFallback(providerId: string): string {
+    const fallbacks = {
+      'claude_code': 'claude-3-sonnet',
+      'codex_cli': 'gpt-4', 
+      'gemini_cli': 'gemini-pro'
+    };
+    return fallbacks[providerId as keyof typeof fallbacks] || 'unknown';
   }
 }
 

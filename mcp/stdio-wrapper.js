@@ -18,6 +18,9 @@ class StdioMCPWrapper {
     
     // Load manifest for tool definitions
     this.loadManifest();
+    
+    // Smart refresh scheduler (will be started after initialization)
+    this.refreshScheduler = null;
   }
 
   loadManifest() {
@@ -195,10 +198,10 @@ class StdioMCPWrapper {
   }
 
   /**
-   * Local CLI detection implementation
+   * Local CLI detection implementation with database updates
    */
   async localForceCliDetection(args) {
-    console.error(`[Stdio Wrapper] Local CLI detection started`);
+    console.error(`[Stdio Wrapper] Local CLI detection with model detection started`);
     
     try {
       const providerId = args.provider_id; // Optional - detect specific provider
@@ -209,6 +212,9 @@ class StdioMCPWrapper {
       // Save status locally to file-based cache
       await this.saveLocalCliStatus(results);
 
+      // NEW: Update database with CLI status
+      await this.updateCliStatusInDatabase(results);
+      
       return {
         success: true,
         results,
@@ -250,6 +256,9 @@ class StdioMCPWrapper {
           results[provider.id] = status[provider.id];
         }
       }
+
+      // Update database with current status
+      await this.updateCliStatusInDatabase(results);
 
       return {
         success: true,
@@ -508,6 +517,68 @@ class StdioMCPWrapper {
   }
 
   /**
+   * Update CLI status in database
+   */
+  async updateCliStatusInDatabase(results) {
+    console.error('[Stdio Wrapper] Updating CLI status in database...');
+    
+    try {
+      // Get user token and ID from environment variables
+      const userToken = process.env.POLYDEV_MCP_TOKEN || this.userToken;
+      const userId = process.env.POLYDEV_USER_ID || '42ef0583-7488-436d-a81d-ddef55c0cde2';
+      
+      console.error(`[Stdio Wrapper] Using user ID: ${userId}`);
+      console.error(`[Stdio Wrapper] Using token: ${userToken ? userToken.substring(0, 20) + '...' : 'MISSING'}`);
+      
+      for (const [providerId, result] of Object.entries(results)) {
+        const statusData = {
+          provider: providerId,
+          status: result.available ? 'available' : 'unavailable',
+          user_id: userId,
+          mcp_token: userToken,
+          cli_version: result.version || null,
+          cli_path: result.cli_path || null,
+          authenticated: result.authenticated || false,
+          last_used: result.last_checked || new Date().toISOString(),
+          message: result.error || `${providerId} is ${result.available ? 'available' : 'unavailable'}`,
+          additional_info: {
+            default_model: result.default_model || null,
+            available_models: result.available_models || [],
+            model_detection_method: result.model_detection_method || 'fallback',
+            model_detected_at: result.model_detected_at || new Date().toISOString()
+          }
+        };
+
+        console.error(`[Stdio Wrapper] Updating ${providerId} with data:`, JSON.stringify({
+          provider: statusData.provider,
+          status: statusData.status,
+          user_id: statusData.user_id,
+          authenticated: statusData.authenticated
+        }, null, 2));
+
+        const response = await fetch('https://www.polydev.ai/api/cli-status-update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(statusData)
+        });
+
+        if (response.ok) {
+          const responseData = await response.json();
+          console.error(`[Stdio Wrapper] Successfully updated ${providerId} status in database`);
+        } else {
+          const errorText = await response.text();
+          console.error(`[Stdio Wrapper] Failed to update ${providerId}: ${response.status} - ${errorText}`);
+        }
+      }
+
+    } catch (error) {
+      console.error('[Stdio Wrapper] Error updating database:', error);
+    }
+  }
+
+  /**
    * Save CLI status to local file cache
    */
   async saveLocalCliStatus(results) {
@@ -532,6 +603,121 @@ class StdioMCPWrapper {
 
     } catch (error) {
       console.error('[Stdio Wrapper] Failed to save local CLI status:', error);
+    }
+  }
+
+  /**
+   * Load CLI status from local file cache
+   */
+  async loadLocalCliStatus() {
+    try {
+      const homeDir = require('os').homedir();
+      const statusFile = path.join(homeDir, '.polydev', 'cli-status.json');
+      
+      if (fs.existsSync(statusFile)) {
+        const data = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
+        return data.results || {};
+      }
+    } catch (error) {
+      console.error('[Stdio Wrapper] Failed to load local status:', error);
+    }
+    return {};
+  }
+
+  /**
+   * Get smart timeout based on CLI status (same logic as SmartCliCache)
+   * Returns timeout in minutes
+   */
+  getSmartTimeout(cliStatus) {
+    if (!cliStatus.available) {
+      return 2; // 2 minutes - check frequently for new installs
+    }
+    
+    if (!cliStatus.authenticated) {
+      return 3; // 3 minutes - check for authentication
+    }
+    
+    if (cliStatus.model_detection_method === 'fallback') {
+      return 5; // 5 minutes - retry interactive detection
+    }
+    
+    return 10; // 10 minutes - stable, working CLI
+  }
+
+  /**
+   * Check if CLI status is stale based on smart timeout
+   */
+  isStale(cliStatus) {
+    if (!cliStatus.last_checked) return true;
+    
+    const now = new Date();
+    const lastChecked = new Date(cliStatus.last_checked);
+    const minutesOld = (now.getTime() - lastChecked.getTime()) / (1000 * 60);
+    const timeout = this.getSmartTimeout(cliStatus);
+    
+    return minutesOld > timeout;
+  }
+
+  /**
+   * Start smart refresh scheduler
+   * Checks every minute but only refreshes stale CLIs based on smart timeouts
+   */
+  startSmartRefreshScheduler() {
+    console.error('[Stdio Wrapper] Starting smart refresh scheduler...');
+    
+    // Check every 1 minute, but only refresh what's actually stale
+    this.refreshScheduler = setInterval(async () => {
+      try {
+        // Read current status from local cache
+        const currentStatus = await this.loadLocalCliStatus();
+        
+        if (!currentStatus || Object.keys(currentStatus).length === 0) {
+          console.error('[Stdio Wrapper] No local CLI status found, running initial detection...');
+          await this.localForceCliDetection({});
+          return;
+        }
+        
+        // Check which CLIs need refresh based on smart timeouts
+        const staleProviders = [];
+        for (const [providerId, status] of Object.entries(currentStatus)) {
+          if (this.isStale(status)) {
+            const minutesOld = Math.floor((new Date().getTime() - new Date(status.last_checked).getTime()) / (1000 * 60));
+            const timeout = this.getSmartTimeout(status);
+            staleProviders.push({ providerId, minutesOld, timeout });
+          }
+        }
+        
+        if (staleProviders.length > 0) {
+          console.error(`[Stdio Wrapper] Smart refresh: ${staleProviders.length} stale CLI providers detected`);
+          staleProviders.forEach(({ providerId, minutesOld, timeout }) => {
+            console.error(`[Stdio Wrapper] - ${providerId}: ${minutesOld} min old (timeout: ${timeout} min)`);
+          });
+          
+          // Only detect the stale providers
+          for (const { providerId } of staleProviders) {
+            console.error(`[Stdio Wrapper] Refreshing ${providerId}...`);
+            await this.localForceCliDetection({ provider_id: providerId });
+          }
+          
+          console.error('[Stdio Wrapper] Smart refresh completed');
+        }
+        
+      } catch (error) {
+        console.error('[Stdio Wrapper] Smart refresh error:', error);
+      }
+    }, 60000); // Check every minute
+    
+    console.error('[Stdio Wrapper] Smart refresh scheduler started (checks every 60 seconds)');
+  }
+
+  /**
+   * Stop smart refresh scheduler
+   */
+  stopSmartRefreshScheduler() {
+    if (this.refreshScheduler) {
+      clearInterval(this.refreshScheduler);
+      this.refreshScheduler = null;
+      console.error('[Stdio Wrapper] Smart refresh scheduler stopped');
     }
   }
 
@@ -625,6 +811,18 @@ class StdioMCPWrapper {
   async start() {
     console.log('Starting Polydev Stdio MCP Wrapper...');
     
+    // Run initial CLI detection on startup
+    console.error('[Stdio Wrapper] Running initial CLI detection...');
+    try {
+      await this.localForceCliDetection({});
+      console.error('[Stdio Wrapper] Initial CLI detection completed');
+    } catch (error) {
+      console.error('[Stdio Wrapper] Initial CLI detection failed:', error);
+    }
+    
+    // Start smart refresh scheduler for automatic updates
+    this.startSmartRefreshScheduler();
+    
     process.stdin.setEncoding('utf8');
     let buffer = '';
     
@@ -649,17 +847,20 @@ class StdioMCPWrapper {
 
     process.stdin.on('end', () => {
       console.log('Stdio MCP Wrapper shutting down...');
+      this.stopSmartRefreshScheduler();
       process.exit(0);
     });
 
     // Handle process signals
     process.on('SIGINT', () => {
       console.log('Received SIGINT, shutting down...');
+      this.stopSmartRefreshScheduler();
       process.exit(0);
     });
 
     process.on('SIGTERM', () => {
       console.log('Received SIGTERM, shutting down...');
+      this.stopSmartRefreshScheduler();
       process.exit(0);
     });
 
