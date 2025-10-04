@@ -211,9 +211,9 @@ export default function Documentation() {
 
         return `
           <div class="relative group my-8">
-            <pre class="bg-gray-50 text-gray-900 rounded-2xl p-6 overflow-x-auto border border-gray-200 font-mono text-sm leading-relaxed shadow-sm hover:shadow-md transition-shadow duration-200"><code${attributes}>${code}</code></pre>
-            <button class="copy-btn absolute top-4 right-4 p-2.5 rounded-lg bg-white hover:bg-gray-50 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-gray-200 shadow-sm" data-code="${decodedCode.replace(/"/g, '&quot;')}" title="Copy to clipboard">
-              <svg class="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <pre class="bg-slate-900 text-slate-100 rounded-lg p-6 overflow-x-auto border border-slate-200 font-mono text-sm leading-relaxed"><code${attributes}>${code}</code></pre>
+            <button class="copy-btn absolute top-4 right-4 p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-slate-700" data-code="${decodedCode.replace(/"/g, '&quot;')}" title="Copy to clipboard">
+              <svg class="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
               </svg>
             </button>
@@ -911,28 +911,28 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Modern Header */}
-      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+      {/* Header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <BookOpen className="h-7 w-7 text-blue-600" />
+              <BookOpen className="h-7 w-7 text-slate-900" />
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Documentation</h1>
-                <p className="text-sm text-gray-500 hidden sm:block">Polydev AI Platform</p>
+                <h1 className="text-xl font-bold text-slate-900">Documentation</h1>
+                <p className="text-sm text-slate-600 hidden sm:block">Polydev AI Platform</p>
               </div>
             </div>
             <div className="flex items-center space-x-6 text-sm">
               {currentItem && (
-                <div className="hidden lg:flex items-center space-x-2 text-gray-500">
+                <div className="hidden lg:flex items-center space-x-2 text-slate-600">
                   <span>{currentItem.section.title}</span>
                   <span>•</span>
-                  <span className="text-gray-900 font-medium">{currentItem.item.title}</span>
+                  <span className="text-slate-900 font-medium">{currentItem.item.title}</span>
                 </div>
               )}
               <Link
                 href="/dashboard"
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center space-x-2 text-slate-600 hover:text-slate-900 transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
                 <span>Dashboard</span>
@@ -944,17 +944,17 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
 
       <div className="max-w-7xl mx-auto">
         <div className="flex">
-          {/* Modern Sidebar */}
-          <div className="w-80 flex-shrink-0 bg-gray-50/50 border-r border-gray-200 min-h-screen">
+          {/* Sidebar */}
+          <div className="w-80 flex-shrink-0 bg-white border-r border-slate-200 min-h-screen">
             <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
               <div className="p-6">
                 {/* Quick Actions */}
                 <div className="mb-8">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Quick Start</h3>
+                  <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-4">Quick Start</h3>
                   <div className="space-y-2">
                     <Link
                       href="/docs/quickstart"
-                      className="flex items-center justify-between p-3 bg-slate-900 rounded-xl hover:bg-black transition-colors group"
+                      className="flex items-center justify-between p-3 bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors group"
                     >
                       <div className="flex items-center space-x-3">
                         <Zap className="h-5 w-5 text-white" />
@@ -967,32 +967,32 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                     </Link>
                     <Link
                       href="/chat"
-                      className="flex items-center space-x-3 p-3 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors group"
+                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-colors group"
                     >
-                      <Zap className="h-5 w-5 text-blue-600" />
+                      <Zap className="h-5 w-5 text-slate-900" />
                       <div>
-                        <div className="font-medium text-blue-900">Try Polydev</div>
-                        <div className="text-xs text-blue-600">Multi-model chat</div>
+                        <div className="font-medium text-slate-900">Try Polydev</div>
+                        <div className="text-xs text-slate-600">Multi-model chat</div>
                       </div>
                     </Link>
                     <Link
                       href="/dashboard/models"
-                      className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors group"
+                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-colors group"
                     >
-                      <Shield className="h-5 w-5 text-green-600" />
+                      <Shield className="h-5 w-5 text-slate-900" />
                       <div>
-                        <div className="font-medium text-green-900">Setup API Keys</div>
-                        <div className="text-xs text-green-600">Configure providers</div>
+                        <div className="font-medium text-slate-900">Setup API Keys</div>
+                        <div className="text-xs text-slate-600">Configure providers</div>
                       </div>
                     </Link>
                     <Link
                       href="/dashboard/mcp-tokens"
-                      className="flex items-center space-x-3 p-3 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors group"
+                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-colors group"
                     >
-                      <Code2 className="h-5 w-5 text-purple-600" />
+                      <Code2 className="h-5 w-5 text-slate-900" />
                       <div>
-                        <div className="font-medium text-purple-900">MCP Tokens</div>
-                        <div className="text-xs text-purple-600">For CLI integration</div>
+                        <div className="font-medium text-slate-900">MCP Tokens</div>
+                        <div className="text-xs text-slate-600">For CLI integration</div>
                       </div>
                     </Link>
                   </div>
@@ -1000,7 +1000,7 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
 
                 {/* Navigation */}
                 <nav className="space-y-1">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Documentation</h3>
+                  <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-4">Documentation</h3>
                   {docSections.map((section) => (
                     <div key={section.id} className="space-y-1">
                       <button
@@ -1010,24 +1010,24 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                             handleItemClick(section.items[0])
                           }
                         }}
-                        className={`w-full text-left px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 ${
+                        className={`w-full text-left px-4 py-3 text-sm font-semibold rounded-lg transition-all duration-200 ${
                           activeSection === section.id
-                            ? 'text-blue-900 bg-blue-50 border border-blue-200'
-                            : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100 border border-transparent'
+                            ? 'text-slate-900 bg-slate-100 border border-slate-200'
+                            : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
                         }`}
                       >
                         {section.title}
                       </button>
                       {activeSection === section.id && (
-                        <div className="ml-2 space-y-1 border-l-2 border-blue-100 pl-4">
+                        <div className="ml-2 space-y-1 border-l-2 border-slate-200 pl-4">
                           {section.items.map((item) => (
                             <button
                               key={item.href}
                               onClick={() => handleItemClick(item)}
                               className={`block w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
                                 activeItem === item.href.replace('#', '')
-                                  ? 'text-blue-900 bg-blue-100 font-medium'
-                                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                                  ? 'text-slate-900 bg-slate-100 font-medium'
+                                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                               }`}
                             >
                               {item.title}
@@ -1048,23 +1048,23 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
               {loading ? (
                 <div className="flex items-center justify-center py-32">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-6"></div>
-                    <p className="text-gray-600 text-lg">Loading documentation...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto mb-6"></div>
+                    <p className="text-slate-600 text-lg">Loading documentation...</p>
                   </div>
                 </div>
               ) : (
                 <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-12">
                   <article
                     id="doc-content"
-                    className="prose prose-gray max-w-none prose-xl prose-headings:text-gray-900 prose-headings:font-bold prose-headings:tracking-tight prose-h1:text-5xl prose-h1:mb-8 prose-h1:leading-tight prose-h2:text-4xl prose-h2:leading-tight prose-h2:mt-16 prose-h2:mb-8 prose-h2:border-b prose-h2:border-gray-100 prose-h2:pb-4 prose-h3:text-2xl prose-h3:mt-12 prose-h3:mb-6 prose-h3:font-semibold prose-p:text-gray-700 prose-p:leading-8 prose-p:mb-8 prose-p:text-lg prose-li:text-gray-700 prose-li:mb-3 prose-li:text-lg prose-a:text-blue-600 prose-a:font-medium prose-a:no-underline hover:prose-a:text-blue-700 hover:prose-a:underline prose-code:text-blue-800 prose-code:bg-blue-50 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:text-base prose-code:font-mono prose-code:font-medium prose-pre:bg-gray-50 prose-pre:text-gray-900 prose-pre:border prose-pre:border-gray-200 prose-blockquote:border-l-blue-500 prose-blockquote:bg-blue-50 prose-blockquote:py-6 prose-blockquote:px-8 prose-blockquote:my-10 prose-blockquote:rounded-r-xl prose-blockquote:border-l-4 prose-strong:text-gray-900 prose-strong:font-semibold max-w-3xl"
+                    className="prose prose-slate max-w-none prose-xl prose-headings:text-slate-900 prose-headings:font-bold prose-headings:tracking-tight prose-h1:text-5xl prose-h1:mb-8 prose-h1:leading-tight prose-h2:text-4xl prose-h2:leading-tight prose-h2:mt-16 prose-h2:mb-8 prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-4 prose-h3:text-2xl prose-h3:mt-12 prose-h3:mb-6 prose-h3:font-semibold prose-p:text-slate-700 prose-p:leading-8 prose-p:mb-8 prose-p:text-lg prose-li:text-slate-700 prose-li:mb-3 prose-li:text-lg prose-a:text-slate-900 prose-a:font-medium prose-a:no-underline hover:prose-a:text-slate-700 hover:prose-a:underline prose-code:text-slate-900 prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:text-base prose-code:font-mono prose-code:font-medium prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:border prose-pre:border-slate-200 prose-blockquote:border-l-slate-900 prose-blockquote:bg-slate-50 prose-blockquote:py-6 prose-blockquote:px-8 prose-blockquote:my-10 prose-blockquote:rounded-r-lg prose-blockquote:border-l-4 prose-strong:text-slate-900 prose-strong:font-semibold max-w-3xl"
                     dangerouslySetInnerHTML={{ __html: content }}
                   />
-                  <nav className="hidden lg:block sticky top-24 self-start text-sm border-l border-gray-200 pl-6">
-                    <div className="font-semibold text-gray-900 mb-3">On this page</div>
-                    <ul className="space-y-2 text-gray-600">
+                  <nav className="hidden lg:block sticky top-24 self-start text-sm border-l border-slate-200 pl-6">
+                    <div className="font-semibold text-slate-900 mb-3">On this page</div>
+                    <ul className="space-y-2 text-slate-600">
                       {toc.map((item, idx) => (
                         <li key={idx}>
-                          <a href={`#${item.id}`} className={`block hover:text-gray-900 ${item.level === 3 ? 'pl-4 text-gray-500' : ''}`}>{item.text}</a>
+                          <a href={`#${item.id}`} className={`block hover:text-slate-900 ${item.level === 3 ? 'pl-4 text-slate-500' : ''}`}>{item.text}</a>
                         </li>
                       ))}
                     </ul>
@@ -1114,11 +1114,11 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
               )}
             </div>
 
-            {/* Modern Footer */}
-            <div className="px-8 lg:px-16 py-8 border-t border-gray-200 bg-gray-50/50">
+            {/* Footer */}
+            <div className="px-8 lg:px-16 py-8 border-t border-slate-200">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-                <div className="text-gray-600">
-                  <div className="font-medium text-gray-900 mb-1">Polydev Documentation</div>
+                <div className="text-slate-600">
+                  <div className="font-medium text-slate-900 mb-1">Polydev Documentation</div>
                   <div className="text-sm">Unified AI platform for developers</div>
                 </div>
                 <div className="flex space-x-8 text-sm">
@@ -1126,7 +1126,7 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                     href="https://github.com/polydev-ai/polydev"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+                    className="text-slate-600 hover:text-slate-900 transition-colors font-medium"
                   >
                     GitHub
                   </a>
@@ -1134,13 +1134,13 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                     href="https://discord.gg/polydev"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+                    className="text-slate-600 hover:text-slate-900 transition-colors font-medium"
                   >
                     Discord
                   </a>
                   <Link
                     href="/dashboard/support"
-                    className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+                    className="text-slate-600 hover:text-slate-900 transition-colors font-medium"
                   >
                     Support
                   </Link>
