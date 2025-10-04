@@ -160,13 +160,7 @@ export default function MCPTokensPage() {
   }
 
   const getTierBadge = (tier: string) => {
-    const styles = {
-      standard: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      premium: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      enterprise: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      oauth: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-    }
-    return styles[tier as keyof typeof styles] || styles.standard
+    return 'bg-slate-100 text-slate-900'
   }
 
   const getRateLimitDescription = (tier: string) => {
@@ -183,8 +177,8 @@ export default function MCPTokensPage() {
     return (
       <div className="max-w-6xl mx-auto p-8">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-          <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div className="h-8 bg-slate-200 rounded w-1/3"></div>
+          <div className="h-32 bg-slate-200 rounded"></div>
         </div>
       </div>
     )
@@ -193,22 +187,22 @@ export default function MCPTokensPage() {
   return (
     <div className="max-w-6xl mx-auto p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+        <h1 className="text-3xl font-bold text-slate-900 mb-4">
           MCP API Tokens
         </h1>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">
+        <p className="text-slate-600 mb-6">
           Generate API tokens to authenticate with Polydev's hosted MCP server. Use OAuth for the best experience or API tokens for programmatic access.
         </p>
-        
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
           <div className="flex items-start space-x-3">
-            <Key className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+            <Key className="w-5 h-5 text-slate-900 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Hosted MCP Server</h3>
-              <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+              <h3 className="font-semibold text-slate-900 mb-1">Hosted MCP Server</h3>
+              <p className="text-sm text-slate-600 mb-2">
                 Connect your MCP clients to Polydev's hosted server for breakthrough insights from multiple AI models. Supports both OAuth and API token authentication.
               </p>
-              <div className="bg-blue-100 dark:bg-blue-800 rounded px-3 py-2 font-mono text-sm">
+              <div className="bg-slate-100 rounded px-3 py-2 font-mono text-sm">
                 <strong>Server URL:</strong> https://www.polydev.ai/api/mcp
               </div>
             </div>
@@ -217,12 +211,12 @@ export default function MCPTokensPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded mb-6 flex items-center space-x-2">
+        <div className="bg-slate-50 border border-slate-200 text-slate-900 px-4 py-3 rounded mb-6 flex items-center space-x-2 font-medium">
           <AlertCircle className="w-5 h-5" />
           <span>{error}</span>
-          <button 
+          <button
             onClick={() => setError(null)}
-            className="ml-auto text-red-600 hover:text-red-800"
+            className="ml-auto text-slate-600 hover:text-slate-900"
           >
             ×
           </button>
@@ -232,22 +226,22 @@ export default function MCPTokensPage() {
       {/* Generated API Key Modal */}
       {generatedApiKey && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
             <div className="flex items-center space-x-2 mb-4">
-              <Check className="w-6 h-6 text-green-600" />
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <Check className="w-6 h-6 text-slate-900" />
+              <h2 className="text-xl font-semibold text-slate-900">
                 API Token Created Successfully
               </h2>
             </div>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
+            <p className="text-slate-600 mb-4">
               Your MCP API token has been generated. <strong>Save this token securely</strong> - it won't be shown again.
             </p>
-            <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4 mb-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
               <div className="flex items-center justify-between">
                 <code className="text-sm font-mono break-all mr-4">{generatedApiKey}</code>
                 <button
                   onClick={() => copyToClipboard(generatedApiKey, 'generated')}
-                  className="flex-shrink-0 text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                  className="flex-shrink-0 text-slate-600 hover:text-slate-900"
                   title="Copy to clipboard"
                 >
                   {copiedToken === 'generated' ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
@@ -257,7 +251,7 @@ export default function MCPTokensPage() {
             <div className="flex justify-end">
               <button
                 onClick={() => setGeneratedApiKey(null)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-700"
               >
                 Close
               </button>
@@ -267,9 +261,9 @@ export default function MCPTokensPage() {
       )}
 
       {/* Tokens List */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+      <div className="bg-white shadow border border-slate-200 rounded-lg">
+        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-slate-900">
             Your MCP Tokens
           </h2>
           <button
@@ -277,7 +271,7 @@ export default function MCPTokensPage() {
               setShowAddForm(true)
               setFormData({ token_name: '', token_type: 'api' })
             }}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-700 flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
             <span>Create Token</span>
@@ -286,28 +280,28 @@ export default function MCPTokensPage() {
 
         {/* Add Form */}
         {showAddForm && (
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
-            <h3 className="font-medium text-gray-900 dark:text-white mb-4">
+          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+            <h3 className="font-medium text-slate-900 mb-4">
               Create New MCP Token
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-900 mb-1">
                   Token Type *
                 </label>
                 <select
                   value={formData.token_type}
                   onChange={(e) => setFormData(prev => ({...prev, token_type: e.target.value}))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-900 bg-white"
                 >
                   <option value="api">API Token (pd_) - For published package & MCP clients</option>
                   <option value="cli">CLI Status Token (cli_) - For status reporting</option>
                 </select>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-900 mb-1">
                   Token Name *
                 </label>
                 <input
@@ -319,20 +313,20 @@ export default function MCPTokensPage() {
                     formData.token_type === 'cli' ? 'e.g., CLI Status Reporter' :
                     'e.g., Token Name'
                   }
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-900 bg-white"
                 />
               </div>
 
-              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-3">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="bg-slate-100 border border-slate-200 rounded-md p-3">
+                <div className="text-sm text-slate-600">
                   <strong>Rate Limit Tier:</strong> Automatically set based on your subscription plan
                 </div>
               </div>
             </div>
 
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-3 mb-4">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Note:</strong> OAuth tokens (polydev_) are automatically generated when you authenticate with Claude Desktop. 
+            <div className="bg-slate-100 border border-slate-200 rounded p-3 mb-4">
+              <p className="text-sm text-slate-900">
+                <strong>Note:</strong> OAuth tokens (polydev_) are automatically generated when you authenticate with Claude Desktop.
                 Only create manual tokens if you need them for the published package or other MCP clients.
               </p>
             </div>
@@ -341,14 +335,14 @@ export default function MCPTokensPage() {
               <button
                 onClick={createToken}
                 disabled={!formData.token_name.trim()}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
+                className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 flex items-center space-x-2"
               >
                 <Key className="w-4 h-4" />
                 <span>Generate Token</span>
               </button>
               <button
                 onClick={() => setShowAddForm(false)}
-                className="text-gray-600 dark:text-gray-300 px-4 py-2 hover:text-gray-900 dark:hover:text-white"
+                className="text-slate-600 px-4 py-2 hover:text-slate-900"
               >
                 Cancel
               </button>
@@ -359,34 +353,34 @@ export default function MCPTokensPage() {
         {/* Tokens Table */}
         <div className="overflow-x-auto">
           {tokens.length === 0 ? (
-            <div className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
-              <div className="w-16 h-16 mx-auto bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
-                <Key className="w-8 h-8" />
+            <div className="px-6 py-12 text-center text-slate-600">
+              <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <Key className="w-8 h-8 text-slate-900" />
               </div>
-              <h3 className="text-lg font-medium mb-2">No MCP tokens yet</h3>
+              <h3 className="text-lg font-medium mb-2 text-slate-900">No MCP tokens yet</h3>
               <p className="text-sm">Create your first MCP token to start using Polydev with MCP clients</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            <div className="divide-y divide-slate-200">
               {tokens.map((token) => (
-                <div key={token.id} className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <div key={token.id} className="px-6 py-4 hover:bg-slate-50">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                        <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-sm">
                           {token.token_name.charAt(0)}
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-900 dark:text-white">
+                          <h3 className="font-medium text-slate-900">
                             {token.token_name}
                           </h3>
                           <div className="flex items-center space-x-2">
-                            <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                            <p className="text-sm text-slate-500 font-mono">
                               {token.token_preview}
                             </p>
                             <button
                               onClick={() => copyToClipboard(getTokenToCopy(token), token.id)}
-                              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                              className="text-slate-500 hover:text-slate-900"
                               title={token.token_type === 'oauth' ? 'Copy full OAuth token' : 'Copy token preview'}
                             >
                               {copiedToken === token.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -394,11 +388,7 @@ export default function MCPTokensPage() {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            token.active 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                          }`}>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-900">
                             {token.active ? 'Active' : 'Disabled'}
                           </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTierBadge(token.rate_limit_tier)}`}>
@@ -407,8 +397,8 @@ export default function MCPTokensPage() {
                           </span>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center space-x-6 text-sm text-gray-600 dark:text-gray-400">
+
+                      <div className="flex items-center space-x-6 text-sm text-slate-600">
                         <span className="flex items-center space-x-1">
                           <Clock className="w-4 h-4" />
                           <span>Created {new Date(token.created_at).toLocaleDateString()}</span>
@@ -419,15 +409,15 @@ export default function MCPTokensPage() {
                             <span>Last used {new Date(token.last_used_at).toLocaleDateString()}</span>
                           </span>
                         )}
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-slate-500">
                           {getRateLimitDescription(token.rate_limit_tier)}
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       {token.token_type === 'oauth' ? (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 px-3 py-2">
+                        <div className="text-xs text-slate-600 px-3 py-2">
                           OAuth managed
                           {token.expires_at && (
                             <div>Expires: {new Date(token.expires_at).toLocaleDateString()}</div>
@@ -437,18 +427,14 @@ export default function MCPTokensPage() {
                         <>
                           <button
                             onClick={() => toggleTokenActive(token.id, token.active)}
-                            className={`p-2 rounded-lg ${
-                              token.active 
-                                ? 'text-red-600 hover:text-red-900 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
-                                : 'text-green-600 hover:text-green-900 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20'
-                            }`}
+                            className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                             title={token.active ? 'Disable token' : 'Enable token'}
                           >
                             {token.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                           <button
                             onClick={() => deleteToken(token.id)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                            className="text-slate-600 hover:text-slate-900 p-2 rounded-lg hover:bg-slate-100"
                             title="Delete token"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -465,16 +451,16 @@ export default function MCPTokensPage() {
       </div>
 
       {/* Usage Instructions */}
-      <div className="mt-8 bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
-        <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
+      <div className="mt-8 bg-slate-50 rounded-lg p-6 border border-slate-200">
+        <h3 className="font-semibold text-slate-900 mb-4 flex items-center space-x-2">
           <Settings className="w-5 h-5" />
           <span>How to Use MCP Tokens</span>
         </h3>
-        <div className="space-y-4 text-sm text-gray-600 dark:text-gray-300">
+        <div className="space-y-4 text-sm text-slate-600">
           <div>
-            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Claude Desktop (OAuth - Recommended)</h4>
-            <p>Connect using OAuth for the best experience. This generates <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">polydev_</span> tokens automatically:</p>
-            <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2 text-xs overflow-x-auto">
+            <h4 className="font-medium text-slate-900 mb-1">Claude Desktop (OAuth - Recommended)</h4>
+            <p>Connect using OAuth for the best experience. This generates <span className="font-mono bg-slate-200 px-1 rounded">polydev_</span> tokens automatically:</p>
+            <pre className="bg-slate-100 p-2 rounded mt-2 text-xs overflow-x-auto">
 {`{
   "mcpServers": {
     "polydev": {
@@ -494,9 +480,9 @@ export default function MCPTokensPage() {
             </pre>
           </div>
           <div>
-            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Published Package (polydev-perspectives-mcp)</h4>
-            <p>Use <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">pd_</span> tokens for the npm package:</p>
-            <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2 text-xs overflow-x-auto">
+            <h4 className="font-medium text-slate-900 mb-1">Published Package (polydev-perspectives-mcp)</h4>
+            <p>Use <span className="font-mono bg-slate-200 px-1 rounded">pd_</span> tokens for the npm package:</p>
+            <pre className="bg-slate-100 p-2 rounded mt-2 text-xs overflow-x-auto">
 {`npm install -g polydev-perspectives-mcp
 
 # Set environment variable
@@ -506,9 +492,9 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"
             </pre>
           </div>
           <div>
-            <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Continue.dev & Other MCP Clients</h4>
-            <p>Use <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1 rounded">pd_</span> API tokens for programmatic access:</p>
-            <pre className="bg-gray-100 dark:bg-gray-700 p-2 rounded mt-2 text-xs overflow-x-auto">
+            <h4 className="font-medium text-slate-900 mb-1">Continue.dev & Other MCP Clients</h4>
+            <p>Use <span className="font-mono bg-slate-200 px-1 rounded">pd_</span> API tokens for programmatic access:</p>
+            <pre className="bg-slate-100 p-2 rounded mt-2 text-xs overflow-x-auto">
 {`{
   "experimental": {
     "modelContextProtocol": true
