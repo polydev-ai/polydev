@@ -349,7 +349,7 @@ export default function ActivityPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
         <div className="text-center">
-          <p className="text-red-600 mb-2">Error loading activity data</p>
+          <p className="text-slate-900 font-medium mb-2">Error loading activity data</p>
           <p className="text-muted-foreground text-sm">{error}</p>
         </div>
         <Button onClick={fetchData} variant="outline">
@@ -394,11 +394,11 @@ export default function ActivityPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="timeframe">Time Period</Label>
-              <select 
+              <select
                 id="timeframe"
-                value={timeframe} 
+                value={timeframe}
                 onChange={(e) => setTimeframe(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-200 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
               >
                 <option value="24h">Last 24 Hours</option>
                 <option value="7d">Last 7 Days</option>
@@ -430,11 +430,11 @@ export default function ActivityPage() {
 
             <div className="space-y-2">
               <Label htmlFor="groupBy">Group By</Label>
-              <select 
+              <select
                 id="groupBy"
-                value={groupBy} 
+                value={groupBy}
                 onChange={(e) => setGroupBy(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-slate-200 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
               >
                 <option value="hour">Hour</option>
                 <option value="day">Day</option>
@@ -503,7 +503,7 @@ export default function ActivityPage() {
             <div className="text-2xl font-bold">{summary.totalSessions.toLocaleString()}</div>
             {comparison && (
               <p className="text-xs text-muted-foreground">
-                <span className={comparison.sessionsChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                <span className="text-slate-900 font-medium">
                   {comparison.sessionsChangePercent >= 0 ? '+' : ''}{comparison.sessionsChangePercent}%
                 </span>
                 {' '}from previous period
@@ -521,7 +521,7 @@ export default function ActivityPage() {
             <div className="text-2xl font-bold">{summary.totalTokens.toLocaleString()}</div>
             {comparison && (
               <p className="text-xs text-muted-foreground">
-                <span className={comparison.tokensChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                <span className="text-slate-900 font-medium">
                   {comparison.tokensChangePercent >= 0 ? '+' : ''}{comparison.tokensChangePercent}%
                 </span>
                 {' '}from previous period
@@ -539,7 +539,7 @@ export default function ActivityPage() {
             <div className="text-2xl font-bold">${summary.totalCost.toFixed(4)}</div>
             {comparison && (
               <p className="text-xs text-muted-foreground">
-                <span className={comparison.costChangePercent >= 0 ? 'text-red-600' : 'text-green-600'}>
+                <span className="text-slate-900 font-medium">
                   {comparison.costChangePercent >= 0 ? '+' : ''}{comparison.costChangePercent}%
                 </span>
                 {' '}from previous period
@@ -642,7 +642,7 @@ export default function ActivityPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="text-left text-gray-500 dark:text-gray-400">
+                    <tr className="text-left text-slate-500">
                       <th className="py-2 pr-4">Provider</th>
                       <th className="py-2 pr-4">Sessions</th>
                       <th className="py-2 pr-4">Tokens</th>
@@ -652,7 +652,7 @@ export default function ActivityPage() {
                   </thead>
                   <tbody>
                     {summary.providerStats.map((provider) => (
-                      <tr key={provider.provider} className="border-t border-gray-200 dark:border-gray-700">
+                      <tr key={provider.provider} className="border-t border-slate-200">
                         <td className="py-2 pr-4 font-medium">{provider.provider}</td>
                         <td className="py-2 pr-4">{provider.sessions.toLocaleString()}</td>
                         <td className="py-2 pr-4">{provider.tokens.toLocaleString()}</td>
@@ -677,7 +677,7 @@ export default function ActivityPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="text-left text-gray-500 dark:text-gray-400">
+                    <tr className="text-left text-slate-500">
                       <th className="py-2 pr-4">Model</th>
                       <th className="py-2 pr-4">Sessions</th>
                       <th className="py-2 pr-4">Tokens</th>
@@ -687,7 +687,7 @@ export default function ActivityPage() {
                   </thead>
                   <tbody>
                     {summary.modelStats.map((model) => (
-                      <tr key={model.model} className="border-t border-gray-200 dark:border-gray-700">
+                      <tr key={model.model} className="border-t border-slate-200">
                         <td className="py-2 pr-4 font-medium">{model.model}</td>
                         <td className="py-2 pr-4">{model.sessions.toLocaleString()}</td>
                         <td className="py-2 pr-4">{model.tokens.toLocaleString()}</td>
@@ -715,7 +715,7 @@ export default function ActivityPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="text-left text-gray-500 dark:text-gray-400">
+                    <tr className="text-left text-slate-500">
                       <th className="py-2 pr-4">Date</th>
                       <th className="py-2 pr-4">Sessions</th>
                       <th className="py-2 pr-4">Tokens</th>
@@ -724,7 +724,7 @@ export default function ActivityPage() {
                   </thead>
                   <tbody>
                     {summary.timeSeries.map((item) => (
-                      <tr key={item.date} className="border-t border-gray-200 dark:border-gray-700">
+                      <tr key={item.date} className="border-t border-slate-200">
                         <td className="py-2 pr-4">{new Date(item.date).toLocaleDateString()}</td>
                         <td className="py-2 pr-4">{item.sessions.toLocaleString()}</td>
                         <td className="py-2 pr-4">{item.tokens.toLocaleString()}</td>
@@ -750,7 +750,7 @@ export default function ActivityPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="text-left text-gray-500 dark:text-gray-400">
+                    <tr className="text-left text-slate-500">
                       <th className="py-2 pr-4">Date</th>
                       <th className="py-2 pr-4">Provider / Model</th>
                       <th className="py-2 pr-4">App</th>
@@ -762,7 +762,7 @@ export default function ActivityPage() {
                   </thead>
                   <tbody>
                     {filteredSessions.map((session) => (
-                      <tr key={session.id} className="border-t border-gray-200 dark:border-gray-700">
+                      <tr key={session.id} className="border-t border-slate-200">
                         <td className="py-2 pr-4">{new Date(session.createdAt).toLocaleString()}</td>
                         <td className="py-2 pr-4">{session.provider} / {session.model}</td>
                         <td className="py-2 pr-4">{session.app}</td>
@@ -770,12 +770,7 @@ export default function ActivityPage() {
                         <td className="py-2 pr-4">${session.cost.toFixed(4)}</td>
                         <td className="py-2 pr-4">{session.tps ? `${session.tps} tps` : '—'}</td>
                         <td className="py-2 pr-4">
-                          <Badge
-                            variant={
-                              session.source === 'Credits' ? 'default' :
-                              session.source === 'CLI' ? 'secondary' : 'outline'
-                            }
-                          >
+                          <Badge variant="outline">
                             {session.source}
                           </Badge>
                         </td>
