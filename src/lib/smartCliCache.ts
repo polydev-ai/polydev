@@ -5,13 +5,14 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 
 interface CliConfig {
-  provider_id: string
-  available: boolean
-  authenticated: boolean
+  provider: string
+  status: string
+  enabled: boolean
   version?: string
   default_model?: string
   available_models?: string[]
-  last_checked: string
+  last_checked_at: string
+  custom_path?: string
 }
 
 interface CliStatusSummary {
@@ -39,7 +40,7 @@ export class SmartCliCache {
 
     // Fetch from Supabase
     const { data, error } = await this.supabase
-      .from('cli_configs')
+      .from('cli_provider_configurations')
       .select('*')
       .eq('user_id', userId)
 
@@ -58,12 +59,12 @@ export class SmartCliCache {
 
   getClimiStatusSummary(configs: CliConfig[]): CliStatusSummary {
     const availableProviders = configs
-      .filter(c => c.available)
-      .map(c => c.provider_id)
+      .filter(c => c.status === 'available')
+      .map(c => c.provider)
 
     const authenticatedProviders = configs
-      .filter(c => c.authenticated)
-      .map(c => c.provider_id)
+      .filter(c => c.enabled)
+      .map(c => c.provider)
 
     return {
       hasAnyCli: availableProviders.length > 0,

@@ -1439,10 +1439,10 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
         if (cliToolName) {
           // Check if CLI tool is available and authenticated from the database
-          cliConfig = cliConfigs.find((config: any) => 
-            config.provider === cliToolName && 
-            config.status === 'available' && 
-            config.authenticated === true
+          cliConfig = cliConfigs.find((config: any) =>
+            config.provider === cliToolName &&
+            config.status === 'available' &&
+            config.enabled === true
           )
 
           if (cliConfig) {
@@ -1461,7 +1461,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             const cliExists = cliConfigs.find((config: any) => config.provider === cliToolName)
             if (cliExists) {
               console.log(`[MCP] ⚠️  CLI tool ${cliToolName} found in database but not available/authenticated - using API keys`)
-              console.log(`[MCP] CLI Status - Status: ${cliExists.status}, Authenticated: ${cliExists.authenticated}`)
+              console.log(`[MCP] CLI Status - Status: ${cliExists.status}, Enabled: ${cliExists.enabled}`)
             } else {
               console.log(`[MCP] ❌ CLI tool ${cliToolName} not found in database - using API keys`)
             }
