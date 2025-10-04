@@ -453,104 +453,236 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Code Examples Demo - FIXED */}
-      <section className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      {/* Code Examples Demo - COMPREHENSIVELY REDESIGNED */}
+      <section className="py-24 bg-gradient-to-br from-slate-50 via-white to-slate-50 relative overflow-hidden">
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+          <div className="absolute top-0 right-1/4 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
           <motion.div
             className="text-center mb-16"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
           >
-            <h2 className="text-4xl font-bold text-slate-900 mb-4">
+            <motion.div
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-100 to-blue-100 rounded-full mb-6"
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <span className="text-purple-600 text-sm font-semibold">🎯 Real Problems, Real Solutions</span>
+            </motion.div>
+            <h2 className="text-5xl font-bold text-slate-900 mb-6 bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 bg-clip-text text-transparent">
               Multiple Problems, Multiple Perspectives
             </h2>
-            <p className="text-xl text-slate-600 max-w-4xl mx-auto">
-              See how different AI models approach the same challenge. Each brings unique insights.
+            <p className="text-xl text-slate-600 max-w-4xl mx-auto leading-relaxed">
+              See how different AI models approach the same challenge. Each brings unique insights and solutions tailored to your code.
             </p>
           </motion.div>
 
           <motion.div
-            className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl overflow-hidden shadow-2xl"
-            initial={{ opacity: 0, y: 30 }}
+            className="bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-200"
+            initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.3 }}
           >
-            <div className="grid lg:grid-cols-2 gap-0">
-              {/* Code Side - COMPLETELY FIXED */}
-              <div className="relative">
-                {/* Terminal header */}
-                <div className="flex items-center justify-between p-4 bg-slate-800/50 border-b border-slate-700/50">
+            <div className="grid lg:grid-cols-[1.2fr,1fr] gap-0">
+              {/* Enhanced Code Side */}
+              <div className="relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+                {/* Terminal header with glassmorphism */}
+                <div className="flex items-center justify-between p-5 bg-slate-800/60 backdrop-blur-sm border-b border-slate-700/50">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                    <div className="w-3 h-3 rounded-full bg-red-500 shadow-lg shadow-red-500/50"></div>
+                    <div className="w-3 h-3 rounded-full bg-yellow-500 shadow-lg shadow-yellow-500/50"></div>
+                    <div className="w-3 h-3 rounded-full bg-green-500 shadow-lg shadow-green-500/50"></div>
                   </div>
-                  <div className="text-slate-400 text-sm font-mono">{currentExample.filename}</div>
-                  <div className="text-xs text-slate-400 bg-slate-700/50 px-3 py-1 rounded-md">
-                    {currentExampleIndex + 1}/3
+                  <motion.div
+                    className="text-slate-300 text-sm font-mono font-semibold"
+                    key={currentExample.filename}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {currentExample.filename}
+                  </motion.div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700/50 font-mono">
+                      {currentExampleIndex + 1}/3
+                    </div>
                   </div>
                 </div>
 
-                {/* Code display - FIXED with explicit dark background */}
-                <div className="bg-slate-900 p-6">
-                  <div className="font-mono text-sm min-h-[500px]">
-                    {/* Problem comment */}
-                    <div className="text-red-400 mb-4 italic text-xs opacity-90">
-                      {currentExample.problem}
-                    </div>
+                {/* Code display with enhanced styling */}
+                <div className="p-8 min-h-[550px] relative">
+                  {/* Subtle grid pattern */}
+                  <div className="absolute inset-0 bg-grid-slate-700/[0.05] [mask-image:linear-gradient(0deg,transparent,black)]"></div>
 
-                    {/* Code with AnimatePresence for smooth transitions */}
+                  <div className="font-mono text-sm relative">
+                    {/* Problem tag with animation */}
                     <AnimatePresence mode="wait">
-                      <motion.pre
-                        key={currentExampleIndex}
+                      <motion.div
+                        key={`problem-${currentExampleIndex}`}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        transition={{ duration: 0.3 }}
-                        className="text-slate-100 whitespace-pre-wrap leading-relaxed"
+                        transition={{ duration: 0.4 }}
+                        className="inline-flex items-center gap-2 mb-6 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg"
                       >
-                        {currentExample.code}
-                      </motion.pre>
+                        <span className="text-red-400 text-xs">⚠️</span>
+                        <span className="text-red-300 text-xs font-medium">{currentExample.problem}</span>
+                      </motion.div>
                     </AnimatePresence>
+
+                    {/* Code with syntax highlighting */}
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={`code-${currentExampleIndex}`}
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 30 }}
+                        transition={{ duration: 0.5 }}
+                        className="relative"
+                      >
+                        <pre className="text-slate-200 leading-loose">
+                          <code className="language-javascript">{currentExample.code}</code>
+                        </pre>
+
+                        {/* Decorative line numbers */}
+                        <div className="absolute left-0 top-0 bottom-0 w-12 flex flex-col text-slate-600 text-xs pt-0.5 pointer-events-none">
+                          {currentExample.code.split('\n').map((_, i) => (
+                            <div key={i} className="leading-loose text-right pr-4">{i + 1}</div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Auto-cycle indicator */}
+                  <div className="absolute bottom-6 left-8 right-8">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <div className="flex gap-1.5">
+                        {[0, 1, 2].map((idx) => (
+                          <motion.div
+                            key={idx}
+                            className={`h-1 rounded-full transition-all ${
+                              idx === currentExampleIndex ? 'w-8 bg-purple-500' : 'w-1.5 bg-slate-700'
+                            }`}
+                            layoutId={`indicator-${idx}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="ml-2 opacity-60">Auto-cycling examples</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Responses Side */}
-              <div className="bg-white p-6 min-h-[500px] flex flex-col">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">AI Perspectives</h3>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-green-700 text-xs font-medium">3 responses</span>
+              {/* Enhanced Responses Side */}
+              <div className="bg-gradient-to-br from-slate-50 to-white p-8 flex flex-col">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">AI Perspectives</h3>
+                      <p className="text-xs text-slate-500">Real-time analysis</p>
+                    </div>
                   </div>
+                  <motion.div
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 rounded-full border border-green-200"
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-green-700 text-xs font-bold">3 AI Models</span>
+                  </motion.div>
                 </div>
 
-                <div className="space-y-4 flex-1 overflow-y-auto">
+                <div className="space-y-4 flex-1 overflow-y-auto pr-2">
                   <AnimatePresence mode="wait">
                     {currentExample.responses.map((response, index) => (
                       <motion.div
-                        key={`${currentExampleIndex}-${index}`}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ delay: 0.1 * index }}
-                        className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all"
+                        key={`${currentExampleIndex}-response-${index}`}
+                        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -30, scale: 0.95 }}
+                        transition={{
+                          delay: 0.15 * index,
+                          duration: 0.5,
+                          type: "spring",
+                          stiffness: 100
+                        }}
+                        className="group relative"
                       >
-                        <div className="relative w-8 h-8 rounded-full overflow-hidden bg-white shadow-sm flex-shrink-0">
-                          <Image src={response.avatar} alt={response.model} fill className="object-contain p-1" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-slate-900 mb-2">{response.model}</div>
-                          <div className="text-slate-600 text-sm leading-relaxed">{response.text}</div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity blur-xl"></div>
+                        <div className="relative flex items-start gap-4 p-5 rounded-2xl bg-white border-2 border-slate-200 hover:border-purple-300 transition-all shadow-sm hover:shadow-xl">
+                          <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white shadow-lg flex-shrink-0 border border-slate-100">
+                            <Image src={response.avatar} alt={response.model} fill className="object-contain p-1.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="text-sm font-bold text-slate-900">{response.model}</span>
+                              <span className="text-xs text-purple-600 font-semibold px-2 py-0.5 bg-purple-100 rounded-full">
+                                Solution #{index + 1}
+                              </span>
+                            </div>
+                            <p className="text-slate-700 text-sm leading-relaxed">{response.text}</p>
+                          </div>
                         </div>
                       </motion.div>
                     ))}
                   </AnimatePresence>
                 </div>
+
+                {/* Comparison insight */}
+                <motion.div
+                  className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-200"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8 }}
+                >
+                  <p className="text-xs text-purple-900 font-medium">
+                    💡 <span className="font-bold">Pro Tip:</span> Different models provide complementary solutions. Combine insights for the best approach.
+                  </p>
+                </motion.div>
               </div>
             </div>
+          </motion.div>
+
+          {/* Value proposition cards */}
+          <motion.div
+            className="grid md:grid-cols-3 gap-6 mt-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            {[
+              { icon: "⚡", title: "Instant Comparison", desc: "Get 3+ perspectives in seconds, not minutes" },
+              { icon: "🎯", title: "Context-Aware", desc: "AI models analyze your actual codebase" },
+              { icon: "🚀", title: "Best Solutions", desc: "Combine insights for optimal results" }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                className="p-6 rounded-2xl bg-white border border-slate-200 hover:border-purple-300 hover:shadow-lg transition-all"
+                whileHover={{ y: -5 }}
+              >
+                <div className="text-3xl mb-3">{item.icon}</div>
+                <h4 className="font-bold text-slate-900 mb-2">{item.title}</h4>
+                <p className="text-sm text-slate-600">{item.desc}</p>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
       </section>
