@@ -253,7 +253,7 @@ export function useDashboardData() {
     // Create provider lookup map for enrichment
     const providerLookup = new Map<string, any>()
     // Ensure providersRegistry is always an array - handle both array and {providers: [...]} object format
-    const registryArray = Array.isArray(providersRegistry) ? providersRegistry : (providersRegistry?.providers || [])
+    const registryArray = Array.isArray(providersRegistry) ? providersRegistry : ((providersRegistry as any)?.providers || [])
     console.log('🔍 Providers registry sample:', registryArray.slice(0, 3))
     registryArray.forEach((provider: any) => {
       if (provider.id) {
