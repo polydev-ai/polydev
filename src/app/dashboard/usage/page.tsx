@@ -475,7 +475,7 @@ export default function UnifiedUsagePage() {
             <div className="text-2xl font-bold">{summary.totalSessions.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               {comparison && (
-                <span className={comparison.sessionsChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                <span className="text-slate-900 font-medium">
                   {comparison.sessionsChangePercent >= 0 ? '+' : ''}{comparison.sessionsChangePercent}% from previous period
                 </span>
               )}
@@ -492,7 +492,7 @@ export default function UnifiedUsagePage() {
             <div className="text-2xl font-bold">{summary.totalTokens.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               {comparison && (
-                <span className={comparison.tokensChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                <span className="text-slate-900 font-medium">
                   {comparison.tokensChangePercent >= 0 ? '+' : ''}{comparison.tokensChangePercent}% from previous period
                 </span>
               )}
@@ -509,7 +509,7 @@ export default function UnifiedUsagePage() {
             <div className="text-2xl font-bold">${summary.totalCost.toFixed(4)}</div>
             <p className="text-xs text-muted-foreground">
               {comparison && (
-                <span className={comparison.costChangePercent >= 0 ? 'text-red-600' : 'text-green-600'}>
+                <span className="text-slate-900 font-medium">
                   {comparison.costChangePercent >= 0 ? '+' : ''}{comparison.costChangePercent}% from previous period
                 </span>
               )}
@@ -605,7 +605,7 @@ export default function UnifiedUsagePage() {
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 dark:text-gray-400">
+                <tr className="text-left text-slate-500">
                   <th className="py-2 pr-4">Timestamp</th>
                   <th className="py-2 pr-4">Session Provider → Model Provider</th>
                   <th className="py-2 pr-4">App</th>
@@ -618,16 +618,16 @@ export default function UnifiedUsagePage() {
               </thead>
               <tbody>
                 {sessionsList.map((s) => (
-                  <tr key={s.id} className="border-t border-gray-200 dark:border-gray-700">
+                  <tr key={s.id} className="border-t border-slate-200">
                     <td className="py-2 pr-4">{formatTimestamp(s.createdAt)}</td>
                     <td className="py-2 pr-4">
                       <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md">
+                        <div className="flex items-center gap-1 px-2 py-1 bg-slate-50 rounded-md">
                           <img src={getProviderLogo(s.provider, providersRegistry)} alt={s.provider} className="w-3 h-3" />
                           <span className="text-xs font-medium">{s.provider || '—'}</span>
                         </div>
                         <span className="text-muted-foreground text-xs">→</span>
-                        <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+                        <div className="flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-md">
                           <img src={getModelLogo(s.model, s.provider, providersRegistry, modelsRegistry)} alt={s.model} className="w-3 h-3" />
                           <span className="text-xs font-medium">{s.model || '—'}</span>
                         </div>
