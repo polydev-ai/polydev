@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboardData } from '../../hooks/useDashboardData'
@@ -16,14 +16,166 @@ export default function Dashboard() {
   const [requestLogs, setRequestLogs] = useState<any[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
   const [logsFilter, setLogsFilter] = useState('all')
+  const [selectedLog, setSelectedLog] = useState<any | null>(null)
 
   const {
     stats: realTimeData,
     providerAnalytics,
     modelAnalytics,
+    providersRegistry,
+    requestLogs: dashboardRequestLogs,
     loading: dataLoading,
     refresh
   } = useDashboardData()
+
+  // Filter state
+  const [filterProvider, setFilterProvider] = useState<string>('')
+  const [filterStatus, setFilterStatus] = useState<string>('')
+  const [filterDateRange, setFilterDateRange] = useState<string>('all')
+
+  // Use logs from dashboard data instead of separate fetch
+  useEffect(() => {
+    if (dashboardRequestLogs && dashboardRequestLogs.length > 0) {
+      setRequestLogs(dashboardRequestLogs)
+    }
+  }, [dashboardRequestLogs])
+
+  // Get provider logo from models.dev providersRegistry (same as models page)
+  const getProviderLogoUrl = (providerName: string): string | null => {
+    if (!providerName || !providersRegistry || providersRegistry.length === 0) return null
+
+    const normalized = providerName.toLowerCase()
+
+    // Helper function to normalize provider IDs for matching
+    const normalizeId = (id: string) => {
+      const idMap: Record<string, string> = {
+        'xai': 'xai',
+        'x-ai': 'xai', // Use xai ID which has proper SVG logo
+        'google': 'google',
+        'openai': 'openai',
+        'anthropic': 'anthropic',
+        'deepseek': 'deepseek',
+        'cerebras': 'cerebras',
+        'groq': 'groq',
+        'moonshot': 'moonshotai', // Use moonshotai for proper logo
+        'zhipu-ai': 'zhipu-ai',
+        'zhipuai': 'zhipu-ai',
+        'alibaba': 'alibaba',
+        'mistral': 'mistral',
+        'together-ai': 'together-ai',
+        'together': 'together-ai',
+        'perplexity': 'perplexity',
+        'cohere': 'cohere',
+        'huggingface': 'huggingface'
+      }
+      return idMap[id.toLowerCase()] || id.toLowerCase()
+    }
+
+    // Try direct ID match first
+    let provider = providersRegistry.find(p => {
+      const pid = normalizeId(p.id || '')
+      return pid === normalizeId(normalized)
+    })
+
+    // Try name-based matching if direct ID match fails
+    if (!provider) {
+      provider = providersRegistry.find(p => {
+        const pname = (p.name || '').toLowerCase()
+        return pname.includes(normalized) || normalized.includes(pname)
+      })
+    }
+
+    return provider?.logo_url || provider?.logo || null
+  }
+
+  // Filter request logs
+  const filteredLogs = requestLogs.filter(log => {
+    // Provider filter
+    if (filterProvider && log.providers && Array.isArray(log.providers)) {
+      const hasProvider = log.providers.some((p: any) =>
+        p.provider?.toLowerCase().includes(filterProvider.toLowerCase())
+      )
+      if (!hasProvider) return false
+    }
+
+    // Status filter
+    if (filterStatus) {
+      const logStatus = log.status === 'success' || log.totalTokens > 0 ? 'success' : 'error'
+      if (logStatus !== filterStatus) return false
+    }
+
+    // Date range filter
+    if (filterDateRange !== 'all') {
+      const logDate = new Date(log.timestamp)
+      const now = new Date()
+
+      if (filterDateRange === 'today') {
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        if (logDate < todayStart) return false
+      } else if (filterDateRange === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        if (logDate < weekAgo) return false
+      } else if (filterDateRange === 'month') {
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+        if (logDate < monthStart) return false
+      }
+    }
+
+    return true
+  })
+
+  // Get unique providers for filter dropdown
+  const uniqueProviders = Array.from(
+    new Set(
+      requestLogs.flatMap((log: any) =>
+        log.providers?.map((p: any) => p.provider) || []
+      )
+    )
+  ).sort()
+
+  // Get all active providers (both with analytics data and configured providers)
+  const allActiveProviders = useMemo(() => {
+    const providersMap = new Map<string, any>()
+
+    // Add providers from analytics (these have usage data)
+    if (providerAnalytics) {
+      providerAnalytics.forEach((provider: any) => {
+        const normalizedId = provider.name?.toLowerCase() || provider.providerId?.toLowerCase()
+        if (normalizedId && !providersMap.has(normalizedId)) {
+          providersMap.set(normalizedId, {
+            id: normalizedId,
+            name: provider.name,
+            logo: provider.logo,
+            hasActivity: true
+          })
+        }
+      })
+    }
+
+    // Add all configured providers from registry with logos
+    if (providersRegistry && Array.isArray(providersRegistry)) {
+      providersRegistry.forEach((provider: any) => {
+        const normalizedId = provider.id?.toLowerCase()
+        if (normalizedId && provider.logo_url && !providersMap.has(normalizedId)) {
+          providersMap.set(normalizedId, {
+            id: normalizedId,
+            name: provider.name || provider.id,
+            logo: provider.logo_url,
+            hasActivity: false
+          })
+        }
+      })
+    }
+
+    return Array.from(providersMap.values())
+      .filter(p => p.logo) // Only show providers with logos
+      .sort((a, b) => {
+        // Sort by activity first, then by name
+        if (a.hasActivity && !b.hasActivity) return -1
+        if (!a.hasActivity && b.hasActivity) return 1
+        return (a.name || '').localeCompare(b.name || '')
+      })
+  }, [providerAnalytics, providersRegistry])
 
   // Fetch quota data
   useEffect(() => {
@@ -129,10 +281,14 @@ export default function Dashboard() {
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Messages</span>
               <MessageSquare className="h-4 w-4 text-gray-400" />
             </div>
-            <p className="text-2xl font-semibold text-gray-900">{quotaData?.used?.messages || 0}</p>
+            <p className="text-2xl font-semibold text-gray-900">{formatNumber(realTimeData?.totalMessages || 0)}</p>
             <p className="text-xs text-gray-500 mt-1">
-              of {quotaData?.limits?.messages || '∞'}
-              {quotaData?.bonusMessages > 0 && <span className="text-gray-600 ml-1">+{quotaData.bonusMessages}</span>}
+              this month
+              {realTimeData?.allTimeMessages && (
+                <span className="text-[10px] text-gray-400 ml-2">
+                  ({formatNumber(realTimeData.allTimeMessages)} all-time)
+                </span>
+              )}
             </p>
           </div>
 
@@ -143,7 +299,14 @@ export default function Dashboard() {
               <Zap className="h-4 w-4 text-gray-400" />
             </div>
             <p className="text-2xl font-semibold text-gray-900">{formatNumber(realTimeData?.totalApiCalls || 0)}</p>
-            <p className="text-xs text-gray-500 mt-1">model invocations</p>
+            <p className="text-xs text-gray-500 mt-1">
+              this month
+              {realTimeData?.allTimeApiCalls && (
+                <span className="text-[10px] text-gray-400 ml-2">
+                  ({formatNumber(realTimeData.allTimeApiCalls)} all-time)
+                </span>
+              )}
+            </p>
           </div>
 
           {/* Cost */}
@@ -163,7 +326,14 @@ export default function Dashboard() {
               <Database className="h-4 w-4 text-gray-400" />
             </div>
             <p className="text-2xl font-semibold text-gray-900">{formatNumber(realTimeData?.tokenBreakdown?.total || 0)}</p>
-            <p className="text-xs text-gray-500 mt-1">all sources</p>
+            <p className="text-xs text-gray-500 mt-1">
+              this month
+              {realTimeData?.allTimeTokens && (
+                <span className="text-[10px] text-gray-400 ml-2">
+                  ({formatNumber(realTimeData.allTimeTokens)} all-time)
+                </span>
+              )}
+            </p>
           </div>
         </div>
 
@@ -258,11 +428,24 @@ export default function Dashboard() {
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <div className="flex items-center space-x-3">
-              <Activity className="h-5 w-5 text-gray-400" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">Active Providers</p>
-                <p className="text-xl font-semibold text-gray-900 mt-1">{realTimeData?.activeProviders || 0}</p>
+            <div>
+              <p className="text-sm font-medium text-gray-900 mb-3">Active Providers</p>
+              <div className="flex items-center justify-between">
+                <div className="flex -space-x-1">
+                  {allActiveProviders.slice(0, 10).map((provider: any, idx: number) => (
+                    <img
+                      key={idx}
+                      src={provider.logo}
+                      alt={provider.name}
+                      className="w-5 h-5 rounded-full border border-white object-contain bg-white"
+                      title={provider.name}
+                    />
+                  ))}
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-semibold text-gray-900">{allActiveProviders.length}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">providers</p>
+                </div>
               </div>
             </div>
           </div>
@@ -271,42 +454,8 @@ export default function Dashboard() {
         {/* Request Logs */}
         <div className="bg-white border border-gray-200 rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <h2 className="text-lg font-semibold text-gray-900">Recent Requests</h2>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => setLogsFilter('all')}
-                    className={`px-3 py-1 text-xs font-medium rounded ${
-                      logsFilter === 'all'
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setLogsFilter('success')}
-                    className={`px-3 py-1 text-xs font-medium rounded ${
-                      logsFilter === 'success'
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    Success
-                  </button>
-                  <button
-                    onClick={() => setLogsFilter('error')}
-                    className={`px-3 py-1 text-xs font-medium rounded ${
-                      logsFilter === 'error'
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    Errors
-                  </button>
-                </div>
-              </div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900">Recent Requests</h2>
               <Link
                 href="/dashboard/activity"
                 className="text-sm text-gray-600 hover:text-gray-900 flex items-center space-x-1"
@@ -315,6 +464,61 @@ export default function Dashboard() {
                 <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
+
+            {/* Enhanced Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Provider Filter */}
+              <select
+                value={filterProvider}
+                onChange={(e) => setFilterProvider(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              >
+                <option value="">All Providers</option>
+                {uniqueProviders.map((provider: string) => (
+                  <option key={provider} value={provider}>{provider}</option>
+                ))}
+              </select>
+
+              {/* Status Filter */}
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              >
+                <option value="">All Status</option>
+                <option value="success">Success</option>
+                <option value="error">Error</option>
+              </select>
+
+              {/* Date Range Filter */}
+              <select
+                value={filterDateRange}
+                onChange={(e) => setFilterDateRange(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">Last 7 Days</option>
+                <option value="month">This Month</option>
+              </select>
+            </div>
+
+            {/* Filter Summary */}
+            {(filterProvider || filterStatus || filterDateRange !== 'all') && (
+              <div className="mt-3 flex items-center justify-between text-xs text-gray-600">
+                <span>Showing {filteredLogs.length} of {requestLogs.length} requests</span>
+                <button
+                  onClick={() => {
+                    setFilterProvider('')
+                    setFilterStatus('')
+                    setFilterDateRange('all')
+                  }}
+                  className="text-gray-900 hover:underline"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="divide-y divide-gray-200">
@@ -328,38 +532,96 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-500">No requests found</p>
               </div>
             ) : (
-              requestLogs.map((log: any, idx: number) => (
-                <div key={idx} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center justify-between">
+              filteredLogs.slice(0, 15).map((log: any, idx: number) => (
+                <div
+                  key={idx}
+                  className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => setSelectedLog(log)}
+                >
+                  <div className="flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      <div className="flex items-center gap-4 mb-2">
+                        {/* Provider Logos */}
+                        {log.providers && log.providers.length > 0 && (
+                          <div className="flex -space-x-1 shrink-0 mr-3">
+                            {log.providers.slice(0, 3).map((provider: any, pIdx: number) => {
+                              const logoUrl = getProviderLogoUrl(provider.provider)
+                              return logoUrl ? (
+                                <img
+                                  key={pIdx}
+                                  src={logoUrl}
+                                  alt={provider.provider}
+                                  className="w-6 h-6 rounded-full border border-white object-contain bg-white"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement
+                                    target.style.display = 'none'
+                                  }}
+                                />
+                              ) : (
+                                <div key={pIdx} className="w-6 h-6 rounded-full border border-white bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                                  {(provider.provider || 'P').charAt(0).toUpperCase()}
+                                </div>
+                              )
+                            })}
+                            {log.providers.length > 3 && (
+                              <div className="w-6 h-6 rounded-full border border-white bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                                +{log.providers.length - 3}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium shrink-0 ${
                           log.status === 'success' || log.totalTokens > 0
                             ? 'bg-gray-100 text-gray-700'
                             : 'bg-gray-100 text-gray-700'
                         }`}>
                           {log.status === 'success' || log.totalTokens > 0 ? 'Success' : 'Error'}
                         </span>
-                        <span className="text-sm font-medium text-gray-900 truncate">
-                          {log.models && log.models.length > 0
-                            ? log.models.join(', ')
-                            : log.client || 'Unknown'}
+
+                        <span className="text-sm font-medium text-gray-900 truncate flex-1" title={log.fullPrompt || log.prompt}>
+                          {(() => {
+                            // Show conversation preview for chat sessions
+                            if (log.source === 'chat') {
+                              // Try fullConversation first, then sessionTitle, then fallback
+                              let preview = 'Chat session'
+                              if (log.fullConversation && log.fullConversation.length > 0) {
+                                const lastUserMsg = [...log.fullConversation].reverse().find((m: any) => m.role === 'user')
+                                preview = lastUserMsg?.content || log.sessionTitle || 'Chat session'
+                              } else if (log.sessionTitle) {
+                                preview = log.sessionTitle
+                              }
+                              return preview.length > 60 ? preview.substring(0, 60) + '...' : preview
+                            }
+                            // Show prompt for MCP requests
+                            const promptText = log.prompt || log.fullPrompt || (log.models && log.models.length > 0 ? log.models.join(', ') : log.client || 'Unknown')
+                            return promptText.length > 60 ? promptText.substring(0, 60) + '...' : promptText
+                          })()}
                         </span>
+
                         {log.source && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 shrink-0">
                             {log.source === 'mcp' ? 'MCP' : 'Chat'}
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500">
+
+                      <div className="flex items-center space-x-4 text-xs text-gray-500">
+                        <span>{new Date(log.timestamp).toLocaleString()}</span>
+                        <span>•</span>
                         <span>{log.totalTokens?.toLocaleString() || 0} tokens</span>
+                        <span>•</span>
                         <span>${(log.cost || 0).toFixed(4)}</span>
                         {log.responseTime && (
-                          <span>{log.responseTime}ms</span>
+                          <>
+                            <span>•</span>
+                            <span>{log.responseTime}ms</span>
+                          </>
                         )}
-                        <span>{formatTimeAgo(log.timestamp)}</span>
                       </div>
                     </div>
+
+                    <ChevronRight className="h-5 w-5 text-gray-400 shrink-0" />
                   </div>
                 </div>
               ))
@@ -495,6 +757,316 @@ export default function Dashboard() {
             <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
           </Link>
         </div>
+
+        {/* Request Log Detail Modal */}
+        {selectedLog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">Request Details</h3>
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Request Overview */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Request Overview</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Timestamp</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {new Date(selectedLog.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Status</p>
+                      <p className={`text-sm font-medium ${
+                        selectedLog.status === 'success' ? 'text-green-600' :
+                        selectedLog.status === 'error' ? 'text-red-600' :
+                        selectedLog.status === 'partial_success' ? 'text-yellow-600' :
+                        'text-gray-600'
+                      }`}>
+                        {selectedLog.status || 'unknown'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Total Tokens</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedLog.totalTokens ? selectedLog.totalTokens.toLocaleString() : '0'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Total Cost</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        ${selectedLog.cost ? selectedLog.cost.toFixed(4) : '0.0000'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Full Prompt or Conversation */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">
+                    {selectedLog.source === 'chat' && selectedLog.fullConversation
+                      ? 'Full Conversation'
+                      : 'Full Prompt'}
+                  </h4>
+
+                  {/* Chat conversation display */}
+                  {selectedLog.source === 'chat' && selectedLog.fullConversation ? (
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <p className="text-sm font-medium text-blue-900">
+                          Chat Session: "{selectedLog.sessionTitle}"
+                        </p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          {selectedLog.fullConversation.length} messages in conversation
+                        </p>
+                      </div>
+
+                      <div className="max-h-96 overflow-y-auto space-y-3">
+                        {selectedLog.fullConversation.map((message: any, index: number) => (
+                          <div key={index} className={`p-4 rounded-lg ${
+                            message.role === 'user'
+                              ? 'bg-blue-50 border border-blue-200'
+                              : 'bg-gray-50 border border-gray-200'
+                          }`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  message.role === 'user'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {message.role === 'user' ? 'User' : 'Assistant'}
+                                </span>
+                                {message.model_id && (
+                                  <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                    {message.model_id}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {new Date(message.timestamp).toLocaleString()}
+                              </span>
+                            </div>
+
+                            <div className="prose prose-sm max-w-none">
+                              <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono bg-white p-3 rounded border">
+                                {message.content}
+                              </pre>
+                            </div>
+
+                            {/* Show usage and cost info for assistant messages */}
+                            {message.role === 'assistant' && (message.usage_info || message.cost_info) && (
+                              <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                                {message.usage_info?.total_tokens && (
+                                  <div className="bg-white p-2 rounded border">
+                                    <p className="text-gray-500">Tokens</p>
+                                    <p className="font-medium">{message.usage_info.total_tokens}</p>
+                                  </div>
+                                )}
+                                {message.cost_info?.total_cost && (
+                                  <div className="bg-white p-2 rounded border">
+                                    <p className="text-gray-500">Cost</p>
+                                    <p className="font-medium">${parseFloat(message.cost_info.total_cost).toFixed(4)}</p>
+                                  </div>
+                                )}
+                                {message.usage_info?.prompt_tokens && (
+                                  <div className="bg-white p-2 rounded border">
+                                    <p className="text-gray-500">Input</p>
+                                    <p className="font-medium">{message.usage_info.prompt_tokens}</p>
+                                  </div>
+                                )}
+                                {message.usage_info?.completion_tokens && (
+                                  <div className="bg-white p-2 rounded border">
+                                    <p className="text-gray-500">Output</p>
+                                    <p className="font-medium">{message.usage_info.completion_tokens}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Regular prompt display for MCP requests */
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <pre className="whitespace-pre-wrap text-sm text-gray-800 font-mono">
+                        {selectedLog.fullPrompt || selectedLog.fullPromptContent || selectedLog.prompt || 'No prompt available'}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+
+                {/* Provider Breakdown */}
+                {selectedLog.providers && selectedLog.providers.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">Provider Breakdown</h4>
+                    <div className="space-y-4">
+                      {selectedLog.providers.map((provider: any, index: number) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+                                {(() => {
+                                  const logoUrl = getProviderLogoUrl(provider.provider)
+                                  if (logoUrl) {
+                                    return (
+                                      <img
+                                        src={logoUrl}
+                                        alt={`${provider.provider} logo`}
+                                        className="w-8 h-8 object-contain"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement
+                                          target.style.display = 'none'
+                                          const fallback = target.nextElementSibling as HTMLElement
+                                          if (fallback) fallback.style.display = 'flex'
+                                        }}
+                                      />
+                                    )
+                                  }
+                                  return null
+                                })()}
+                                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ display: getProviderLogoUrl(provider.provider) ? 'none' : 'flex' }}>
+                                  {(provider.provider || 'P').charAt(0).toUpperCase()}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{provider.model || provider.provider}</div>
+                                <div className="text-xs text-gray-500">{provider.provider}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                provider.paymentMethod === 'credits' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                              }`}>
+                                {provider.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
+                              </span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                provider.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
+                                {provider.success ? 'Success' : 'Error'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div>
+                              <p className="text-gray-500">Tokens</p>
+                              <p className="font-medium">{provider.tokens || 0}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Cost</p>
+                              <p className="font-medium">${provider.cost ? provider.cost.toFixed(4) : '0.0000'}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Success</p>
+                              <p className="font-medium">
+                                <span className={`px-2 py-1 rounded-full text-xs ${
+                                  provider.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {provider.success ? 'Yes' : 'No'}
+                                </span>
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Latency</p>
+                              <p className="font-medium">{provider.latency || 0}ms</p>
+                            </div>
+                          </div>
+
+                          {/* Provider Response */}
+                          {provider.response && (
+                            <div className="mt-4">
+                              <p className="text-xs text-gray-500 mb-2">Response</p>
+                              <div className="bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">
+                                <pre className="whitespace-pre-wrap text-xs text-gray-700 font-mono">
+                                  {typeof provider.response === 'string'
+                                    ? provider.response
+                                    : JSON.stringify(provider.response, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Request Metadata */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Request Metadata</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Client</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedLog.client || 'Unknown'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Temperature</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedLog.temperature || 'Default'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Max Tokens</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedLog.maxTokens || 'Default'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Response Time</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedLog.responseTime || 0}ms
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Successful Providers</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedLog.successfulProviders || 0}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Failed Providers</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {selectedLog.failedProviders || 0}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-xs text-gray-500">Payment Method</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          selectedLog.paymentMethod === 'credits' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          {selectedLog.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

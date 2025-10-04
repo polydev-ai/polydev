@@ -3,7 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 // Global cache for dashboard data to prevent duplicate fetching
+// CACHE_VERSION: Increment this to invalidate all caches (current: 7 - fixed all-time queries)
+const CACHE_VERSION = 7
 const dashboardCache = {
+  version: CACHE_VERSION,
   stats: null as any,
   creditBalance: null as any,
   requestLogs: null as any,
@@ -22,6 +25,20 @@ const dashboardCache = {
   LONG_CACHE_DURATION: 10 * 60 * 1000, // 10 minutes for registry data
 }
 
+// Clear cache if version mismatch
+if (dashboardCache.version !== CACHE_VERSION) {
+  Object.keys(dashboardCache.timestamps).forEach(key => {
+    dashboardCache.timestamps[key as keyof typeof dashboardCache.timestamps] = 0
+  })
+  dashboardCache.stats = null
+  dashboardCache.creditBalance = null
+  dashboardCache.requestLogs = null
+  dashboardCache.providerAnalytics = null
+  dashboardCache.modelAnalytics = null
+  dashboardCache.providersRegistry = null
+  dashboardCache.version = CACHE_VERSION
+}
+
 let activeRequests: Record<string, Promise<any> | null> = {}
 
 export function useDashboardData() {
@@ -37,7 +54,12 @@ export function useDashboardData() {
     providerStats: [],
     recentActivity: [],
     totalApiCalls: 0,
+    totalMessages: 0,
     tokenBreakdown: { total: 0, mcp: 0, chat: 0 },
+    // All-time metrics
+    allTimeMessages: 0,
+    allTimeApiCalls: 0,
+    allTimeTokens: 0,
   })
   const [creditBalance, setCreditBalance] = useState<any>({
     balance: 0,
@@ -126,7 +148,12 @@ export function useDashboardData() {
           providerStats: data.providerStats || [],
           recentActivity: data.recentActivity || [],
           totalApiCalls: data.totalApiCalls || 0,
+          totalMessages: data.totalMessages || 0,
           tokenBreakdown: data.tokenBreakdown || { total: 0, mcp: 0, chat: 0 },
+          // All-time metrics for display
+          allTimeMessages: data.allTimeMessages,
+          allTimeApiCalls: data.allTimeApiCalls,
+          allTimeTokens: data.allTimeTokens,
         })
 
         // Set provider analytics from stats endpoint if available
@@ -187,7 +214,8 @@ export function useDashboardData() {
     // Check if we already have analytics for this data
     // Include provider data in hash to detect when API response changes
     const firstLogProviders = logs[0]?.providers ? JSON.stringify(logs[0].providers.slice(0, 3).map((p: any) => p.provider)) : ''
-    const logsHash = logs.length.toString() + (logs[0]?.id || '') + firstLogProviders
+    // Include cache version in hash to force reprocessing when code changes
+    const logsHash = `v${CACHE_VERSION}-${logs.length.toString()}-${logs[0]?.id || ''}-${firstLogProviders}`
     if (dashboardCache.providerAnalytics &&
         dashboardCache.providerAnalytics._hash === logsHash) {
       setProviderAnalytics(dashboardCache.providerAnalytics.data)
@@ -203,11 +231,17 @@ export function useDashboardData() {
           (Date.now() - dashboardCache.timestamps.providersRegistry) < dashboardCache.LONG_CACHE_DURATION) {
         providersRegistry = dashboardCache.providersRegistry
       } else {
+        console.log('📡 Fetching providers registry from API...')
         const response = await fetch('/api/models-dev/providers')
+        console.log('📡 API response status:', response.status, response.ok)
         if (response.ok) {
           const data = await response.json()
-          // The response is an array of providers directly (same as models page)
+          console.log('📡 API response data type:', typeof data, 'isArray:', Array.isArray(data))
+          console.log('📡 API response keys:', Object.keys(data))
+          console.log('📡 data.providers length:', data.providers?.length)
+          // The response is an object with providers array
           providersRegistry = Array.isArray(data) ? data : data.providers || []
+          console.log('📡 Final providersRegistry length:', providersRegistry.length)
           dashboardCache.providersRegistry = providersRegistry
           dashboardCache.timestamps.providersRegistry = Date.now()
         }
@@ -218,12 +252,14 @@ export function useDashboardData() {
 
     // Create provider lookup map for enrichment
     const providerLookup = new Map<string, any>()
-    // Ensure providersRegistry is always an array
-    const registryArray = Array.isArray(providersRegistry) ? providersRegistry : []
+    // Ensure providersRegistry is always an array - handle both array and {providers: [...]} object format
+    const registryArray = Array.isArray(providersRegistry) ? providersRegistry : (providersRegistry?.providers || [])
+    console.log('🔍 Providers registry sample:', registryArray.slice(0, 3))
     registryArray.forEach((provider: any) => {
       if (provider.id) {
-        // Use same field structure as models page: provider.logo and provider.name
-        const logoUrl = provider.logo
+        // Use logo_url field from database (with logo as fallback)
+        const logoUrl = provider.logo_url || provider.logo
+        console.log(`🎨 Provider ${provider.id}: logo_url=${provider.logo_url}, logo=${provider.logo}, final=${logoUrl}`)
         providerLookup.set(provider.id, {
           displayName: provider.name || provider.id,
           logo: logoUrl
@@ -250,7 +286,18 @@ export function useDashboardData() {
           // Use the provider name from the API - it's already correctly transformed
           const providerId = provider.provider
 
-          const enrichedProvider = providerLookup.get(providerId)
+          // Try direct lookup first, then try lowercase normalized lookup
+          let enrichedProvider = providerLookup.get(providerId)
+          if (!enrichedProvider && providerId) {
+            // Try case-insensitive lookup by searching through all entries
+            for (const [key, value] of providerLookup.entries()) {
+              if (key.toLowerCase() === providerId.toLowerCase() || value.displayName?.toLowerCase() === providerId.toLowerCase()) {
+                enrichedProvider = value
+                break
+              }
+            }
+          }
+
           const displayName = enrichedProvider?.displayName || providerId
 
           // Use display name as key to aggregate providers with same display name
@@ -321,14 +368,18 @@ export function useDashboardData() {
     }).sort((a: any, b: any) => b.requests - a.requests)
 
     // Transform and sort model analytics
-    const processedModelAnalytics = Object.values(modelStats).map((stats: any) => ({
-      ...stats,
-      avgLatency: stats.requests > 0 ? Math.round(stats.totalLatency / stats.requests) : 0,
-      avgCost: stats.requests > 0 ? stats.totalCost / stats.requests : 0,
-      tokensPerSecond: stats.totalLatency > 0 ? Math.round((stats.totalTokens * 1000) / stats.totalLatency) : 0,
-      successRate: stats.requests > 0 ? ((stats.successCount / stats.requests) * 100).toFixed(1) : 0,
-      costPerToken: stats.totalTokens > 0 ? (stats.totalCost / stats.totalTokens).toFixed(6) : 0,
-    })).sort((a: any, b: any) => b.requests - a.requests)
+    const processedModelAnalytics = Object.values(modelStats).map((stats: any) => {
+      const result = {
+        ...stats,
+        avgLatency: stats.requests > 0 ? Math.round(stats.totalLatency / stats.requests) : 0,
+        avgCost: stats.requests > 0 ? stats.totalCost / stats.requests : 0,
+        tokensPerSecond: stats.totalLatency > 0 ? Math.round((stats.totalTokens * 1000) / stats.totalLatency) : 0,
+        successRate: stats.requests > 0 ? ((stats.successCount / stats.requests) * 100).toFixed(1) : 0,
+        costPerToken: stats.totalTokens > 0 ? (stats.totalCost / stats.totalTokens).toFixed(6) : 0,
+      }
+      console.log(`🎯 Model ${stats.model}: provider="${stats.provider}", providerLogo="${stats.providerLogo}"`)
+      return result
+    }).sort((a: any, b: any) => b.requests - a.requests)
 
     // Cache the processed analytics
     dashboardCache.providerAnalytics = { data: processedProviderAnalytics, _hash: logsHash }

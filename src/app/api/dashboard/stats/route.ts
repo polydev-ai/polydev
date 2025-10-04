@@ -23,14 +23,24 @@ export async function GET(request: NextRequest) {
     // Use service role for comprehensive stats access
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     let supabase = await createClient()
+    let usingServiceRole = false
 
     if (serviceRoleKey && serviceRoleKey !== 'your_service_role_key') {
       const { createClient: createServiceClient } = await import('@supabase/supabase-js')
       supabase = createServiceClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        serviceRoleKey
+        serviceRoleKey,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
       )
+      usingServiceRole = true
     }
+
+    console.log('[Dashboard Stats] Using service role:', usingServiceRole, 'Key exists:', !!serviceRoleKey)
 
     // Get current user from regular client for auth
     const regularSupabase = await createClient()
@@ -43,7 +53,7 @@ export async function GET(request: NextRequest) {
     console.log('[Dashboard Stats] Fetching real statistics for user:', user.id)
 
     // Check cache first
-    const cacheKey = `dashboard-stats-${user.id}`
+    const cacheKey = `dashboard-stats-v9-${user.id}` // v9: fixed all-time values in response + added to debug log
     const cachedStats = getCachedData(cacheKey)
     if (cachedStats) {
       console.log('[Dashboard Stats] Returning cached data')
@@ -53,12 +63,20 @@ export async function GET(request: NextRequest) {
     // Get real data from database tables
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    // Use UTC to avoid timezone issues - database timestamps are in UTC
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
 
     // Execute all database queries in parallel for much better performance
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
 
-    console.log('[Dashboard Stats] Executing parallel database queries...')
+    const monthStartISO = monthStart.toISOString()
+    console.log('[Dashboard Stats] Date filters:', {
+      now: now.toISOString(),
+      monthStart: monthStartISO,
+      todayStart: todayStart.toISOString(),
+      userId: user.id
+    })
+    console.log('[Dashboard Stats] Executing parallel database queries with monthStart:', monthStartISO)
 
     const [
       userCreditsResult,
@@ -114,7 +132,7 @@ export async function GET(request: NextRequest) {
       // 6. Request logs (this month only) - for message counting and API calls
       supabase
         .from('mcp_request_logs')
-        .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs')
+        .select('total_tokens, total_cost, created_at, provider_responses, status, successful_providers, failed_providers, provider_costs')
         .eq('user_id', user.id)
         .gte('created_at', monthStart.toISOString())
         .limit(500), // Limit to prevent excessive processing
@@ -122,7 +140,7 @@ export async function GET(request: NextRequest) {
       // 7. Usage logs fallback (this month only)
       supabase
         .from('mcp_usage_logs')
-        .select('total_tokens, total_cost, created_at, models_used, response_time_ms, status')
+        .select('total_tokens, total_cost, created_at, models_used, status')
         .eq('user_id', user.id)
         .gte('created_at', monthStart.toISOString())
         .limit(500),
@@ -130,21 +148,21 @@ export async function GET(request: NextRequest) {
       // 8. Chat logs (this month only) - 1 row = 1 user message
       supabase
         .from('chat_logs')
-        .select('total_tokens, total_cost, created_at, models_used, response_time_ms')
+        .select('total_tokens, total_cost, created_at, models_used')
         .eq('user_id', user.id)
         .gte('created_at', monthStart.toISOString())
         .limit(500),
 
-      // 9. All-time request logs for display only (count only)
+      // 9. All-time request logs for all-time metrics calculation
       supabase
         .from('mcp_request_logs')
-        .select('id')
+        .select('total_tokens, provider_responses, successful_providers, total_cost')
         .eq('user_id', user.id),
 
-      // 10. All-time chat logs for display only (count only)
+      // 10. All-time chat logs for all-time metrics calculation
       supabase
         .from('chat_logs')
-        .select('id')
+        .select('total_tokens, models_used, total_cost')
         .eq('user_id', user.id),
 
       // 11. Providers registry for display names/logos
@@ -168,6 +186,20 @@ export async function GET(request: NextRequest) {
     const allTimeChatLogs = allTimeChatLogsResult.status === 'fulfilled' ? allTimeChatLogsResult.value.data : []
     const modelsDevProviders = providersRegistryResult.status === 'fulfilled' ? providersRegistryResult.value.data : []
 
+    // Log any errors from the queries
+    if (chatLogsResult.status === 'rejected' || (chatLogsResult.status === 'fulfilled' && chatLogsResult.value.error)) {
+      console.error('[Dashboard Stats] Chat logs query error:', chatLogsResult.status === 'rejected' ? chatLogsResult.reason : chatLogsResult.value.error)
+    }
+    if (requestLogsResult.status === 'rejected' || (requestLogsResult.status === 'fulfilled' && requestLogsResult.value.error)) {
+      console.error('[Dashboard Stats] Request logs query error:', requestLogsResult.status === 'rejected' ? requestLogsResult.reason : requestLogsResult.value.error)
+    }
+    if (allTimeRequestLogsResult.status === 'rejected' || (allTimeRequestLogsResult.status === 'fulfilled' && allTimeRequestLogsResult.value.error)) {
+      console.error('[Dashboard Stats] ALL-TIME request logs query error:', allTimeRequestLogsResult.status === 'rejected' ? allTimeRequestLogsResult.reason : allTimeRequestLogsResult.value.error)
+    }
+    if (allTimeChatLogsResult.status === 'rejected' || (allTimeChatLogsResult.status === 'fulfilled' && allTimeChatLogsResult.value.error)) {
+      console.error('[Dashboard Stats] ALL-TIME chat logs query error:', allTimeChatLogsResult.status === 'rejected' ? allTimeChatLogsResult.reason : allTimeChatLogsResult.value.error)
+    }
+
     console.log('[Dashboard Stats] Parallel queries completed (MONTHLY + ALL-TIME DATA):', {
       userCredits: !!userCredits,
       mcpTokens: mcpTokens?.length || 0,
@@ -179,7 +211,9 @@ export async function GET(request: NextRequest) {
       chatLogsMonthly: chatLogs?.length || 0,
       requestLogsAllTime: allTimeRequestLogs?.length || 0,
       chatLogsAllTime: allTimeChatLogs?.length || 0,
-      modelsDevProviders: modelsDevProviders?.length || 0
+      modelsDevProviders: modelsDevProviders?.length || 0,
+      sampleChatLog: chatLogs?.[0]?.created_at,
+      monthStartUsed: monthStartISO
     })
 
     const currentBalance = parseFloat(userCredits?.balance || '0')
@@ -263,6 +297,50 @@ export async function GET(request: NextRequest) {
 
     const totalApiCalls = mcpApiCalls + chatApiCalls // Total model/provider calls (this month)
 
+    // Calculate ALL-TIME API calls
+    const allTimeMcpApiCalls = (allTimeRequestLogs || []).reduce((sum, log) => {
+      // provider_responses is an object with provider keys
+      if (log.provider_responses && typeof log.provider_responses === 'object') {
+        const count = Object.keys(log.provider_responses).length
+        if (count > 0) return sum + count
+      }
+      // successful_providers is a NUMBER, not an array!
+      if (typeof log.successful_providers === 'number' && log.successful_providers > 0) {
+        return sum + log.successful_providers
+      }
+      // Fallback: count as 1 API call if we have cost/tokens data
+      if ((log.total_cost && log.total_cost > 0) || (log.total_tokens && log.total_tokens > 0)) {
+        return sum + 1
+      }
+      return sum
+    }, 0)
+
+    const allTimeChatApiCalls = (allTimeChatLogs || []).reduce((sum, log, index) => {
+      if (index === 0) console.log('[ALL-TIME DEBUG] First chat log:', JSON.stringify(log, null, 2).substring(0, 500))
+      if (log.models_used && typeof log.models_used === 'object') {
+        const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
+        if (modelsUsed.length > 0) {
+          return sum + modelsUsed.length
+        }
+      }
+      // Fallback: count as 1 API call if we have cost/tokens data
+      if ((log.total_cost && log.total_cost > 0) || (log.total_tokens && log.total_tokens > 0)) {
+        return sum + 1
+      }
+      return sum
+    }, 0)
+
+    const allTimeTotalApiCalls = allTimeMcpApiCalls + allTimeChatApiCalls
+
+    console.log('[Dashboard Stats] ALL-TIME data sample:', {
+      mcpSample: allTimeRequestLogs?.slice(0, 2),
+      chatSample: allTimeChatLogs?.slice(0, 2),
+      mcpCount: allTimeRequestLogs?.length,
+      chatCount: allTimeChatLogs?.length,
+      mcpFirst: allTimeRequestLogs?.[0],
+      chatFirst: allTimeChatLogs?.[0]
+    })
+
     console.log('[Dashboard Stats] Messages vs API calls breakdown (THIS MONTH):', {
       userId: user.id,
       mcpMessages,
@@ -276,13 +354,24 @@ export async function GET(request: NextRequest) {
       description: `${totalMessages} user requests this month resulted in ${totalApiCalls} model/provider API calls`
     })
 
+    console.log('[Dashboard Stats] ALL-TIME API calls:', {
+      allTimeMcpApiCalls,
+      allTimeChatApiCalls,
+      allTimeTotalApiCalls
+    })
+
     // Count MCP token usage for reference (not the same as client calls)
     const mcpTokenUsage = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
 
-    // Calculate total tokens from both sources
+    // Calculate total tokens from both sources (THIS MONTH)
     const mcpTokenCount = (requestLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
     const chatTokens = (chatLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
     const totalUsageTokens = mcpTokenCount + chatTokens
+
+    // Calculate ALL-TIME tokens from both sources
+    const allTimeMcpTokenCount = (allTimeRequestLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    const allTimeChatTokens = (allTimeChatLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    const allTimeTotalTokens = allTimeMcpTokenCount + allTimeChatTokens
 
     // Calculate costs - ONLY from user API keys and CLI (NOT admin credits)
     // Query perspective_usage to get source_type information
@@ -555,6 +644,8 @@ export async function GET(request: NextRequest) {
       allTimeMessages: allTimeTotalMessages,
       allTimeMcpMessages: allTimeMcpMessages,
       allTimeChatMessages: allTimeChatMessages,
+      allTimeApiCalls: allTimeTotalApiCalls,
+      allTimeTokens: allTimeTotalTokens,
       requestsToday: ((requestLogs || []).filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
@@ -724,9 +815,9 @@ export async function GET(request: NextRequest) {
     // Helper function to normalize provider IDs for matching with models-dev data
     const normalizeId = (id: string) => {
       const idMap: Record<string, string> = {
-        'xai': 'x-ai',
-        'x-ai': 'x-ai',
-        'moonshot': 'moonshot',
+        'xai': 'xai',
+        'x-ai': 'xai', // Use xai ID which has proper SVG logo
+        'moonshot': 'moonshotai', // Use moonshotai for proper logo
         'qwen': 'alibaba', // Qwen is made by Alibaba
         'glm': 'zhipu-ai', // GLM is made by Zhipu AI
         'deepseek': 'deepseek',
@@ -819,7 +910,7 @@ export async function GET(request: NextRequest) {
 
           providerAnalytics[provider.provider] = {
             name: providerInfo.name || provider.provider,
-            logo: providerInfo.logo,
+            logo: providerInfo.logo_url || providerInfo.logo,
             requests: 0,
             totalCost: 0,
             totalTokens: 0,
@@ -847,7 +938,7 @@ export async function GET(request: NextRequest) {
 
           modelAnalytics[modelKey] = {
             provider: providerInfo.name || provider.provider,
-            providerLogo: providerInfo.logo,
+            providerLogo: providerInfo.logo_url || providerInfo.logo,
             model: provider.model,
             requests: 0,
             totalCost: 0,
@@ -905,7 +996,11 @@ export async function GET(request: NextRequest) {
       providersCount: stats.providerStats.length,
       providerAnalyticsCount: processedProviderAnalytics.length,
       modelAnalyticsCount: processedModelAnalytics.length,
-      requestLogsCount: (stats as any).requestLogs?.length
+      requestLogsCount: (stats as any).requestLogs?.length,
+      // All-time values
+      allTimeMessages: stats.allTimeMessages,
+      allTimeApiCalls: stats.allTimeApiCalls,
+      allTimeTokens: stats.allTimeTokens,
     })
 
     // Cache the result for 10 seconds to ensure near real-time data while maintaining performance
