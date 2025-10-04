@@ -455,9 +455,29 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
     
     default:
       // Default to OpenAI format
+      let tokens_used = data.usage?.total_tokens || 0
+      const content = data.choices?.[0]?.message?.content || data.content || 'No response'
+
+      // CRITICAL FIX: ZAI/GLM API returns inflated token counts (100x bug)
+      // Manually count tokens for accurate billing
+      if (provider.includes('zai') || provider.includes('zhipu') || provider.includes('glm') || model?.includes('glm')) {
+        const apiReportedTokens = tokens_used
+
+        // Manually count tokens: ~4 chars per token on average
+        const estimatedInputTokens = data.usage?.prompt_tokens || Math.ceil((model?.length || 0) / 4)
+        const estimatedOutputTokens = Math.ceil(content.length / 4)
+        const manualTokenCount = estimatedInputTokens + estimatedOutputTokens
+
+        console.log(`[MCP ZAI FIX] API reported: ${apiReportedTokens} tokens, Manual count: ${manualTokenCount} tokens`)
+        console.log(`[MCP ZAI FIX] Content length: ${content.length} chars, Output tokens: ${estimatedOutputTokens}`)
+
+        // Use manual count instead of API's inflated count
+        tokens_used = manualTokenCount
+      }
+
       return {
-        content: data.choices?.[0]?.message?.content || data.content || 'No response',
-        tokens_used: data.usage?.total_tokens || 0
+        content,
+        tokens_used
       }
   }
 }
