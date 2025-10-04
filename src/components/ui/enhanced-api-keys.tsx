@@ -661,7 +661,7 @@ export default function EnhancedApiKeysPage() {
   if (authLoading || loading || preferencesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
       </div>
     )
   }
@@ -680,8 +680,8 @@ export default function EnhancedApiKeysPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Models</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900">Models</h1>
+          <p className="text-slate-600 mt-1">
             Configure providers, manage API keys, and access AI models via API keys, CLI, or credits
           </p>
         </div>
@@ -761,7 +761,7 @@ export default function EnhancedApiKeysPage() {
         <Suspense fallback={
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
               <span className="ml-3 text-gray-600 dark:text-gray-400">Loading advanced settings...</span>
             </div>
           </div>

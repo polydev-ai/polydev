@@ -117,23 +117,27 @@ export default function MCPToolsPage() {
   }
 
   if (authLoading || loading) {
-    return <div className="p-8">Loading...</div>
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+      </div>
+    )
   }
 
   return (
     <div className="max-w-6xl mx-auto p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+        <h1 className="text-3xl font-bold text-slate-900 mb-4">
           MCP Tools - Agent Integration
         </h1>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">
+        <p className="text-slate-600 mb-6">
           Generate access tokens for your AI agents to use Polydev Perspectives when they get stuck.
           Agents can call our MCP tool to get diverse perspectives from multiple LLMs.
         </p>
-        
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">How it works:</h3>
-          <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+          <h3 className="font-semibold text-slate-900 mb-2">How it works:</h3>
+          <ul className="text-sm text-slate-600 space-y-1">
             <li>• Your agent encounters a difficult problem or gets stuck</li>
             <li>• Agent calls our MCP tool with your token and the problem description</li>
             <li>• Polydev fans out to multiple LLMs (GPT-4, Claude, Gemini) in parallel</li>
@@ -144,18 +148,18 @@ export default function MCPToolsPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded mb-6">
+        <div className="bg-slate-50 border border-slate-200 text-slate-900 px-4 py-3 rounded mb-6 font-medium">
           {error}
         </div>
       )}
 
       {generatedToken && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-          <h3 className="font-semibold text-green-900 mb-2">Token Generated!</h3>
-          <p className="text-sm text-green-800 mb-3">
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-6">
+          <h3 className="font-semibold text-slate-900 mb-2">Token Generated!</h3>
+          <p className="text-sm text-slate-600 mb-3">
             Copy this token now - it won't be shown again:
           </p>
-          <div className="bg-white border rounded p-3 font-mono text-sm">
+          <div className="bg-white border border-slate-200 rounded p-3 font-mono text-sm">
             <span className="select-all">{generatedToken}</span>
           </div>
           <button
@@ -163,37 +167,37 @@ export default function MCPToolsPage() {
               navigator.clipboard.writeText(generatedToken)
               alert('Token copied to clipboard!')
             }}
-            className="mt-3 text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+            className="mt-3 text-sm bg-slate-900 text-white px-3 py-1 rounded hover:bg-slate-700"
           >
             Copy Token
           </button>
           <button
             onClick={() => setGeneratedToken(null)}
-            className="mt-3 ml-2 text-sm text-green-600 hover:text-green-800"
+            className="mt-3 ml-2 text-sm text-slate-600 hover:text-slate-900"
           >
             Dismiss
           </button>
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+      <div className="bg-white shadow border border-slate-200 rounded-lg">
+        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-slate-900">
             MCP Access Tokens
           </h2>
           <button
             onClick={() => setShowNewTokenForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="bg-slate-900 text-white px-4 py-2 rounded hover:bg-slate-700"
           >
             Generate New Token
           </button>
         </div>
 
         {showNewTokenForm && (
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
             <div className="flex items-end space-x-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-900 mb-1">
                   Token Name
                 </label>
                 <input
@@ -201,19 +205,19 @@ export default function MCPToolsPage() {
                   value={newTokenName}
                   onChange={(e) => setNewTokenName(e.target.value)}
                   placeholder="e.g., Claude Agent, Production Bot"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-900 bg-white"
                 />
               </div>
               <button
                 onClick={generateToken}
                 disabled={!newTokenName.trim()}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                className="bg-slate-900 text-white px-4 py-2 rounded hover:bg-slate-700 disabled:opacity-50"
               >
                 Generate
               </button>
               <button
                 onClick={() => setShowNewTokenForm(false)}
-                className="text-gray-600 dark:text-gray-300 px-4 py-2 hover:text-gray-900 dark:hover:text-white"
+                className="text-slate-600 px-4 py-2 hover:text-slate-900"
               >
                 Cancel
               </button>
@@ -223,71 +227,63 @@ export default function MCPToolsPage() {
 
         <div className="overflow-x-auto">
           {tokens.length === 0 ? (
-            <div className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+            <div className="px-6 py-8 text-center text-slate-600">
               No tokens generated yet. Create your first token to get started.
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Token Preview
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Rate Limit
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Created
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="bg-white divide-y divide-slate-200">
                 {tokens.map((token) => (
                   <tr key={token.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                       {token.token_name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 font-mono">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-mono">
                       {token.token_preview}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        token.active 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                      }`}>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-900">
                         {token.active ? 'Active' : 'Disabled'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                       {token.rate_limit_tier}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                       {new Date(token.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button
                         onClick={() => toggleTokenActive(token.id, token.active)}
-                        className={`${
-                          token.active 
-                            ? 'text-red-600 hover:text-red-900 dark:text-red-400'
-                            : 'text-green-600 hover:text-green-900 dark:text-green-400'
-                        }`}
+                        className="text-slate-600 hover:text-slate-900"
                       >
                         {token.active ? 'Disable' : 'Enable'}
                       </button>
                       <button
                         onClick={() => deleteToken(token.id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400"
+                        className="text-slate-600 hover:text-slate-900"
                       >
                         Delete
                       </button>
@@ -300,12 +296,12 @@ export default function MCPToolsPage() {
         </div>
       </div>
 
-      <div className="mt-8 bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
-        <h3 className="font-semibold text-gray-900 dark:text-white mb-4">MCP Tool Usage</h3>
-        <div className="space-y-4 text-sm">
+      <div className="mt-8 bg-slate-50 border border-slate-200 rounded-lg p-6">
+        <h3 className="font-semibold text-slate-900 mb-4">MCP Tool Usage</h3>
+        <div className="space-y-4 text-sm text-slate-600">
           <div>
-            <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Server Configuration:</h4>
-            <pre className="bg-white dark:bg-gray-900 border rounded p-3 overflow-x-auto text-xs">
+            <h4 className="font-medium text-slate-900 mb-2">Server Configuration:</h4>
+            <pre className="bg-slate-100 border border-slate-200 rounded p-3 overflow-x-auto text-xs">
 {`{
   "mcpServers": {
     "polydev-perspectives": {
@@ -321,8 +317,8 @@ export default function MCPToolsPage() {
           </div>
           
           <div>
-            <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Example Tool Call:</h4>
-            <pre className="bg-white dark:bg-gray-900 border rounded p-3 overflow-x-auto text-xs">
+            <h4 className="font-medium text-slate-900 mb-2">Example Tool Call:</h4>
+            <pre className="bg-slate-100 border border-slate-200 rounded p-3 overflow-x-auto text-xs">
 {`{
   "name": "get_perspectives",
   "arguments": {
