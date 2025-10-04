@@ -284,27 +284,30 @@ export async function GET(request: NextRequest) {
     const chatTokens = (chatLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
     const totalUsageTokens = mcpTokenCount + chatTokens
 
-    // Calculate total cost from BOTH MCP and chat sources
-    const mcpCost = (requestLogs || []).reduce((sum, log) => {
-      const cost = parseFloat(log.total_cost) || 0
-      // Skip unrealistic costs (likely test data)
-      if (cost > 10) {
-        console.log(`[Dashboard Stats] Skipping high MCP cost entry: $${cost}`)
-        return sum
+    // Calculate costs - ONLY from user API keys and CLI (NOT admin credits)
+    // Query perspective_usage to get source_type information
+    const { data: perspectiveUsage } = await supabase
+      .from('perspective_usage')
+      .select('estimated_cost, request_metadata, created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', monthStart.toISOString())
+
+    // Calculate user-paid costs (API keys + CLI only)
+    const userPaidCost = (perspectiveUsage || []).reduce((sum, usage) => {
+      const sourceType = usage.request_metadata?.source_type
+      // Only count costs from user_key and user_cli (NOT admin_credits or web)
+      if (sourceType === 'user_key' || sourceType === 'user_cli') {
+        const cost = parseFloat(usage.estimated_cost) || 0
+        if (cost <= 10) { // Skip unrealistic costs
+          return sum + cost
+        }
       }
-      return sum + cost
+      return sum
     }, 0) || 0
 
-    const chatCost = (chatLogs || []).reduce((sum, log) => {
-      const cost = parseFloat(log.total_cost) || 0
-      // Skip unrealistic costs (likely test data)
-      if (cost > 10) {
-        console.log(`[Dashboard Stats] Skipping high chat cost entry: $${cost}`)
-        return sum
-      }
-      return sum + cost
-    }, 0) || 0
-
+    // Calculate total tokens from ALL sources (including admin credits)
+    const mcpCost = (requestLogs || []).reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0
+    const chatCost = (chatLogs || []).reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0
     const totalCostFromLogs = mcpCost + chatCost
 
     console.log(`[Dashboard Stats] Calculated total cost THIS MONTH: $${totalCostFromLogs.toFixed(4)} (MCP: $${mcpCost.toFixed(4)} + Chat: $${chatCost.toFixed(4)}) from ${mcpApiCalls} MCP + ${chatApiCalls} chat requests = ${totalMessages} total messages`)
@@ -447,8 +450,10 @@ export async function GET(request: NextRequest) {
       }
     }).filter(provider => provider.status === 'active' || provider.requests > 0 || parseFloat(provider.cost.replace('$', '')) > 0) || []
 
-    // Use real cost from comprehensive data
-    const totalCost = totalCostFromLogs
+    // Use user-paid cost (API keys + CLI only, NOT admin credits)
+    const totalCost = userPaidCost
+
+    console.log(`[Dashboard Stats] User-paid cost (API keys + CLI): $${userPaidCost.toFixed(4)}, Total cost (all sources): $${totalCostFromLogs.toFixed(4)}`)
 
     // Generate recent activity from BOTH MCP and chat data
     const recentActivity: any[] = []
@@ -554,19 +559,14 @@ export async function GET(request: NextRequest) {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
       }).length || 0),
-      costToday: parseFloat((((requestLogs || []).filter(log => {
-        const logDate = new Date(log.created_at)
-        return logDate >= todayStart
-      }).reduce((sum, log) => {
-        const cost = parseFloat(log.total_cost) || 0
+      costToday: parseFloat(((perspectiveUsage || []).filter(usage => {
+        const usageDate = new Date(usage.created_at)
+        const sourceType = usage.request_metadata?.source_type
+        return usageDate >= todayStart && (sourceType === 'user_key' || sourceType === 'user_cli')
+      }).reduce((sum, usage) => {
+        const cost = parseFloat(usage.estimated_cost) || 0
         return cost > 10 ? sum : sum + cost // Skip unrealistic costs
-      }, 0) || 0) + ((chatLogs || []).filter(log => {
-        const logDate = new Date(log.created_at)
-        return logDate >= todayStart
-      }).reduce((sum, log) => {
-        const cost = parseFloat(log.total_cost) || 0
-        return cost > 10 ? sum : sum + cost // Skip unrealistic costs
-      }, 0) || 0)).toFixed(4)),
+      }, 0) || 0).toFixed(4)),
       avgResponseTime: avgResponseTime,
       
       // Real provider breakdown
@@ -588,9 +588,27 @@ export async function GET(request: NextRequest) {
       totalApiKeys: apiKeys?.length || 0,
       activeProviders: apiKeys?.filter(key => key.active).length || 0,
       totalMcpTokens: totalTokens,
-      oldestConnection: (allTokens && allTokens.length > 0) ? 
-        Math.min(...allTokens.map(t => new Date(t.created_at).getTime())) : 
-        Date.now()
+      oldestConnection: (allTokens && allTokens.length > 0) ?
+        Math.min(...allTokens.map(t => new Date(t.created_at).getTime())) :
+        Date.now(),
+
+      // Cost breakdown by source (user-paid only)
+      costBreakdown: {
+        userApiKeys: (perspectiveUsage || [])
+          .filter(u => u.request_metadata?.source_type === 'user_key')
+          .reduce((sum, u) => sum + (parseFloat(u.estimated_cost) || 0), 0),
+        userCli: (perspectiveUsage || [])
+          .filter(u => u.request_metadata?.source_type === 'user_cli')
+          .reduce((sum, u) => sum + (parseFloat(u.estimated_cost) || 0), 0),
+        adminCredits: 0 // Don't show admin credit costs
+      },
+
+      // Token aggregation (all sources including admin)
+      tokenBreakdown: {
+        total: totalUsageTokens,
+        mcp: mcpTokenCount,
+        chat: chatTokens
+      }
     }
 
     // Use already fetched providers registry data (from parallel queries)
