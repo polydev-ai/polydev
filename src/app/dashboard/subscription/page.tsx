@@ -234,10 +234,10 @@ export default function SubscriptionPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+          <div className="h-8 bg-slate-200 rounded w-1/3"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+              <div key={i} className="h-32 bg-slate-200 rounded"></div>
             ))}
           </div>
         </div>
@@ -261,7 +261,7 @@ export default function SubscriptionPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             Subscription
-            {isPro && <Crown className="h-6 w-6 text-yellow-500" />}
+            {isPro && <Crown className="h-6 w-6 text-slate-900" />}
           </h1>
           <p className="text-muted-foreground mt-1">
             Manage your Polydev subscription and usage
@@ -274,11 +274,7 @@ export default function SubscriptionPage() {
 
       {/* Message Display */}
       {message && (
-        <div className={`p-4 rounded-lg ${
-          message.type === 'success'
-            ? 'bg-green-50 text-green-800 border border-green-200'
-            : 'bg-red-50 text-red-800 border border-red-200'
-        }`}>
+        <div className="p-4 rounded-lg bg-slate-100 text-slate-900 border border-slate-200 font-medium">
           {message.text}
           <button
             onClick={dismissMessage}
@@ -303,12 +299,12 @@ export default function SubscriptionPage() {
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 {isPro ? (
                   <>
-                    <Crown className="h-5 w-5 text-purple-500" />
+                    <Crown className="h-5 w-5 text-slate-900" />
                     Polydev Pro
                   </>
                 ) : isPlus ? (
                   <>
-                    <Crown className="h-5 w-5 text-orange-500" />
+                    <Crown className="h-5 w-5 text-slate-900" />
                     Polydev Plus
                   </>
                 ) : (
@@ -413,23 +409,23 @@ export default function SubscriptionPage() {
             <div className="text-2xl font-bold">$0 forever</div>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 200 messages/month
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 10/40/150 perspectives
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 Top AI models
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 Compare responses
               </li>
               <li className="flex items-center gap-2">
-                <X className="h-4 w-4 text-red-500" />
+                <X className="h-4 w-4 text-slate-900" />
                 Limited perspectives
               </li>
             </ul>
@@ -437,47 +433,47 @@ export default function SubscriptionPage() {
         </Card>
 
         {/* Plus Plan */}
-        <Card className={isPlus ? 'border-orange-500 bg-orange-50/30' : 'hover:border-orange-200'}>
+        <Card className={isPlus ? 'border-slate-200 bg-white' : ''}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-orange-500" />
+                <Crown className="h-5 w-5 text-slate-900" />
                 Plus Plan
               </div>
-              {isPlus && <Badge className="bg-orange-500 text-white">Current</Badge>}
+              {isPlus && <Badge className="bg-slate-900 text-white">Current</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="text-2xl font-bold">$25/month</div>
-              <div className="text-sm text-emerald-600 font-medium">or $20/month annually</div>
+              <div className="text-sm text-slate-600 font-medium">or $20/month annually</div>
             </div>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 Unlimited messages
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 400/1,600/4,000 perspectives
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 340+ models access
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 Advanced memory features
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 Cost optimization
               </li>
             </ul>
             {!isPlus && (
               <div className="space-y-2">
                 <Button
-                  className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600"
+                  className="w-full bg-slate-900 text-white hover:bg-slate-700"
                   onClick={() => handleUpgrade('plus', 'month')}
                   disabled={isUpgrading}
                 >
@@ -486,7 +482,7 @@ export default function SubscriptionPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full border-orange-500 text-orange-600 hover:bg-orange-50"
+                  className="w-full border-slate-900 text-slate-900 hover:bg-slate-100"
                   onClick={() => handleUpgrade('plus', 'year')}
                   disabled={isUpgrading}
                 >
@@ -499,47 +495,47 @@ export default function SubscriptionPage() {
         </Card>
 
         {/* Pro Plan */}
-        <Card className={isPro ? 'border-purple-500 bg-purple-50/30' : 'hover:border-purple-200'}>
+        <Card className={isPro ? 'border-slate-200 bg-white' : ''}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-purple-500" />
+                <Crown className="h-5 w-5 text-slate-900" />
                 Pro Plan
               </div>
-              {isPro && <Badge className="bg-purple-500 text-white">Current</Badge>}
+              {isPro && <Badge className="bg-slate-900 text-white">Current</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="text-2xl font-bold">$60/month</div>
-              <div className="text-sm text-emerald-600 font-medium">or $50/month annually</div>
+              <div className="text-sm text-slate-600 font-medium">or $50/month annually</div>
             </div>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 Unlimited messages
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 1,200/4,800/10,000 perspectives
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 Priority model access
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 Team collaboration
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-slate-900" />
                 Priority support
               </li>
             </ul>
             {!isPro && (
               <div className="space-y-2">
                 <Button
-                  className="w-full bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
+                  className="w-full bg-slate-900 text-white hover:bg-slate-700"
                   onClick={() => handleUpgrade('pro', 'month')}
                   disabled={isUpgrading}
                 >
@@ -548,7 +544,7 @@ export default function SubscriptionPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full border-purple-500 text-purple-600 hover:bg-purple-50"
+                  className="w-full border-slate-900 text-slate-900 hover:bg-slate-100"
                   onClick={() => handleUpgrade('pro', 'year')}
                   disabled={isUpgrading}
                 >
