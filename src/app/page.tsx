@@ -583,10 +583,10 @@ export default function LandingPage() {
       </section>
 
       {/* Setup Section */}
-      <section className="py-20">
+      <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <motion.div
-            className="text-center mb-16"
+            className="text-center mb-12"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
@@ -595,37 +595,37 @@ export default function LandingPage() {
             <p className="text-xl text-slate-600">Choose your setup method</p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-2 gap-6">
             {/* CLI Tools */}
             <motion.div
-              className="bg-slate-50 rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-shadow"
-              initial={{ opacity: 0, x: -30 }}
+              className="bg-white rounded-lg border-2 border-black p-8"
+              initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-gradient-to-br from-slate-900 to-slate-700 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Check className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
+                  <Check className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-slate-900">Option 1: CLI Tools</h3>
-                  <p className="text-slate-600 font-medium">Recommended</p>
+                  <h3 className="text-xl font-bold text-slate-900">Option 1: CLI Tools</h3>
+                  <p className="text-sm text-slate-600">Recommended</p>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">1. Get your token</h4>
-                  <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
-                    <code className="text-sm text-green-400 font-mono">POLYDEV_USER_TOKEN=pd_your_token_here</code>
+              <div className="space-y-5">
+                <div>
+                  <h4 className="font-semibold text-slate-900 mb-3">1. Get your token</h4>
+                  <div className="bg-white border-2 border-black rounded p-3">
+                    <code className="text-sm text-black font-mono">POLYDEV_USER_TOKEN=pd_your_token_here</code>
                   </div>
-                  <p className="text-slate-600 text-sm mt-3">Visit dashboard → Settings → Copy token</p>
+                  <p className="text-slate-600 text-sm mt-2">Visit dashboard → Settings → Copy token</p>
                 </div>
 
-                <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">2. Add to MCP config</h4>
-                  <div className="relative bg-slate-900 border border-slate-700 rounded-lg p-4 overflow-x-auto">
-                    <pre className="text-sm text-slate-100 font-mono whitespace-pre leading-relaxed">{`{
+                <div>
+                  <h4 className="font-semibold text-slate-900 mb-3">2. Add to MCP config</h4>
+                  <div className="bg-white border-2 border-black rounded p-4 overflow-x-auto">
+                    <pre className="text-sm text-black font-mono whitespace-pre leading-relaxed">{`{
   "mcpServers": {
     "polydev": {
       "command": "npx",
@@ -639,10 +639,10 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">3. Ask in editor</h4>
-                  <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl p-4 border-l-4 border-slate-900">
-                    <p className="text-slate-800 font-medium italic">
+                <div>
+                  <h4 className="font-semibold text-slate-900 mb-3">3. Ask in editor</h4>
+                  <div className="bg-slate-50 border-2 border-slate-200 rounded p-4">
+                    <p className="text-slate-700 text-sm italic">
                       "Can you get multiple perspectives on this?"
                     </p>
                   </div>
@@ -652,55 +652,55 @@ export default function LandingPage() {
 
             {/* API Keys */}
             <motion.div
-              className="bg-slate-50 rounded-2xl border border-slate-200 p-8 hover:shadow-xl transition-shadow"
-              initial={{ opacity: 0, x: 30 }}
+              className="bg-white rounded-lg border-2 border-black p-8"
+              initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-gradient-to-br from-slate-900 to-slate-700 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Zap className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-bold text-slate-900">Option 2: API Keys</h3>
-                  <p className="text-slate-600 font-medium">Unlimited access</p>
+                  <h3 className="text-xl font-bold text-slate-900">Option 2: API Keys</h3>
+                  <p className="text-sm text-slate-600">Unlimited access</p>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">1. Get API keys</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
-                      <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={20} height={20} />
+              <div className="space-y-5">
+                <div>
+                  <h4 className="font-semibold text-slate-900 mb-3">1. Get API keys</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded">
+                      <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={16} height={16} />
                       <span className="text-sm font-medium">OpenAI</span>
                     </div>
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
-                      <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" width={20} height={20} />
+                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded">
+                      <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" width={16} height={16} />
                       <span className="text-sm font-medium">Anthropic</span>
                     </div>
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
-                      <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" width={20} height={20} />
+                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded">
+                      <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" width={16} height={16} />
                       <span className="text-sm font-medium">Google AI</span>
                     </div>
-                    <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
-                      <Image src="https://models.dev/logos/xai.svg" alt="xAI" width={20} height={20} />
+                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded">
+                      <Image src="https://models.dev/logos/xai.svg" alt="xAI" width={16} height={16} />
                       <span className="text-sm font-medium">xAI</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">2. Add to dashboard</h4>
-                  <p className="text-slate-600 mb-4">Save keys securely in Polydev</p>
-                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                    <p className="text-slate-700 text-sm font-medium">Dashboard → Settings → API Keys</p>
+                <div>
+                  <h4 className="font-semibold text-slate-900 mb-3">2. Add to dashboard</h4>
+                  <p className="text-slate-600 text-sm mb-3">Save keys securely in Polydev</p>
+                  <div className="bg-slate-50 border border-slate-200 rounded p-3">
+                    <p className="text-slate-700 text-sm">Dashboard → Settings → API Keys</p>
                   </div>
                 </div>
 
                 <Link
                   href="/auth"
-                  className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-slate-900 to-slate-700 text-white rounded-xl font-semibold hover:from-slate-800 hover:to-slate-600 transition-all hover:shadow-lg transform hover:scale-105"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded font-semibold hover:bg-slate-800 transition-colors"
                 >
                   Go to Dashboard
                   <ArrowRight className="w-4 h-4" />
