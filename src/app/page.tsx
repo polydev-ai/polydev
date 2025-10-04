@@ -616,16 +616,16 @@ export default function LandingPage() {
               <div className="space-y-6">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 mb-3">1. Get your token</div>
-                  <div className="bg-slate-900 rounded-lg p-4">
-                    <code className="text-sm text-slate-100 font-mono">POLYDEV_USER_TOKEN=pd_your_token_here</code>
+                  <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm text-slate-100">
+                    POLYDEV_USER_TOKEN=pd_your_token_here
                   </div>
                   <p className="text-sm text-slate-500 mt-2">Visit dashboard → Settings → Copy token</p>
                 </div>
 
                 <div>
                   <div className="text-sm font-semibold text-slate-900 mb-3">2. Add to MCP config</div>
-                  <div className="bg-slate-900 rounded-lg p-4">
-                    <pre className="text-sm text-slate-100 font-mono whitespace-pre leading-relaxed">{`{
+                  <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm text-slate-100 overflow-x-auto">
+                    <pre className="whitespace-pre">{`{
   "mcpServers": {
     "polydev": {
       "command": "npx",
