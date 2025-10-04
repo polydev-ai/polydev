@@ -132,7 +132,7 @@ export default function Dashboard() {
             <p className="text-2xl font-semibold text-gray-900">{quotaData?.used?.messages || 0}</p>
             <p className="text-xs text-gray-500 mt-1">
               of {quotaData?.limits?.messages || '∞'}
-              {quotaData?.bonusMessages > 0 && <span className="text-emerald-600 ml-1">+{quotaData.bonusMessages}</span>}
+              {quotaData?.bonusMessages > 0 && <span className="text-gray-600 ml-1">+{quotaData.bonusMessages}</span>}
             </p>
           </div>
 
@@ -185,7 +185,7 @@ export default function Dashboard() {
             </div>
             <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                className="h-full bg-gray-400 rounded-full transition-all duration-300"
                 style={{ width: `${quotaData?.percentages?.premium || 0}%` }}
               />
             </div>
@@ -206,7 +206,7 @@ export default function Dashboard() {
             </div>
             <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                className="h-full bg-gray-400 rounded-full transition-all duration-300"
                 style={{ width: `${quotaData?.percentages?.normal || 0}%` }}
               />
             </div>
@@ -227,7 +227,7 @@ export default function Dashboard() {
             </div>
             <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                className="h-full bg-gray-400 rounded-full transition-all duration-300"
                 style={{ width: `${quotaData?.percentages?.eco || 0}%` }}
               />
             </div>
@@ -289,7 +289,7 @@ export default function Dashboard() {
                     onClick={() => setLogsFilter('success')}
                     className={`px-3 py-1 text-xs font-medium rounded ${
                       logsFilter === 'success'
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-gray-900 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -299,7 +299,7 @@ export default function Dashboard() {
                     onClick={() => setLogsFilter('error')}
                     className={`px-3 py-1 text-xs font-medium rounded ${
                       logsFilter === 'error'
-                        ? 'bg-red-600 text-white'
+                        ? 'bg-gray-900 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -335,8 +335,8 @@ export default function Dashboard() {
                       <div className="flex items-center space-x-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                           log.status === 'success' || log.totalTokens > 0
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-red-100 text-red-800'
+                            ? 'bg-gray-100 text-gray-700'
+                            : 'bg-gray-100 text-gray-700'
                         }`}>
                           {log.status === 'success' || log.totalTokens > 0 ? 'Success' : 'Error'}
                         </span>
