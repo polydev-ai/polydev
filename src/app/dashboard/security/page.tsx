@@ -114,7 +114,7 @@ export default function Security() {
         </div>
 
         {message && (
-          <div className="mb-6 p-4 rounded-lg text-sm bg-slate-100 text-slate-900 font-medium">
+          <div className="mb-6 p-4 rounded-lg text-sm bg-slate-100 text-slate-900 border border-slate-200 font-medium">
             {message}
           </div>
         )}
