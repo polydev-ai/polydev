@@ -583,49 +583,49 @@ export default function LandingPage() {
       </section>
 
       {/* Setup Section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <motion.div
-            className="text-center mb-12"
+            className="text-center mb-16"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
           >
             <h2 className="text-4xl font-bold text-slate-900 mb-4">Get Started in 30 Seconds</h2>
-            <p className="text-xl text-slate-600">Choose your setup method</p>
+            <p className="text-lg text-slate-600">Choose your setup method</p>
           </motion.div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
             {/* CLI Tools */}
             <motion.div
-              className="bg-white rounded-lg border-2 border-black p-8"
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              className="border border-slate-200 rounded-xl p-8"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
             >
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
-                  <Check className="w-5 h-5 text-white" />
-                </div>
-                <div>
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
                   <h3 className="text-xl font-bold text-slate-900">Option 1: CLI Tools</h3>
-                  <p className="text-sm text-slate-600">Recommended</p>
                 </div>
+                <p className="text-sm text-slate-600 ml-11">Recommended</p>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-3">1. Get your token</h4>
-                  <div className="bg-white border-2 border-black rounded p-3">
-                    <code className="text-sm text-black font-mono">POLYDEV_USER_TOKEN=pd_your_token_here</code>
+                  <div className="text-sm font-semibold text-slate-900 mb-3">1. Get your token</div>
+                  <div className="bg-slate-900 rounded-lg p-4">
+                    <code className="text-sm text-slate-100 font-mono">POLYDEV_USER_TOKEN=pd_your_token_here</code>
                   </div>
-                  <p className="text-slate-600 text-sm mt-2">Visit dashboard → Settings → Copy token</p>
+                  <p className="text-sm text-slate-500 mt-2">Visit dashboard → Settings → Copy token</p>
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-3">2. Add to MCP config</h4>
-                  <div className="bg-white border-2 border-black rounded p-4 overflow-x-auto">
-                    <pre className="text-sm text-black font-mono whitespace-pre leading-relaxed">{`{
+                  <div className="text-sm font-semibold text-slate-900 mb-3">2. Add to MCP config</div>
+                  <div className="bg-slate-900 rounded-lg p-4">
+                    <pre className="text-sm text-slate-100 font-mono whitespace-pre leading-relaxed">{`{
   "mcpServers": {
     "polydev": {
       "command": "npx",
@@ -640,9 +640,9 @@ export default function LandingPage() {
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-3">3. Ask in editor</h4>
-                  <div className="bg-slate-50 border-2 border-slate-200 rounded p-4">
-                    <p className="text-slate-700 text-sm italic">
+                  <div className="text-sm font-semibold text-slate-900 mb-3">3. Ask in editor</div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    <p className="text-sm text-slate-700 italic">
                       "Can you get multiple perspectives on this?"
                     </p>
                   </div>
@@ -652,55 +652,56 @@ export default function LandingPage() {
 
             {/* API Keys */}
             <motion.div
-              className="bg-white rounded-lg border-2 border-black p-8"
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
+              className="border border-slate-200 rounded-xl p-8"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
             >
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-white" />
-                </div>
-                <div>
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-white" />
+                  </div>
                   <h3 className="text-xl font-bold text-slate-900">Option 2: API Keys</h3>
-                  <p className="text-sm text-slate-600">Unlimited access</p>
                 </div>
+                <p className="text-sm text-slate-600 ml-11">Unlimited access</p>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-3">1. Get API keys</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded">
-                      <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={16} height={16} />
-                      <span className="text-sm font-medium">OpenAI</span>
+                  <div className="text-sm font-semibold text-slate-900 mb-3">1. Get API keys</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg">
+                      <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={18} height={18} />
+                      <span className="text-sm text-slate-900">OpenAI</span>
                     </div>
-                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded">
-                      <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" width={16} height={16} />
-                      <span className="text-sm font-medium">Anthropic</span>
+                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg">
+                      <Image src="https://models.dev/logos/anthropic.svg" alt="Anthropic" width={18} height={18} />
+                      <span className="text-sm text-slate-900">Anthropic</span>
                     </div>
-                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded">
-                      <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" width={16} height={16} />
-                      <span className="text-sm font-medium">Google AI</span>
+                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg">
+                      <Image src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png" alt="Google" width={18} height={18} />
+                      <span className="text-sm text-slate-900">Google AI</span>
                     </div>
-                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded">
-                      <Image src="https://models.dev/logos/xai.svg" alt="xAI" width={16} height={16} />
-                      <span className="text-sm font-medium">xAI</span>
+                    <div className="flex items-center gap-2 p-3 border border-slate-200 rounded-lg">
+                      <Image src="https://models.dev/logos/xai.svg" alt="xAI" width={18} height={18} />
+                      <span className="text-sm text-slate-900">xAI</span>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-3">2. Add to dashboard</h4>
-                  <p className="text-slate-600 text-sm mb-3">Save keys securely in Polydev</p>
-                  <div className="bg-slate-50 border border-slate-200 rounded p-3">
-                    <p className="text-slate-700 text-sm">Dashboard → Settings → API Keys</p>
+                  <div className="text-sm font-semibold text-slate-900 mb-3">2. Add to dashboard</div>
+                  <p className="text-sm text-slate-600 mb-3">Save keys securely in Polydev</p>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                    <p className="text-sm text-slate-700">Dashboard → Settings → API Keys</p>
                   </div>
                 </div>
 
                 <Link
                   href="/auth"
-                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded font-semibold hover:bg-slate-800 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors"
                 >
                   Go to Dashboard
                   <ArrowRight className="w-4 h-4" />
