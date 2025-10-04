@@ -162,10 +162,12 @@ export default function Dashboard() {
               <p className="text-3xl font-bold text-gray-900">
                 {formatNumber(realTimeData?.tokenBreakdown?.total || 0)}
               </p>
-              <p className="text-sm text-gray-600">all sources</p>
+              <p className="text-sm text-gray-600">total processed</p>
             </div>
             <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs text-gray-500">Admin credits included</p>
+              <p className="text-xs text-gray-500">
+                MCP: {formatNumber(realTimeData?.tokenBreakdown?.mcp || 0)} | Chat: {formatNumber(realTimeData?.tokenBreakdown?.chat || 0)}
+              </p>
             </div>
           </div>
         </div>
@@ -303,7 +305,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 group relative">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-2 bg-blue-50 rounded-lg">
                 <Activity className="h-5 w-5 text-blue-600" />
@@ -313,7 +315,28 @@ export default function Dashboard() {
                 <p className="text-2xl font-bold text-gray-900">{realTimeData?.activeProviders || 0}</p>
               </div>
             </div>
-            <p className="text-xs text-gray-500">{realTimeData?.totalApiKeys || 0} API keys configured</p>
+            <p className="text-xs text-gray-500">{realTimeData?.totalApiKeys || 0} user API keys</p>
+
+            {/* Hover details */}
+            {realTimeData?.providerDetails && realTimeData.providerDetails.length > 0 && (
+              <div className="absolute left-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                <p className="text-xs font-semibold text-gray-700 mb-2">Provider Details:</p>
+                <div className="space-y-2">
+                  {realTimeData.providerDetails.map((provider: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-gray-900">{provider.name}</span>
+                      <span className="text-gray-500">
+                        {provider.source.includes('admin') && provider.source.includes('user')
+                          ? 'Admin + User'
+                          : provider.source.includes('admin')
+                          ? 'Admin'
+                          : 'User'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -347,13 +370,13 @@ export default function Dashboard() {
             </Link>
 
             <Link
-              href="/dashboard/credits"
+              href="/dashboard/subscription"
               className="flex items-center space-x-3 p-4 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all group"
             >
-              <DollarSign className="h-5 w-5 text-gray-400 group-hover:text-emerald-600" />
+              <Crown className="h-5 w-5 text-gray-400 group-hover:text-emerald-600" />
               <div>
-                <p className="text-sm font-medium text-gray-900">Buy Credits</p>
-                <p className="text-xs text-gray-500">Add balance</p>
+                <p className="text-sm font-medium text-gray-900">Subscription</p>
+                <p className="text-xs text-gray-500">Manage plan</p>
               </div>
             </Link>
 

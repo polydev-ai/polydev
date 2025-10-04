@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
     const subscription = await subscriptionManager.getUserSubscription(user.id)
     const messageUsage = await subscriptionManager.getUserMessageUsage(user.id)
     const actualMessageCount = await subscriptionManager.getActualMessageCount(user.id, true)
-    const credits = await subscriptionManager.getUserCredits(user.id)
 
     return NextResponse.json({
       subscription,
@@ -33,12 +32,6 @@ export async function GET(request: NextRequest) {
           chat_messages: actualMessageCount.allTimeChatMessages,
           mcp_calls: actualMessageCount.allTimeMcpCalls
         }
-      },
-      credits: credits || {
-        balance: 0,
-        promotional_balance: 0,
-        monthly_allocation: 0,
-        total_spent: 0
       }
     })
 

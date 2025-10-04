@@ -45,13 +45,6 @@ interface ProfileStats {
   lastActive: string
 }
 
-interface Credits {
-  balance: number
-  promotional_balance: number
-  monthly_allocation: number
-  total_spent: number
-}
-
 // Global cache for subscription data to prevent duplicate fetching
 const subscriptionCache = {
   data: null as any,
@@ -64,7 +57,6 @@ let activeRequest: Promise<any> | null = null
 export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [messageUsage, setMessageUsage] = useState<MessageUsage | null>(null)
-  const [credits, setCredits] = useState<Credits | null>(null)
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isUpgrading, setIsUpgrading] = useState(false)
@@ -81,7 +73,6 @@ export default function SubscriptionPage() {
       const cachedData = subscriptionCache.data
       setSubscription(cachedData.subscription)
       setMessageUsage(cachedData.messageUsage)
-      setCredits(cachedData.credits)
       setProfileStats(cachedData.profileStats)
       setIsLoading(false)
       return
@@ -108,7 +99,6 @@ export default function SubscriptionPage() {
         const results = {
           subscription: null,
           messageUsage: null,
-          credits: null,
           profileStats: null
         }
 
@@ -116,7 +106,6 @@ export default function SubscriptionPage() {
           const subscriptionData = await subscriptionResponse.json()
           results.subscription = subscriptionData.subscription
           results.messageUsage = subscriptionData.messageUsage
-          results.credits = subscriptionData.credits
         } else {
           setMessage({ type: 'error', text: 'Failed to load subscription data' })
         }
@@ -133,7 +122,6 @@ export default function SubscriptionPage() {
         if (isMountedRef.current) {
           setSubscription(results.subscription)
           setMessageUsage(results.messageUsage)
-          setCredits(results.credits)
           setProfileStats(results.profileStats)
         }
 
@@ -227,7 +215,6 @@ export default function SubscriptionPage() {
     const isPlus = subscription?.tier === 'plus'
     const isFree = !isPro && !isPlus
     const isActive = subscription?.status === 'active'
-    const totalCredits = ((credits?.balance || 0) + (credits?.promotional_balance || 0))
     const currentPeriodEndDate = subscription?.current_period_end
       ? new Date(subscription.current_period_end).toLocaleDateString()
       : null
@@ -239,10 +226,9 @@ export default function SubscriptionPage() {
       isPlus,
       isFree,
       isActive,
-      totalCredits,
       currentPeriodEndDate
     }
-  }, [subscription, messageUsage, credits])
+  }, [subscription, messageUsage])
 
   if (isLoading) {
     return (
@@ -266,7 +252,6 @@ export default function SubscriptionPage() {
     isPlus,
     isFree,
     isActive,
-    totalCredits,
     currentPeriodEndDate
   } = computedValues
 
@@ -397,27 +382,6 @@ export default function SubscriptionPage() {
           </CardContent>
         </Card>
 
-        {/* Credit Balance */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Credit Balance</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${totalCredits.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {isPro ? 'Monthly allocation + purchased' : 'Available credits'}
-            </p>
-            {credits?.promotional_balance && credits.promotional_balance > 0 && (
-              <p className="text-xs text-green-600">
-                +${credits.promotional_balance.toFixed(2)} promotional
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Chat Sessions */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -433,24 +397,6 @@ export default function SubscriptionPage() {
             </p>
           </CardContent>
         </Card>
-
-        {/* Monthly Allocation */}
-        {isPro && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Monthly Credit</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ${credits?.monthly_allocation?.toFixed(2) || '5.00'}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Allocated each month
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Plan Comparison */}

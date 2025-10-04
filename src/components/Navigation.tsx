@@ -4,9 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '../hooks/useAuth'
-import { useCredits } from '../hooks/useCredits'
 import { createClient } from '../app/utils/supabase/client'
-import { CreditCard, AlertTriangle } from 'lucide-react'
 
 interface UserProfile {
   id: string
@@ -28,8 +26,7 @@ export default function Navigation() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const { user, loading, signOut, isAuthenticated } = useAuth()
-  const { balance, formatCurrency, getCreditStatus } = useCredits()
-  
+
   const supabase = createClient()
 
   // Handle client-side mounting
@@ -149,19 +146,6 @@ export default function Navigation() {
               <div className="w-16 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
             ) : isAuthenticated ? (
               <>
-                {/* Credit Balance Display */}
-                <Link
-                  href="/dashboard/credits"
-                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span className={`${getCreditStatus().color} font-medium`}>
-                    {formatCurrency(balance.balance + balance.promotionalBalance)}
-                  </span>
-                  {getCreditStatus().status === 'critical' && (
-                    <AlertTriangle className="w-4 h-4 text-red-500" />
-                  )}
-                </Link>
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -208,13 +192,6 @@ export default function Navigation() {
                           onClick={() => setUserDropdownOpen(false)}
                         >
                           MCP Tokens
-                        </Link>
-                        <Link
-                          href="/dashboard/credits"
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          onClick={() => setUserDropdownOpen(false)}
-                        >
-                          Credits & Billing
                         </Link>
                         <Link
                           href="/dashboard/usage"
@@ -358,25 +335,6 @@ export default function Navigation() {
                       <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{profile?.display_name || user?.email}</p>
                     </div>
-                    {/* Mobile Credit Balance */}
-                    <Link
-                      href="/dashboard/credits"
-                      onClick={() => setIsOpen(false)}
-                      className="flex items-center justify-between px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 border-b border-gray-200 dark:border-gray-700 mb-2"
-                    >
-                      <div className="flex items-center">
-                        <CreditCard className="w-5 h-5 mr-2" />
-                        <span>Credits</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <span className={`${getCreditStatus().color} font-medium`}>
-                          {formatCurrency(balance.balance + balance.promotionalBalance)}
-                        </span>
-                        {getCreditStatus().status === 'critical' && (
-                          <AlertTriangle className="w-4 h-4 text-red-500" />
-                        )}
-                      </div>
-                    </Link>
                     <Link
                       href="/profile"
                       onClick={() => setIsOpen(false)}

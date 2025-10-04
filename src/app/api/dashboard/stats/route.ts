@@ -586,7 +586,25 @@ export async function GET(request: NextRequest) {
 
       // Additional real metrics
       totalApiKeys: apiKeys?.length || 0,
-      activeProviders: apiKeys?.filter(key => key.active).length || 0,
+      // Deduplicated providers: admin-provided + user API keys
+      activeProviders: (() => {
+        const providerSet = new Set<string>()
+        // Add user API key providers
+        apiKeys?.forEach(key => {
+          if (key.active && key.provider) {
+            providerSet.add(key.provider.toLowerCase())
+          }
+        })
+        // Add admin-provided providers from perspective_usage
+        ;(perspectiveUsage || []).forEach(usage => {
+          const sourceType = usage.request_metadata?.source_type
+          const provider = usage.request_metadata?.provider
+          if (sourceType === 'admin_credits' && provider) {
+            providerSet.add(provider.toLowerCase())
+          }
+        })
+        return providerSet.size
+      })(),
       totalMcpTokens: totalTokens,
       oldestConnection: (allTokens && allTokens.length > 0) ?
         Math.min(...allTokens.map(t => new Date(t.created_at).getTime())) :
@@ -608,7 +626,42 @@ export async function GET(request: NextRequest) {
         total: totalUsageTokens,
         mcp: mcpTokenCount,
         chat: chatTokens
-      }
+      },
+
+      // Provider details for hover (deduplicated admin + user)
+      providerDetails: (() => {
+        const providerMap = new Map<string, { name: string; source: string[]; logo?: string }>()
+
+        // Add user API key providers
+        apiKeys?.forEach(key => {
+          if (key.active && key.provider) {
+            const id = key.provider.toLowerCase()
+            const existing = providerMap.get(id)
+            if (existing) {
+              if (!existing.source.includes('user')) existing.source.push('user')
+            } else {
+              providerMap.set(id, { name: key.provider, source: ['user'] })
+            }
+          }
+        })
+
+        // Add admin-provided providers
+        ;(perspectiveUsage || []).forEach(usage => {
+          const sourceType = usage.request_metadata?.source_type
+          const provider = usage.request_metadata?.provider
+          if (sourceType === 'admin_credits' && provider) {
+            const id = provider.toLowerCase()
+            const existing = providerMap.get(id)
+            if (existing) {
+              if (!existing.source.includes('admin')) existing.source.push('admin')
+            } else {
+              providerMap.set(id, { name: provider, source: ['admin'] })
+            }
+          }
+        })
+
+        return Array.from(providerMap.values())
+      })()
     }
 
     // Use already fetched providers registry data (from parallel queries)
