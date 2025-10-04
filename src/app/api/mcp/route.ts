@@ -458,21 +458,31 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
       let tokens_used = data.usage?.total_tokens || 0
       const content = data.choices?.[0]?.message?.content || data.content || 'No response'
 
-      // CRITICAL FIX: ZAI/GLM API returns inflated token counts (100x bug)
-      // Manually count tokens for accurate billing
+      // CRITICAL FIX: ZAI/GLM API sometimes returns inflated token counts
+      // Validate their usage data against actual content length
       if (provider.includes('zai') || provider.includes('zhipu') || provider.includes('glm') || model?.includes('glm')) {
-        const apiReportedTokens = tokens_used
+        const apiInputTokens = data.usage?.prompt_tokens || 0
+        const apiOutputTokens = data.usage?.completion_tokens || 0
+        const apiTotalTokens = data.usage?.total_tokens || 0
 
-        // Manually count tokens: ~4 chars per token on average
-        const estimatedInputTokens = data.usage?.prompt_tokens || Math.ceil((model?.length || 0) / 4)
+        // Manually estimate tokens: ~4 chars per token on average
+        const estimatedInputTokens = apiInputTokens || 50 // Use API's input if available
         const estimatedOutputTokens = Math.ceil(content.length / 4)
-        const manualTokenCount = estimatedInputTokens + estimatedOutputTokens
+        const manualTotalTokens = estimatedInputTokens + estimatedOutputTokens
 
-        console.log(`[MCP ZAI FIX] API reported: ${apiReportedTokens} tokens, Manual count: ${manualTokenCount} tokens`)
-        console.log(`[MCP ZAI FIX] Content length: ${content.length} chars, Output tokens: ${estimatedOutputTokens}`)
+        // Check if API's output tokens are suspiciously high (>10x manual estimate)
+        const inflationRatio = apiOutputTokens / Math.max(estimatedOutputTokens, 1)
 
-        // Use manual count instead of API's inflated count
-        tokens_used = manualTokenCount
+        if (inflationRatio > 10) {
+          console.log(`[MCP ZAI] Detected inflated tokens! API: ${apiTotalTokens} (${apiOutputTokens} output), Manual: ${manualTotalTokens} (${estimatedOutputTokens} output), Inflation: ${inflationRatio.toFixed(1)}x`)
+          tokens_used = manualTotalTokens
+        } else if (apiTotalTokens > 0) {
+          console.log(`[MCP ZAI] Using API tokens: ${apiTotalTokens} (output: ${apiOutputTokens}, input: ${apiInputTokens})`)
+          // API data looks reasonable, use it
+        } else {
+          // No API usage data, use manual count
+          tokens_used = manualTotalTokens
+        }
       }
 
       return {
