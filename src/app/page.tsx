@@ -3,9 +3,58 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Code2, Sparkles, Zap, Check, ChevronRight, ChevronDown } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+
+// Typewriter component for cycling problems
+function TypewriterText({ texts, delay = 50, pauseDuration = 3000 }: {
+  texts: string[]
+  delay?: number
+  pauseDuration?: number
+}) {
+  const [currentTextIndex, setCurrentTextIndex] = useState(0)
+  const [displayedText, setDisplayedText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [charIndex, setCharIndex] = useState(0)
+
+  useEffect(() => {
+    const currentText = texts[currentTextIndex]
+
+    if (!isDeleting && charIndex < currentText.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(currentText.slice(0, charIndex + 1))
+        setCharIndex(charIndex + 1)
+      }, delay)
+      return () => clearTimeout(timeout)
+    }
+
+    if (!isDeleting && charIndex === currentText.length) {
+      const timeout = setTimeout(() => setIsDeleting(true), pauseDuration)
+      return () => clearTimeout(timeout)
+    }
+
+    if (isDeleting && charIndex > 0) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(currentText.slice(0, charIndex - 1))
+        setCharIndex(charIndex - 1)
+      }, delay / 2)
+      return () => clearTimeout(timeout)
+    }
+
+    if (isDeleting && charIndex === 0) {
+      setIsDeleting(false)
+      setCurrentTextIndex((currentTextIndex + 1) % texts.length)
+    }
+  }, [charIndex, isDeleting, currentTextIndex, texts, delay, pauseDuration])
+
+  return (
+    <span className="inline-block min-h-[1.5em]">
+      {displayedText}
+      <span className="animate-pulse">|</span>
+    </span>
+  )
+}
 
 const PROVIDERS = [
   { name: 'OpenAI', logo: 'https://models.dev/logos/openai.svg' },
@@ -16,126 +65,101 @@ const PROVIDERS = [
   { name: 'OpenRouter', logo: 'https://models.dev/logos/openrouter.svg' }
 ]
 
+const PROBLEM_SCENARIOS = [
+  "React state management bugs?",
+  "Kubernetes pods crashing?",
+  "Security vulnerabilities found?",
+  "Performance bottlenecks?",
+  "API design questions?",
+  "Database query optimization?"
+]
+
 const CODE_EXAMPLES = [
   {
-    title: "React State Management Complexity",
-    language: "TypeScript",
-    filename: "shopping-cart.tsx",
-    problem: "// Complex state updates causing bugs and performance issues",
-    code: `function ShoppingCart() {
-  const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [discount, setDiscount] = useState(0);
+    title: "React State Management",
+    filename: "cart.tsx",
+    problem: "// Race conditions causing bugs",
+    code: `const [items, setItems] = useState([])
+const [total, setTotal] = useState(0)
 
-  useEffect(() => {
-    const newTotal = items.reduce((sum, item) =>
-      sum + item.price * item.quantity, 0);
-    setTotal(newTotal);
-  }, [items]);
+useEffect(() => {
+  setTotal(items.reduce((sum, i) =>
+    sum + i.price, 0))
+}, [items])
 
-  useEffect(() => {
-    setTotal(total - discount);
-  }, [discount]);
-
-  const addItem = (item) => {
-    setItems([...items, item]);
-    setTotal(total + item.price);
-  };
-}`,
+// Bug: total updates race with item changes`,
     responses: [
       {
         model: "Claude Sonnet 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "This approach has multiple issues: unnecessary re-renders from separate state updates, race conditions in useEffect dependencies, and incorrect total calculation. Use useReducer with a single state object to handle cart operations atomically."
+        text: "Use useReducer to handle cart state atomically. Calculate total directly in render with useMemo. Eliminates race conditions."
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Replace multiple useState with a single useReducer for cart state. Calculate derived values like total directly in render without useEffect. Use useMemo for expensive calculations only when needed."
+        text: "Replace useState with Zustand store. Compute totals as selectors. Better performance and no sync issues."
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Implement a proper state management solution like Zustand or Jotai. Keep cart logic in a single store with computed selectors. This eliminates race conditions and improves performance."
+        text: "Implement custom hook with useReducer. Add memoized selectors for derived state. More maintainable."
       }
     ]
   },
   {
-    title: "Kubernetes Deployment Issues",
-    language: "YAML",
+    title: "Kubernetes Memory",
     filename: "deployment.yaml",
-    problem: "// Pods crashing with OOMKilled errors",
-    code: `apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: api-server
-spec:
-  replicas: 3
-  template:
-    spec:
-      containers:
-      - name: api
-        image: myapp:latest
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"`,
+    problem: "// Pods keep getting OOMKilled",
+    code: `resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"  # Too low for Node.js
+    cpu: "200m"`,
     responses: [
       {
         model: "Claude Sonnet 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Memory limits are too restrictive for a Node.js app. Increase limits to at least 512Mi-1Gi. Add liveness/readiness probes with proper timeouts. Consider implementing graceful shutdown handlers."
+        text: "Bump to 512Mi request, 1Gi limit. Add health checks. Node.js needs headroom for V8 heap."
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Your memory limits are causing OOM kills. Node.js needs headroom for V8 heap. Set requests to 256Mi and limits to 1Gi. Add resource monitoring with Prometheus to track actual usage patterns."
+        text: "Set 1Gi limit minimum. Add HPA for auto-scaling. Monitor with Prometheus to tune settings."
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Insufficient memory allocation. Bump to 512Mi request, 1Gi limit. Add HPA for auto-scaling based on memory/CPU metrics. Implement proper health checks to prevent cascading failures."
+        text: "Increase to 1Gi limit. Implement vertical pod autoscaler. Add proper resource monitoring."
       }
     ]
   },
   {
-    title: "Security Vulnerability Assessment",
-    language: "Python",
-    filename: "auth_handler.py",
-    problem: "// Authentication endpoint with potential security issues",
-    code: `@app.route('/login', methods=['POST'])
-def login():
-    username = request.form['username']
-    password = request.form['password']
-
-    query = f"SELECT * FROM users WHERE
-             username='{username}' AND
-             password='{password}'"
-
-    user = db.execute(query).fetchone()
-
-    if user:
-        session['user_id'] = user['id']
-        return jsonify({'success': True})
-    return jsonify({'success': False})`,
+    title: "Security Issue",
+    filename: "auth.py",
+    problem: "// SQL injection vulnerability",
+    code: `query = f"""
+  SELECT * FROM users
+  WHERE username='{username}'
+  AND password='{password}'  # Dangerous!
+"""
+user = db.execute(query).fetchone()`,
     responses: [
       {
         model: "Claude Sonnet 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Critical SQL injection vulnerability. Use parameterized queries immediately. Never store passwords in plaintext - use bcrypt/argon2. Add rate limiting to prevent brute force attacks. Implement CSRF protection."
+        text: "Critical: Use parameterized queries. Hash passwords with bcrypt. Add rate limiting and CSRF tokens."
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Multiple severe issues: SQL injection, plaintext passwords, no input validation. Switch to ORM with prepared statements. Hash passwords with bcrypt (cost 12+). Add MFA and session timeout policies."
+        text: "Switch to ORM with prepared statements. Never store plaintext passwords. Implement MFA."
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Urgent fixes needed: Use SQLAlchemy ORM to prevent injection. Hash passwords with Argon2id. Implement JWT tokens with short expiry. Add input sanitization and rate limiting with Redis."
+        text: "Use SQLAlchemy ORM. Hash with Argon2id. Add JWT tokens and input sanitization."
       }
     ]
   }
@@ -144,36 +168,36 @@ def login():
 const FAQ_DATA = [
   {
     question: "How do I trigger multiple perspectives?",
-    answer: "You manually ask your MCP-enabled editor (Claude Code, Cursor, Cline) to get perspectives using a tool call. Simply ask: 'Can you get multiple perspectives on this?' and your editor will automatically call the Polydev MCP tool with your current context."
+    answer: "Ask your MCP-enabled editor (Claude Code, Cursor, Cline) to get perspectives. Example: 'Can you get multiple perspectives on this?' Your editor calls the Polydev MCP tool with your context."
   },
   {
     question: "What context do models receive?",
-    answer: "Models receive the context your MCP client provides - typically your current file, selected code, recent changes, and your question. The amount of context depends on your editor's MCP implementation and your project size."
+    answer: "Models receive the context your MCP client provides - typically your current file, selected code, recent changes, and your question. The amount depends on your editor's MCP implementation."
   },
   {
     question: "Which models are available?",
-    answer: "346+ models from 37+ providers including Claude Sonnet 4, GPT-5, Gemini 2.5 Pro, Grok 4, DeepSeek, and many more. The full list is available in your dashboard and updates automatically as new models are released."
+    answer: "346+ models from 37+ providers including Claude Sonnet 4, GPT-5, Gemini 2.5 Pro, Grok 4, DeepSeek, and many more. The full list updates automatically in your dashboard."
   },
   {
-    question: "How is this different from using ChatGPT/Claude separately?",
-    answer: "Polydev works directly in your editor with full project context. Instead of copy-pasting code to multiple chat windows, you get responses from all models simultaneously with your actual codebase context - saving 10-15 minutes per comparison."
+    question: "How is this different from ChatGPT/Claude separately?",
+    answer: "Polydev works directly in your editor with full project context. Get responses from all models simultaneously with your actual codebase - saving 10-15 minutes per comparison."
   },
   {
     question: "Which editors support Polydev?",
-    answer: "Any MCP-compatible editor: Claude Code, Cursor (with MCP plugin), Cline (VS Code), Windsurf, and more. If your editor supports the Model Context Protocol, it works with Polydev."
+    answer: "Any MCP-compatible editor: Claude Code, Cursor (with MCP plugin), Cline (VS Code), Windsurf, and more. If your editor supports Model Context Protocol, it works."
   },
   {
     question: "How does the credit system work?",
-    answer: "Credits are our internal currency. 1 perspective call = 1 credit. Different model tiers cost different amounts: Eco models (cheapest), Normal models (balanced), Premium models (most powerful). Your subscription includes a monthly credit allowance."
+    answer: "1 perspective call = 1 credit. Model tiers: Eco (cheapest), Normal (balanced), Premium (powerful). Your subscription includes monthly credit allowance."
   },
   {
-    question: "Can I use my own API keys instead of credits?",
-    answer: "Yes! Add your API keys from OpenAI, Anthropic, Google, etc. in the dashboard. When you have API keys configured, Polydev will use them first before falling back to credits. This gives you unlimited access at your own API costs."
+    question: "Can I use my own API keys?",
+    answer: "Yes! Add API keys from OpenAI, Anthropic, Google, etc. in dashboard. Polydev uses your keys first before credits. Unlimited access at your own API costs."
   }
 ]
 
 const FAQItem = ({ question, answer, isOpen, onToggle }: any) => (
-  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-slate-300 transition-colors">
     <button
       onClick={onToggle}
       className="w-full flex items-center justify-between p-6 text-left hover:bg-slate-50 transition-colors"
@@ -236,7 +260,10 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        {/* Grid background */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.03)_1px,transparent_1px)] bg-[size:64px_64px] opacity-60"></div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -244,18 +271,20 @@ export default function LandingPage() {
             className="text-center max-w-4xl mx-auto mb-16"
           >
             <h1 className="text-5xl sm:text-7xl font-bold text-slate-900 mb-6 leading-tight">
-              Stuck? Get Multiple
+              <TypewriterText texts={PROBLEM_SCENARIOS} />
               <br />
-              <span className="text-slate-600">AI Solutions Instantly</span>
+              <span className="bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                Get Multiple Solutions
+              </span>
             </h1>
             <p className="text-xl text-slate-600 mb-8 leading-relaxed">
-              When debugging gets tough, query Claude, GPT, Gemini, and {stats.models}+ models at once. Different problems need different perspectives—get them all from your editor.
+              When you're stuck, query {stats.models}+ AI models at once. Different problems need different perspectives—get them all from your editor.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
               <Link
                 href="/auth"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white rounded-lg font-semibold hover:bg-slate-800 transition-all"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white rounded-lg font-semibold hover:bg-slate-800 transition-all hover:scale-105"
               >
                 Start Free
                 <ArrowRight className="w-5 h-5" />
@@ -302,25 +331,25 @@ export default function LandingPage() {
       <section className="py-20 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-2xl border border-slate-200">
+            <div className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors">
               <Sparkles className="w-12 h-12 mb-4" />
               <h3 className="text-xl font-semibold mb-3">Multi-Model Perspectives</h3>
               <p className="text-slate-600 leading-relaxed">
-                Query Claude, GPT, Gemini, and more simultaneously. Get diverse solutions when you're stuck.
+                Query Claude, GPT, Gemini simultaneously. Get diverse solutions when you're stuck.
               </p>
             </div>
-            <div className="bg-white p-8 rounded-2xl border border-slate-200">
+            <div className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors">
               <Zap className="w-12 h-12 mb-4" />
               <h3 className="text-xl font-semibold mb-3">Intelligent Routing</h3>
               <p className="text-slate-600 leading-relaxed">
-                Automatic fallback from CLI tools to API keys to credits. Always get the best response at the lowest cost.
+                Auto fallback: CLI tools → API keys → credits. Always best response, lowest cost.
               </p>
             </div>
-            <div className="bg-white p-8 rounded-2xl border border-slate-200">
+            <div className="bg-white p-8 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors">
               <Code2 className="w-12 h-12 mb-4" />
               <h3 className="text-xl font-semibold mb-3">Zero Setup</h3>
               <p className="text-slate-600 leading-relaxed">
-                Works instantly with your existing Claude Code, Cline, or Cursor installation. No configuration needed.
+                Works instantly with Claude Code, Cline, or Cursor. No configuration needed.
               </p>
             </div>
           </div>
@@ -335,28 +364,28 @@ export default function LandingPage() {
             <p className="text-xl text-slate-600">Three simple steps to better solutions</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-12 relative">
+          <div className="grid md:grid-cols-3 gap-12">
             <div className="text-center">
               <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold">1</div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">MCP auto-detects when you're stuck</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">Ask in your editor</h3>
               <p className="text-slate-600 leading-relaxed">
-                When you're debugging or need help in Claude Code, Cursor, or Cline, your MCP client automatically sends context to Polydev.
+                When debugging in Claude Code, Cursor, or Cline, ask for perspectives on your code problem.
               </p>
             </div>
 
             <div className="text-center">
               <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold">2</div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">Models analyze your actual code</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">Models analyze context</h3>
               <p className="text-slate-600 leading-relaxed">
-                Each model sees your entire project context—your files, dependencies, recent changes. They understand what you're actually working on.
+                Each model sees your files, dependencies, changes. They understand what you're working on.
               </p>
             </div>
 
             <div className="text-center">
               <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center mx-auto mb-6 text-2xl font-bold">3</div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-4">Compare and choose the best approach</h3>
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">Compare solutions</h3>
               <p className="text-slate-600 leading-relaxed">
-                See different solutions side by side. One model might catch an edge case another missed. Pick what makes sense for your situation.
+                See different approaches. One model might catch edge cases others missed.
               </p>
             </div>
           </div>
@@ -364,15 +393,15 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8 mt-20">
             <div className="text-center p-6 bg-slate-50 rounded-2xl">
               <h3 className="text-lg font-semibold text-slate-900 mb-3">Better solutions</h3>
-              <p className="text-slate-600">Different models excel at different things. Get the best of each without the hassle.</p>
+              <p className="text-slate-600">Different models excel at different things. Get the best of each.</p>
             </div>
             <div className="text-center p-6 bg-slate-50 rounded-2xl">
               <h3 className="text-lg font-semibold text-slate-900 mb-3">Stay in flow</h3>
-              <p className="text-slate-600">No tab switching, no copy-pasting. Everything happens right in your editor.</p>
+              <p className="text-slate-600">No tab switching, no copy-pasting. Everything in your editor.</p>
             </div>
             <div className="text-center p-6 bg-slate-50 rounded-2xl">
-              <h3 className="text-lg font-semibold text-slate-900 mb-3">Remembers context</h3>
-              <p className="text-slate-600">Picks up where you left off, even across sessions. No more explaining your project every time.</p>
+              <h3 className="text-lg font-semibold text-slate-900 mb-3">Full context</h3>
+              <p className="text-slate-600">Models see your actual project, not just snippets.</p>
             </div>
           </div>
         </div>
@@ -386,14 +415,14 @@ export default function LandingPage() {
               Multiple Problems, Multiple Perspectives
             </h2>
             <p className="text-xl text-slate-600 max-w-4xl mx-auto">
-              See how different AI models approach the same coding challenge. Each brings unique insights, catching edge cases others might miss.
+              See how different AI models approach the same challenge. Each brings unique insights.
             </p>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xl">
             <div className="grid lg:grid-cols-2 gap-0">
               {/* Code Side */}
-              <div className="relative">
+              <div className="relative bg-slate-900">
                 <div className="flex items-center justify-between p-4 bg-slate-800 border-b border-slate-700">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-red-400"></div>
@@ -401,14 +430,14 @@ export default function LandingPage() {
                     <div className="w-3 h-3 rounded-full bg-green-400"></div>
                   </div>
                   <div className="text-slate-400 text-sm">{currentExample.filename}</div>
-                  <div className="text-xs text-slate-400 bg-slate-700 px-2 py-1 rounded">
-                    Problem {currentExampleIndex + 1}/3
+                  <div className="text-xs text-slate-500 bg-slate-700 px-2 py-1 rounded">
+                    {currentExampleIndex + 1}/3
                   </div>
                 </div>
 
-                <div className="p-6 bg-slate-900 text-slate-100 font-mono text-sm h-[500px] overflow-y-auto">
+                <div className="p-6 font-mono text-sm h-[500px] overflow-y-auto">
                   <div className="text-red-400 mb-4 italic text-xs">{currentExample.problem}</div>
-                  <pre className="whitespace-pre-wrap">{currentExample.code}</pre>
+                  <pre className="text-slate-100 whitespace-pre-wrap leading-relaxed">{currentExample.code}</pre>
                 </div>
               </div>
 
@@ -446,7 +475,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">Get Started in 30 Seconds</h2>
-            <p className="text-xl text-slate-600">Choose your setup method and start getting multiple AI perspectives immediately</p>
+            <p className="text-xl text-slate-600">Choose your setup method</p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
@@ -458,44 +487,41 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-2xl font-bold text-slate-900">Option 1: CLI Tools</h3>
-                  <p className="text-slate-600 font-medium">Recommended - Auto-detects when you need help</p>
+                  <p className="text-slate-600 font-medium">Recommended</p>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">1. Get your token from dashboard</h4>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-3">
-                    <code className="text-sm font-mono">POLYDEV_USER_TOKEN=pd_your_token_here</code>
+                  <h4 className="font-semibold text-slate-900 mb-4">1. Get your token</h4>
+                  <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
+                    <code className="text-sm text-green-400 font-mono">POLYDEV_USER_TOKEN=pd_your_token_here</code>
                   </div>
-                  <p className="text-slate-600 text-sm">Visit <Link href="/auth" className="text-black font-medium">dashboard</Link> → Settings → Copy your user token</p>
+                  <p className="text-slate-600 text-sm mt-3">Visit dashboard → Settings → Copy token</p>
                 </div>
 
                 <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">2. Add to your MCP config</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-sm font-medium text-slate-700 mb-2">Claude Code / Cline</div>
-                      <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 text-sm overflow-x-auto">
-                        <pre className="text-slate-100 font-mono">{`{
+                  <h4 className="font-semibold text-slate-900 mb-4">2. Add to MCP config</h4>
+                  <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 overflow-x-auto">
+                    <pre className="text-sm text-slate-100 font-mono whitespace-pre">{`{
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai@latest", "polydev-stdio"],
-      "env": {"POLYDEV_USER_TOKEN": "pd_your_token_here"}
+      "args": ["-y", "polydev-ai@latest"],
+      "env": {
+        "POLYDEV_USER_TOKEN": "pd_your_token"
+      }
     }
   }
 }`}</pre>
-                      </div>
-                    </div>
                   </div>
                 </div>
 
                 <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">3. Ask for perspectives in your editor</h4>
+                  <h4 className="font-semibold text-slate-900 mb-4">3. Ask in editor</h4>
                   <div className="bg-slate-50 rounded-xl p-4 border-l-4 border-black">
                     <p className="text-slate-800 font-medium italic">
-                      "Can you get multiple perspectives on optimizing this React component?"
+                      "Can you get multiple perspectives on this?"
                     </p>
                   </div>
                 </div>
@@ -510,13 +536,13 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-2xl font-bold text-slate-900">Option 2: API Keys</h3>
-                  <p className="text-slate-600 font-medium">Use your own API keys for unlimited access</p>
+                  <p className="text-slate-600 font-medium">Unlimited access</p>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">1. Get API keys from providers</h4>
+                  <h4 className="font-semibold text-slate-900 mb-4">1. Get API keys</h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg">
                       <Image src="https://models.dev/logos/openai.svg" alt="OpenAI" width={20} height={20} />
@@ -538,8 +564,8 @@ export default function LandingPage() {
                 </div>
 
                 <div className="bg-white rounded-xl p-6 border border-slate-200">
-                  <h4 className="font-semibold text-slate-900 mb-4">2. Add them to your dashboard</h4>
-                  <p className="text-slate-600 mb-4">Save your API keys securely in the Polydev dashboard</p>
+                  <h4 className="font-semibold text-slate-900 mb-4">2. Add to dashboard</h4>
+                  <p className="text-slate-600 mb-4">Save keys securely in Polydev</p>
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                     <p className="text-slate-700 text-sm font-medium">Dashboard → Settings → API Keys</p>
                   </div>
@@ -563,46 +589,44 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">Simple Pricing</h2>
-            <p className="text-xl text-slate-600">Choose credits for convenience or use your own API keys for unlimited access</p>
+            <p className="text-xl text-slate-600">Credits or your own API keys</p>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Free */}
             <div className="bg-white rounded-2xl border border-slate-200 p-8">
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Free</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$0</div>
-                <div className="text-slate-600">Try before you buy</div>
+                <div className="text-slate-600">Try it out</div>
               </div>
 
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>200 Messages / Month</span>
+                  <span>200 Messages</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>10 Premium Perspectives</span>
+                  <span>10 Premium</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>40 Normal Perspectives</span>
+                  <span>40 Normal</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>150 Eco Perspectives</span>
+                  <span>150 Eco</span>
                 </li>
               </ul>
 
               <Link href="/auth" className="w-full block text-center px-6 py-4 border-2 border-slate-200 rounded-xl font-semibold hover:border-slate-300 transition-all">
-                Get Started Free
+                Get Started
               </Link>
             </div>
 
-            {/* Plus */}
             <div className="bg-slate-900 text-white rounded-2xl p-8 scale-105 shadow-xl">
               <div className="text-center mb-8">
-                <div className="inline-block bg-white text-slate-900 px-4 py-1 rounded-full text-sm font-bold mb-4">Most Popular</div>
+                <div className="inline-block bg-white text-slate-900 px-4 py-1 rounded-full text-sm font-bold mb-4">Popular</div>
                 <h3 className="text-2xl font-bold mb-2">Plus</h3>
                 <div className="text-4xl font-bold mb-1">$25</div>
                 <div className="text-slate-400">per month</div>
@@ -611,28 +635,27 @@ export default function LandingPage() {
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>Unlimited Messages / Month</span>
+                  <span>Unlimited Messages</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>400 Premium Perspectives</span>
+                  <span>400 Premium</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>1,600 Normal Perspectives</span>
+                  <span>1,600 Normal</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>4,000 Eco Perspectives</span>
+                  <span>4,000 Eco</span>
                 </li>
               </ul>
 
               <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-4 bg-white text-slate-900 rounded-xl font-bold hover:bg-slate-100 transition-all">
-                Upgrade to Plus
+                Upgrade
               </Link>
             </div>
 
-            {/* Pro */}
             <div className="bg-white rounded-2xl border border-slate-200 p-8">
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Pro</h3>
@@ -643,24 +666,24 @@ export default function LandingPage() {
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>Unlimited Messages / Month</span>
+                  <span>Unlimited Messages</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>1,200 Premium Perspectives</span>
+                  <span>1,200 Premium</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>4,800 Normal Perspectives</span>
+                  <span>4,800 Normal</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="w-5 h-5" />
-                  <span>10,000 Eco Perspectives</span>
+                  <span>10,000 Eco</span>
                 </li>
               </ul>
 
               <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-4 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all">
-                Upgrade to Pro
+                Upgrade
               </Link>
             </div>
           </div>
@@ -694,7 +717,7 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-4xl font-bold mb-6">Ready to Get Started?</h2>
           <p className="text-xl text-slate-300 mb-8">
-            Join developers using Polydev to get better solutions faster
+            Join developers using Polydev for better solutions
           </p>
           <Link
             href="/auth"
@@ -739,13 +762,11 @@ export default function LandingPage() {
 
             <div>
               <h3 className="font-semibold mb-3 text-sm">Connect</h3>
-              <div className="flex items-center gap-3">
-                <Link href="https://github.com/polydev-ai/perspectives-mcp" className="text-slate-400 hover:text-white transition-colors" target="_blank">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
-                  </svg>
-                </Link>
-              </div>
+              <Link href="https://github.com/polydev-ai/perspectives-mcp" className="text-slate-400 hover:text-white transition-colors" target="_blank">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+                </svg>
+              </Link>
             </div>
           </div>
 
