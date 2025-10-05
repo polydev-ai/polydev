@@ -265,13 +265,13 @@ export default function SubscriptionPage() {
   } = computedValues
 
   return (
-    <motion.div
+    <div
       className="container mx-auto p-6 space-y-6"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
+      
+      
+      
     >
-      <motion.div className="flex items-center justify-between" variants={itemVariants}>
+      <div className="flex items-center justify-between" >
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             Subscription
@@ -284,7 +284,7 @@ export default function SubscriptionPage() {
         <Badge variant={(isPro || isPlus) ? "default" : "secondary"} className="text-sm">
           {isPro ? 'Pro Plan' : isPlus ? 'Plus Plan' : 'Free Plan'}
         </Badge>
-      </motion.div>
+      </div>
 
       {/* Message Display */}
       {message && (
@@ -300,7 +300,7 @@ export default function SubscriptionPage() {
       )}
 
       {/* Current Plan Status */}
-      <motion.div variants={itemVariants}>
+      <div >
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -361,10 +361,10 @@ export default function SubscriptionPage() {
           </div>
         </CardContent>
       </Card>
-      </motion.div>
+      </div>
 
       {/* Usage Statistics */}
-      <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" variants={itemVariants}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" >
         {/* Message Usage */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -572,6 +572,6 @@ export default function SubscriptionPage() {
           </CardContent>
         </Card>
       </div>
-    </motion.div>
+    </div>
   )
 }

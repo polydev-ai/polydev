@@ -6,7 +6,7 @@ import { usePreferences } from '../../hooks/usePreferences'
 import { useEnhancedApiKeysData } from '../../hooks/useEnhancedApiKeysData'
 import { createClient } from '../../app/utils/supabase/client'
 import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, AlertCircle, Check, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Clock, RefreshCw, Copy } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
 // Use API endpoint instead of direct modelsDevService import to avoid server-side imports in client component
@@ -189,7 +189,7 @@ export default function EnhancedApiKeysPage() {
         setError('No API key available to copy (Credits Only provider)')
         return
       }
-      
+
       // Decrypt the API key
       const decryptedKey = atob(apiKey.encrypted_key)
       await navigator.clipboard.writeText(decryptedKey)
@@ -285,7 +285,7 @@ export default function EnhancedApiKeysPage() {
     },
     {
       name: 'Gemini CLI',
-      provider: 'gemini_cli', 
+      provider: 'gemini_cli',
       defaultPaths: ['/usr/local/bin/gcloud', '/opt/homebrew/bin/gcloud', '~/google-cloud-sdk/bin/gcloud'],
       authCommand: 'gcloud auth login',
       description: 'Use Google Cloud CLI for Gemini models'
@@ -408,7 +408,6 @@ export default function EnhancedApiKeysPage() {
     }
   }
 
-
   const toggleProviderExpanded = (provider: string) => {
     setExpandedProviders(prev => ({
       ...prev,
@@ -437,7 +436,6 @@ export default function EnhancedApiKeysPage() {
         models: updatedModels
       }
     }
-
     await updatePreferenceOrder(newPreferences)
   }
 
@@ -457,7 +455,6 @@ export default function EnhancedApiKeysPage() {
         models: updatedModels
       }
     }
-
     await updatePreferenceOrder(newPreferences)
   }
 
@@ -499,17 +496,16 @@ export default function EnhancedApiKeysPage() {
       setCliStatusLoading(false)
     }
   }
-
   const saveApiKey = async () => {
     try {
       setSaving(true)
-      
+
       // Validate API key requirement based on provider
       if (formData.provider !== 'openrouter' && !editingKey && !formData.api_key.trim()) {
         setError('Please enter an API key for this provider, or use OpenRouter for credit-based model access.')
         return
       }
-      
+
       let response
       if (editingKey) {
         // Update existing API key
@@ -563,7 +559,7 @@ export default function EnhancedApiKeysPage() {
           body: JSON.stringify(formData)
         })
       }
-      
+
       if (!response.ok) throw new Error('Failed to save API key')
 
       // If user checked "Add to my model preferences", add the model to their preferences
@@ -646,7 +642,6 @@ export default function EnhancedApiKeysPage() {
       setError(err.message)
     }
   }
-
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return
 
@@ -666,7 +661,6 @@ export default function EnhancedApiKeysPage() {
       </div>
     )
   }
-
   // Group API keys by provider
   const groupedApiKeys = apiKeys.reduce((acc, key) => {
     if (!acc[key.provider]) {
@@ -676,36 +670,10 @@ export default function EnhancedApiKeysPage() {
     return acc
   }, {} as Record<string, ApiKey[]>)
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  }
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.3 }
-    }
-  }
-
   return (
-    <motion.div
-      className="space-y-6"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
+    <div className="space-y-6">
       {/* Header */}
-      <motion.div
-        className="flex items-center justify-between"
-        variants={itemVariants}
-      >
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Models</h1>
           <p className="text-slate-600 mt-1">
@@ -747,11 +715,8 @@ export default function EnhancedApiKeysPage() {
 
       <AnimatePresence>
         {error && (
-          <motion.div
+          <div
             className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center space-x-2"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
           >
           <AlertCircle className="w-5 h-5 text-slate-900" />
           <span className="text-slate-900 font-medium">{error}</span>
@@ -761,17 +726,14 @@ export default function EnhancedApiKeysPage() {
           >
             ×
           </button>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {success && (
-          <motion.div
+          <div
             className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center space-x-2"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
           >
           <Check className="w-5 h-5 text-slate-900" />
           <span className="text-slate-900 font-medium">{success}</span>
@@ -781,13 +743,13 @@ export default function EnhancedApiKeysPage() {
           >
             ×
           </button>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
       {/* Simple Mode: Unified Priority Waterfall */}
       {viewMode === 'simple' && (
-        <motion.div variants={itemVariants}>
+        <div>
           <ModelPriorityWaterfall
           apiKeys={apiKeys}
           quota={quota}
@@ -796,12 +758,12 @@ export default function EnhancedApiKeysPage() {
           modelsDevProviders={modelsDevProviders}
           onRefresh={refresh}
           />
-        </motion.div>
+        </div>
       )}
 
       {/* Advanced Mode: Detailed Controls */}
       {viewMode === 'advanced' && (
-        <motion.div variants={itemVariants}>
+        <div>
           <Suspense fallback={
           <div className="bg-white rounded-lg border border-slate-200 p-6">
             <div className="flex items-center justify-center py-12">
@@ -816,14 +778,12 @@ export default function EnhancedApiKeysPage() {
           {/* Model Preference Selector */}
           <ModelPreferenceSelector />
         </Suspense>
-        </motion.div>
+        </div>
       )}
 
       {/* CLI Tools Status Section */}
-      <motion.div
+      <div
         className="bg-white rounded-lg border border-slate-200 hover:shadow-lg transition-shadow"
-        variants={itemVariants}
-        whileHover={{ scale: 1.01 }}
       >
         <div className="p-6">
           <div className="flex items-center justify-between">
@@ -1026,13 +986,12 @@ export default function EnhancedApiKeysPage() {
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
 
       {/* API Keys Section */}
       {apiKeys.length > 0 && (
-        <motion.div
+        <div
           className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-lg transition-shadow"
-          variants={itemVariants}
         >
           <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center space-x-2">
             <Settings className="w-5 h-5" />
@@ -1240,7 +1199,7 @@ export default function EnhancedApiKeysPage() {
               )}
             </Droppable>
           </DragDropContext>
-        </motion.div>
+        </div>
       )}
 
 
@@ -1660,9 +1619,8 @@ export default function EnhancedApiKeysPage() {
       )}
 
       {/* All Available Models Section */}
-      <motion.div
+      <div
         className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-lg transition-shadow"
-        variants={itemVariants}
       >
         <button
           onClick={() => setAllModelsExpanded(!allModelsExpanded)}
@@ -1799,7 +1757,7 @@ export default function EnhancedApiKeysPage() {
             </div>
           </div>
         )}
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }

@@ -16,7 +16,7 @@ import {
   RefreshCw,
   Filter
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/hooks/useAuth'
 
 interface UsageData {
@@ -355,36 +355,10 @@ export default function ActivityPage() {
     )
   }
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  }
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.3 }
-    }
-  }
-
   return (
-    <motion.div
-      className="container mx-auto py-6 space-y-6"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
+    <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <motion.div
-        className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-        variants={itemVariants}
-      >
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Activity Analytics</h1>
           <p className="text-muted-foreground">
@@ -404,7 +378,7 @@ export default function ActivityPage() {
       </div>
 
       {/* Filters */}
-      <motion.div variants={itemVariants}>
+      <div >
         <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <CardTitle className="flex items-center">
@@ -513,19 +487,15 @@ export default function ActivityPage() {
           </div>
         </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       {/* Summary Cards */}
-      <motion.div
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
-        variants={containerVariants}
-      >
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-              <MessageCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <MessageCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.totalSessions.toLocaleString()}</div>
             {comparison && (
@@ -537,14 +507,12 @@ export default function ActivityPage() {
               </p>
             )}
           </CardContent>
-          </Card>
-        </motion.div>
+        </Card>
 
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
-            </CardHeader>
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.totalTokens.toLocaleString()}</div>
             {comparison && (
@@ -556,15 +524,13 @@ export default function ActivityPage() {
               </p>
             )}
           </CardContent>
-          </Card>
-        </motion.div>
+        </Card>
 
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${summary.totalCost.toFixed(4)}</div>
             {comparison && (
@@ -576,26 +542,23 @@ export default function ActivityPage() {
               </p>
             )}
           </CardContent>
-          </Card>
-        </motion.div>
+        </Card>
 
-        <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Cost/Session</CardTitle>
-            </CardHeader>
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg Cost/Session</CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${summary.avgCostPerSession.toFixed(4)}</div>
             <p className="text-xs text-muted-foreground">
               {summary.avgTokensPerSession} avg tokens/session
             </p>
           </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
+        </Card>
+      </div>
 
       {/* Analytics Tabs */}
-      <motion.div variants={itemVariants}>
+      <div>
         <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -820,7 +783,7 @@ export default function ActivityPage() {
           </Card>
         </TabsContent>
         </Tabs>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 }

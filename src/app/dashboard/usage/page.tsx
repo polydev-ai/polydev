@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+// Removed framer-motion
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
@@ -430,13 +430,8 @@ export default function UnifiedUsagePage() {
   const usageDistribution = calculateUsageDistribution()
 
   return (
-    <motion.div
-      className="container mx-auto py-6 space-y-6"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between" variants={itemVariants}>
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Usage & Billing</h1>
           <p className="text-muted-foreground">
@@ -475,10 +470,10 @@ export default function UnifiedUsagePage() {
             Refresh
           </Button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Overview Cards */}
-      <motion.div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" variants={itemVariants}>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" >
         <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
@@ -542,11 +537,11 @@ export default function UnifiedUsagePage() {
             </p>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
 
       {/* All Requests */}
-      <motion.div variants={itemVariants}>
-      <Card className="hover:shadow-lg transition-shadow">
+      <div>
+        <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -673,6 +668,7 @@ export default function UnifiedUsagePage() {
           </div>
         </CardContent>
       </Card>
+      </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
@@ -1187,6 +1183,6 @@ export default function UnifiedUsagePage() {
           </a>
         </Button>
       </div>
-    </motion.div>
+    </div>
   )
 }

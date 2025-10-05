@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { createClient } from '../utils/supabase/client'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 
 interface UserProfile {
   id: string
@@ -244,17 +244,11 @@ export default function Profile() {
   }
 
   return (
-    <motion.div
-      className="min-h-screen bg-white py-8"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
+    <div className="min-h-screen bg-white py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <motion.div
+        <div
           className="bg-white rounded-lg shadow mb-8 hover:shadow-lg transition-shadow"
-          variants={itemVariants}
         >
           <div className="px-6 py-8">
             <div className="flex items-center space-x-6">
@@ -290,20 +284,16 @@ export default function Profile() {
           </div>
         </div>
 
-        <motion.div
+        <div
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-          variants={containerVariants}
         >
           {/* Stats Cards */}
           <div className="lg:col-span-2">
-            <motion.div
+            <div
               className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
-              variants={containerVariants}
             >
-              <motion.div
+              <div
                 className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-                variants={itemVariants}
-                whileHover={{ scale: 1.02 }}
               >
                 <div className="flex items-center">
                   <div className="p-2 bg-slate-100 rounded-lg">
@@ -316,12 +306,10 @@ export default function Profile() {
                     <p className="text-2xl font-bold text-slate-900">{stats?.totalChats || 0}</p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
 
-              <motion.div
+              <div
                 className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-                variants={itemVariants}
-                whileHover={{ scale: 1.02 }}
               >
                 <div className="flex items-center">
                   <div className="p-2 bg-slate-100 rounded-lg">
@@ -334,12 +322,10 @@ export default function Profile() {
                     <p className="text-2xl font-bold text-slate-900">{formattedTokens}</p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
 
-              <motion.div
+              <div
                 className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-                variants={itemVariants}
-                whileHover={{ scale: 1.02 }}
               >
                 <div className="flex items-center">
                   <div className="p-2 bg-slate-100 rounded-lg">
@@ -352,12 +338,10 @@ export default function Profile() {
                     <p className="text-2xl font-bold text-slate-900">{stats?.favoriteModel || 'N/A'}</p>
                   </div>
                 </div>
-              </motion.div>
+              </div>
 
-              <motion.div
+              <div
                 className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-                variants={itemVariants}
-                whileHover={{ scale: 1.02 }}
               >
                 <div className="flex items-center">
                   <div className="p-2 bg-slate-100 rounded-lg">
@@ -370,13 +354,12 @@ export default function Profile() {
                     <p className="text-2xl font-bold text-slate-900">{stats?.joinedDays || 0}</p>
                   </div>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
 
             {/* Recent Activity */}
-            <motion.div
+            <div
               className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
-              variants={itemVariants}
             >
               <div className="px-6 py-4 border-b border-slate-200">
                 <h3 className="text-lg font-medium text-slate-900">Recent Activity</h3>
@@ -425,14 +408,13 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-            </motion.div>
+            </div>
           </div>
 
           {/* Profile Info */}
           <div className="space-y-6">
-            <motion.div
+            <div
               className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-              variants={itemVariants}
             >
               <h3 className="text-lg font-medium text-slate-900 mb-4">Profile Information</h3>
               <div className="space-y-3">
@@ -473,11 +455,10 @@ export default function Profile() {
                   Edit Profile
                 </a>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
+            <div
               className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-              variants={itemVariants}
             >
               <h3 className="text-lg font-medium text-slate-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
@@ -500,10 +481,10 @@ export default function Profile() {
                   Explore Models
                 </a>
               </div>
-            </motion.div>
+            </div>
           </div>
-        </motion.div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
