@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     console.log('[Dashboard Stats] Fetching real statistics for user:', user.id)
 
     // Check cache first
-    const cacheKey = `dashboard-stats-v9-${user.id}` // v9: fixed all-time values in response + added to debug log
+    const cacheKey = `dashboard-stats-v10-${user.id}` // v10: fixed timezone consistency + October data refresh
     const cachedStats = getCachedData(cacheKey)
     if (cachedStats) {
       console.log('[Dashboard Stats] Returning cached data')
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
       // 8. Chat logs (this month only) - 1 row = 1 user message
       supabase
         .from('chat_logs')
-        .select('total_tokens, total_cost, created_at, models_used, response_time_ms')
+        .select('total_tokens, total_cost, created_at, models_used')
         .eq('user_id', user.id)
         .gte('created_at', monthStart.toISOString())
         .limit(500),
@@ -381,8 +381,27 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .gte('created_at', monthStart.toISOString())
 
+    // Query ALL-TIME perspective_usage for all-time cost
+    const { data: allTimePerspectiveUsage } = await supabase
+      .from('perspective_usage')
+      .select('estimated_cost, request_metadata, created_at')
+      .eq('user_id', user.id)
+
     // Calculate user-paid costs (API keys + CLI only)
     const userPaidCost = (perspectiveUsage || []).reduce((sum, usage) => {
+      const sourceType = usage.request_metadata?.source_type
+      // Only count costs from user_key and user_cli (NOT admin_credits or web)
+      if (sourceType === 'user_key' || sourceType === 'user_cli') {
+        const cost = parseFloat(usage.estimated_cost) || 0
+        if (cost <= 10) { // Skip unrealistic costs
+          return sum + cost
+        }
+      }
+      return sum
+    }, 0) || 0
+
+    // Calculate ALL-TIME user-paid costs (API keys + CLI only)
+    const allTimeUserPaidCost = (allTimePerspectiveUsage || []).reduce((sum, usage) => {
       const sourceType = usage.request_metadata?.source_type
       // Only count costs from user_key and user_cli (NOT admin_credits or web)
       if (sourceType === 'user_key' || sourceType === 'user_cli') {
@@ -646,6 +665,7 @@ export async function GET(request: NextRequest) {
       allTimeChatMessages: allTimeChatMessages,
       allTimeApiCalls: allTimeTotalApiCalls,
       allTimeTokens: allTimeTotalTokens,
+      allTimeCost: allTimeUserPaidCost,
       requestsToday: ((requestLogs || []).filter(log => {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart

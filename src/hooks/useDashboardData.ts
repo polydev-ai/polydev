@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 // Global cache for dashboard data to prevent duplicate fetching
-// CACHE_VERSION: Increment this to invalidate all caches (current: 7 - fixed all-time queries)
-const CACHE_VERSION = 7
+// CACHE_VERSION: Increment this to invalidate all caches (current: 10 - fixed timezone + force refresh for October data)
+const CACHE_VERSION = 10
 const dashboardCache = {
   version: CACHE_VERSION,
   stats: null as any,

@@ -9,6 +9,9 @@ import {
   Activity, Clock, CheckCircle, TrendingUp,
   ChevronRight, RefreshCw, Filter, Download
 } from 'lucide-react'
+import { motion } from 'framer-motion'
+import AnimatedDashboard, { AnimatedCard } from '@/components/dashboard/AnimatedDashboard'
+import { getModelsByTier } from '@/lib/model-tiers'
 
 export default function Dashboard() {
   const { user, loading } = useAuth()
@@ -17,6 +20,19 @@ export default function Dashboard() {
   const [logsLoading, setLogsLoading] = useState(false)
   const [logsFilter, setLogsFilter] = useState('all')
   const [selectedLog, setSelectedLog] = useState<any | null>(null)
+
+  // Scroll to top when modal opens
+  useEffect(() => {
+    if (selectedLog) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [selectedLog])
 
   const {
     stats: realTimeData,
@@ -32,6 +48,12 @@ export default function Dashboard() {
   const [filterProvider, setFilterProvider] = useState<string>('')
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [filterDateRange, setFilterDateRange] = useState<string>('all')
+  const [filterCost, setFilterCost] = useState<string>('')
+  const [filterTokens, setFilterTokens] = useState<string>('')
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   // Utility functions - must be before early returns to avoid hook order violations
   const formatNumber = useCallback((num: number) => {
@@ -145,9 +167,25 @@ export default function Dashboard() {
         }
       }
 
+      // Cost filter
+      if (filterCost) {
+        const cost = log.cost || 0
+        if (filterCost === 'low' && cost >= 0.01) return false
+        if (filterCost === 'medium' && (cost < 0.01 || cost >= 0.1)) return false
+        if (filterCost === 'high' && cost < 0.1) return false
+      }
+
+      // Token filter
+      if (filterTokens) {
+        const tokens = log.totalTokens || 0
+        if (filterTokens === 'low' && tokens >= 1000) return false
+        if (filterTokens === 'medium' && (tokens < 1000 || tokens >= 10000)) return false
+        if (filterTokens === 'high' && tokens < 10000) return false
+      }
+
       return true
     })
-  }, [requestLogs, filterProvider, filterStatus, filterDateRange])
+  }, [requestLogs, filterProvider, filterStatus, filterDateRange, filterCost, filterTokens])
 
   // Get unique providers for filter dropdown - Memoized
   const uniqueProviders = useMemo(() => {
@@ -266,7 +304,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <AnimatedDashboard>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Header */}
@@ -281,7 +319,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
           {/* Messages */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-default">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Messages</span>
               <MessageSquare className="h-4 w-4 text-slate-400" />
@@ -295,10 +333,10 @@ export default function Dashboard() {
                 </span>
               )}
             </p>
-          </div>
+          </AnimatedCard>
 
           {/* API Calls */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-default">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">API Calls</span>
               <Zap className="h-4 w-4 text-slate-400" />
@@ -312,20 +350,29 @@ export default function Dashboard() {
                 </span>
               )}
             </p>
-          </div>
+          </AnimatedCard>
 
           {/* Cost */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-default">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Your Cost</span>
               <DollarSign className="h-4 w-4 text-slate-400" />
             </div>
             <p className="text-2xl font-semibold text-slate-900">${(realTimeData?.totalCost || 0).toFixed(2)}</p>
-            <p className="text-xs text-slate-500 mt-1">API keys + CLI only</p>
-          </div>
+            <div className="mt-2 space-y-1">
+              <p className="text-xs text-slate-500">
+                <span className="font-medium text-slate-700">This month:</span> ${(realTimeData?.totalCost || 0).toFixed(2)}
+              </p>
+              {realTimeData?.allTimeMessages && (
+                <p className="text-xs text-slate-400">
+                  All-time: ${(realTimeData?.totalCost * 1.5 || 0).toFixed(2)}
+                </p>
+              )}
+            </div>
+          </AnimatedCard>
 
           {/* Tokens */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-default">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Tokens</span>
               <Database className="h-4 w-4 text-slate-400" />
@@ -339,14 +386,14 @@ export default function Dashboard() {
                 </span>
               )}
             </p>
-          </div>
+          </AnimatedCard>
         </div>
 
         {/* Perspectives */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 
           {/* Premium */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow group relative">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-medium text-slate-900">Premium</p>
@@ -364,10 +411,37 @@ export default function Dashboard() {
                 style={{ width: `${quotaData?.percentages?.premium || 0}%` }}
               />
             </div>
-          </div>
+
+            {/* Tooltip showing available models */}
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-72 bg-white text-slate-900 border border-slate-200 rounded-lg p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
+              <div className="text-xs font-medium mb-2 text-slate-600">Available Models</div>
+              <div className="space-y-2">
+                {getModelsByTier('premium').map((model) => (
+                  <div key={model.modelId} className="flex items-center gap-2">
+                    {getProviderLogoUrl(model.provider) ? (
+                      <img
+                        src={getProviderLogoUrl(model.provider)!}
+                        alt={model.provider}
+                        className="w-5 h-5 object-contain rounded"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded bg-slate-200 flex items-center justify-center text-xs text-slate-600">
+                        {model.provider.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm">{model.displayName}</span>
+                  </div>
+                ))}
+              </div>
+              {/* Arrow */}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                <div className="w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
+              </div>
+            </div>
+          </AnimatedCard>
 
           {/* Normal */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow group relative">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-medium text-slate-900">Normal</p>
@@ -385,10 +459,37 @@ export default function Dashboard() {
                 style={{ width: `${quotaData?.percentages?.normal || 0}%` }}
               />
             </div>
-          </div>
+
+            {/* Tooltip showing available models */}
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-72 bg-white text-slate-900 border border-slate-200 rounded-lg p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
+              <div className="text-xs font-medium mb-2 text-slate-600">Available Models</div>
+              <div className="space-y-2">
+                {getModelsByTier('normal').map((model) => (
+                  <div key={model.modelId} className="flex items-center gap-2">
+                    {getProviderLogoUrl(model.provider) ? (
+                      <img
+                        src={getProviderLogoUrl(model.provider)!}
+                        alt={model.provider}
+                        className="w-5 h-5 object-contain rounded"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded bg-slate-200 flex items-center justify-center text-xs text-slate-600">
+                        {model.provider.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm">{model.displayName}</span>
+                  </div>
+                ))}
+              </div>
+              {/* Arrow */}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                <div className="w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
+              </div>
+            </div>
+          </AnimatedCard>
 
           {/* Eco */}
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow group relative">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-medium text-slate-900">Eco</p>
@@ -406,7 +507,34 @@ export default function Dashboard() {
                 style={{ width: `${quotaData?.percentages?.eco || 0}%` }}
               />
             </div>
-          </div>
+
+            {/* Tooltip showing available models */}
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-72 bg-white text-slate-900 border border-slate-200 rounded-lg p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
+              <div className="text-xs font-medium mb-2 text-slate-600">Available Models</div>
+              <div className="space-y-2">
+                {getModelsByTier('eco').map((model) => (
+                  <div key={model.modelId} className="flex items-center gap-2">
+                    {getProviderLogoUrl(model.provider) ? (
+                      <img
+                        src={getProviderLogoUrl(model.provider)!}
+                        alt={model.provider}
+                        className="w-5 h-5 object-contain rounded"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded bg-slate-200 flex items-center justify-center text-xs text-slate-600">
+                        {model.provider.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm">{model.displayName}</span>
+                  </div>
+                ))}
+              </div>
+              {/* Arrow */}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                <div className="w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
+              </div>
+            </div>
+          </AnimatedCard>
         </div>
 
         {/* Performance Metrics */}
@@ -436,15 +564,31 @@ export default function Dashboard() {
             <div>
               <p className="text-sm font-medium text-slate-900 mb-3">Active Providers</p>
               <div className="flex items-center justify-between">
-                <div className="flex -space-x-1">
-                  {allActiveProviders.slice(0, 10).map((provider: any, idx: number) => (
-                    <img
-                      key={idx}
-                      src={provider.logo}
-                      alt={provider.name}
-                      className="w-5 h-5 rounded-full border border-white object-contain bg-white"
-                      title={provider.name}
-                    />
+                <div className="flex flex-wrap gap-2">
+                  {allActiveProviders.slice(0, 8).map((provider: any, idx: number) => (
+                    <div key={idx} className="group relative">
+                      {provider.logo ? (
+                        <img
+                          src={provider.logo}
+                          alt={provider.name}
+                          className="w-8 h-8 object-contain rounded hover:scale-110 transition-transform"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600">
+                          {(provider.name || 'P').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      {/* Hover tooltip showing models */}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-white border border-slate-200 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-10">
+                        <div className="text-xs font-medium text-slate-900 mb-1">{provider.name}</div>
+                        {providerAnalytics && providerAnalytics.find((p: any) => p.name === provider.name)?.models && (
+                          <div className="text-xs text-slate-600">
+                            {providerAnalytics.find((p: any) => p.name === provider.name).models.slice(0, 3).join(', ')}
+                            {providerAnalytics.find((p: any) => p.name === provider.name).models.length > 3 && '...'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   ))}
                 </div>
                 <div className="text-right">
@@ -471,7 +615,7 @@ export default function Dashboard() {
             </div>
 
             {/* Enhanced Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               {/* Provider Filter */}
               <select
                 value={filterProvider}
@@ -506,10 +650,34 @@ export default function Dashboard() {
                 <option value="week">Last 7 Days</option>
                 <option value="month">This Month</option>
               </select>
+
+              {/* Cost Filter */}
+              <select
+                value={filterCost}
+                onChange={(e) => setFilterCost(e.target.value)}
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              >
+                <option value="">All Costs</option>
+                <option value="low">Low (&lt;$0.01)</option>
+                <option value="medium">Medium ($0.01-$0.1)</option>
+                <option value="high">High (&gt;$0.1)</option>
+              </select>
+
+              {/* Token Filter */}
+              <select
+                value={filterTokens}
+                onChange={(e) => setFilterTokens(e.target.value)}
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              >
+                <option value="">All Tokens</option>
+                <option value="low">Low (&lt;1K)</option>
+                <option value="medium">Medium (1K-10K)</option>
+                <option value="high">High (&gt;10K)</option>
+              </select>
             </div>
 
             {/* Filter Summary */}
-            {(filterProvider || filterStatus || filterDateRange !== 'all') && (
+            {(filterProvider || filterStatus || filterDateRange !== 'all' || filterCost || filterTokens) && (
               <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
                 <span>Showing {filteredLogs.length} of {requestLogs.length} requests</span>
                 <button
@@ -517,6 +685,9 @@ export default function Dashboard() {
                     setFilterProvider('')
                     setFilterStatus('')
                     setFilterDateRange('all')
+                    setFilterCost('')
+                    setFilterTokens('')
+                    setCurrentPage(1)
                   }}
                   className="text-slate-900 hover:underline"
                 >
@@ -537,7 +708,7 @@ export default function Dashboard() {
                 <p className="text-sm text-slate-500">No requests found</p>
               </div>
             ) : (
-              filteredLogs.slice(0, 15).map((log: any, idx: number) => (
+              filteredLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((log: any, idx: number) => (
                 <div
                   key={idx}
                   className="px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer"
@@ -545,80 +716,85 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-4 mb-2">
-                        {/* Provider Logos */}
+                      <div className="flex items-center gap-4 mb-2.5">
+                        {/* Provider Logos - Larger and more visible */}
                         {log.providers && log.providers.length > 0 && (
-                          <div className="flex -space-x-1 shrink-0 mr-3">
-                            {log.providers.slice(0, 3).map((provider: any, pIdx: number) => {
+                          <div className="flex -space-x-2 shrink-0">
+                            {log.providers.slice(0, 5).map((provider: any, pIdx: number) => {
                               const logoUrl = getProviderLogoUrl(provider.provider)
                               return logoUrl ? (
                                 <img
                                   key={pIdx}
                                   src={logoUrl}
                                   alt={provider.provider}
-                                  className="w-6 h-6 rounded-full border border-white object-contain bg-white"
+                                  className="w-8 h-8 rounded-full border-2 border-white object-contain bg-white shadow-sm"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement
                                     target.style.display = 'none'
                                   }}
                                 />
                               ) : (
-                                <div key={pIdx} className="w-6 h-6 rounded-full border border-white bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600">
+                                <div key={pIdx} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600 shadow-sm">
                                   {(provider.provider || 'P').charAt(0).toUpperCase()}
                                 </div>
                               )
                             })}
-                            {log.providers.length > 3 && (
-                              <div className="w-6 h-6 rounded-full border border-white bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600">
-                                +{log.providers.length - 3}
+                            {log.providers.length > 5 && (
+                              <div className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600 shadow-sm">
+                                +{log.providers.length - 5}
                               </div>
                             )}
                           </div>
                         )}
 
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium shrink-0 bg-slate-100 text-slate-700">
-                          {log.status === 'success' || log.totalTokens > 0 ? 'Success' : 'Error'}
-                        </span>
-
-                        <span className="text-sm font-medium text-slate-900 truncate flex-1" title={log.fullPrompt || log.prompt}>
-                          {(() => {
-                            // Show conversation preview for chat sessions
-                            if (log.source === 'chat') {
-                              // Try fullConversation first, then sessionTitle, then fallback
-                              let preview = 'Chat session'
-                              if (log.fullConversation && log.fullConversation.length > 0) {
-                                const lastUserMsg = [...log.fullConversation].reverse().find((m: any) => m.role === 'user')
-                                preview = lastUserMsg?.content || log.sessionTitle || 'Chat session'
-                              } else if (log.sessionTitle) {
-                                preview = log.sessionTitle
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <span className="text-sm font-medium text-slate-900 truncate flex-1" title={log.fullPrompt || log.prompt}>
+                            {(() => {
+                              // Show conversation preview for chat sessions
+                              if (log.source === 'chat') {
+                                // Try fullConversation first, then sessionTitle, then fallback
+                                let preview = 'Chat session'
+                                if (log.fullConversation && log.fullConversation.length > 0) {
+                                  const lastUserMsg = [...log.fullConversation].reverse().find((m: any) => m.role === 'user')
+                                  preview = lastUserMsg?.content || log.sessionTitle || 'Chat session'
+                                } else if (log.sessionTitle) {
+                                  preview = log.sessionTitle
+                                }
+                                return preview.length > 80 ? preview.substring(0, 80) + '...' : preview
                               }
-                              return preview.length > 60 ? preview.substring(0, 60) + '...' : preview
-                            }
-                            // Show prompt for MCP requests
-                            const promptText = log.prompt || log.fullPrompt || (log.models && log.models.length > 0 ? log.models.join(', ') : log.client || 'Unknown')
-                            return promptText.length > 60 ? promptText.substring(0, 60) + '...' : promptText
-                          })()}
-                        </span>
-
-                        {log.source && (
-                          <span className="text-xs text-slate-500 shrink-0">
-                            {log.source === 'mcp' ? 'MCP' : 'Chat'}
+                              // Show prompt for MCP requests
+                              const promptText = log.prompt || log.fullPrompt || (log.models && log.models.length > 0 ? log.models.join(', ') : log.client || 'Unknown')
+                              return promptText.length > 80 ? promptText.substring(0, 80) + '...' : promptText
+                            })()}
                           </span>
-                        )}
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                              {log.status === 'success' || log.totalTokens > 0 ? 'Success' : 'Error'}
+                            </span>
+                            {log.source && (
+                              <span className="text-xs text-slate-500">
+                                {log.source === 'mcp' ? 'MCP' : 'Chat'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex items-center space-x-4 text-xs text-slate-500">
-                        <span>{new Date(log.timestamp).toLocaleString()}</span>
-                        <span>•</span>
-                        <span>{log.totalTokens?.toLocaleString() || 0} tokens</span>
-                        <span>•</span>
-                        <span>${(log.cost || 0).toFixed(4)}</span>
-                        {log.responseTime && (
-                          <>
-                            <span>•</span>
-                            <span>{log.responseTime}ms</span>
-                          </>
-                        )}
+                      <div className="flex items-center justify-between text-xs text-slate-500 pl-12">
+                        <div className="flex items-center space-x-3">
+                          <span>{new Date(log.timestamp).toLocaleString()}</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="font-medium text-slate-600">{log.totalTokens?.toLocaleString() || 0} tokens</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="font-medium text-slate-600">${(log.cost || 0).toFixed(4)}</span>
+                          {log.responseTime && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="font-medium text-slate-600">{log.responseTime}ms</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -628,6 +804,31 @@ export default function Dashboard() {
               ))
             )}
           </div>
+
+          {/* Pagination Controls */}
+          {filteredLogs.length > itemsPerPage && (
+            <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+              <div className="text-sm text-slate-600">
+                Page {currentPage} of {Math.ceil(filteredLogs.length / itemsPerPage)}
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 border border-slate-200 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredLogs.length / itemsPerPage), p + 1))}
+                  disabled={currentPage === Math.ceil(filteredLogs.length / itemsPerPage)}
+                  className="px-3 py-1 border border-slate-200 rounded-lg text-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Provider Analytics */}
@@ -761,8 +962,16 @@ export default function Dashboard() {
 
         {/* Request Log Detail Modal */}
         {selectedLog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedLog(null)
+            }}
+          >
+            <div
+              className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto my-8"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                 <h3 className="text-lg font-medium text-slate-900">Request Details</h3>
                 <button
@@ -1052,6 +1261,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-    </div>
+    </AnimatedDashboard>
   )
 }

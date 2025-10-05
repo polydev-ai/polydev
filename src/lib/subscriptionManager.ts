@@ -365,7 +365,9 @@ export class SubscriptionManager {
   }> {
     try {
       const supabase = await this.getSupabase(useServiceRole)
-      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+      // Use UTC to avoid timezone issues - database timestamps are in UTC
+      const now = new Date()
+      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
 
       // 1. Count chat messages THIS MONTH
       const { data: chatLogs, error: chatError } = await supabase
