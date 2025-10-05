@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, Suspense, useMemo, useCallback, memo, lazy } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useAuth } from '../../../hooks/useAuth'
 import { useChatModels } from '../../../hooks/useChatModels'
@@ -9,23 +9,7 @@ import { useChatSessions, type ChatSession, type ChatMessage } from '../../../ho
 import { usePreferences } from '../../../hooks/usePreferences'
 import { useEnhancedApiKeysData } from '../../../hooks/useEnhancedApiKeysData'
 import MessageContent from '../../../components/MessageContent'
-
-// Lazy load session sidebar for better initial load performance
-const ChatSessionSidebar = lazy(() => import('../../../components/chat/ChatSessionSidebar'))
-
-// Sidebar loading fallback
-const SidebarFallback = () => (
-  <div className="w-80 bg-slate-50 border-r border-slate-200 p-4">
-    <div className="animate-pulse">
-      <div className="h-6 bg-slate-200 rounded w-32 mb-4"></div>
-      <div className="h-10 bg-slate-200 rounded mb-4"></div>
-      <div className="space-y-2">
-        <div className="h-16 bg-slate-200 rounded"></div>
-        <div className="h-16 bg-slate-200 rounded"></div>
-      </div>
-    </div>
-  </div>
-)
+import ChatSessionSidebar from '../../../components/chat/ChatSessionSidebar'
 
 interface Message {
   id: string
@@ -711,22 +695,20 @@ export default function Chat() {
 
   return (
     <div className="min-h-screen bg-white flex">
-      {/* Session Sidebar - Lazy Loaded */}
-      <Suspense fallback={showSidebar ? <SidebarFallback /> : null}>
-        <ChatSessionSidebar
-          showSidebar={showSidebar}
-          setShowSidebar={setShowSidebar}
-          isCreatingSession={isCreatingSession}
-          startNewSession={startNewSession}
-          sessionsError={sessionsError}
-          sessions={sessions}
-          currentSession={currentSession}
-          sessionId={sessionId}
-          deleteSession={deleteSession}
-          setCurrentSession={setCurrentSession}
-          setMessages={setMessages}
-        />
-      </Suspense>
+      {/* Session Sidebar */}
+      <ChatSessionSidebar
+        showSidebar={showSidebar}
+        setShowSidebar={setShowSidebar}
+        isCreatingSession={isCreatingSession}
+        startNewSession={startNewSession}
+        sessionsError={sessionsError}
+        sessions={sessions}
+        currentSession={currentSession}
+        sessionId={sessionId}
+        deleteSession={deleteSession}
+        setCurrentSession={setCurrentSession}
+        setMessages={setMessages}
+      />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
@@ -738,7 +720,7 @@ export default function Chat() {
                 <button
                   type="button"
                   onClick={() => setShowSidebar(true)}
-                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors pointer-events-auto z-10"
+                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
                   title="Show chat history"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -752,7 +734,7 @@ export default function Chat() {
                   <button
                     type="button"
                     onClick={() => setShowModelSelector(!showModelSelector)}
-                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors pointer-events-auto z-10"
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
                   >
                     <span className="mr-2">{selectedModels.length} models</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
