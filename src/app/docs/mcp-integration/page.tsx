@@ -132,8 +132,8 @@ const completion = await client.chat.completions.create({
               <p className="text-slate-600 mb-3">
                 Install the Polydev MCP package locally via NPM. Runs as a local stdio server with access to CLI tools, memory, and your Polydev account.
               </p>
-              <div className="bg-slate-900 p-3 rounded-lg mb-3">
-                <code className="text-sm text-white">npm install -g polydev-ai</code>
+              <div className="bg-white p-3 rounded-lg mb-3 border border-slate-200">
+                <code className="text-sm text-slate-900">npm install -g polydev-ai</code>
               </div>
               <div className="flex flex-wrap gap-2">
                 <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-slate-100 text-slate-900 rounded-full border border-slate-200">
@@ -167,7 +167,7 @@ const completion = await client.chat.completions.create({
                 <h4 className="font-semibold text-slate-900 mb-3">🔑 Setup Steps</h4>
                 <ol className="text-sm text-slate-600 space-y-2">
                   <li><strong>1.</strong> Generate token in <a href="/dashboard/mcp-tokens" className="underline">dashboard</a></li>
-                  <li><strong>2.</strong> Set environment variable: <code className="bg-slate-900 text-white px-2 py-1 rounded">export POLYDEV_USER_TOKEN=pd_your_token</code></li>
+                  <li><strong>2.</strong> Set environment variable: <code className="bg-white text-slate-900 px-2 py-1 rounded border border-slate-200">export POLYDEV_USER_TOKEN=pd_your_token</code></li>
                   <li><strong>3.</strong> Configure your API keys in <a href="/dashboard/models" className="underline">dashboard</a></li>
                   <li><strong>4.</strong> Add MCP server to your client config</li>
                 </ol>
@@ -226,7 +226,7 @@ const completion = await client.chat.completions.create({
                 </div>
                 <button
                   onClick={() => copyToClipboard(config.config, key)}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm bg-slate-900 text-white rounded-md hover:bg-slate-700 transition-colors"
+                  className="flex items-center space-x-2 px-3 py-2 text-sm bg-slate-200 text-slate-900 rounded-md hover:bg-slate-300 transition-colors"
                 >
                   {copiedCode === key ? (
                     <>
@@ -244,8 +244,8 @@ const completion = await client.chat.completions.create({
             </div>
 
             <div className="p-6">
-              <pre className="bg-slate-900 p-4 rounded-lg text-sm overflow-x-auto">
-                <code className="text-white">
+              <pre className="bg-white p-4 rounded-lg text-sm overflow-x-auto border border-slate-200">
+                <code className="text-slate-900">
                   {config.config}
                 </code>
               </pre>
@@ -265,7 +265,7 @@ const completion = await client.chat.completions.create({
             <h3 className="text-lg font-medium text-slate-900 mb-2">
               NPM Package
             </h3>
-            <code className="bg-slate-900 text-white px-3 py-2 rounded text-sm">
+            <code className="bg-white text-slate-900 px-3 py-2 rounded text-sm border border-slate-200">
               npm install -g polydev-ai
             </code>
             <p className="text-slate-600 text-sm mt-2">
@@ -282,7 +282,7 @@ const completion = await client.chat.completions.create({
               <p className="text-sm text-slate-600 mb-2">
                 Set your Polydev token as an environment variable
               </p>
-              <code className="text-xs bg-slate-900 text-white px-2 py-1 rounded block">
+              <code className="text-xs bg-white text-slate-900 px-2 py-1 rounded block border border-slate-200">
                 export POLYDEV_USER_TOKEN=pd_your_token_here
               </code>
             </div>
@@ -378,7 +378,7 @@ const completion = await client.chat.completions.create({
             <div className="text-2xl font-bold text-slate-900 mb-2">1</div>
             <h4 className="font-semibold text-slate-900 mb-2">Install Package</h4>
             <p className="text-sm text-slate-600">
-              <code className="bg-slate-900 text-white px-2 py-1 rounded text-xs">npm install -g polydev-ai</code>
+              <code className="bg-white text-slate-900 px-2 py-1 rounded text-xs border border-slate-200">npm install -g polydev-ai</code>
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg border border-slate-200">
@@ -392,7 +392,7 @@ const completion = await client.chat.completions.create({
             <div className="text-2xl font-bold text-slate-900 mb-2">3</div>
             <h4 className="font-semibold text-slate-900 mb-2">Set Token</h4>
             <p className="text-sm text-slate-600">
-              <code className="bg-slate-900 text-white px-2 py-1 rounded text-xs">export POLYDEV_USER_TOKEN=...</code>
+              <code className="bg-white text-slate-900 px-2 py-1 rounded text-xs border border-slate-200">export POLYDEV_USER_TOKEN=...</code>
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg border border-slate-200">
@@ -406,14 +406,14 @@ const completion = await client.chat.completions.create({
         <div className="flex flex-wrap gap-4">
           <a
             href="/dashboard/mcp-tokens"
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-700 transition-colors"
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-200 text-slate-900 rounded-md hover:bg-slate-300 transition-colors"
           >
             <Key className="w-4 h-4" />
             <span>Create MCP Token</span>
           </a>
           <a
             href="/dashboard/models"
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-700 transition-colors"
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-200 text-slate-900 rounded-md hover:bg-slate-300 transition-colors"
           >
             <Settings className="w-4 h-4" />
             <span>Configure API Keys</span>

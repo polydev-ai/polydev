@@ -211,9 +211,9 @@ export default function Documentation() {
 
         return `
           <div class="relative group my-8">
-            <pre class="bg-slate-900 text-slate-100 rounded-lg p-6 overflow-x-auto border border-slate-200 font-mono text-sm leading-relaxed"><code${attributes}>${code}</code></pre>
-            <button class="copy-btn absolute top-4 right-4 p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-slate-700" data-code="${decodedCode.replace(/"/g, '&quot;')}" title="Copy to clipboard">
-              <svg class="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <pre class="bg-white text-slate-900 rounded-lg p-6 overflow-x-auto border border-slate-200 font-mono text-sm leading-relaxed"><code${attributes}>${code}</code></pre>
+            <button class="copy-btn absolute top-4 right-4 p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-slate-200" data-code="${decodedCode.replace(/"/g, '&quot;')}" title="Copy to clipboard">
+              <svg class="h-4 w-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
               </svg>
             </button>
@@ -264,8 +264,8 @@ export default function Documentation() {
           p.style.display = p.dataset.lang === lang ? 'block' : 'none'
         })
         buttons.forEach(b => {
-          if (b.dataset.lang === lang) b.classList.add('bg-slate-900', 'text-white')
-          else b.classList.remove('bg-slate-900', 'text-white')
+          if (b.dataset.lang === lang) b.classList.add('bg-slate-200', 'text-slate-900')
+          else b.classList.remove('bg-slate-200', 'text-slate-900')
         })
       }
       // Default to first button
@@ -954,16 +954,16 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                   <div className="space-y-2">
                     <Link
                       href="/docs/quickstart"
-                      className="flex items-center justify-between p-3 bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors group"
+                      className="flex items-center justify-between p-3 bg-slate-200 rounded-lg hover:bg-slate-300 transition-colors group"
                     >
                       <div className="flex items-center space-x-3">
-                        <Zap className="h-5 w-5 text-white" />
+                        <Zap className="h-5 w-5 text-slate-900" />
                         <div>
-                          <div className="font-medium text-white">Docs Quickstart</div>
-                          <div className="text-xs text-slate-300">3 steps • 2 minutes</div>
+                          <div className="font-medium text-slate-900">Docs Quickstart</div>
+                          <div className="text-xs text-slate-600">3 steps • 2 minutes</div>
                         </div>
                       </div>
-                      <span className="text-slate-300 group-hover:text-white">→</span>
+                      <span className="text-slate-600 group-hover:text-slate-900">→</span>
                     </Link>
                     <Link
                       href="/chat"
@@ -1056,7 +1056,7 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                 <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-12">
                   <article
                     id="doc-content"
-                    className="prose prose-slate max-w-none prose-xl prose-headings:text-slate-900 prose-headings:font-bold prose-headings:tracking-tight prose-h1:text-5xl prose-h1:mb-8 prose-h1:leading-tight prose-h2:text-4xl prose-h2:leading-tight prose-h2:mt-16 prose-h2:mb-8 prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-4 prose-h3:text-2xl prose-h3:mt-12 prose-h3:mb-6 prose-h3:font-semibold prose-p:text-slate-700 prose-p:leading-8 prose-p:mb-8 prose-p:text-lg prose-li:text-slate-700 prose-li:mb-3 prose-li:text-lg prose-a:text-slate-900 prose-a:font-medium prose-a:no-underline hover:prose-a:text-slate-700 hover:prose-a:underline prose-code:text-slate-900 prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:text-base prose-code:font-mono prose-code:font-medium prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:border prose-pre:border-slate-200 prose-blockquote:border-l-slate-900 prose-blockquote:bg-slate-50 prose-blockquote:py-6 prose-blockquote:px-8 prose-blockquote:my-10 prose-blockquote:rounded-r-lg prose-blockquote:border-l-4 prose-strong:text-slate-900 prose-strong:font-semibold max-w-3xl"
+                    className="prose prose-slate max-w-none prose-xl prose-headings:text-slate-900 prose-headings:font-bold prose-headings:tracking-tight prose-h1:text-5xl prose-h1:mb-8 prose-h1:leading-tight prose-h2:text-4xl prose-h2:leading-tight prose-h2:mt-16 prose-h2:mb-8 prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-4 prose-h3:text-2xl prose-h3:mt-12 prose-h3:mb-6 prose-h3:font-semibold prose-p:text-slate-700 prose-p:leading-8 prose-p:mb-8 prose-p:text-lg prose-li:text-slate-700 prose-li:mb-3 prose-li:text-lg prose-a:text-slate-900 prose-a:font-medium prose-a:no-underline hover:prose-a:text-slate-700 hover:prose-a:underline prose-code:text-slate-900 prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:text-base prose-code:font-mono prose-code:font-medium prose-pre:bg-white prose-pre:text-slate-900 prose-pre:border prose-pre:border-slate-200 prose-blockquote:border-l-slate-900 prose-blockquote:bg-slate-50 prose-blockquote:py-6 prose-blockquote:px-8 prose-blockquote:my-10 prose-blockquote:rounded-r-lg prose-blockquote:border-l-4 prose-strong:text-slate-900 prose-strong:font-semibold max-w-3xl"
                     dangerouslySetInnerHTML={{ __html: content }}
                   />
                   <nav className="hidden lg:block sticky top-24 self-start text-sm border-l border-slate-200 pl-6">

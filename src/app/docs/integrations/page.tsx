@@ -87,7 +87,7 @@ polydev perspectives "Optimize this database query"`
         {integrations.filter(i => i.featured).map((integration) => (
           <div key={integration.id} className="mb-12 p-8 rounded-2xl bg-slate-50 border border-slate-200">
             <div className="flex items-start gap-6">
-              <div className="p-3 rounded-xl bg-slate-900 text-white">
+              <div className="p-3 rounded-xl bg-slate-200 text-slate-900">
                 {integration.icon}
               </div>
               <div className="flex-1">
@@ -100,7 +100,7 @@ polydev perspectives "Optimize this database query"`
                 <p className="text-slate-600 mb-4">{integration.description}</p>
                 <Link
                   href={integration.link!}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-700 transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-slate-200 text-slate-900 rounded-xl hover:bg-slate-300 transition-all duration-200"
                 >
                   Get Started
                   <ExternalLink className="w-4 h-4" />
@@ -129,17 +129,17 @@ polydev perspectives "Optimize this database query"`
               {integration.code && (
                 <div className="mb-4">
                   <div className="relative">
-                    <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm overflow-x-auto">
+                    <pre className="bg-white text-slate-900 p-4 rounded-lg text-sm overflow-x-auto border border-slate-200">
                       <code>{integration.code}</code>
                     </pre>
                     <button
                       onClick={() => copyToClipboard(integration.code!, integration.id)}
-                      className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 rounded-md transition-colors"
+                      className="absolute top-2 right-2 p-2 bg-slate-50 hover:bg-slate-100 rounded-md transition-colors border border-slate-200"
                     >
                       {copiedCode === integration.id ? (
-                        <Check className="w-4 h-4 text-white" />
+                        <Check className="w-4 h-4 text-slate-900" />
                       ) : (
-                        <Copy className="w-4 h-4 text-slate-400" />
+                        <Copy className="w-4 h-4 text-slate-600" />
                       )}
                     </button>
                   </div>
@@ -159,7 +159,7 @@ polydev perspectives "Optimize this database query"`
           </p>
           <Link
             href="/contact"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-slate-200 text-slate-900 rounded-xl hover:bg-slate-300 transition-colors"
           >
             Contact Us
             <ExternalLink className="w-4 h-4" />
