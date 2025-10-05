@@ -7,7 +7,7 @@ import { Copy, Check } from 'lucide-react'
 let Prism: any = null
 if (typeof window !== 'undefined') {
   require('prismjs')
-  require('prismjs/themes/prism-tomorrow.css')
+  require('prismjs/themes/prism.css')
   require('prismjs/components/prism-typescript')
   require('prismjs/components/prism-javascript')
   require('prismjs/components/prism-python')
@@ -74,19 +74,19 @@ function CodeBlock({ code, language }: CodeBlockProps) {
 
   return (
     <div className="relative group my-4">
-      <div className="flex items-center justify-between bg-slate-800 text-slate-300 px-4 py-3 text-sm rounded-t-lg border border-slate-700">
+      <div className="flex items-center justify-between bg-slate-50 text-slate-700 px-4 py-3 text-sm rounded-t-lg border border-slate-200">
         <span className="font-mono text-xs uppercase tracking-wider font-semibold">
           {detectedLanguage}
         </span>
         <button
           onClick={copyToClipboard}
-          className="opacity-70 hover:opacity-100 group-hover:opacity-100 transition-all duration-200 flex items-center gap-2 hover:bg-slate-700 px-3 py-1.5 rounded text-xs font-medium"
+          className="opacity-70 hover:opacity-100 group-hover:opacity-100 transition-all duration-200 flex items-center gap-2 hover:bg-slate-200 px-3 py-1.5 rounded text-xs font-medium"
           title="Copy code"
         >
           {copied ? (
             <>
-              <Check size={16} className="text-slate-100" />
-              <span className="text-slate-100">Copied!</span>
+              <Check size={16} className="text-slate-900" />
+              <span className="text-slate-900">Copied!</span>
             </>
           ) : (
             <>
@@ -96,7 +96,7 @@ function CodeBlock({ code, language }: CodeBlockProps) {
           )}
         </button>
       </div>
-      <pre className="bg-slate-900 text-slate-100 p-4 rounded-b-lg overflow-x-auto border-l border-r border-b border-slate-700 font-mono text-sm leading-relaxed">
+      <pre className="bg-white text-slate-900 p-4 rounded-b-lg overflow-x-auto border-l border-r border-b border-slate-200 font-mono text-sm leading-relaxed">
         <code
           ref={codeRef}
           className={`language-${detectedLanguage}`}
