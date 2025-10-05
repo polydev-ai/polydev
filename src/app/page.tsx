@@ -476,17 +476,17 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <div className="grid lg:grid-cols-2 gap-0">
+            <div className="grid lg:grid-cols-2 gap-0 border border-slate-200 rounded-xl overflow-hidden">
               {/* Code Side */}
-              <div className="bg-slate-900 border-r border-slate-200">
+              <div className="bg-white border-r border-slate-200">
                 {/* Terminal header */}
-                <div className="flex items-center justify-between p-4 border-b border-slate-700">
+                <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-slate-600"></div>
-                    <div className="w-3 h-3 rounded-full bg-slate-600"></div>
-                    <div className="w-3 h-3 rounded-full bg-slate-600"></div>
+                    <div className="w-3 h-3 rounded-full bg-slate-300"></div>
+                    <div className="w-3 h-3 rounded-full bg-slate-300"></div>
+                    <div className="w-3 h-3 rounded-full bg-slate-300"></div>
                   </div>
-                  <div className="text-slate-400 text-sm font-mono">
+                  <div className="text-slate-600 text-sm font-mono">
                     {currentExample.filename}
                   </div>
                   <div className="text-xs text-slate-500 font-mono">
@@ -495,19 +495,20 @@ export default function LandingPage() {
                 </div>
 
                 {/* Code display */}
-                <div className="p-6 min-h-[500px]">
+                <div className="p-6 h-[500px] overflow-y-auto relative">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={currentExampleIndex}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
+                      initial={{ opacity: 0, filter: 'blur(10px)' }}
+                      animate={{ opacity: 1, filter: 'blur(0px)' }}
+                      exit={{ opacity: 0, filter: 'blur(10px)' }}
+                      transition={{ duration: 0.4, ease: 'easeInOut' }}
+                      className="absolute inset-6"
                     >
-                      <div className="text-xs text-slate-500 mb-4 font-mono">
+                      <div className="text-xs text-slate-600 mb-4 font-mono">
                         {currentExample.problem}
                       </div>
-                      <pre className="text-slate-300 text-sm font-mono leading-relaxed">
+                      <pre className="text-slate-900 text-sm font-mono leading-relaxed">
                         <code>{currentExample.code}</code>
                       </pre>
                     </motion.div>
@@ -516,8 +517,8 @@ export default function LandingPage() {
               </div>
 
               {/* Responses Side */}
-              <div className="bg-slate-50 p-6">
-                <div className="mb-6">
+              <div className="bg-slate-50 p-6 h-[564px] overflow-y-auto">
+                <div className="mb-6 sticky top-0 bg-slate-50 pb-4">
                   <h3 className="text-sm font-semibold text-slate-900 mb-1">
                     AI Analysis
                   </h3>
@@ -527,14 +528,14 @@ export default function LandingPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <AnimatePresence>
+                  <AnimatePresence mode="wait">
                     {currentExample.responses.map((response, index) => (
                       <motion.div
                         key={`${currentExampleIndex}-${index}`}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ delay: index * 0.1 }}
+                        initial={{ opacity: 0, filter: 'blur(10px)', y: 10 }}
+                        animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                        exit={{ opacity: 0, filter: 'blur(10px)', y: -10 }}
+                        transition={{ delay: index * 0.1, duration: 0.4, ease: 'easeInOut' }}
                         className="bg-white rounded-lg border border-slate-200 p-4 hover:border-slate-300 transition-colors"
                       >
                         <div className="flex items-start gap-3">
@@ -616,7 +617,7 @@ export default function LandingPage() {
               <div className="space-y-6">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 mb-3">1. Get your token</div>
-                  <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm text-slate-100">
+                  <div className="bg-white border border-slate-200 rounded-lg p-4 font-mono text-sm text-slate-900">
                     POLYDEV_USER_TOKEN=pd_your_token_here
                   </div>
                   <p className="text-sm text-slate-500 mt-2">Visit dashboard → Settings → Copy token</p>
@@ -624,7 +625,7 @@ export default function LandingPage() {
 
                 <div>
                   <div className="text-sm font-semibold text-slate-900 mb-3">2. Add to MCP config</div>
-                  <div className="bg-slate-900 rounded-lg p-4 font-mono text-sm text-slate-100 overflow-x-auto">
+                  <div className="bg-white border border-slate-200 rounded-lg p-4 font-mono text-sm text-slate-900 overflow-x-auto">
                     <pre className="whitespace-pre">{`{
   "mcpServers": {
     "polydev": {
