@@ -79,29 +79,29 @@ const formatTextContent = (text: string): string => {
   formatted = formatted.replace(/^#{4,}\s*[A-Z][^:]*:\s*$/gim, '') // Remove generic pattern headers
   
   // Convert inline code (single backticks) to HTML with enhanced styling
-  formatted = formatted.replace(/`([^`]+)`/g, '<code class="bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-600 px-2 py-1 rounded-md text-sm font-mono text-red-600 dark:text-red-400 border border-gray-200 dark:border-gray-600 shadow-sm">$1</code>')
+  formatted = formatted.replace(/`([^`]+)`/g, '<code class="bg-gradient-to-r from-slate-100 to-slate-50 px-2 py-1 rounded-md text-sm font-mono text-slate-900 border border-slate-200 shadow-sm">$1</code>')
   
   // Convert **bold** to HTML with enhanced styling
-  formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900 dark:text-gray-100">$1</strong>')
+  formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-900">$1</strong>')
   
   // Convert *italic* to HTML with enhanced styling
-  formatted = formatted.replace(/\*(.*?)\*/g, '<em class="italic text-gray-800 dark:text-gray-200">$1</em>')
+  formatted = formatted.replace(/\*(.*?)\*/g, '<em class="italic text-slate-800">$1</em>')
   
   // Convert [link](url) to HTML with enhanced styling
-  formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline underline-offset-2 font-medium transition-colors duration-200" target="_blank" rel="noopener noreferrer">$1</a>')
+  formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-slate-900 hover:text-slate-700 hover:underline underline-offset-2 font-medium transition-colors duration-200" target="_blank" rel="noopener noreferrer">$1</a>')
   
   // Convert headers to HTML with enhanced styling and better spacing
-  formatted = formatted.replace(/^#### (.*$)/gim, '<h4 class="text-base font-semibold text-gray-900 dark:text-gray-100 mt-5 mb-3 border-l-2 border-blue-500 pl-3">$1</h4>')
-  formatted = formatted.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-3 border-l-3 border-blue-500 pl-3">$1</h3>')
-  formatted = formatted.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-4 border-l-4 border-blue-500 pl-4">$1</h2>')
-  formatted = formatted.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-6 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">$1</h1>')
+  formatted = formatted.replace(/^#### (.*$)/gim, '<h4 class="text-base font-semibold text-slate-900 mt-5 mb-3 border-l-2 border-slate-900 pl-3">$1</h4>')
+  formatted = formatted.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold text-slate-900 mt-6 mb-3 border-l-3 border-slate-900 pl-3">$1</h3>')
+  formatted = formatted.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold text-slate-900 mt-6 mb-4 border-l-4 border-slate-900 pl-4">$1</h2>')
+  formatted = formatted.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold text-slate-900 mt-6 mb-4 pb-2 border-b border-slate-200">$1</h1>')
   
   // Convert lists with enhanced styling and better spacing
-  formatted = formatted.replace(/^- (.*$)/gim, '<li class="ml-6 mb-2 list-disc list-outside text-gray-800 dark:text-gray-200 leading-relaxed">$1</li>')
+  formatted = formatted.replace(/^- (.*$)/gim, '<li class="ml-6 mb-2 list-disc list-outside text-slate-800 leading-relaxed">$1</li>')
   
   // Convert numbered lists (capture item text correctly, avoid literal $1)
   formatted = formatted.replace(/^\d+\.\s+(.*$)/gim, (_match, itemText) => {
-    return `<li class="ml-6 mb-2 list-decimal list-outside text-gray-800 dark:text-gray-200 leading-relaxed">${itemText}</li>`
+    return `<li class="ml-6 mb-2 list-decimal list-outside text-slate-800 leading-relaxed">${itemText}</li>`
   })
   
   // Clean up extra whitespace and empty lines with better spacing
@@ -129,7 +129,7 @@ function MessageContent({ content, className = '' }: MessageContentProps) {
           return (
             <div
               key={index}
-              className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-code:text-red-600 dark:prose-code:text-red-400 prose-p:leading-relaxed prose-p:mb-4 prose-li:leading-relaxed text-gray-800 dark:text-gray-200"
+              className="prose prose-sm max-w-none  prose-headings:font-semibold prose-a:text-slate-900 prose-code:text-slate-900 prose-p:leading-relaxed prose-p:mb-4 prose-li:leading-relaxed text-slate-800"
               dangerouslySetInnerHTML={{
                 __html: formatTextContent(part.content).replace(/\n/g, '<br />')
               }}

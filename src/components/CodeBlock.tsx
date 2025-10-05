@@ -74,19 +74,19 @@ function CodeBlock({ code, language }: CodeBlockProps) {
 
   return (
     <div className="relative group my-4">
-      <div className="flex items-center justify-between bg-gray-800 dark:bg-gray-900 text-gray-300 dark:text-gray-400 px-4 py-3 text-sm rounded-t-lg border border-gray-700">
+      <div className="flex items-center justify-between bg-slate-800 text-slate-300 px-4 py-3 text-sm rounded-t-lg border border-slate-700">
         <span className="font-mono text-xs uppercase tracking-wider font-semibold">
           {detectedLanguage}
         </span>
         <button
           onClick={copyToClipboard}
-          className="opacity-70 hover:opacity-100 group-hover:opacity-100 transition-all duration-200 flex items-center gap-2 hover:bg-gray-700 dark:hover:bg-gray-800 px-3 py-1.5 rounded text-xs font-medium"
+          className="opacity-70 hover:opacity-100 group-hover:opacity-100 transition-all duration-200 flex items-center gap-2 hover:bg-slate-700 px-3 py-1.5 rounded text-xs font-medium"
           title="Copy code"
         >
           {copied ? (
             <>
-              <Check size={16} className="text-green-400" />
-              <span className="text-green-400">Copied!</span>
+              <Check size={16} className="text-slate-100" />
+              <span className="text-slate-100">Copied!</span>
             </>
           ) : (
             <>
@@ -96,7 +96,7 @@ function CodeBlock({ code, language }: CodeBlockProps) {
           )}
         </button>
       </div>
-      <pre className="bg-gray-900 dark:bg-black text-gray-100 dark:text-gray-200 p-4 rounded-b-lg overflow-x-auto border-l border-r border-b border-gray-700 font-mono text-sm leading-relaxed">
+      <pre className="bg-slate-900 text-slate-100 p-4 rounded-b-lg overflow-x-auto border-l border-r border-b border-slate-700 font-mono text-sm leading-relaxed">
         <code
           ref={codeRef}
           className={`language-${detectedLanguage}`}

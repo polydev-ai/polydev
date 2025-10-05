@@ -187,14 +187,14 @@ export default function Features() {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">
+          <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
             Platform Features
           </h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+          <p className="text-xl text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
             Everything you need to build, deploy, and scale AI applications with 
             the Model Context Protocol and multi-LLM integration.
           </p>
@@ -203,7 +203,7 @@ export default function Features() {
         {/* Feature Categories */}
         {features.map((category, categoryIndex) => (
           <div key={categoryIndex} className="mb-16">
-            <h2 className="text-2xl font-bold text-slate-900 mb-8 text-center">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8 text-center">
               {category.category}
             </h2>
             
@@ -211,17 +211,17 @@ export default function Features() {
               {category.items.map((feature, featureIndex) => (
                 <div
                   key={featureIndex}
-                  className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
+                  className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
                 >
                   <div className="flex items-start">
                     <div className="text-3xl mr-4 flex-shrink-0">
                       {feature.icon}
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
                         {feature.title}
                       </h3>
-                      <p className="text-slate-600">
+                      <p className="text-slate-600 dark:text-slate-400">
                         {feature.description}
                       </p>
                     </div>
@@ -234,7 +234,7 @@ export default function Features() {
 
         {/* Integrations */}
         <div className="mb-16">
-          <h2 className="text-2xl font-bold text-slate-900 mb-8 text-center">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8 text-center">
             Supported LLM Providers
           </h2>
           
@@ -242,13 +242,13 @@ export default function Features() {
             {integrations.map((integration, index) => (
               <div
                 key={index}
-                className="bg-white rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow"
+                className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow"
               >
                 <div className="text-3xl mb-2">{integration.logo}</div>
-                <h3 className="font-semibold text-slate-900 mb-1">
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
                   {integration.name}
                 </h3>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   {integration.description}
                 </p>
               </div>
@@ -258,7 +258,7 @@ export default function Features() {
 
         {/* Use Cases */}
         <div className="mb-16">
-          <h2 className="text-2xl font-bold text-slate-900 mb-8 text-center">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8 text-center">
             Common Use Cases
           </h2>
           
@@ -266,17 +266,17 @@ export default function Features() {
             {useCases.map((useCase, index) => (
               <div
                 key={index}
-                className="bg-white rounded-lg shadow-md p-6"
+                className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6"
               >
-                <h3 className="text-xl font-semibold text-slate-900 mb-3">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-3">
                   {useCase.title}
                 </h3>
-                <p className="text-slate-600 mb-3">
+                <p className="text-slate-600 dark:text-slate-400 mb-3">
                   {useCase.description}
                 </p>
-                <div className="bg-slate-100 rounded-md p-3">
-                  <span className="text-sm text-slate-600">Example:</span>
-                  <span className="text-sm text-slate-900 ml-2">
+                <div className="bg-slate-100 dark:bg-slate-700 rounded-md p-3">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Example:</span>
+                  <span className="text-sm text-slate-900 dark:text-white ml-2">
                     {useCase.example}
                   </span>
                 </div>
@@ -287,44 +287,44 @@ export default function Features() {
 
         {/* Architecture Diagram */}
         <div className="mb-16">
-          <h2 className="text-2xl font-bold text-slate-900 mb-8 text-center">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-8 text-center">
             Platform Architecture
           </h2>
           
-          <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-8">
             <div className="text-center">
               <div className="flex justify-center items-center space-x-8 mb-6">
-                <div className="bg-slate-100 rounded-lg p-4">
-                  <div className="font-semibold text-slate-900">
+                <div className="bg-blue-100 dark:bg-blue-900 rounded-lg p-4">
+                  <div className="font-semibold text-blue-900 dark:text-blue-100">
                     Your Application
                   </div>
                 </div>
                 <div className="text-2xl">→</div>
-                <div className="bg-slate-100 rounded-lg p-4">
-                  <div className="font-semibold text-slate-900">
+                <div className="bg-green-100 dark:bg-green-900 rounded-lg p-4">
+                  <div className="font-semibold text-green-900 dark:text-green-100">
                     Polydev API
                   </div>
                 </div>
                 <div className="text-2xl">→</div>
-                <div className="bg-slate-100 rounded-lg p-4">
-                  <div className="font-semibold text-slate-900">
+                <div className="bg-purple-100 dark:bg-purple-900 rounded-lg p-4">
+                  <div className="font-semibold text-purple-900 dark:text-purple-100">
                     LLM Providers
                   </div>
                 </div>
               </div>
-
+              
               <div className="text-center mb-6">
                 <div className="text-2xl">↕</div>
               </div>
-
-              <div className="bg-slate-100 rounded-lg p-4 inline-block">
-                <div className="font-semibold text-slate-900">
+              
+              <div className="bg-orange-100 dark:bg-orange-900 rounded-lg p-4 inline-block">
+                <div className="font-semibold text-orange-900 dark:text-orange-100">
                   MCP Servers & Tools
                 </div>
               </div>
             </div>
             
-            <div className="mt-6 text-center text-slate-600">
+            <div className="mt-6 text-center text-slate-600 dark:text-slate-400">
               <p>
                 Simple API integration with powerful MCP protocol for tool access 
                 and multi-LLM provider support
@@ -334,18 +334,18 @@ export default function Features() {
         </div>
 
         {/* CTA Section */}
-        <div className="text-center bg-gradient-to-r from-slate-800 to-slate-900 rounded-lg p-8">
+        <div className="text-center bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-8">
           <h2 className="text-3xl font-bold text-white mb-4">
             Ready to Build with Polydev?
           </h2>
-          <p className="text-xl text-slate-100 mb-6">
+          <p className="text-xl text-blue-100 mb-6">
             Start building powerful AI applications with MCP and multi-LLM integration today.
           </p>
           <div className="space-x-4">
-            <button className="bg-white text-slate-600 px-8 py-3 rounded-lg font-medium hover:bg-slate-100 transition-colors">
+            <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-medium hover:bg-slate-100 transition-colors">
               Get Started Free
             </button>
-            <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-medium hover:bg-white hover:text-slate-600 transition-colors">
+            <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-medium hover:bg-white hover:text-blue-600 transition-colors">
               View Documentation
             </button>
           </div>

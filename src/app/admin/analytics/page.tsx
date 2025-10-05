@@ -236,14 +236,14 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-lg">Loading analytics...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-slate-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-4">
           <button
@@ -257,11 +257,11 @@ export default function AnalyticsPage() {
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <BarChart3 className="h-8 w-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+              <BarChart3 className="h-8 w-8 text-slate-900" />
               System Analytics
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-slate-600 mt-2">
               Comprehensive analytics for users, quotas, and system-wide metrics
             </p>
           </div>
@@ -269,7 +269,7 @@ export default function AnalyticsPage() {
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
             >
               <option value="7d">Last 7 Days</option>
               <option value="30d">Last 30 Days</option>
@@ -278,14 +278,14 @@ export default function AnalyticsPage() {
             <button
               onClick={() => loadAllAnalytics(true)}
               disabled={refreshing}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-900 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-900 disabled:opacity-50"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               {refreshing ? 'Refreshing...' : 'Refresh'}
             </button>
             <button
               onClick={() => router.push('/admin/providers/analytics')}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="inline-flex items-center px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900"
             >
               Provider Analytics
               <ExternalLink className="h-4 w-4 ml-2" />
@@ -300,13 +300,13 @@ export default function AnalyticsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Total Users</p>
+                    <p className="text-sm text-slate-600">Total Users</p>
                     <p className="text-2xl font-bold">{formatNumber(systemStats.total_users)}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-slate-600 mt-1">
                       {formatNumber(systemStats.new_users_this_month)} new this month
                     </p>
                   </div>
-                  <Users className="h-8 w-8 text-blue-500" />
+                  <Users className="h-8 w-8 text-slate-900" />
                 </div>
               </CardContent>
             </Card>
@@ -315,13 +315,13 @@ export default function AnalyticsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Messages This Month</p>
+                    <p className="text-sm text-slate-600">Messages This Month</p>
                     <p className="text-2xl font-bold">{formatNumber(systemStats.total_messages_this_month)}</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-slate-600 mt-1">
                       {formatNumber(systemStats.active_users_this_month)} active users
                     </p>
                   </div>
-                  <Activity className="h-8 w-8 text-green-500" />
+                  <Activity className="h-8 w-8 text-slate-900" />
                 </div>
               </CardContent>
             </Card>
@@ -330,11 +330,11 @@ export default function AnalyticsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Total Cost</p>
+                    <p className="text-sm text-slate-600">Total Cost</p>
                     <p className="text-2xl font-bold">{formatCost(systemStats.total_cost_this_month)}</p>
-                    <p className="text-xs text-gray-500 mt-1">This month</p>
+                    <p className="text-xs text-slate-600 mt-1">This month</p>
                   </div>
-                  <DollarSign className="h-8 w-8 text-yellow-500" />
+                  <DollarSign className="h-8 w-8 text-slate-900" />
                 </div>
               </CardContent>
             </Card>
@@ -343,15 +343,15 @@ export default function AnalyticsPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Plan Distribution</p>
+                    <p className="text-sm text-slate-600">Plan Distribution</p>
                     <p className="text-2xl font-bold">
                       {formatNumber(systemStats.free_users + systemStats.plus_users + systemStats.pro_users)}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-slate-600 mt-1">
                       {systemStats.free_users}F / {systemStats.plus_users}+ / {systemStats.pro_users}P
                     </p>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-purple-500" />
+                  <TrendingUp className="h-8 w-8 text-slate-900" />
                 </div>
               </CardContent>
             </Card>
@@ -366,21 +366,21 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">Premium</p>
-                  <p className="text-2xl font-bold text-purple-600">
+                <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-sm text-slate-600 mb-1">Premium</p>
+                  <p className="text-2xl font-bold text-slate-900">
                     {formatNumber(systemStats.premium_perspectives_this_month)}
                   </p>
                 </div>
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">Normal</p>
-                  <p className="text-2xl font-bold text-blue-600">
+                <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-sm text-slate-600 mb-1">Normal</p>
+                  <p className="text-2xl font-bold text-slate-900">
                     {formatNumber(systemStats.normal_perspectives_this_month)}
                   </p>
                 </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">Eco</p>
-                  <p className="text-2xl font-bold text-green-600">
+                <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-sm text-slate-600 mb-1">Eco</p>
+                  <p className="text-2xl font-bold text-slate-900">
                     {formatNumber(systemStats.eco_perspectives_this_month)}
                   </p>
                 </div>
@@ -496,11 +496,7 @@ export default function AnalyticsPage() {
                       <TableRow key={idx}>
                         <TableCell className="font-medium">{model.model_name}</TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            model.model_tier === 'premium' ? 'bg-purple-100 text-purple-700' :
-                            model.model_tier === 'normal' ? 'bg-blue-100 text-blue-700' :
-                            'bg-green-100 text-green-700'
-                          }`}>
+                          <span className="px-2 py-1 rounded text-xs bg-slate-100 text-slate-900 border border-slate-200">
                             {model.model_tier}
                           </span>
                         </TableCell>
@@ -615,11 +611,11 @@ export default function AnalyticsPage() {
                         <TableCell className="text-right">{formatNumber(bonus.total_bonuses)}</TableCell>
                         <TableCell className="text-right">{formatNumber(bonus.total_messages_granted)}</TableCell>
                         <TableCell className="text-right">{formatNumber(bonus.total_messages_used)}</TableCell>
-                        <TableCell className="text-right text-green-600 font-semibold">
+                        <TableCell className="text-right text-slate-900 font-semibold">
                           {formatNumber(bonus.total_messages_remaining)}
                         </TableCell>
                         <TableCell className="text-right">{formatNumber(bonus.active_bonuses)}</TableCell>
-                        <TableCell className="text-right text-gray-500">
+                        <TableCell className="text-right text-slate-600">
                           {formatNumber(bonus.expired_bonuses + bonus.fully_used_bonuses)}
                         </TableCell>
                       </TableRow>
@@ -652,11 +648,7 @@ export default function AnalyticsPage() {
                       <TableRow key={user.user_id}>
                         <TableCell className="font-medium">{user.email}</TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            user.current_plan_tier === 'pro' ? 'bg-purple-100 text-purple-700' :
-                            user.current_plan_tier === 'plus' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-700'
-                          }`}>
+                          <span className="px-2 py-1 rounded text-xs bg-slate-100 text-slate-900 border border-slate-200">
                             {user.current_plan_tier}
                           </span>
                         </TableCell>

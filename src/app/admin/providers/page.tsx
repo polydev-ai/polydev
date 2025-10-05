@@ -358,8 +358,8 @@ export default function ProvidersAdminPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="h-8 bg-slate-200 rounded w-1/4"></div>
+          <div className="h-32 bg-slate-200 rounded"></div>
         </div>
       </div>
     )
@@ -378,7 +378,7 @@ export default function ProvidersAdminPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Provider API Keys</h1>
-          <p className="text-gray-600 mt-2">Manage API keys for different providers with ordered fallback</p>
+          <p className="text-slate-600 mt-2">Manage API keys for different providers with ordered fallback</p>
         </div>
         <div className="flex space-x-3">
           <Button variant="outline" onClick={() => window.location.href = '/admin/providers/analytics'}>
@@ -425,11 +425,11 @@ export default function ProvidersAdminPage() {
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent
-                    className="max-h-[350px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg z-[100]"
+                    className="max-h-[350px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg z-[100]"
                     position="popper"
                     sideOffset={5}
                   >
-                    <div className="sticky top-0 bg-white dark:bg-gray-900 p-2 border-b border-gray-200 dark:border-gray-700 z-10">
+                    <div className="sticky top-0 bg-white dark:bg-slate-900 p-2 border-b border-slate-200 dark:border-slate-700 z-10">
                       <Input
                         placeholder="Search providers..."
                         value={providerSearch}
@@ -446,7 +446,7 @@ export default function ProvidersAdminPage() {
                           provider.id.toLowerCase().includes(providerSearch.toLowerCase())
                         )
                         .map(provider => (
-                        <SelectItem key={provider.id} value={provider.id} className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <SelectItem key={provider.id} value={provider.id} className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">
                           <div className="flex items-center gap-2">
                             <img
                               src={provider.logo}
@@ -461,7 +461,7 @@ export default function ProvidersAdminPage() {
                         provider.name.toLowerCase().includes(providerSearch.toLowerCase()) ||
                         provider.id.toLowerCase().includes(providerSearch.toLowerCase())
                       ).length === 0 && (
-                        <div className="py-6 text-center text-sm text-gray-500">
+                        <div className="py-6 text-center text-sm text-slate-500">
                           No providers found
                         </div>
                       )}
@@ -693,10 +693,10 @@ export default function ProvidersAdminPage() {
         <Card>
           <CardContent className="py-12">
             <div className="text-center space-y-4">
-              <Key className="w-12 h-12 mx-auto text-gray-400" />
+              <Key className="w-12 h-12 mx-auto text-slate-400" />
               <div>
                 <h3 className="text-lg font-semibold">No API Keys Configured</h3>
-                <p className="text-gray-600 mt-2">Get started by adding your first API key using the "Add API Key" button above.</p>
+                <p className="text-slate-600 mt-2">Get started by adding your first API key using the "Add API Key" button above.</p>
               </div>
             </div>
           </CardContent>
@@ -746,7 +746,7 @@ export default function ProvidersAdminPage() {
               </CardHeader>
               <CardContent>
                 {getProviderKeys(provider.id).length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-slate-500">
                     No API keys configured for {provider.name}
                   </div>
                 ) : (
@@ -784,10 +784,10 @@ export default function ProvidersAdminPage() {
                                     {key.active ? "Active" : "Inactive"}
                                   </Badge>
                                 </div>
-                                <p className="text-sm text-gray-500">{key.key_preview}</p>
+                                <p className="text-sm text-slate-500">{key.key_preview}</p>
                                 <div className="grid grid-cols-2 gap-4 mt-2">
                                   <div>
-                                    <p className="text-xs text-gray-500">Monthly Usage</p>
+                                    <p className="text-xs text-slate-500">Monthly Usage</p>
                                     <p className="text-sm">{formatUsage(key.current_usage, key.monthly_budget)}</p>
                                     {key.monthly_budget && (
                                       <Progress
@@ -797,7 +797,7 @@ export default function ProvidersAdminPage() {
                                     )}
                                   </div>
                                   <div>
-                                    <p className="text-xs text-gray-500">Daily Usage</p>
+                                    <p className="text-xs text-slate-500">Daily Usage</p>
                                     <p className="text-sm">{formatUsage(key.daily_usage, key.daily_limit)}</p>
                                     {key.daily_limit && (
                                       <Progress

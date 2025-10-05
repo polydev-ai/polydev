@@ -193,7 +193,7 @@ export default function AdminPricing() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-lg">Loading...</div>
       </div>
     )
@@ -204,7 +204,7 @@ export default function AdminPricing() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-slate-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-4">
           <button
@@ -216,24 +216,20 @@ export default function AdminPricing() {
         </div>
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <DollarSign className="h-8 w-8 text-green-600" />
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+              <DollarSign className="h-8 w-8 text-slate-900" />
               Pricing Management
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-slate-600 mt-2">
               Manage subscription tiers, credit packages, and sync with Stripe
             </p>
           </div>
         </div>
 
         {message && (
-          <Alert className={`mb-6 ${message.type === 'success' ? 'border-green-500' : 'border-red-500'}`}>
-            {message.type === 'success' ? (
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            ) : (
-              <AlertCircle className="h-4 w-4 text-red-600" />
-            )}
-            <AlertDescription className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+          <Alert className="mb-6 border-slate-300">
+            <CheckCircle className="h-4 w-4 text-slate-900" />
+            <AlertDescription className="text-slate-900">
               {message.text}
               <button
                 onClick={() => setMessage(null)}
@@ -317,7 +313,7 @@ export default function AdminPricing() {
                     <CardTitle className="flex items-center justify-between">
                       Plus Plan
                       <div className="flex flex-col items-end gap-1">
-                        <Badge className="bg-orange-500 text-white">
+                        <Badge className="bg-slate-900 text-white">
                           {config.subscription_pricing.plus_tier?.price_display_monthly || '$25'}/month
                         </Badge>
                         <Badge variant="outline" className="text-xs">
@@ -333,7 +329,7 @@ export default function AdminPricing() {
                         id="plus-messages"
                         value="Unlimited"
                         disabled
-                        className="bg-gray-100"
+                        className="bg-slate-100"
                       />
                     </div>
                     <div className="border-t pt-4">
@@ -442,7 +438,7 @@ export default function AdminPricing() {
                     <CardTitle className="flex items-center justify-between">
                       Pro Plan
                       <div className="flex flex-col items-end gap-1">
-                        <Badge className="bg-purple-500 text-white">
+                        <Badge className="bg-slate-900 text-white">
                           {config.subscription_pricing.pro_tier.price_display_monthly || '$60'}/month
                         </Badge>
                         <Badge variant="outline" className="text-xs">
@@ -458,7 +454,7 @@ export default function AdminPricing() {
                         id="pro-messages"
                         value="Unlimited"
                         disabled
-                        className="bg-gray-100"
+                        className="bg-slate-100"
                       />
                     </div>
                     <div className="border-t pt-4">
@@ -570,7 +566,7 @@ export default function AdminPricing() {
             onClick={syncWithStripe}
             disabled={saving}
             size="lg"
-            className="bg-green-600 hover:bg-green-700"
+            className="bg-slate-900 hover:bg-slate-700 text-white"
           >
             {saving ? 'Syncing...' : 'Sync All Changes with Stripe'}
           </Button>

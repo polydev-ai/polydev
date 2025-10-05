@@ -101,8 +101,8 @@ export default function ProviderAnalyticsPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="h-8 bg-slate-200 rounded w-1/4"></div>
+          <div className="h-32 bg-slate-200 rounded"></div>
         </div>
       </div>
     )
@@ -120,7 +120,7 @@ export default function ProviderAnalyticsPage() {
         </button>
         <button
           onClick={() => window.location.href = '/admin/analytics'}
-          className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 border border-blue-300 rounded-md hover:bg-blue-50"
+          className="inline-flex items-center px-3 py-1.5 text-sm text-slate-900 hover:text-slate-600 border border-slate-300 rounded-md hover:bg-slate-50"
         >
           System Analytics
           <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
@@ -130,10 +130,10 @@ export default function ProviderAnalyticsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-8 w-8 text-blue-600" />
+            <BarChart3 className="h-8 w-8 text-slate-900" />
             Provider Analytics
           </h1>
-          <p className="text-gray-600 mt-2">Monitor admin API key usage, costs, and performance</p>
+          <p className="text-slate-600 mt-2">Monitor admin API key usage, costs, and performance</p>
         </div>
         <div className="flex space-x-3">
           <Select value={selectedProvider} onValueChange={setSelectedProvider}>
@@ -234,10 +234,10 @@ export default function ProviderAnalyticsPage() {
         <Card>
           <CardContent className="py-12">
             <div className="text-center space-y-4">
-              <BarChart3 className="w-12 h-12 mx-auto text-gray-400" />
+              <BarChart3 className="w-12 h-12 mx-auto text-slate-400" />
               <div>
                 <h3 className="text-lg font-semibold">No Analytics Data</h3>
-                <p className="text-gray-600 mt-2">
+                <p className="text-slate-600 mt-2">
                   No usage data found for the selected time range. Add admin API keys and use them to see analytics.
                 </p>
               </div>
@@ -280,19 +280,19 @@ export default function ProviderAnalyticsPage() {
 
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
-                              <p className="text-gray-500">API Calls</p>
+                              <p className="text-slate-600">API Calls</p>
                               <p className="font-medium text-lg">{formatNumber(key.total_calls)}</p>
                             </div>
                             <div>
-                              <p className="text-gray-500">Success Rate</p>
+                              <p className="text-slate-600">Success Rate</p>
                               <p className="font-medium text-lg">{formatPercentage(key.success_rate)}</p>
                             </div>
                             <div>
-                              <p className="text-gray-500">Total Cost</p>
+                              <p className="text-slate-600">Total Cost</p>
                               <p className="font-medium text-lg">{formatCurrency(key.total_cost)}</p>
                             </div>
                             <div>
-                              <p className="text-gray-500">Tokens Used</p>
+                              <p className="text-slate-600">Tokens Used</p>
                               <p className="font-medium text-lg">{formatNumber(key.total_tokens)}</p>
                             </div>
                           </div>
@@ -300,7 +300,7 @@ export default function ProviderAnalyticsPage() {
                           {key.monthly_budget && (
                             <div className="space-y-1">
                               <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Monthly Budget Usage</span>
+                                <span className="text-slate-600">Monthly Budget Usage</span>
                                 <span className="font-medium">
                                   {formatCurrency(key.current_usage)} / {formatCurrency(key.monthly_budget)}
                                 </span>
@@ -331,20 +331,20 @@ export default function ProviderAnalyticsPage() {
                   {analytics.costBreakdown
                     .sort((a, b) => b.total_cost - a.total_cost)
                     .map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 transition-colors">
                         <div className="space-y-1">
                           <div className="flex items-center space-x-2">
                             <span className="font-medium">{item.key_name}</span>
                             <Badge variant="secondary">{item.provider}</Badge>
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-slate-600">
                             {formatNumber(item.api_calls)} calls • {formatCurrency(item.avg_cost_per_call)} avg/call
                           </div>
                         </div>
                         <div className="text-right space-y-1">
                           <div className="text-lg font-bold">{formatCurrency(item.total_cost)}</div>
                           {item.monthly_budget && (
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-slate-600">
                               {formatPercentage(item.budget_utilization)} of budget
                             </div>
                           )}
@@ -364,8 +364,8 @@ export default function ProviderAnalyticsPage() {
               </CardHeader>
               <CardContent>
                 {analytics.errorAnalysis.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <TrendingUp className="w-12 h-12 mx-auto mb-3 text-green-500" />
+                  <div className="text-center py-8 text-slate-600">
+                    <TrendingUp className="w-12 h-12 mx-auto mb-3 text-slate-900" />
                     <p className="font-medium">No errors found</p>
                     <p className="text-sm mt-1">All API calls were successful in the selected time range</p>
                   </div>
@@ -374,17 +374,17 @@ export default function ProviderAnalyticsPage() {
                     {analytics.errorAnalysis
                       .sort((a: any, b: any) => b.error_count - a.error_count)
                       .map((error: any, index: number) => (
-                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-red-50 transition-colors">
+                        <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50 transition-colors">
                           <div className="flex items-center space-x-3">
-                            <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
+                            <AlertTriangle className="h-5 w-5 text-slate-900 shrink-0" />
                             <div>
                               <div className="font-medium">{error.key_name}</div>
-                              <div className="text-sm text-gray-500">{error.provider}</div>
+                              <div className="text-sm text-slate-600">{error.provider}</div>
                             </div>
                           </div>
                           <div className="text-right">
                             <Badge variant="destructive" className="font-mono">{error.error_type}</Badge>
-                            <div className="text-sm text-gray-500 mt-1">
+                            <div className="text-sm text-slate-600 mt-1">
                               {formatNumber(error.error_count)} errors
                             </div>
                           </div>
@@ -414,25 +414,25 @@ export default function ProviderAnalyticsPage() {
                               <h3 className="text-lg font-semibold capitalize">{provider.provider}</h3>
                               <div className="text-right">
                                 <div className="text-2xl font-bold">{formatCurrency(provider.total_usage)}</div>
-                                <div className="text-sm text-gray-500">Total Cost</div>
+                                <div className="text-sm text-slate-600">Total Cost</div>
                               </div>
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                               <div>
-                                <p className="text-gray-500">Total Keys</p>
+                                <p className="text-slate-600">Total Keys</p>
                                 <p className="font-medium text-lg">{provider.total_keys}</p>
                               </div>
                               <div>
-                                <p className="text-gray-500">Active Keys</p>
+                                <p className="text-slate-600">Active Keys</p>
                                 <p className="font-medium text-lg">{provider.active_keys}</p>
                               </div>
                               <div>
-                                <p className="text-gray-500">API Calls</p>
+                                <p className="text-slate-600">API Calls</p>
                                 <p className="font-medium text-lg">{formatNumber(provider.total_calls)}</p>
                               </div>
                               <div>
-                                <p className="text-gray-500">Success Rate</p>
+                                <p className="text-slate-600">Success Rate</p>
                                 <p className="font-medium text-lg">{formatPercentage(provider.success_rate)}</p>
                               </div>
                             </div>
@@ -440,7 +440,7 @@ export default function ProviderAnalyticsPage() {
                             {provider.total_budget > 0 && (
                               <div className="space-y-1">
                                 <div className="flex justify-between text-sm">
-                                  <span className="text-gray-500">Budget Utilization</span>
+                                  <span className="text-slate-600">Budget Utilization</span>
                                   <span className="font-medium">
                                     {formatCurrency(provider.total_usage)} / {formatCurrency(provider.total_budget)}
                                   </span>

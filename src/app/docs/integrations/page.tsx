@@ -85,22 +85,22 @@ polydev perspectives "Optimize this database query"`
 
         {/* Featured Integration */}
         {integrations.filter(i => i.featured).map((integration) => (
-          <div key={integration.id} className="mb-12 p-8 rounded-2xl bg-gradient-to-br from-orange-50 to-violet-50 border border-orange-200/50">
+          <div key={integration.id} className="mb-12 p-8 rounded-2xl bg-slate-50 border border-slate-200">
             <div className="flex items-start gap-6">
-              <div className="p-3 rounded-xl bg-gradient-to-r from-orange-500 to-violet-500 text-white">
+              <div className="p-3 rounded-xl bg-slate-900 text-white">
                 {integration.icon}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h2 className="text-2xl font-bold text-slate-900">{integration.title}</h2>
-                  <span className="px-3 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded-full">
+                  <span className="px-3 py-1 text-xs font-medium bg-slate-100 text-slate-900 border border-slate-200 rounded-full">
                     Featured
                   </span>
                 </div>
                 <p className="text-slate-600 mb-4">{integration.description}</p>
                 <Link
                   href={integration.link!}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-violet-500 text-white rounded-xl hover:from-orange-600 hover:to-violet-600 transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl hover:bg-slate-700 transition-all duration-200"
                 >
                   Get Started
                   <ExternalLink className="w-4 h-4" />
@@ -113,7 +113,7 @@ polydev perspectives "Optimize this database query"`
         {/* Integration Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {integrations.filter(i => !i.featured).map((integration) => (
-            <div key={integration.id} className="p-6 rounded-xl border border-slate-200 hover:border-orange-300 hover:shadow-lg transition-all duration-200">
+            <div key={integration.id} className="p-6 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-200">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 rounded-lg bg-slate-100 text-slate-600">
                   {integration.icon}
@@ -137,7 +137,7 @@ polydev perspectives "Optimize this database query"`
                       className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 rounded-md transition-colors"
                     >
                       {copiedCode === integration.id ? (
-                        <Check className="w-4 h-4 text-green-400" />
+                        <Check className="w-4 h-4 text-white" />
                       ) : (
                         <Copy className="w-4 h-4 text-slate-400" />
                       )}

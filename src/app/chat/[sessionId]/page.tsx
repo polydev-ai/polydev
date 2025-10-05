@@ -545,17 +545,17 @@ export default function Chat() {
   const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'admin' | 'premium' | 'normal' | 'eco') => {
     switch (tier) {
       case 'cli':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        return 'bg-slate-100 text-slate-900 border border-slate-200'
       case 'api':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+        return 'bg-slate-100 text-slate-900 border border-slate-200'
       case 'admin':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+        return 'bg-slate-100 text-slate-900 border border-slate-200'
       case 'premium':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
+        return 'bg-slate-100 text-slate-900 border border-slate-200'
       case 'normal':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+        return 'bg-slate-100 text-slate-900 border border-slate-200'
       case 'eco':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+        return 'bg-slate-100 text-slate-900 border border-slate-200'
     }
   }, [])
 
@@ -612,7 +612,7 @@ export default function Chat() {
     const total = formatCost(costInfo.total_cost)
 
     return (
-      <span className="text-xs text-gray-400 dark:text-gray-500" title={`Input: ${input} • Output: ${output} • Total: ${total}`}>
+      <span className="text-xs text-slate-600" title={`Input: ${input} • Output: ${output} • Total: ${total}`}>
         {input} in • {output} out • {total} total
       </span>
     )
@@ -669,21 +669,21 @@ export default function Chat() {
 
   if (loading || modelsLoading || sessionsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
       </div>
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Authentication Required</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Please sign in to access the multi-model chat interface.</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-4">Authentication Required</h1>
+          <p className="text-slate-600 mb-6">Please sign in to access the multi-model chat interface.</p>
           <a
             href="/auth"
-            className="inline-block px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-block px-6 py-3 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors"
           >
             Sign In
           </a>
@@ -693,23 +693,23 @@ export default function Chat() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-white flex">
       {/* Session Sidebar */}
-      <div className={`${showSidebar ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700`}>
+      <div className={`${showSidebar ? 'w-80' : 'w-0'} transition-all duration-300 overflow-hidden bg-slate-50 border-r border-slate-200`}>
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chat History</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Chat History</h2>
             <button
               type="button"
               onClick={() => setShowSidebar(false)}
-              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 pointer-events-auto z-10"
+              className="p-1 text-slate-600 hover:text-slate-900 pointer-events-auto z-10"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          
+
           <button
             type="button"
             onClick={() => {
@@ -717,13 +717,13 @@ export default function Chat() {
               startNewSession()
             }}
             disabled={isCreatingSession}
-            className="w-full mb-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transform pointer-events-auto z-10"
+            className="w-full mb-4 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transform pointer-events-auto z-10"
           >
             {isCreatingSession ? 'Creating...' : 'New Chat'}
           </button>
 
           {sessionsError && (
-            <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+            <div className="mb-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900">
               Failed to load sessions: {sessionsError}
             </div>
           )}
@@ -732,8 +732,8 @@ export default function Chat() {
             {sessions.map((session) => (
               <div key={session.id} className={`group flex items-center justify-between p-2 rounded-lg transition-colors ${
                 currentSession?.id === session.id
-                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
-                  : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
+                  ? 'bg-slate-100 text-slate-900 border border-slate-200'
+                  : 'bg-white hover:bg-slate-50 text-slate-900'
               }`}>
                 <button
                   type="button"
@@ -752,7 +752,7 @@ export default function Chat() {
                   className="flex-1 text-left pointer-events-auto z-10"
                 >
                   <div className="text-sm font-medium truncate">{session.title}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <div className="text-xs text-slate-600 mt-1">
                     {new Date(session.updated_at).toLocaleDateString()}
                   </div>
                 </button>
@@ -771,7 +771,7 @@ export default function Chat() {
                     }
                   }}
                   title="Delete conversation"
-                  className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-red-600 transition-opacity pointer-events-auto z-10"
+                  className="opacity-0 group-hover:opacity-100 p-2 text-slate-600 hover:text-slate-900 transition-opacity pointer-events-auto z-10"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 7h12M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2m-1 0v12a2 2 0 01-2 2h-4a2 2 0 01-2-2V7h8z" />
@@ -786,28 +786,28 @@ export default function Chat() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="sticky top-16 z-[90] bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
+        <div className="sticky top-16 z-[90] bg-white/80 backdrop-blur border-b border-slate-200">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <button
                   type="button"
                   onClick={() => setShowSidebar(true)}
-                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors pointer-events-auto z-10"
+                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors pointer-events-auto z-10"
                   title="Show chat history"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+                <h1 className="text-xl font-semibold text-slate-900">
                   {currentSession?.title || 'Polydev Chat'}
                 </h1>
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
                     onClick={() => setShowModelSelector(!showModelSelector)}
-                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors pointer-events-auto z-10"
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors pointer-events-auto z-10"
                   >
                     <span className="mr-2">{selectedModels.length} models</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -819,7 +819,7 @@ export default function Chat() {
                     <button
                       type="button"
                       onClick={() => setViewMode(viewMode === 'unified' ? 'split' : 'unified')}
-                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors pointer-events-auto z-10"
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors pointer-events-auto z-10"
                       title={viewMode === 'unified' ? 'Switch to split view' : 'Switch to unified view'}
                     >
                       {viewMode === 'unified' ? (
@@ -845,14 +845,14 @@ export default function Chat() {
                 <button
                   type="button"
                   onClick={clearChat}
-                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors pointer-events-auto z-10"
+                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors pointer-events-auto z-10"
                   title="New chat"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
                 </button>
-                <div className="text-sm text-gray-500 dark:text-gray-400">
+                <div className="text-sm text-slate-600">
                   {user?.email}
                 </div>
               </div>
@@ -860,15 +860,15 @@ export default function Chat() {
 
             {/* Model Selector Dropdown */}
             {showModelSelector && (
-              <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                  <h3 className="text-sm font-medium text-slate-900">
                     Your Dashboard Models ({selectedModels.length} selected)
                   </h3>
                   <button
                     type="button"
                     onClick={() => setShowModelSelector(false)}
-                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 pointer-events-auto z-10"
+                    className="p-1 text-slate-600 hover:text-slate-900 pointer-events-auto z-10"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -877,37 +877,37 @@ export default function Chat() {
                 </div>
 
                 {modelsError && (
-                  <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-sm text-red-700 dark:text-red-300">
+                  <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <p className="text-sm text-slate-900">
                       Error loading models: {modelsError}
                     </p>
                   </div>
                 )}
 
                 {!hasModels && !modelsError && (
-                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      No models configured yet. Go to the <a href="/dashboard/models" className="underline hover:text-blue-800">Models Dashboard</a> to add your API keys and configure models.
+                  <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <p className="text-sm text-slate-900">
+                      No models configured yet. Go to the <a href="/dashboard/models" className="underline hover:text-slate-900">Models Dashboard</a> to add your API keys and configure models.
                     </p>
                   </div>
                 )}
 
-                <div className="space-y-4 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
+                <div className="space-y-4 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {dashboardModels.map((model) => (
                       <label
                         key={model.id}
-                        className={`flex items-start space-x-3 p-4 bg-white dark:bg-gray-700 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                        className={`flex items-start space-x-3 p-4 bg-white rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
                           selectedModels.includes(model.id)
-                            ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-sm'
-                            : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
+                            ? 'border-slate-900 bg-slate-50 shadow-sm'
+                            : 'border-slate-200 hover:bg-slate-50'
                         }`}
                       >
                         <input
                           type="checkbox"
                           checked={selectedModels.includes(model.id)}
                           onChange={() => toggleModel(model.id)}
-                          className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-500 dark:bg-gray-600"
+                          className="mt-1 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                         />
                         {model.providerLogo ? (
                           <img
@@ -922,23 +922,23 @@ export default function Chat() {
                             }}
                           />
                         ) : null}
-                        <div className={`logo-fallback w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${model.providerLogo ? 'hidden' : ''}`}>
+                        <div className={`logo-fallback w-6 h-6 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${model.providerLogo ? 'hidden' : ''}`}>
                           <span className="text-white text-[10px] font-bold">
                             {model.providerName.charAt(0).toUpperCase()}
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-2 mb-1">
-                            <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            <span className="text-sm font-medium text-slate-900 truncate">
                               {model.name}
                             </span>
                             {model.features?.supportsImages && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-900 border border-slate-200">
                                 Vision
                               </span>
                             )}
                             {model.features?.supportsReasoning && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-900 border border-slate-200">
                                 Reasoning
                               </span>
                             )}
@@ -946,15 +946,15 @@ export default function Chat() {
                               {model.tier.toUpperCase()}
                             </span>
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          <div className="text-xs text-slate-600 mb-1">
                             {model.providerName} • {model.contextWindow ? `${(model.contextWindow / 1000).toFixed(0)}K context` : 'Standard'}
                           </div>
                           {model.price && (
                             <div className="flex items-center space-x-2 mt-1">
-                              <div className="text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded">
+                              <div className="text-xs font-medium text-slate-900 bg-slate-100 border border-slate-200 px-2 py-1 rounded">
                                 ${model.price.input}/1M in
                               </div>
-                              <div className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                              <div className="text-xs font-medium text-slate-900 bg-slate-100 border border-slate-200 px-2 py-1 rounded">
                                 ${model.price.output}/1M out
                               </div>
                             </div>
@@ -977,45 +977,45 @@ export default function Chat() {
               {messages.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="mb-8">
-                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
+                    <h2 className="text-2xl font-semibold text-slate-900 mb-3">
                       Welcome to Polydev Multi-Model Chat
                     </h2>
-                    <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                    <p className="text-slate-600 max-w-2xl mx-auto">
                       Get perspectives from your configured dashboard models simultaneously. {hasModels ? 'Select your models above and start chatting.' : 'Configure models in your dashboard to get started.'}
                     </p>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6">
-                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                        <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-slate-50 rounded-xl p-6">
+                      <div className="w-12 h-12 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                        <svg className="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                       </div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Compare Models</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <h3 className="font-semibold text-slate-900 mb-2">Compare Models</h3>
+                      <p className="text-sm text-slate-600">
                         See how different AI models respond to the same prompt
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6">
-                      <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-slate-50 rounded-xl p-6">
+                      <div className="w-12 h-12 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                        <svg className="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                       </div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Smart Routing</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <h3 className="font-semibold text-slate-900 mb-2">Smart Routing</h3>
+                      <p className="text-sm text-slate-600">
                         CLI models prioritized, with API and credit fallbacks
                       </p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6">
-                      <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mb-4 mx-auto">
-                        <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-slate-50 rounded-xl p-6">
+                      <div className="w-12 h-12 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                        <svg className="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                       </div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Real-time</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <h3 className="font-semibold text-slate-900 mb-2">Real-time</h3>
+                      <p className="text-sm text-slate-600">
                         Get responses from all selected models simultaneously
                       </p>
                     </div>
@@ -1050,16 +1050,16 @@ export default function Chat() {
                                         }}
                                       />
                                     ) : null}
-                                    <div className={`logo-fallback w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
+                                    <div className={`logo-fallback w-6 h-6 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
                                       <span className="text-white text-xs font-bold">
                                         {providerName.charAt(0).toUpperCase()}
                                       </span>
                                     </div>
                                     <div>
-                                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                      <div className="text-sm font-semibold text-slate-900">
                                         {message.model}
                                       </div>
-                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                      <div className="text-xs text-slate-600">
                                         {providerName}
                                       </div>
                                     </div>
@@ -1080,18 +1080,18 @@ export default function Chat() {
                                 return null
                               })()}
                               {message.usage && (
-                                <span className="text-xs text-gray-400 dark:text-gray-500">
+                                <span className="text-xs text-slate-600">
                                   {message.usage.total_tokens} tokens
                                 </span>
                               )}
                               {message.responseTime && (
-                                <span className="text-xs text-gray-400 dark:text-gray-500">
+                                <span className="text-xs text-slate-600">
                                   {(message.responseTime / 1000).toFixed(1)}s
                                 </span>
                               )}
                               {message.costInfo && formatDetailedCost(message.costInfo)}
                               {typeof message.creditsUsed === 'number' && message.creditsUsed > 0 && (
-                                <span className="text-xs text-orange-500 dark:text-orange-400">
+                                <span className="text-xs text-slate-900">
                                   {message.creditsUsed} credits
                                 </span>
                               )}
@@ -1101,8 +1101,8 @@ export default function Chat() {
                       )}
                       <div className={`px-6 py-5 rounded-2xl shadow-sm transition-all duration-200 ${
                         message.role === 'user'
-                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-blue-100 dark:shadow-blue-900/20'
-                          : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-100 dark:border-gray-700 shadow-gray-100 dark:shadow-gray-900/20 hover:shadow-md dark:hover:shadow-gray-900/30'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-white text-slate-900 border border-slate-200 hover:shadow-md'
                       }`}>
                         <div className="relative">
                           <MessageContent 
@@ -1112,7 +1112,7 @@ export default function Chat() {
                           {isStreaming && message.id.startsWith('streaming-') && (
                             <>
                               {message.content === '' ? (
-                                <div className="flex items-center space-x-1 text-gray-500 dark:text-gray-400">
+                                <div className="flex items-center space-x-1 text-slate-600">
                                   <div className="flex space-x-1">
                                     <div className="w-2 h-2 bg-current rounded-full animate-pulse"></div>
                                     <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
@@ -1121,17 +1121,17 @@ export default function Chat() {
                                   <span className="text-sm">Thinking...</span>
                                 </div>
                               ) : (
-                                <span className="inline-block w-2 h-5 bg-blue-500 animate-pulse ml-1" />
+                                <span className="inline-block w-2 h-5 bg-slate-900 animate-pulse ml-1" />
                               )}
                             </>
                           )}
                         </div>
                         {message.reasoning && message.role === 'assistant' && (
-                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <div className="mt-3 pt-3 border-t border-slate-200">
                             <button
                               type="button"
                               onClick={() => toggleReasoning(message.id)}
-                              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 pointer-events-auto z-10"
+                              className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 pointer-events-auto z-10"
                             >
                               <svg 
                                 className={`w-4 h-4 transform transition-transform ${expandedReasoning.has(message.id) ? 'rotate-90' : ''}`}
@@ -1144,8 +1144,8 @@ export default function Chat() {
                               <span className="text-xs opacity-70">({message.reasoning.tokens} tokens)</span>
                             </button>
                             {expandedReasoning.has(message.id) && (
-                              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                              <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                <div className="text-sm text-slate-900 whitespace-pre-wrap font-mono">
                                   {message.reasoning.content}
                                 </div>
                               </div>
@@ -1153,7 +1153,7 @@ export default function Chat() {
                           </div>
                         )}
                         <div className={`text-xs mt-2 opacity-70 ${
-                          message.role === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
+                          message.role === 'user' ? 'text-white' : 'text-slate-600'
                         }`}>
                           {message.timestamp.toLocaleTimeString()}
                         </div>
@@ -1168,12 +1168,12 @@ export default function Chat() {
                     {/* User message */}
                     <div className="flex justify-end">
                       <div className="max-w-3xl ml-auto">
-                        <div className="px-6 py-5 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm shadow-blue-100 dark:shadow-blue-900/20">
-                          <MessageContent 
+                        <div className="px-6 py-5 rounded-2xl bg-slate-900 text-white shadow-sm">
+                          <MessageContent
                             content={turn.userMessage.content}
                             className="text-white"
                           />
-                          <div className="text-xs mt-2 opacity-70 text-blue-100">
+                          <div className="text-xs mt-2 opacity-70 text-white">
                             {turn.userMessage.timestamp.toLocaleTimeString()}
                           </div>
                         </div>
@@ -1188,9 +1188,9 @@ export default function Chat() {
                         'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
                       }`}>
                         {turn.assistantMessages.map((message) => (
-                          <div key={message.id} className="bg-gray-100 dark:bg-gray-800 rounded-2xl">
+                          <div key={message.id} className="bg-slate-50 rounded-2xl">
                             {/* Model header */}
-                            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-750">
+                            <div className="px-4 py-3 border-b border-slate-200 bg-white">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   {(() => {
@@ -1211,16 +1211,16 @@ export default function Chat() {
                                             }}
                                           />
                                         ) : null}
-                                        <div className={`logo-fallback w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
+                                        <div className={`logo-fallback w-6 h-6 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
                                           <span className="text-white text-xs font-bold">
                                             {providerName.charAt(0).toUpperCase()}
                                           </span>
                                         </div>
                                         <div>
-                                          <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                          <div className="text-sm font-semibold text-slate-900">
                                             {message.model}
                                           </div>
-                                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                                          <div className="text-xs text-slate-600">
                                             {providerName}
                                           </div>
                                         </div>
@@ -1241,12 +1241,12 @@ export default function Chat() {
                                       return null
                                     })()}
                                   {message.usage && (
-                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                    <span className="text-xs text-slate-600">
                                       {message.usage.total_tokens}t
                                     </span>
                                   )}
                                   {message.responseTime && (
-                                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                                    <span className="text-xs text-slate-600">
                                       {(message.responseTime / 1000).toFixed(1)}s
                                     </span>
                                   )}
@@ -1257,16 +1257,16 @@ export default function Chat() {
                             
                             {/* Message content */}
                             <div className="px-6 py-4">
-                              <MessageContent 
+                              <MessageContent
                                 content={message.content}
-                                className="text-gray-900 dark:text-white"
+                                className="text-slate-900"
                               />
                               {message.reasoning && (
-                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                <div className="mt-3 pt-3 border-t border-slate-200">
                                   <button
                                     type="button"
                                     onClick={() => toggleReasoning(message.id)}
-                                    className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 pointer-events-auto z-10"
+                                    className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 pointer-events-auto z-10"
                                   >
                                     <svg 
                                       className={`w-4 h-4 transform transition-transform ${expandedReasoning.has(message.id) ? 'rotate-90' : ''}`}
@@ -1279,15 +1279,15 @@ export default function Chat() {
                                     <span className="text-xs opacity-70">({message.reasoning.tokens} tokens)</span>
                                   </button>
                                   {expandedReasoning.has(message.id) && (
-                                    <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                                      <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">
+                                    <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                                      <div className="text-sm text-slate-900 whitespace-pre-wrap font-mono">
                                         {message.reasoning.content}
                                       </div>
                                     </div>
                                   )}
                                 </div>
                               )}
-                              <div className="text-xs mt-2 text-gray-500 dark:text-gray-400">
+                              <div className="text-xs mt-2 text-slate-600">
                                 {message.timestamp.toLocaleTimeString()}
                               </div>
                             </div>
@@ -1307,18 +1307,18 @@ export default function Chat() {
                 <div className="flex justify-start">
                   <div className="max-w-5xl mr-auto w-full">
                     <div className="mb-2 px-4">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      <span className="text-xs font-medium text-slate-600">
                         AI Models
                       </span>
                     </div>
-                    <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-700 border border-blue-200 dark:border-gray-600 rounded-2xl">
+                    <div className="px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl">
                       <div className="flex items-center space-x-3 mb-4">
                         <div className="flex space-x-1">
-                          <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                          <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                          <div className="w-3 h-3 bg-slate-900 rounded-full animate-pulse"></div>
+                          <div className="w-3 h-3 bg-slate-900 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                          <div className="w-3 h-3 bg-slate-900 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
                         </div>
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <span className="text-sm font-medium text-slate-900">
                           Getting responses from {selectedModels.length} model{selectedModels.length !== 1 ? 's' : ''}...
                         </span>
                       </div>
@@ -1328,12 +1328,12 @@ export default function Chat() {
                         {selectedModels.map((modelId) => {
                           const model = dashboardModels.find(m => m.id === modelId)
                           if (!model) return null
-                          
+
                           return (
-                            <div key={modelId} className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <div key={modelId} className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-slate-200">
                               {model.providerLogo ? (
-                                <img 
-                                  src={model.providerLogo} 
+                                <img
+                                  src={model.providerLogo}
                                   alt={model.providerName}
                                   className="w-8 h-8 rounded-lg flex-shrink-0 object-contain"
                                   onError={(e) => {
@@ -1344,21 +1344,21 @@ export default function Chat() {
                                   }}
                                 />
                               ) : null}
-                              <div className={`logo-fallback w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 ${model.providerLogo ? 'hidden' : ''}`}>
+                              <div className={`logo-fallback w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 ${model.providerLogo ? 'hidden' : ''}`}>
                                 <span className="text-white text-xs font-bold">
                                   {model.providerName.charAt(0).toUpperCase()}
                                 </span>
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                <div className="text-sm font-medium text-slate-900 truncate">
                                   {model.name}
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                <div className="text-xs text-slate-600 truncate">
                                   {model.providerName}
                                 </div>
                               </div>
                               <div className="flex items-center">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+                                <div className="w-2 h-2 bg-slate-900 rounded-full animate-ping"></div>
                               </div>
                             </div>
                           )
@@ -1374,7 +1374,7 @@ export default function Chat() {
           </div>
 
           {/* Input Area */}
-          <div className="sticky bottom-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-t border-gray-200 dark:border-gray-800">
+          <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-slate-200">
             <div className="px-4 py-4">
               <div className="relative">
                 <div className="flex space-x-3">
@@ -1391,7 +1391,7 @@ export default function Chat() {
                       }}
                       placeholder={selectedModels.length === 0 ? "Select models above to start chatting..." : "Type your message..."}
                       disabled={selectedModels.length === 0 || isLoading || isStreaming}
-                      className="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-800 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-4 py-3 pr-12 bg-slate-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 placeholder-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <button
                       type="button"
@@ -1400,7 +1400,7 @@ export default function Chat() {
                         sendMessage()
                       }}
                       disabled={!input.trim() || selectedModels.length === 0 || isLoading || isStreaming}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors pointer-events-auto z-10"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors pointer-events-auto z-10"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -1408,9 +1408,9 @@ export default function Chat() {
                     </button>
                   </div>
                 </div>
-                
+
                 {selectedModels.length === 0 && (
-                  <p className="text-sm text-red-600 dark:text-red-400 mt-2">
+                  <p className="text-sm text-slate-900 mt-2">
                     Please select at least one model to start chatting.
                   </p>
                 )}

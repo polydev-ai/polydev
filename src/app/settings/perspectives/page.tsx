@@ -179,25 +179,25 @@ export default function PerspectivesSettings() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
       </div>
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-2xl font-bold text-slate-900 mb-4">
             Authentication Required
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
+          <p className="text-slate-600 mb-6">
             Please sign in to manage your perspectives settings.
           </p>
           <a
             href="/auth"
-            className="inline-block px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-block px-6 py-3 bg-slate-900 text-white font-medium rounded-lg hover:bg-slate-700 transition-colors"
           >
             Sign In
           </a>
@@ -207,48 +207,48 @@ export default function PerspectivesSettings() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-white py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">
             Perspectives Settings
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-slate-600">
             Configure your multi-LLM perspectives tool, manage API keys, and set defaults.
           </p>
         </div>
 
         {/* Message */}
         {message && (
-          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-blue-800 dark:text-blue-200">{message}</p>
+          <div className="mb-6 p-4 bg-slate-100 border border-slate-200 rounded-lg">
+            <p className="text-slate-900">{message}</p>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Configuration Panel */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+          <div className="bg-white rounded-lg shadow border border-slate-200 p-6">
+            <h2 className="text-xl font-semibold mb-4 text-slate-900">
               Default Configuration
             </h2>
 
             <div className="space-y-4">
               {/* Mode Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-900 mb-2">
                   Default Mode
                 </label>
                 <select
                   value={config.default_mode}
                   onChange={(e) => setConfig(prev => ({ ...prev, default_mode: e.target.value as 'managed' | 'byo' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-900"
                 >
                   <option value="managed">Managed (Use our API keys)</option>
                   <option value="byo">BYO (Bring Your Own keys)</option>
                 </select>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {config.default_mode === 'managed' 
+                <p className="text-xs text-slate-500 mt-1">
+                  {config.default_mode === 'managed'
                     ? 'Uses our hosted API keys with usage limits'
                     : 'Uses your own API keys with no usage limits'
                   }
@@ -257,13 +257,13 @@ export default function PerspectivesSettings() {
 
               {/* Project Memory */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-900 mb-2">
                   Project Memory
                 </label>
                 <select
                   value={config.default_project_memory}
                   onChange={(e) => setConfig(prev => ({ ...prev, default_project_memory: e.target.value as 'none' | 'light' | 'full' }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-900"
                 >
                   <option value="none">None</option>
                   <option value="light">Light (recent files)</option>
@@ -273,7 +273,7 @@ export default function PerspectivesSettings() {
 
               {/* Model Settings */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-slate-900 mb-2">
                   Max Messages
                 </label>
                 <input
@@ -282,13 +282,13 @@ export default function PerspectivesSettings() {
                   max="50"
                   value={config.max_messages}
                   onChange={(e) => setConfig(prev => ({ ...prev, max_messages: parseInt(e.target.value) }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-900"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Temperature
                   </label>
                   <input
@@ -298,11 +298,11 @@ export default function PerspectivesSettings() {
                     step="0.1"
                     value={config.temperature}
                     onChange={(e) => setConfig(prev => ({ ...prev, temperature: parseFloat(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Max Tokens
                   </label>
                   <input
@@ -312,7 +312,7 @@ export default function PerspectivesSettings() {
                     step="100"
                     value={config.max_tokens}
                     onChange={(e) => setConfig(prev => ({ ...prev, max_tokens: parseInt(e.target.value) }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-900"
                   />
                 </div>
               </div>
@@ -320,7 +320,7 @@ export default function PerspectivesSettings() {
               <button
                 onClick={saveConfig}
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2 px-4 rounded-md font-medium transition-colors"
+                className="w-full bg-slate-900 hover:bg-slate-700 disabled:bg-slate-400 text-white py-2 px-4 rounded-md font-medium transition-colors"
               >
                 {loading ? 'Saving...' : 'Save Configuration'}
               </button>
@@ -328,14 +328,14 @@ export default function PerspectivesSettings() {
           </div>
 
           {/* API Keys Panel */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow border border-slate-200 p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-semibold text-slate-900">
                 BYO Models
               </h2>
               <button
                 onClick={() => setShowAddKey(!showAddKey)}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-md text-sm font-medium transition-colors"
               >
                 + Add Key
               </button>
@@ -343,16 +343,16 @@ export default function PerspectivesSettings() {
 
             {/* Add Key Form */}
             {showAddKey && (
-              <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="mb-6 p-4 bg-slate-50 rounded-lg">
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-900 mb-1">
                       Provider
                     </label>
                     <select
                       value={newKey.provider}
                       onChange={(e) => setNewKey(prev => ({ ...prev, provider: e.target.value as keyof typeof PROVIDER_INFO }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white text-sm"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-900 text-sm"
                     >
                       {Object.entries(PROVIDER_INFO).map(([key, info]) => (
                         <option key={key} value={key}>
@@ -362,7 +362,7 @@ export default function PerspectivesSettings() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-900 mb-1">
                       Key Name (optional)
                     </label>
                     <input
@@ -370,11 +370,11 @@ export default function PerspectivesSettings() {
                       value={newKey.key_name}
                       onChange={(e) => setNewKey(prev => ({ ...prev, key_name: e.target.value }))}
                       placeholder="My API Key"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white text-sm"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-900 text-sm"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-900 mb-1">
                       API Key
                     </label>
                     <input
@@ -382,23 +382,23 @@ export default function PerspectivesSettings() {
                       value={newKey.api_key}
                       onChange={(e) => setNewKey(prev => ({ ...prev, api_key: e.target.value }))}
                       placeholder={PROVIDER_INFO[newKey.provider].keyFormat}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white text-sm"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white text-slate-900 text-sm"
                     />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Get your key from: <a href={PROVIDER_INFO[newKey.provider].docs} target="_blank" className="text-blue-600 hover:underline">{PROVIDER_INFO[newKey.provider].name} Console</a>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Get your key from: <a href={PROVIDER_INFO[newKey.provider].docs} target="_blank" className="text-slate-900 hover:underline">{PROVIDER_INFO[newKey.provider].name} Console</a>
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={addApiKey}
                       disabled={loading}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-md text-sm font-medium transition-colors"
+                      className="px-4 py-2 bg-slate-900 hover:bg-slate-700 disabled:bg-slate-400 text-white rounded-md text-sm font-medium transition-colors"
                     >
                       Add Key
                     </button>
                     <button
                       onClick={() => setShowAddKey(false)}
-                      className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm font-medium transition-colors"
+                      className="px-4 py-2 border border-slate-300 text-slate-900 hover:bg-slate-50 rounded-md text-sm font-medium transition-colors"
                     >
                       Cancel
                     </button>
@@ -410,25 +410,25 @@ export default function PerspectivesSettings() {
             {/* Keys List */}
             <div className="space-y-3">
               {apiKeys.length === 0 ? (
-                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                <div className="text-center text-slate-500 py-8">
                   <p>No API keys added yet.</p>
                   <p className="text-sm">Add your first key to use BYO mode.</p>
                 </div>
               ) : (
                 apiKeys.map(key => (
-                  <div key={key.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div key={key.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <span className="text-lg">{PROVIDER_INFO[key.provider].icon}</span>
                       <div>
-                        <div className="font-medium text-gray-900 dark:text-white">
+                        <div className="font-medium text-slate-900">
                           {PROVIDER_INFO[key.provider].name}
                           {key.key_name && (
-                            <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
+                            <span className="text-sm text-slate-500 ml-2">
                               ({key.key_name})
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-xs text-slate-500">
                           Added {new Date(key.created_at).toLocaleDateString()}
                         </div>
                       </div>
@@ -438,15 +438,15 @@ export default function PerspectivesSettings() {
                         onClick={() => toggleKeyActive(key.id, !key.active)}
                         className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
                           key.active
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-400'
-                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-300'
+                            ? 'bg-slate-100 text-slate-900 border border-slate-200 hover:bg-slate-200'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
                         }`}
                       >
                         {key.active ? 'Active' : 'Inactive'}
                       </button>
                       <button
                         onClick={() => deleteApiKey(key.id)}
-                        className="px-2 py-1 bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-400 rounded text-xs font-medium transition-colors"
+                        className="px-2 py-1 bg-slate-100 text-slate-900 border border-slate-200 hover:bg-slate-200 rounded text-xs font-medium transition-colors"
                       >
                         Delete
                       </button>
@@ -459,14 +459,14 @@ export default function PerspectivesSettings() {
         </div>
 
         {/* Usage Info */}
-        <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+        <div className="mt-8 bg-white rounded-lg shadow border border-slate-200 p-6">
+          <h2 className="text-xl font-semibold mb-4 text-slate-900">
             Usage & Billing
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h3 className="font-medium text-gray-900 dark:text-white mb-2">Managed Mode</h3>
-              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+              <h3 className="font-medium text-slate-900 mb-2">Managed Mode</h3>
+              <ul className="text-sm text-slate-600 space-y-1">
                 <li>• No setup required</li>
                 <li>• Usage-based billing</li>
                 <li>• Rate limits apply</li>
@@ -474,8 +474,8 @@ export default function PerspectivesSettings() {
               </ul>
             </div>
             <div>
-              <h3 className="font-medium text-gray-900 dark:text-white mb-2">BYO Mode</h3>
-              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+              <h3 className="font-medium text-slate-900 mb-2">BYO Mode</h3>
+              <ul className="text-sm text-slate-600 space-y-1">
                 <li>• Use your own API keys</li>
                 <li>• Direct billing from providers</li>
                 <li>• No rate limits from us</li>

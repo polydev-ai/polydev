@@ -19,19 +19,19 @@ const TIER_INFO: Record<TierType, TierInfo> = {
     id: 'premium',
     label: 'Premium',
     description: 'High-quality models with best performance',
-    icon: <Sparkles className="w-5 h-5 text-purple-500" />
+    icon: <Sparkles className="w-5 h-5 text-slate-900" />
   },
   normal: {
     id: 'normal',
     label: 'Normal',
     description: 'Balanced quality and cost models',
-    icon: <Zap className="w-5 h-5 text-blue-500" />
+    icon: <Zap className="w-5 h-5 text-slate-900" />
   },
   eco: {
     id: 'eco',
     label: 'Eco',
     description: 'Cost-effective models for simple tasks',
-    icon: <Leaf className="w-5 h-5 text-green-500" />
+    icon: <Leaf className="w-5 h-5 text-slate-900" />
   }
 }
 
@@ -67,39 +67,39 @@ export default function TierPriorityPicker() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-3">
           {isExpanded ? (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
+            <ChevronDown className="w-5 h-5 text-slate-400" />
           ) : (
-            <ChevronRight className="w-5 h-5 text-gray-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400" />
           )}
           <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-900">Tier Fallback Priority</h3>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <h3 className="text-lg font-semibold text-slate-900">Tier Fallback Priority</h3>
+            <p className="text-sm text-slate-500 mt-0.5">
               When quota is exhausted, fallback to next tier (drag to reorder)
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
           {currentPriority.slice(0, 2).map((tierId, idx) => (
             <span key={tierId} className="flex items-center gap-1">
               {idx > 0 && <span>→</span>}
               {TIER_INFO[tierId].icon}
             </span>
           ))}
-          {currentPriority.length > 2 && <span className="text-gray-400">+{currentPriority.length - 2}</span>}
+          {currentPriority.length > 2 && <span className="text-slate-400">+{currentPriority.length - 2}</span>}
         </div>
       </button>
 
       {isExpanded && (
-        <div className="px-6 pb-6 border-t border-gray-100">
+        <div className="px-6 pb-6 border-t border-slate-100">
           <div className="mt-4 space-y-2">
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-slate-600 mb-4">
               When your quota for a tier is exhausted, Polydev will automatically fallback to the next tier in this order.
               This ensures uninterrupted service while optimizing costs.
             </p>
@@ -110,7 +110,7 @@ export default function TierPriorityPicker() {
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg p-2' : ''}`}
+                    className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-slate-50 rounded-lg p-2' : ''}`}
                   >
                     {currentPriority.map((tierId, index) => (
                       <Draggable key={tierId} draggableId={tierId} index={index}>
@@ -120,19 +120,19 @@ export default function TierPriorityPicker() {
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
                             className={`
-                              flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg
-                              ${snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500' : 'hover:border-gray-300'}
+                              flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-lg
+                              ${snapshot.isDragging ? 'shadow-lg ring-2 ring-slate-900' : 'hover:border-slate-300'}
                               transition-all cursor-move
                             `}
                           >
-                            <GripVertical className="w-5 h-5 text-gray-400" />
-                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-sm font-semibold text-gray-600">
+                            <GripVertical className="w-5 h-5 text-slate-400" />
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
                               {index + 1}
                             </div>
                             {TIER_INFO[tierId].icon}
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{TIER_INFO[tierId].label}</h4>
-                              <p className="text-sm text-gray-500">{TIER_INFO[tierId].description}</p>
+                              <h4 className="font-medium text-slate-900">{TIER_INFO[tierId].label}</h4>
+                              <p className="text-sm text-slate-500">{TIER_INFO[tierId].description}</p>
                             </div>
                           </div>
                         )}
@@ -145,8 +145,8 @@ export default function TierPriorityPicker() {
             </DragDropContext>
 
             {isSaving && (
-              <div className="mt-4 text-sm text-blue-600 flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <div className="mt-4 text-sm text-slate-900 flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-900"></div>
                 Saving priority...
               </div>
             )}

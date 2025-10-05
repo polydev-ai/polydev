@@ -224,15 +224,15 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Model Routing Priority</h3>
-      <p className="text-sm text-gray-500 mb-6">Shows how your requests are routed (in order)</p>
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
+      <h3 className="text-lg font-semibold text-slate-900 mb-4">📊 Model Routing Priority</h3>
+      <p className="text-sm text-slate-500 mb-6">Shows how your requests are routed (in order)</p>
 
       {/* Settings */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">⚙️ Settings</h4>
+      <div className="mb-6 p-4 bg-slate-50 rounded-lg">
+        <h4 className="text-sm font-medium text-slate-700 mb-2">⚙️ Settings</h4>
         <div className="flex items-center gap-4">
-          <label className="text-sm text-gray-600">Perspectives per message:</label>
+          <label className="text-sm text-slate-600">Perspectives per message:</label>
           <input
             type="range"
             min="1"
@@ -242,9 +242,9 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
             className="flex-1 max-w-xs"
             disabled={saving}
           />
-          <span className="text-sm font-medium text-gray-900 w-8">{perspectivesPerMessage}</span>
+          <span className="text-sm font-medium text-slate-900 w-8">{perspectivesPerMessage}</span>
           <span title="Number of models to query simultaneously">
-            <Info className="w-4 h-4 text-gray-400" />
+            <Info className="w-4 h-4 text-slate-400" />
           </span>
         </div>
       </div>
@@ -253,15 +253,15 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xl">1️⃣</span>
-          <Terminal className="w-5 h-5 text-purple-500" />
-          <h4 className="font-medium text-gray-900">CLI TOOLS (Highest Priority - Always FREE)</h4>
+          <Terminal className="w-5 h-5 text-slate-900" />
+          <h4 className="font-medium text-slate-900">CLI TOOLS (Highest Priority - Always FREE)</h4>
         </div>
         {detectedCLI.length > 0 ? (
-          <div className="ml-8 text-sm text-green-600">
+          <div className="ml-8 text-sm text-slate-900">
             ✓ Detected: {detectedCLI.map(cli => cli.provider).join(', ')}
           </div>
         ) : (
-          <div className="ml-8 text-sm text-gray-400">No CLI tools detected</div>
+          <div className="ml-8 text-sm text-slate-400">No CLI tools detected</div>
         )}
       </div>
 
@@ -269,8 +269,8 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xl">2️⃣</span>
-          <Key className="w-5 h-5 text-blue-500" />
-          <h4 className="font-medium text-gray-900">YOUR API KEYS (Your Models - Always FREE)</h4>
+          <Key className="w-5 h-5 text-slate-900" />
+          <h4 className="font-medium text-slate-900">YOUR API KEYS (Your Models - Always FREE)</h4>
         </div>
         {apiKeys.length > 0 ? (
           <div className="ml-8 space-y-1">
@@ -280,23 +280,23 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
               const modelName = key.default_model || 'Default'
               return (
                 <div key={key.id} className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">{idx + 1}.</span>
+                  <span className="text-slate-500">{idx + 1}.</span>
                   {logo && <img src={logo} alt={displayName} className="w-5 h-5 rounded" />}
-                  <span className="text-gray-900">{displayName}</span>
-                  <span className="text-gray-500">({modelName})</span>
-                  <span className="text-gray-400">- {key.key_preview}</span>
+                  <span className="text-slate-900">{displayName}</span>
+                  <span className="text-slate-500">({modelName})</span>
+                  <span className="text-slate-400">- {key.key_preview}</span>
                   <div className="flex gap-1 ml-auto">
                     <button
                       onClick={() => moveApiKey(idx, 'up')}
                       disabled={idx === 0 || saving}
-                      className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                      className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
                     >
                       <ChevronUp className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => moveApiKey(idx, 'down')}
                       disabled={idx === apiKeys.length - 1 || saving}
-                      className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                      className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
                     >
                       <ChevronDown className="w-4 h-4" />
                     </button>
@@ -306,7 +306,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
             })}
           </div>
         ) : (
-          <div className="ml-8 text-sm text-gray-400">No API keys configured</div>
+          <div className="ml-8 text-sm text-slate-400">No API keys configured</div>
         )}
       </div>
 
@@ -314,55 +314,55 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       <div>
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xl">3️⃣</span>
-          <Crown className="w-5 h-5 text-yellow-500" />
-          <h4 className="font-medium text-gray-900">ADMIN KEYS (Uses Your Quota)</h4>
+          <Crown className="w-5 h-5 text-slate-900" />
+          <h4 className="font-medium text-slate-900">ADMIN KEYS (Uses Your Quota)</h4>
         </div>
 
         {/* Tier Priority */}
         <div className="ml-8 mb-3">
-          <h5 className="text-sm font-medium text-gray-700 mb-2">Tier Priority:</h5>
+          <h5 className="text-sm font-medium text-slate-700 mb-2">Tier Priority:</h5>
           <div className="space-y-2">
             {tierPriority.map((tier: string, idx: number) => {
               const { total, used } = getTierQuota(tier)
               const percentage = total > 0 ? (used / total) * 100 : 0
               const tierModels = getModelsForTier(tier)
               return (
-                <div key={tier} className="border border-gray-200 rounded p-2">
+                <div key={tier} className="border border-slate-200 rounded p-2">
                   <div className="flex items-center gap-2 text-sm mb-1">
-                    <span className="text-gray-500">{idx + 1}.</span>
-                    <span className="text-gray-900 capitalize font-medium w-20">{tier}</span>
+                    <span className="text-slate-500">{idx + 1}.</span>
+                    <span className="text-slate-900 capitalize font-medium w-20">{tier}</span>
                     <div className="flex-1 max-w-xs">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                        <div className="flex-1 bg-slate-200 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full ${
-                              percentage >= 90 ? 'bg-red-500' : percentage >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+                              percentage >= 90 ? 'bg-slate-300' : percentage >= 70 ? 'bg-slate-500' : 'bg-slate-700'
                             }`}
                             style={{ width: `${Math.min(percentage, 100)}%` }}
                           />
                         </div>
-                        <span className="text-xs text-gray-500 w-24">{used}/{total}</span>
+                        <span className="text-xs text-slate-500 w-24">{used}/{total}</span>
                       </div>
                     </div>
                     <div className="flex gap-1">
                       <button
                         onClick={() => moveTier(tier, 'up')}
                         disabled={idx === 0 || saving}
-                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                        className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
                       >
                         <ChevronUp className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => moveTier(tier, 'down')}
                         disabled={idx === tierPriority.length - 1 || saving}
-                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                        className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
                       >
                         <ChevronDown className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                   {tierModels.length > 0 && (
-                    <div className="ml-8 text-xs text-gray-600">
+                    <div className="ml-8 text-xs text-slate-600">
                       Models: {tierModels.join(', ')}
                     </div>
                   )}
@@ -374,7 +374,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
 
         {/* Provider Priority (GLOBAL) */}
         <div className="ml-8">
-          <h5 className="text-sm font-medium text-gray-700 mb-2">Provider Priority (applies to all tiers):</h5>
+          <h5 className="text-sm font-medium text-slate-700 mb-2">Provider Priority (applies to all tiers):</h5>
           <div className="space-y-1">
             {allProviders.map((provider: string, idx: number) => {
               const logo = getProviderLogo(provider)
@@ -383,30 +383,30 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                 .filter(m => m.provider.toLowerCase() === provider.toLowerCase())
                 .map(m => `${m.display_name} (${m.tier})`)
               return (
-                <div key={provider} className="border border-gray-200 rounded p-2">
+                <div key={provider} className="border border-slate-200 rounded p-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-500">{idx + 1}.</span>
+                    <span className="text-slate-500">{idx + 1}.</span>
                     {logo && <img src={logo} alt={displayName} className="w-5 h-5 rounded" />}
-                    <span className="text-gray-900">{displayName}</span>
+                    <span className="text-slate-900">{displayName}</span>
                     <div className="flex gap-1 ml-auto">
                       <button
                         onClick={() => moveProvider(provider, 'up')}
                         disabled={idx === 0 || saving}
-                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                        className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
                       >
                         <ChevronUp className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => moveProvider(provider, 'down')}
                         disabled={idx === allProviders.length - 1 || saving}
-                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                        className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
                       >
                         <ChevronDown className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                   {providerModels.length > 0 && (
-                    <div className="ml-8 text-xs text-gray-600 mt-1">
+                    <div className="ml-8 text-xs text-slate-600 mt-1">
                       {providerModels.join(', ')}
                     </div>
                   )}
@@ -418,8 +418,8 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       </div>
 
       {saving && (
-        <div className="mt-4 text-sm text-blue-600 flex items-center gap-2">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+        <div className="mt-4 text-sm text-slate-900 flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-900"></div>
           Saving changes...
         </div>
       )}

@@ -144,7 +144,7 @@ export default function AdminTierLimits() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-lg">Loading...</div>
       </div>
     )
@@ -159,7 +159,7 @@ export default function AdminTierLimits() {
   const proTier = getTierConfig('pro')
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-white py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-4">
           <button
@@ -171,24 +171,24 @@ export default function AdminTierLimits() {
         </div>
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Layers className="h-8 w-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+              <Layers className="h-8 w-8 text-slate-900" />
               Tier Limits Configuration
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-slate-600 mt-2">
               Configure message and perspective limits for each subscription tier
             </p>
           </div>
         </div>
 
         {message && (
-          <Alert className={`mb-6 ${message.type === 'success' ? 'border-green-500' : 'border-red-500'}`}>
+          <Alert className="mb-6 border-slate-200">
             {message.type === 'success' ? (
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-slate-900" />
             ) : (
-              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertCircle className="h-4 w-4 text-slate-900" />
             )}
-            <AlertDescription className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+            <AlertDescription className="text-slate-900">
               {message.text}
               <button
                 onClick={() => setMessage(null)}
@@ -257,7 +257,7 @@ export default function AdminTierLimits() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Plus Plan
-                  <Badge className="bg-orange-500 text-white">$25/month</Badge>
+                  <Badge className="bg-slate-100 text-slate-900 border border-slate-200">$25/month</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -268,9 +268,9 @@ export default function AdminTierLimits() {
                     type="text"
                     value={plusTier.messages_per_month === null ? 'Unlimited' : plusTier.messages_per_month}
                     disabled
-                    className="bg-gray-100"
+                    className="bg-slate-50"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Plus tier has unlimited messages</p>
+                  <p className="text-xs text-slate-600 mt-1">Plus tier has unlimited messages</p>
                 </div>
                 <div>
                   <Label htmlFor="plus-premium">Premium Perspectives</Label>
@@ -309,7 +309,7 @@ export default function AdminTierLimits() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Pro Plan
-                  <Badge className="bg-purple-500 text-white">$60/month</Badge>
+                  <Badge className="bg-slate-100 text-slate-900 border border-slate-200">$60/month</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -320,9 +320,9 @@ export default function AdminTierLimits() {
                     type="text"
                     value={proTier.messages_per_month === null ? 'Unlimited' : proTier.messages_per_month}
                     disabled
-                    className="bg-gray-100"
+                    className="bg-slate-50"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Pro tier has unlimited messages</p>
+                  <p className="text-xs text-slate-600 mt-1">Pro tier has unlimited messages</p>
                 </div>
                 <div>
                   <Label htmlFor="pro-premium">Premium Perspectives</Label>
@@ -356,9 +356,9 @@ export default function AdminTierLimits() {
           )}
         </div>
 
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">Understanding Limits</h3>
-          <div className="space-y-2 text-sm text-blue-800">
+        <div className="mt-8 bg-slate-50 border border-slate-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-slate-900 mb-3">Understanding Limits</h3>
+          <div className="space-y-2 text-sm text-slate-900">
             <p><strong>Messages:</strong> Each user request counts as 1 message (web chat, CLI, or MCP request)</p>
             <p><strong>Perspectives:</strong> Each model API call counts as 1 perspective (one message can trigger multiple perspectives)</p>
             <p><strong>Tiers:</strong></p>
@@ -379,7 +379,7 @@ export default function AdminTierLimits() {
                   : 'No models configured'}
               </li>
             </ul>
-            <p className="mt-4 text-xs text-blue-600">
+            <p className="mt-4 text-xs text-slate-600">
               Changes take effect immediately on user page refresh. Users will see updated limits in their dashboard.
             </p>
           </div>

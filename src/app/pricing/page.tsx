@@ -54,7 +54,7 @@ export default function Pricing() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading pricing...</div>
+        <div className="text-lg text-slate-600">Loading pricing...</div>
       </div>
     )
   }

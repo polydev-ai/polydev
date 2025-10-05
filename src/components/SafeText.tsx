@@ -21,13 +21,13 @@ export function SafeText({ value, fallback = null }: SafeTextProps) {
   if (typeof value === 'object' && value !== null) {
     const obj = value as Record<string, any>
     if ('test' in obj && 'timestamp' in obj) {
-      return <span className="text-gray-500 italic">[Analytics ping]</span>
+      return <span className="text-slate-500 italic">[Analytics ping]</span>
     }
   }
 
   // Objects/functions/symbols are not valid children: stringify for debugging
   try {
-    return <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto max-w-full">{JSON.stringify(value, null, 2)}</pre>
+    return <pre className="text-xs bg-slate-100 p-2 rounded overflow-auto max-w-full">{JSON.stringify(value, null, 2)}</pre>
   } catch {
     return <>{fallback}</>
   }

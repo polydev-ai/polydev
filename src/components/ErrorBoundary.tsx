@@ -47,23 +47,23 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       }
 
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
           <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-lg font-semibold text-red-600 mb-4">Something went wrong</h2>
-            <p className="text-gray-600 mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Something went wrong</h2>
+            <p className="text-slate-600 mb-4">
               An error occurred while loading this page. Please try refreshing the page.
             </p>
             {this.state.error && (
               <details className="mt-4">
-                <summary className="cursor-pointer text-sm text-gray-500">Error details</summary>
-                <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto">
+                <summary className="cursor-pointer text-sm text-slate-500">Error details</summary>
+                <pre className="mt-2 text-xs bg-slate-100 p-2 rounded overflow-auto">
                   {this.state.error.toString()}
                 </pre>
               </details>
             )}
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="mt-4 px-4 py-2 bg-slate-900 text-white rounded hover:bg-slate-700"
             >
               Refresh Page
             </button>

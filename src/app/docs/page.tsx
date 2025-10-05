@@ -36,13 +36,13 @@ function CopyButton({ text }: CopyButtonProps) {
   return (
     <button
       onClick={handleCopy}
-      className="absolute top-4 right-4 p-2.5 rounded-lg bg-white hover:bg-gray-50 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-gray-200 shadow-sm"
+      className="absolute top-4 right-4 p-2.5 rounded-lg bg-white hover:bg-slate-50 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-slate-200 shadow-sm"
       title="Copy to clipboard"
     >
       {copied ? (
-        <Check className="h-4 w-4 text-green-600" />
+        <Check className="h-4 w-4 text-slate-900" />
       ) : (
-        <Copy className="h-4 w-4 text-gray-600" />
+        <Copy className="h-4 w-4 text-slate-600" />
       )}
     </button>
   )
@@ -189,11 +189,11 @@ export default function Documentation() {
       s
         .replace(/<h2>([^<]+)<\/h2>/g, (_m, t) => {
           const id = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-          return `<h2 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-gray-300 hover:text-gray-500 no-underline align-middle" aria-label="Link to section">#</a></h2>`
+          return `<h2 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-slate-300 hover:text-slate-500 no-underline align-middle" aria-label="Link to section">#</a></h2>`
         })
         .replace(/<h3>([^<]+)<\/h3>/g, (_m, t) => {
           const id = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-          return `<h3 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-gray-300 hover:text-gray-500 no-underline align-middle" aria-label="Link to section">#</a></h3>`
+          return `<h3 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-slate-300 hover:text-slate-500 no-underline align-middle" aria-label="Link to section">#</a></h3>`
         })
 
     html = addIds(html)
@@ -247,7 +247,7 @@ export default function Documentation() {
       if (!h.querySelector('a.anchor-link')) {
         const a = document.createElement('a')
         a.href = `#${h.id}`
-        a.className = 'ml-2 text-gray-300 hover:text-gray-500 no-underline align-middle anchor-link'
+        a.className = 'ml-2 text-slate-300 hover:text-slate-500 no-underline align-middle anchor-link'
         a.ariaLabel = 'Link to section'
         a.textContent = '#'
         h.appendChild(a)
@@ -881,12 +881,12 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
         const svg = button.querySelector('svg')
         if (svg) {
           svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>`
-          svg.classList.remove('text-gray-600')
-          svg.classList.add('text-green-600')
+          svg.classList.remove('text-slate-600')
+          svg.classList.add('text-slate-900')
           setTimeout(() => {
             svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>`
-            svg.classList.remove('text-green-600')
-            svg.classList.add('text-gray-600')
+            svg.classList.remove('text-slate-900')
+            svg.classList.add('text-slate-600')
           }, 2000)
         }
       } catch (err) {
@@ -1074,20 +1074,20 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
 
               {/* Enhanced Navigation */}
               {(prev || next) && (
-                <div className="mt-24 pt-12 border-t border-gray-200">
+                <div className="mt-24 pt-12 border-t border-slate-200">
                   <div className="flex justify-between items-center gap-8">
                     {prev ? (
                       <button
                         onClick={() => handleItemClick(prev)}
-                        className="flex items-center space-x-4 px-8 py-6 text-left bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:border-gray-300 hover:shadow-md transition-all duration-300 group flex-1"
+                        className="flex items-center space-x-4 px-8 py-6 text-left bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:border-slate-300 hover:shadow-md transition-all duration-300 group flex-1"
                       >
-                        <div className="p-2 bg-gray-100 rounded-xl group-hover:bg-gray-200 transition-colors">
-                          <ChevronLeft className="h-5 w-5 text-gray-600" />
+                        <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-slate-200 transition-colors">
+                          <ChevronLeft className="h-5 w-5 text-slate-600" />
                         </div>
                         <div className="min-w-0">
-                          <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Previous</div>
-                          <div className="font-bold text-gray-900 text-lg truncate">{prev.title}</div>
-                          <div className="text-sm text-gray-600">{prev.section}</div>
+                          <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Previous</div>
+                          <div className="font-bold text-slate-900 text-lg truncate">{prev.title}</div>
+                          <div className="text-sm text-slate-600">{prev.section}</div>
                         </div>
                       </button>
                     ) : (
@@ -1097,15 +1097,15 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                     {next && (
                       <button
                         onClick={() => handleItemClick(next)}
-                        className="flex items-center space-x-4 px-8 py-6 text-right bg-white border border-gray-200 rounded-2xl hover:bg-gray-50 hover:border-gray-300 hover:shadow-md transition-all duration-300 group flex-1"
+                        className="flex items-center space-x-4 px-8 py-6 text-right bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:border-slate-300 hover:shadow-md transition-all duration-300 group flex-1"
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Next</div>
-                          <div className="font-bold text-gray-900 text-lg truncate">{next.title}</div>
-                          <div className="text-sm text-gray-600">{next.section}</div>
+                          <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Next</div>
+                          <div className="font-bold text-slate-900 text-lg truncate">{next.title}</div>
+                          <div className="text-sm text-slate-600">{next.section}</div>
                         </div>
-                        <div className="p-2 bg-gray-100 rounded-xl group-hover:bg-gray-200 transition-colors">
-                          <ChevronRight className="h-5 w-5 text-gray-600" />
+                        <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-slate-200 transition-colors">
+                          <ChevronRight className="h-5 w-5 text-slate-600" />
                         </div>
                       </button>
                     )}

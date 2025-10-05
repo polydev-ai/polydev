@@ -19,19 +19,19 @@ const SOURCE_INFO: Record<SourceType, SourceInfo> = {
     id: 'cli',
     label: 'CLI Tools',
     description: 'Claude Code, Cline, and other CLI integrations',
-    icon: <Terminal className="w-5 h-5 text-purple-500" />
+    icon: <Terminal className="w-5 h-5 text-slate-900" />
   },
   api: {
     id: 'api',
     label: 'Your API Keys',
     description: 'API keys you have configured',
-    icon: <Key className="w-5 h-5 text-blue-500" />
+    icon: <Key className="w-5 h-5 text-slate-900" />
   },
   admin: {
     id: 'admin',
     label: 'Admin Provided (Perspectives)',
     description: 'Models provided by Polydev using your perspective quota',
-    icon: <Crown className="w-5 h-5 text-yellow-500" />
+    icon: <Crown className="w-5 h-5 text-slate-900" />
   }
 }
 
@@ -64,39 +64,39 @@ export default function ModelSourcePriorityPicker() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-3">
           {isExpanded ? (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
+            <ChevronDown className="w-5 h-5 text-slate-400" />
           ) : (
-            <ChevronRight className="w-5 h-5 text-gray-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400" />
           )}
           <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-900">Model Source Priority</h3>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <h3 className="text-lg font-semibold text-slate-900">Model Source Priority</h3>
+            <p className="text-sm text-slate-500 mt-0.5">
               Set the order for routing model requests (drag to reorder)
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
           {currentPriority.slice(0, 2).map((sourceId, idx) => (
             <span key={sourceId} className="flex items-center gap-1">
               {idx > 0 && <span>→</span>}
               {SOURCE_INFO[sourceId].icon}
             </span>
           ))}
-          {currentPriority.length > 2 && <span className="text-gray-400">+{currentPriority.length - 2}</span>}
+          {currentPriority.length > 2 && <span className="text-slate-400">+{currentPriority.length - 2}</span>}
         </div>
       </button>
 
       {isExpanded && (
-        <div className="px-6 pb-6 border-t border-gray-100">
+        <div className="px-6 pb-6 border-t border-slate-100">
           <div className="mt-4 space-y-2">
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-slate-600 mb-4">
               When a model is available from multiple sources, Polydev will use the first available source in this order.
             </p>
 
@@ -106,7 +106,7 @@ export default function ModelSourcePriorityPicker() {
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg p-2' : ''}`}
+                    className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-slate-50 rounded-lg p-2' : ''}`}
                   >
                     {currentPriority.map((sourceId, index) => (
                       <Draggable key={sourceId} draggableId={sourceId} index={index}>
@@ -116,19 +116,19 @@ export default function ModelSourcePriorityPicker() {
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
                             className={`
-                              flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg
-                              ${snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500' : 'hover:border-gray-300'}
+                              flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-lg
+                              ${snapshot.isDragging ? 'shadow-lg ring-2 ring-slate-900' : 'hover:border-slate-300'}
                               transition-all cursor-move
                             `}
                           >
-                            <GripVertical className="w-5 h-5 text-gray-400" />
-                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-sm font-semibold text-gray-600">
+                            <GripVertical className="w-5 h-5 text-slate-400" />
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
                               {index + 1}
                             </div>
                             {SOURCE_INFO[sourceId].icon}
                             <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">{SOURCE_INFO[sourceId].label}</h4>
-                              <p className="text-sm text-gray-500">{SOURCE_INFO[sourceId].description}</p>
+                              <h4 className="font-medium text-slate-900">{SOURCE_INFO[sourceId].label}</h4>
+                              <p className="text-sm text-slate-500">{SOURCE_INFO[sourceId].description}</p>
                             </div>
                           </div>
                         )}
@@ -141,8 +141,8 @@ export default function ModelSourcePriorityPicker() {
             </DragDropContext>
 
             {isSaving && (
-              <div className="mt-4 text-sm text-blue-600 flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <div className="mt-4 text-sm text-slate-900 flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-900"></div>
                 Saving priority...
               </div>
             )}

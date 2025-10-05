@@ -22,13 +22,13 @@ export const CreditBalanceCard: React.FC<CreditBalanceCardProps> = ({
 
   if (compact) {
     return (
-      <div className="flex items-center space-x-2 px-3 py-2 bg-gray-50 rounded-lg">
-        <CreditCard className="w-4 h-4 text-gray-500" />
+      <div className="flex items-center space-x-2 px-3 py-2 bg-slate-50 rounded-lg">
+        <CreditCard className="w-4 h-4 text-slate-500" />
         <span className="text-sm font-medium">
           {loading ? (
             <span className="animate-pulse">Loading...</span>
           ) : error ? (
-            <span className="text-red-600">Error</span>
+            <span className="text-slate-900">Error</span>
           ) : (
             <span className={status.color}>
               {formatCurrency(totalBalance)}
@@ -56,7 +56,7 @@ export const CreditBalanceCard: React.FC<CreditBalanceCardProps> = ({
         <CardTitle className="text-sm font-medium">Credit Balance</CardTitle>
         <div className="flex items-center space-x-2">
           {status.status === 'critical' && (
-            <AlertTriangle className="w-4 h-4 text-red-500" />
+            <AlertTriangle className="w-4 h-4 text-slate-900" />
           )}
           <CreditCard className="w-4 h-4 text-muted-foreground" />
         </div>
@@ -70,7 +70,7 @@ export const CreditBalanceCard: React.FC<CreditBalanceCardProps> = ({
                 {loading ? (
                   <span className="animate-pulse">---.----</span>
                 ) : error ? (
-                  <span className="text-red-600">Error</span>
+                  <span className="text-slate-900">Error</span>
                 ) : (
                   formatCurrency(totalBalance)
                 )}
@@ -98,7 +98,7 @@ export const CreditBalanceCard: React.FC<CreditBalanceCardProps> = ({
               {balance.promotionalBalance > 0 && (
                 <div>
                   <div className="text-xs text-muted-foreground">Promotional</div>
-                  <div className="font-medium text-green-600">
+                  <div className="font-medium text-slate-900">
                     {formatCurrency(balance.promotionalBalance)}
                   </div>
                 </div>
@@ -161,14 +161,14 @@ export const CreditBalanceCard: React.FC<CreditBalanceCardProps> = ({
 
           {/* Error State */}
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+            <div className="text-sm text-slate-900 bg-slate-100 p-2 rounded">
               {error}
             </div>
           )}
 
           {/* Low Balance Warning */}
           {!loading && !error && status.status === 'critical' && (
-            <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+            <div className="text-sm text-slate-900 bg-slate-100 p-2 rounded">
               <div className="flex items-center">
                 <AlertTriangle className="w-4 h-4 mr-1" />
                 Low credit balance

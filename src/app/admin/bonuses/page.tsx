@@ -282,16 +282,12 @@ export default function AdminBonuses() {
   }
 
   const getBonusTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      admin_bonus: 'bg-blue-100 text-blue-800',
-      referral_bonus: 'bg-green-100 text-green-800'
-    }
-    return colors[type] || 'bg-gray-100 text-gray-800'
+    return 'bg-slate-100 text-slate-900 border border-slate-200'
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-lg">Loading...</div>
       </div>
     )
@@ -306,7 +302,7 @@ export default function AdminBonuses() {
   const activeBonuses = bonuses.filter(b => !b.is_expired).length
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-slate-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-4">
           <button
@@ -319,11 +315,11 @@ export default function AdminBonuses() {
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Gift className="h-8 w-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+              <Gift className="h-8 w-8 text-slate-900" />
               Bonus Quotas Management
             </h1>
-            <p className="text-gray-600 mt-2">
+            <p className="text-slate-600 mt-2">
               Grant and manage bonus messages and perspectives for users
             </p>
           </div>
@@ -334,13 +330,9 @@ export default function AdminBonuses() {
         </div>
 
         {message && (
-          <Alert className={`mb-6 ${message.type === 'success' ? 'border-green-500' : 'border-red-500'}`}>
-            {message.type === 'success' ? (
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            ) : (
-              <AlertCircle className="h-4 w-4 text-red-600" />
-            )}
-            <AlertDescription className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+          <Alert className={`mb-6 border-slate-200`}>
+            <CheckCircle className="h-4 w-4 text-slate-900" />
+            <AlertDescription className="text-slate-900">
               {message.text}
               <button
                 onClick={() => setMessage(null)}
@@ -356,7 +348,7 @@ export default function AdminBonuses() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Total Bonuses</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">Total Bonuses</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalBonuses}</div>
@@ -364,18 +356,18 @@ export default function AdminBonuses() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Active Bonuses</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">Active Bonuses</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{activeBonuses}</div>
+              <div className="text-2xl font-bold text-slate-900">{activeBonuses}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-gray-600">Total Messages Granted</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">Total Messages Granted</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{totalMessages.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-slate-900">{totalMessages.toLocaleString()}</div>
             </CardContent>
           </Card>
         </div>
@@ -384,7 +376,7 @@ export default function AdminBonuses() {
         <Card className="mb-6">
           <CardContent className="pt-6">
             <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-slate-600" />
               <Input
                 placeholder="Search by user email, bonus type, or notes..."
                 value={searchQuery}
@@ -406,8 +398,8 @@ export default function AdminBonuses() {
           <CardContent>
             {filteredBonuses.length === 0 ? (
               <div className="text-center py-12">
-                <Gift className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 mb-4">No bonuses have been granted yet</p>
+                <Gift className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-600 mb-4">No bonuses have been granted yet</p>
                 <Button onClick={() => setShowGrantDialog(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Grant First Bonus
@@ -448,25 +440,25 @@ export default function AdminBonuses() {
                           {bonus.expires_at ? (
                             <span className="text-sm">{formatDate(bonus.expires_at)}</span>
                           ) : (
-                            <span className="text-gray-400 text-sm">Never</span>
+                            <span className="text-slate-600 text-sm">Never</span>
                           )}
                         </TableCell>
                         <TableCell>
                           {bonus.is_expired ? (
-                            <Badge variant="secondary" className="bg-red-100 text-red-800">Expired</Badge>
+                            <Badge variant="secondary" className="bg-slate-100 text-slate-900 border border-slate-200">Expired</Badge>
                           ) : (
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">Active</Badge>
+                            <Badge variant="secondary" className="bg-slate-100 text-slate-900 border border-slate-200">Active</Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm text-gray-600">{bonus.created_by_email}</TableCell>
-                        <TableCell className="text-sm text-gray-600">{formatDate(bonus.created_at)}</TableCell>
+                        <TableCell className="text-sm text-slate-600">{bonus.created_by_email}</TableCell>
+                        <TableCell className="text-sm text-slate-600">{formatDate(bonus.created_at)}</TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteBonus(bonus.id)}
                           >
-                            <Trash2 className="h-4 w-4 text-red-600" />
+                            <Trash2 className="h-4 w-4 text-slate-900" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -496,9 +488,9 @@ export default function AdminBonuses() {
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" align="start" className="max-h-[200px] overflow-y-auto z-[9999] bg-white border shadow-lg" sideOffset={8}>
                     <SelectItem value="ALL_USERS">
-                      <div className="flex items-center gap-2 font-semibold text-blue-600">
+                      <div className="flex items-center gap-2 font-semibold text-slate-900">
                         <UserIcon className="h-4 w-4" />
-                        <span>🎁 All Users ({users.length})</span>
+                        <span>All Users ({users.length})</span>
                       </div>
                     </SelectItem>
                     {users.map(user => (

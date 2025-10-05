@@ -200,10 +200,10 @@ export const useCredits = () => {
 
   const getCreditStatus = useCallback(() => {
     const totalBalance = balance.balance + balance.promotionalBalance
-    
-    if (totalBalance > 5) return { status: 'good', color: 'text-green-600' }
-    if (totalBalance > 1) return { status: 'low', color: 'text-yellow-600' }
-    return { status: 'critical', color: 'text-red-600' }
+
+    if (totalBalance > 5) return { status: 'good', color: 'text-slate-900' }
+    if (totalBalance > 1) return { status: 'low', color: 'text-slate-600' }
+    return { status: 'critical', color: 'text-slate-900' }
   }, [balance])
 
   const purchaseOptions: CreditPurchaseOption[] = [

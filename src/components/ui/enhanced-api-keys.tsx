@@ -686,13 +686,13 @@ export default function EnhancedApiKeysPage() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          <div className="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200">
             <button
               onClick={() => setViewMode('simple')}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'simple'
-                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Simple
@@ -701,8 +701,8 @@ export default function EnhancedApiKeysPage() {
               onClick={() => setViewMode('advanced')}
               className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'advanced'
-                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Advanced
@@ -710,7 +710,7 @@ export default function EnhancedApiKeysPage() {
           </div>
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+            className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-700 flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
             <span>Add Provider</span>
@@ -719,12 +719,12 @@ export default function EnhancedApiKeysPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center space-x-2">
-          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-          <span className="text-red-700 dark:text-red-300">{error}</span>
-          <button 
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center space-x-2">
+          <AlertCircle className="w-5 h-5 text-slate-900" />
+          <span className="text-slate-900 font-medium">{error}</span>
+          <button
             onClick={() => setError(null)}
-            className="ml-auto text-red-600 hover:text-red-800"
+            className="ml-auto text-slate-600 hover:text-slate-900"
           >
             ×
           </button>
@@ -732,12 +732,12 @@ export default function EnhancedApiKeysPage() {
       )}
 
       {success && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center space-x-2">
-          <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
-          <span className="text-green-700 dark:text-green-300">{success}</span>
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center space-x-2">
+          <Check className="w-5 h-5 text-slate-900" />
+          <span className="text-slate-900 font-medium">{success}</span>
           <button
             onClick={() => setSuccess(null)}
-            className="ml-auto text-green-600 hover:text-green-800"
+            className="ml-auto text-slate-600 hover:text-slate-900"
           >
             ×
           </button>
@@ -759,10 +759,10 @@ export default function EnhancedApiKeysPage() {
       {/* Advanced Mode: Detailed Controls */}
       {viewMode === 'advanced' && (
         <Suspense fallback={
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-6">
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-              <span className="ml-3 text-gray-600 dark:text-gray-400">Loading advanced settings...</span>
+              <span className="ml-3 text-slate-600">Loading advanced settings...</span>
             </div>
           </div>
         }>
@@ -775,12 +775,12 @@ export default function EnhancedApiKeysPage() {
       )}
 
       {/* CLI Tools Status Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="bg-white rounded-lg border border-slate-200">
         <div className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Terminal className="w-5 h-5" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-lg font-semibold text-slate-900">
                 CLI Tools Status
               </h2>
             </div>
@@ -788,7 +788,7 @@ export default function EnhancedApiKeysPage() {
               <button
                 onClick={refreshCliStatuses}
                 disabled={cliStatusLoading}
-                className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2 text-sm"
+                className="bg-slate-900 text-white px-3 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 flex items-center space-x-2 text-sm"
               >
                 {cliStatusLoading ? (
                   <>
@@ -804,7 +804,7 @@ export default function EnhancedApiKeysPage() {
               </button>
             </div>
           </div>
-          <p className="text-gray-600 dark:text-gray-300 mt-1 mb-4">
+          <p className="text-slate-600 mt-1 mb-4">
             CLI status is automatically updated when MCP clients connect. Click "Refresh Status" to get latest data from server.
           </p>
           
@@ -816,43 +816,43 @@ export default function EnhancedApiKeysPage() {
               const lastChecked = status?.last_checked_at ? new Date(status.last_checked_at).toLocaleString() : null
 
               return (
-                <div key={cliProvider.provider} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                <div key={cliProvider.provider} className="border border-slate-200 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <h3 className="font-medium text-gray-900 dark:text-white">
+                        <h3 className="font-medium text-slate-900">
                           {cliProvider.name}
                         </h3>
                         {status?.cli_version && (
-                          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">
+                          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
                             {status.cli_version}
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                      <p className="text-sm text-slate-600 mt-1">
                         {cliProvider.description}
                       </p>
-                      
+
                       {/* Status Message */}
                       {status?.message && (
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-2 p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                        <p className="text-sm text-slate-900 mt-2 p-2 bg-slate-50 rounded border border-slate-200">
                           {status.message}
                         </p>
                       )}
                       
                       {/* Issue Type and Solutions */}
                       {status?.issue_type && status?.solutions && status.solutions.length > 0 && (
-                        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                        <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded">
                           <div className="flex items-start space-x-2">
-                            <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                            <AlertCircle className="w-4 h-4 text-slate-900 mt-0.5 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                              <p className="text-sm font-medium text-slate-900 mb-2">
                                 Solutions to fix this issue:
                               </p>
-                              <ul className="text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                              <ul className="text-sm text-slate-600 space-y-1">
                                 {status.solutions.map((solution, index) => (
                                   <li key={index} className="flex items-start space-x-1">
-                                    <span className="text-yellow-600 dark:text-yellow-400 mt-1">•</span>
+                                    <span className="text-slate-900 mt-1">•</span>
                                     <span>{solution}</span>
                                   </li>
                                 ))}
@@ -866,15 +866,15 @@ export default function EnhancedApiKeysPage() {
                       {(status?.install_command || status?.auth_command) && (
                         <div className="mt-3 space-y-2">
                           {status.install_command && (
-                            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
-                              <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-1">Install Command:</p>
+                            <div className="p-2 bg-slate-50 border border-slate-200 rounded">
+                              <p className="text-xs font-medium text-slate-900 mb-1">Install Command:</p>
                               <div className="flex items-center justify-between">
-                                <code className="text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded flex-1 mr-2">
+                                <code className="text-xs text-slate-900 bg-slate-100 px-2 py-1 rounded flex-1 mr-2">
                                   {status.install_command}
                                 </code>
                                 <button
                                   onClick={() => navigator.clipboard.writeText(status.install_command || '')}
-                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
+                                  className="text-slate-600 hover:text-slate-900"
                                   title="Copy to clipboard"
                                 >
                                   <Copy className="w-3 h-3" />
@@ -882,17 +882,17 @@ export default function EnhancedApiKeysPage() {
                               </div>
                             </div>
                           )}
-                          
+
                           {status.auth_command && (
-                            <div className="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
-                              <p className="text-xs font-medium text-green-800 dark:text-green-200 mb-1">Authentication Command:</p>
+                            <div className="p-2 bg-slate-50 border border-slate-200 rounded">
+                              <p className="text-xs font-medium text-slate-900 mb-1">Authentication Command:</p>
                               <div className="flex items-center justify-between">
-                                <code className="text-xs text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-800 px-2 py-1 rounded flex-1 mr-2">
+                                <code className="text-xs text-slate-900 bg-slate-100 px-2 py-1 rounded flex-1 mr-2">
                                   {status.auth_command}
                                 </code>
                                 <button
                                   onClick={() => navigator.clipboard.writeText(status.auth_command || '')}
-                                  className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200"
+                                  className="text-slate-600 hover:text-slate-900"
                                   title="Copy to clipboard"
                                 >
                                   <Copy className="w-3 h-3" />
@@ -904,33 +904,33 @@ export default function EnhancedApiKeysPage() {
                       )}
                       
                       {lastChecked && (
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                        <p className="text-xs text-slate-400 mt-2">
                           Last checked: {lastChecked}
                         </p>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center space-x-1 ml-3">
                       {statusType === 'available' && (
-                        <div className="flex items-center space-x-1 text-green-600">
+                        <div className="flex items-center space-x-1 text-slate-900">
                           <CheckCircle className="w-5 h-5" />
                           <div className="text-right">
                             <div className="text-xs font-medium">Available</div>
                             {status?.authenticated !== undefined && (
-                              <div className="text-xs text-green-500">
+                              <div className="text-xs text-slate-600">
                                 {status.authenticated ? 'Authenticated' : 'Not Authenticated'}
                               </div>
                             )}
                           </div>
                         </div>
                       )}
-                      
+
                       {statusType === 'unavailable' && (
-                        <div className="flex items-center space-x-1 text-yellow-600">
+                        <div className="flex items-center space-x-1 text-slate-600">
                           <XCircle className="w-5 h-5" />
                           <div className="text-right">
                             <div className="text-xs font-medium">Unavailable</div>
-                            <div className="text-xs text-yellow-500">
+                            <div className="text-xs text-slate-500">
                               {status?.issue_type === 'not_authenticated' ? 'Not Authenticated' :
                                status?.issue_type === 'compatibility_issue' ? 'Compatibility Issue' :
                                status?.issue_type === 'environment_issue' ? 'Environment Issue' :
@@ -939,23 +939,23 @@ export default function EnhancedApiKeysPage() {
                           </div>
                         </div>
                       )}
-                      
+
                       {statusType === 'not_installed' && (
-                        <div className="flex items-center space-x-1 text-red-600">
+                        <div className="flex items-center space-x-1 text-slate-600">
                           <XCircle className="w-5 h-5" />
                           <div className="text-right">
                             <div className="text-xs font-medium">Not Installed</div>
-                            <div className="text-xs text-red-500">Install Required</div>
+                            <div className="text-xs text-slate-500">Install Required</div>
                           </div>
                         </div>
                       )}
-                      
+
                       {statusType === 'unchecked' && (
-                        <div className="flex items-center space-x-1 text-gray-500">
+                        <div className="flex items-center space-x-1 text-slate-500">
                           <Clock className="w-5 h-5" />
                           <div className="text-right">
                             <div className="text-xs">No Data</div>
-                            <div className="text-xs text-gray-400">Click Refresh</div>
+                            <div className="text-xs text-slate-400">Click Refresh</div>
                           </div>
                         </div>
                       )}
@@ -965,12 +965,12 @@ export default function EnhancedApiKeysPage() {
               )
             })}
           </div>
-          
+
           {cliStatusLoading && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+            <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded">
               <div className="flex items-center space-x-2">
-                <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
-                <p className="text-sm text-blue-800 dark:text-blue-200">
+                <RefreshCw className="w-4 h-4 text-slate-900 animate-spin" />
+                <p className="text-sm text-slate-900">
                   <strong>Refreshing CLI status...</strong> Getting latest data from server.
                 </p>
               </div>
@@ -981,11 +981,11 @@ export default function EnhancedApiKeysPage() {
 
       {/* API Keys Section */}
       {apiKeys.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
+        <div className="bg-white rounded-lg border border-slate-200 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center space-x-2">
             <Settings className="w-5 h-5" />
             <span>API Keys</span>
-            <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
+            <span className="text-sm text-slate-600 font-normal">
               (Drag to reorder for MCP priority)
             </span>
           </h2>
@@ -1006,29 +1006,29 @@ export default function EnhancedApiKeysPage() {
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
-                            className={`border rounded-lg p-4 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 ${
-                              snapshot.isDragging ? 'shadow-lg bg-white dark:bg-gray-600' : ''
+                            className={`border rounded-lg p-4 bg-slate-50 border-slate-200 ${
+                              snapshot.isDragging ? 'shadow-lg bg-white' : ''
                             }`}
                           >
                             <div className="flex items-center space-x-3">
-                              <div 
+                              <div
                                 {...provided.dragHandleProps}
-                                className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+                                className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing"
                               >
                                 <GripVertical className="w-5 h-5" />
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center space-x-3">
-                                    <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-sm font-medium">
+                                    <span className="bg-slate-100 text-slate-900 px-2 py-1 rounded text-sm font-medium">
                                       #{index + 1}
                                     </span>
                                     <div className="flex items-center space-x-2">
                                       {(() => {
                                         const providerData = getProviderDisplayData(key.provider)
                                         return providerData?.logoUrl && (
-                                          <img 
-                                            src={providerData.logoUrl} 
+                                          <img
+                                            src={providerData.logoUrl}
                                             alt={providerConfig?.name || key.provider}
                                             className="w-5 h-5 rounded"
                                             onError={(e) => {
@@ -1038,23 +1038,23 @@ export default function EnhancedApiKeysPage() {
                                           />
                                         )
                                       })()}
-                                      <span className="font-medium text-gray-900 dark:text-white capitalize">
+                                      <span className="font-medium text-slate-900 capitalize">
                                         {providerConfig?.name || key.provider}
                                       </span>
                                     </div>
                                     {key.is_preferred && (
                                       <span title="Preferred provider">
-                                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                                        <Star className="w-4 h-4 text-slate-900 fill-current" />
                                       </span>
                                     )}
                                     {key.is_primary && (
                                       <span title="Primary key for this provider">
-                                        <Crown className="w-4 h-4 text-purple-600 fill-current" />
+                                        <Crown className="w-4 h-4 text-slate-900 fill-current" />
                                       </span>
                                     )}
                                     <button
                                       onClick={() => toggleProviderExpanded(key.id)}
-                                      className="text-gray-400 hover:text-gray-600"
+                                      className="text-slate-400 hover:text-slate-600"
                                     >
                                       {expandedProviders[key.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                     </button>
@@ -1063,17 +1063,17 @@ export default function EnhancedApiKeysPage() {
                                     {/* Monthly Budget and Usage */}
                                     <div className="flex items-center space-x-3">
                                       {key.monthly_budget && (
-                                        <span className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded">
+                                        <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
                                           ${key.monthly_budget}/month
                                         </span>
                                       )}
                                       {apiKeyUsage[key.id] && (
                                         <div className="flex items-center space-x-2">
-                                          <span className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                                          <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
                                             ${apiKeyUsage[key.id].monthly_cost.toFixed(4)} used
                                           </span>
                                           {key.monthly_budget && (
-                                            <span className="text-xs text-gray-500">
+                                            <span className="text-xs text-slate-600">
                                               ({((apiKeyUsage[key.id].monthly_cost / key.monthly_budget) * 100).toFixed(1)}%)
                                             </span>
                                           )}
@@ -1081,9 +1081,9 @@ export default function EnhancedApiKeysPage() {
                                       )}
                                     </div>
                                     <div className="flex items-center space-x-2">
-                                      <span className="text-sm text-gray-500 font-mono">
-                                        {showApiKey[key.id] && key.encrypted_key 
-                                          ? atob(key.encrypted_key) 
+                                      <span className="text-sm text-slate-600 font-mono">
+                                        {showApiKey[key.id] && key.encrypted_key
+                                          ? atob(key.encrypted_key)
                                           : key.key_preview
                                         }
                                       </span>
@@ -1091,14 +1091,14 @@ export default function EnhancedApiKeysPage() {
                                         <div className="flex items-center space-x-1">
                                           <button
                                             onClick={() => setShowApiKey(prev => ({...prev, [key.id]: !prev[key.id]}))}
-                                            className="text-gray-400 hover:text-gray-600 p-1"
+                                            className="text-slate-400 hover:text-slate-600 p-1"
                                             title={showApiKey[key.id] ? "Hide API key" : "Show API key"}
                                           >
                                             {showApiKey[key.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                                           </button>
                                           <button
                                             onClick={() => copyApiKey(key)}
-                                            className="text-gray-400 hover:text-gray-600 p-1"
+                                            className="text-slate-400 hover:text-slate-600 p-1"
                                             title="Copy API key"
                                           >
                                             <Copy className="w-3 h-3" />
@@ -1117,7 +1117,7 @@ export default function EnhancedApiKeysPage() {
                                     </div>
                                     <div className="flex space-x-2 pt-2">
                                       <button
-                                        className={`text-sm flex items-center space-x-1 ${key.is_primary ? 'text-purple-600 hover:text-purple-800' : 'text-gray-600 hover:text-purple-600'}`}
+                                        className={`text-sm flex items-center space-x-1 ${key.is_primary ? 'text-slate-900 hover:text-slate-700' : 'text-slate-600 hover:text-slate-900'}`}
                                         onClick={async () => {
                                           try {
                                             const response = await fetch(`/api/api-keys/${key.id}`, {
@@ -1138,7 +1138,7 @@ export default function EnhancedApiKeysPage() {
                                         <span>{key.is_primary ? 'Primary' : 'Set Primary'}</span>
                                       </button>
                                       <button
-                                        className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
+                                        className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
                                         onClick={() => {
                                           setEditingKey(key)
                                           setUpdateApiKey(false) // Start with not updating the key
@@ -1158,7 +1158,7 @@ export default function EnhancedApiKeysPage() {
                                         <span>Edit</span>
                                       </button>
                                       <button
-                                        className="text-red-600 hover:text-red-800 text-sm flex items-center space-x-1"
+                                        className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
                                         onClick={() => deleteApiKey(key.id)}
                                       >
                                         <Trash2 className="w-3 h-3" />
@@ -1186,15 +1186,15 @@ export default function EnhancedApiKeysPage() {
       {/* Add/Edit Form Modal */}
       {(showAddForm || editingKey) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full my-8 p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <div className="bg-white rounded-lg max-w-md w-full my-8 p-6 max-h-[90vh] overflow-y-auto border border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
               {editingKey ? 'Edit API Key' : 'Add API Key'}
             </h3>
             
             <div className="space-y-4">
               {/* Provider Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-900 mb-1">
                   Provider
                 </label>
                 <div className="relative">
@@ -1207,7 +1207,7 @@ export default function EnhancedApiKeysPage() {
                         await fetchProviderModels(providerId)
                       }
                     }}
-                    className="w-full px-3 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white max-h-48 overflow-y-auto"
+                    className="w-full px-3 py-2 pl-10 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-900 bg-white max-h-48 overflow-y-auto"
                     style={{
                       fontSize: '14px',
                       lineHeight: '1.2'
@@ -1252,12 +1252,12 @@ export default function EnhancedApiKeysPage() {
               {formData.provider && (() => {
                 const providerData = getProviderDisplayData(formData.provider)
                 return providerData && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
                         {providerData.logoUrl && (
-                          <img 
-                            src={providerData.logoUrl} 
+                          <img
+                            src={providerData.logoUrl}
                             alt={providerData.displayName}
                             className="w-6 h-6"
                             onError={(e) => {
@@ -1269,27 +1269,27 @@ export default function EnhancedApiKeysPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                        <h4 className="text-sm font-medium text-slate-900">
                           {providerData.displayName}
                         </h4>
-                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        <p className="text-sm text-slate-600 mt-1">
                           {'enhancedDescription' in providerData ? providerData.enhancedDescription : providerData.description}
                         </p>
-                        <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
-                          <div>API URL: <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">{providerData.baseUrl}</code></div>
+                        <div className="mt-2 text-xs text-slate-600">
+                          <div>API URL: <code className="bg-slate-100 px-1 rounded">{providerData.baseUrl}</code></div>
                           <div className="mt-1">Models: {'modelCount' in providerData ? providerData.modelCount : 'Multiple'} available</div>
                           <div className="mt-1">Auth: {formData.provider === 'openrouter' ? 'API Key Optional (Credits Available)' : 'API Key Required'}</div>
                           {providerData.modelsDevData && (
                             <div className="mt-1 flex flex-wrap gap-1">
-                              {'supportsVision' in providerData && providerData.supportsVision && <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-1 rounded text-xs">Vision</span>}
-                              {'supportsTools' in providerData && providerData.supportsTools && <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-1 rounded text-xs">Tools</span>}
-                              {'supportsReasoning' in providerData && providerData.supportsReasoning && <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 px-1 rounded text-xs">Reasoning</span>}
-                              {'supportsPromptCaching' in providerData && providerData.supportsPromptCaching && <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-1 rounded text-xs">Cache</span>}
+                              {'supportsVision' in providerData && providerData.supportsVision && <span className="bg-slate-100 text-slate-900 px-1 rounded text-xs border border-slate-200">Vision</span>}
+                              {'supportsTools' in providerData && providerData.supportsTools && <span className="bg-slate-100 text-slate-900 px-1 rounded text-xs border border-slate-200">Tools</span>}
+                              {'supportsReasoning' in providerData && providerData.supportsReasoning && <span className="bg-slate-100 text-slate-900 px-1 rounded text-xs border border-slate-200">Reasoning</span>}
+                              {'supportsPromptCaching' in providerData && providerData.supportsPromptCaching && <span className="bg-slate-100 text-slate-900 px-1 rounded text-xs border border-slate-200">Cache</span>}
                             </div>
                           )}
                           {providerData.websiteUrl && (
                             <div className="mt-1">
-                              Website: <a href={providerData.websiteUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-800">
+                              Website: <a href={providerData.websiteUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-900">
                                 {providerData.websiteUrl.replace(/^https?:\/\//, '')}
                               </a>
                             </div>
@@ -1303,7 +1303,7 @@ export default function EnhancedApiKeysPage() {
 
               {/* API Base URL */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-900 mb-1">
                   API Base URL
                 </label>
                 <div className="space-y-2">
@@ -1317,9 +1317,9 @@ export default function EnhancedApiKeysPage() {
                           value={formData.api_base || defaultBaseUrl || ''}
                           onChange={(e) => setFormData(prev => ({...prev, api_base: e.target.value}))}
                           placeholder={defaultBaseUrl || 'Enter custom API base URL'}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-900 bg-white"
                         />
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-slate-600">
                           Default: {defaultBaseUrl || 'No default URL'}
                         </p>
                       </>
@@ -1331,14 +1331,14 @@ export default function EnhancedApiKeysPage() {
               {/* API Key */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center space-x-2">
+                  <label className="block text-sm font-medium text-slate-900 flex items-center space-x-2">
                     <span>API Key</span>
                     {formData.provider === 'openrouter' ? (
-                      <span className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded-full text-xs font-medium border border-emerald-200 dark:border-emerald-700 shadow-sm">
+                      <span className="bg-slate-100 text-slate-900 px-3 py-1 rounded-full text-xs font-medium border border-slate-200">
                         ✓ Optional
                       </span>
                     ) : (
-                      <span className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 px-3 py-1 rounded-full text-xs font-medium border border-amber-200 dark:border-amber-700 shadow-sm">
+                      <span className="bg-slate-100 text-slate-900 px-3 py-1 rounded-full text-xs font-medium border border-slate-200">
                         ● Required
                       </span>
                     )}
@@ -1347,7 +1347,7 @@ export default function EnhancedApiKeysPage() {
                     <button
                       type="button"
                       onClick={() => setUpdateApiKey(!updateApiKey)}
-                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                      className="text-xs text-slate-600 hover:text-slate-900 underline"
                     >
                       {updateApiKey ? 'Keep existing key' : 'Update API key'}
                     </button>
@@ -1359,17 +1359,17 @@ export default function EnhancedApiKeysPage() {
                     value={formData.api_key}
                     onChange={(e) => setFormData(prev => ({...prev, api_key: e.target.value}))}
                     placeholder={formData.provider === 'openrouter' ? "Enter your API key (optional - will use credits if not provided)" : "Enter your API key (required for this provider)"}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-900 bg-white"
                   />
                 ) : (
-                  <div className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm">
+                  <div className="w-full px-3 py-2 border border-slate-300 rounded-md bg-slate-50 text-slate-600 text-sm">
                     API key will remain unchanged
                   </div>
                 )}
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center space-x-1">
+                <p className="text-xs text-slate-600 mt-1 flex items-center space-x-1">
                   <CheckCircle className="w-3 h-3" />
                   <span>
-                    {formData.provider === 'openrouter' ? 
+                    {formData.provider === 'openrouter' ?
                       'Your OpenRouter API key is optional. When not provided, models will automatically use your Polydev credits.' :
                       !editingKey ?
                         'This provider requires your personal API key for direct access to their models.' :
@@ -1381,13 +1381,13 @@ export default function EnhancedApiKeysPage() {
 
               {/* Default Model */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-900 mb-1">
                   Default Model
                 </label>
                 <select
                   value={formData.default_model}
                   onChange={(e) => setFormData(prev => ({...prev, default_model: e.target.value}))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white max-h-48 overflow-y-auto"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-900 bg-white max-h-48 overflow-y-auto"
                   style={{
                     fontSize: '14px',
                     lineHeight: '1.2'
@@ -1424,24 +1424,18 @@ export default function EnhancedApiKeysPage() {
                 const modelTierInfo = getModelTier(selectedModel.id)
                 if (!modelTierInfo) return null
 
-                const tierColors = {
-                  premium: { bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', text: 'text-purple-800 dark:text-purple-200', badge: 'bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-200' },
-                  normal: { bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-800', text: 'text-blue-800 dark:text-blue-200', badge: 'bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200' },
-                  eco: { bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-800', text: 'text-green-800 dark:text-green-200', badge: 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200' }
-                }
-                const colors = tierColors[modelTierInfo.tier]
                 const TierIcon = modelTierInfo.tier === 'premium' ? Crown : modelTierInfo.tier === 'normal' ? Star : Leaf
 
                 return (
-                  <div className={`${colors.bg} border ${colors.border} rounded-lg p-3 mb-3`}>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <TierIcon className={`w-4 h-4 ${colors.text}`} />
-                        <span className={`text-sm font-medium ${colors.text}`}>
+                        <TierIcon className="w-4 h-4 text-slate-900" />
+                        <span className="text-sm font-medium text-slate-900">
                           {modelTierInfo.tier.charAt(0).toUpperCase() + modelTierInfo.tier.slice(1)} Perspective Tier
                         </span>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${colors.badge}`}>
+                      <span className="text-xs px-2 py-1 rounded-full font-medium bg-slate-100 text-slate-900 border border-slate-200">
                         Uses {modelTierInfo.tier} quota
                       </span>
                     </div>
@@ -1460,30 +1454,30 @@ export default function EnhancedApiKeysPage() {
                 if (inputCost === 0 && outputCost === 0) return null
 
                 return (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
                     <div className="flex items-center space-x-2 mb-2">
-                      <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      <TrendingUp className="w-4 h-4 text-slate-900" />
+                      <h4 className="text-sm font-medium text-slate-900">
                         Model Pricing
                       </h4>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="bg-white dark:bg-blue-800/30 rounded-md p-2 border border-blue-200 dark:border-blue-700">
-                        <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Input</div>
-                        <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                      <div className="bg-white rounded-md p-2 border border-slate-200">
+                        <div className="text-xs text-slate-600 font-medium">Input</div>
+                        <div className="text-lg font-bold text-slate-900">
                           ${inputCost.toFixed(2)}
                         </div>
-                        <div className="text-xs text-blue-600 dark:text-blue-400">per 1M tokens</div>
+                        <div className="text-xs text-slate-600">per 1M tokens</div>
                       </div>
-                      <div className="bg-white dark:bg-blue-800/30 rounded-md p-2 border border-blue-200 dark:border-blue-700">
-                        <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Output</div>
-                        <div className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                      <div className="bg-white rounded-md p-2 border border-slate-200">
+                        <div className="text-xs text-slate-600 font-medium">Output</div>
+                        <div className="text-lg font-bold text-slate-900">
                           ${outputCost.toFixed(2)}
                         </div>
-                        <div className="text-xs text-blue-600 dark:text-blue-400">per 1M tokens</div>
+                        <div className="text-xs text-slate-600">per 1M tokens</div>
                       </div>
                     </div>
-                    <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                    <div className="mt-2 text-xs text-slate-600">
                       💡 Typical prompt (~500 tokens): ~$<span className="font-medium">{(inputCost * 500 / 1000).toFixed(6)}</span> input + response varies by length
                     </div>
                   </div>
@@ -1495,7 +1489,7 @@ export default function EnhancedApiKeysPage() {
                 const selectedModel = (providerModels[formData.provider] || []).find(m => m.id === formData.default_model)
                 return selectedModel?.supports_reasoning ? (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-900 mb-2">
                       Reasoning Level: {formData.reasoning_level}
                     </label>
                     <input
@@ -1504,20 +1498,20 @@ export default function EnhancedApiKeysPage() {
                       max={selectedModel.reasoning_levels || 5}
                       value={formData.reasoning_level}
                       onChange={(e) => setFormData(prev => ({...prev, reasoning_level: parseInt(e.target.value)}))}
-                      className="w-full h-2 bg-orange-200 rounded-lg appearance-none cursor-pointer dark:bg-orange-700 slider"
+                      className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider"
                       style={{
-                        background: `linear-gradient(to right, #ea580c 0%, #ea580c ${((formData.reasoning_level - 1) / ((selectedModel.reasoning_levels || 5) - 1)) * 100}%, #fed7aa ${((formData.reasoning_level - 1) / ((selectedModel.reasoning_levels || 5) - 1)) * 100}%, #fed7aa 100%)`
+                        background: `linear-gradient(to right, #0f172a 0%, #0f172a ${((formData.reasoning_level - 1) / ((selectedModel.reasoning_levels || 5) - 1)) * 100}%, #cbd5e1 ${((formData.reasoning_level - 1) / ((selectedModel.reasoning_levels || 5) - 1)) * 100}%, #cbd5e1 100%)`
                       }}
                     />
-                    <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <div className="flex justify-between text-xs text-slate-600 mt-1">
                       <span>Faster</span>
                       <span>More thorough</span>
                     </div>
-                    <div className="mt-2 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                      <p className="text-xs text-orange-800 dark:text-orange-300">
+                    <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <p className="text-xs text-slate-900">
                         <strong>⚡ Reasoning Model:</strong> This model supports advanced reasoning. Higher levels provide more thorough analysis but take longer to respond.
                       </p>
-                      <div className="mt-1 text-xs text-orange-600 dark:text-orange-400">
+                      <div className="mt-1 text-xs text-slate-600">
                         Level {formData.reasoning_level}: {
                           formData.reasoning_level === 1 ? "Quick reasoning" :
                           formData.reasoning_level === 2 ? "Basic reasoning" :
@@ -1538,9 +1532,9 @@ export default function EnhancedApiKeysPage() {
                   id="is_preferred"
                   checked={formData.is_preferred}
                   onChange={(e) => setFormData(prev => ({...prev, is_preferred: e.target.checked}))}
-                  className="rounded border-gray-300 dark:border-gray-600"
+                  className="rounded border-slate-300"
                 />
-                <label htmlFor="is_preferred" className="text-sm text-gray-700 dark:text-gray-300">
+                <label htmlFor="is_preferred" className="text-sm text-slate-900">
                   Add to my model preferences
                 </label>
               </div>
@@ -1548,7 +1542,7 @@ export default function EnhancedApiKeysPage() {
 
               {/* Budget Limit */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-slate-900 mb-1">
                   Budget Limit (USD/month) - Optional
                 </label>
                 <input
@@ -1558,9 +1552,9 @@ export default function EnhancedApiKeysPage() {
                   placeholder="e.g. 100.00"
                   min="0"
                   step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-slate-900 bg-white"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-slate-600 mt-1">
                   Set a monthly spending limit for this provider (leave empty for no limit)
                 </p>
               </div>
@@ -1570,7 +1564,7 @@ export default function EnhancedApiKeysPage() {
               <button
                 onClick={saveApiKey}
                 disabled={saving || !formData.default_model || (formData.provider !== 'openrouter' && !editingKey && !formData.api_key.trim())}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
+                className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 flex items-center space-x-2"
               >
                 {saving ? (
                   <>
@@ -1599,7 +1593,7 @@ export default function EnhancedApiKeysPage() {
                     reasoning_level: 5
                   })
                 }}
-                className="text-gray-600 dark:text-gray-300 px-4 py-2 hover:text-gray-900 dark:hover:text-white"
+                className="text-slate-600 px-4 py-2 hover:text-slate-900"
               >
                 Cancel
               </button>
@@ -1609,41 +1603,41 @@ export default function EnhancedApiKeysPage() {
       )}
 
       {/* All Available Models Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
         <button
           onClick={() => setAllModelsExpanded(!allModelsExpanded)}
-          className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
         >
           <div className="flex items-center gap-3">
             {allModelsExpanded ? (
-              <ChevronDown className="w-5 h-5 text-gray-400" />
+              <ChevronDown className="w-5 h-5 text-slate-400" />
             ) : (
-              <ChevronRight className="w-5 h-5 text-gray-400" />
+              <ChevronRight className="w-5 h-5 text-slate-400" />
             )}
             <div className="text-left">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">All Available Models</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              <h3 className="text-lg font-semibold text-slate-900">All Available Models</h3>
+              <p className="text-sm text-slate-600 mt-0.5">
                 Browse all models from all providers
               </p>
             </div>
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="text-sm text-slate-600">
             {modelsDevProviders.length} providers
           </div>
         </button>
 
         {allModelsExpanded && (
-          <div className="px-6 pb-6 border-t border-gray-100 dark:border-gray-700">
+          <div className="px-6 pb-6 border-t border-slate-100">
             <div className="mt-4 space-y-4">
               {modelsDevProviders.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <div className="text-center py-8 text-slate-600">
                   Loading available models...
                 </div>
               ) : (
                 <div className="space-y-4">
             {modelsDevProviders.map((provider) => (
-              <div key={provider.id} className="border rounded-lg bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600">
-                <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+              <div key={provider.id} className="border rounded-lg bg-slate-50 border-slate-200">
+                <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-100"
                      onClick={() => toggleAvailableProviderExpanded(provider.id)}>
                   <div className="flex items-center space-x-3">
                     {provider.logo && (
@@ -1657,21 +1651,21 @@ export default function EnhancedApiKeysPage() {
                       />
                     )}
                     <div>
-                      <h3 className="font-medium text-gray-900 dark:text-white">
+                      <h3 className="font-medium text-slate-900">
                         {provider.name}
                       </h3>
                       {provider.description && (
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <p className="text-sm text-slate-600">
                           {provider.description}
                         </p>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-sm text-slate-600">
                       {provider.modelsCount || provider.models?.length || 0} models
                     </div>
-                    <button className="text-gray-400 hover:text-gray-600">
+                    <button className="text-slate-400 hover:text-slate-600">
                       {expandedAvailableProviders[provider.id] ?
                         <ChevronDown className="w-4 h-4" /> :
                         <ChevronRight className="w-4 h-4" />
@@ -1687,33 +1681,33 @@ export default function EnhancedApiKeysPage() {
                     {provider.models && provider.models.length > 0 && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                         {provider.models.map((model) => (
-                          <div key={model.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-3">
-                            <div className="font-medium text-gray-900 dark:text-white text-sm">
+                          <div key={model.id} className="bg-white border border-slate-200 rounded-lg p-3">
+                            <div className="font-medium text-slate-900 text-sm">
                               {model.name}
                             </div>
                             {(model.pricing?.input || model.pricing?.output) && (
-                              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              <div className="text-xs text-slate-600 mt-1">
                                 ${model.pricing.input?.toFixed(2) || '0.00'} / ${model.pricing.output?.toFixed(2) || '0.00'} per 1M tokens
                               </div>
                             )}
                             {model.contextWindow && (
-                              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                              <div className="text-xs text-slate-600 mt-1">
                                 {model.contextWindow.toLocaleString()} tokens
                               </div>
                             )}
                             <div className="flex items-center space-x-2 mt-2">
                               {(model.supportsVision || model.supports_vision) && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
                                   Vision
                                 </span>
                               )}
                               {(model.supportsTools || model.supports_tools) && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
                                   Tools
                                 </span>
                               )}
                               {(model.supportsReasoning || model.supports_reasoning) && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
                                   Reasoning
                                 </span>
                               )}
@@ -1731,7 +1725,7 @@ export default function EnhancedApiKeysPage() {
                           fetchProviderModels(provider.id)
                         }}
                         disabled={loadingModels[provider.id]}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm disabled:opacity-50 mt-3"
+                        className="text-slate-600 hover:text-slate-900 text-sm disabled:opacity-50 mt-3"
                       >
                         {loadingModels[provider.id] ? 'Loading models...' : 'Load models'}
                       </button>

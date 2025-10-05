@@ -15,8 +15,8 @@ export default function ChatIndex() {
   return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p className="text-gray-600 dark:text-gray-400">Starting new chat...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto mb-4"></div>
+        <p className="text-slate-600">Starting new chat...</p>
       </div>
     </div>
   )

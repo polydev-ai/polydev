@@ -133,7 +133,7 @@ export default function AdminSettings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-lg">Loading...</div>
       </div>
     )
@@ -141,14 +141,14 @@ export default function AdminSettings() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-red-600">Access denied.</div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-lg text-slate-900">Access denied.</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -156,20 +156,20 @@ export default function AdminSettings() {
             <div className="flex items-center">
               <button
                 onClick={() => router.push('/admin')}
-                className="mr-4 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="mr-4 p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
                 title="Back to Admin Portal"
               >
                 <Home className="h-5 w-5" />
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Admin Settings</h1>
-                <p className="text-gray-600 mt-1">Platform configuration and settings</p>
+                <h1 className="text-3xl font-bold text-slate-900">Admin Settings</h1>
+                <p className="text-slate-600 mt-1">Platform configuration and settings</p>
               </div>
             </div>
             <button
               onClick={saveSettings}
               disabled={saving}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
+              className="inline-flex items-center px-4 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-700 disabled:bg-slate-400"
             >
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Saving...' : 'Save Settings'}
@@ -182,10 +182,10 @@ export default function AdminSettings() {
         <div className="space-y-8">
           {/* System Configuration */}
           <div className="bg-white rounded-lg shadow-sm border">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-slate-200">
               <div className="flex items-center">
-                <Settings className="h-5 w-5 text-gray-600 mr-3" />
-                <h2 className="text-lg font-semibold text-gray-900">System Configuration</h2>
+                <Settings className="h-5 w-5 text-slate-600 mr-3" />
+                <h2 className="text-lg font-semibold text-slate-900">System Configuration</h2>
               </div>
             </div>
             <div className="p-6 space-y-6">
@@ -199,8 +199,8 @@ export default function AdminSettings() {
                       className="mr-3"
                     />
                     <div>
-                      <span className="text-sm font-medium text-gray-900">Maintenance Mode</span>
-                      <p className="text-xs text-gray-500">Temporarily disable user access</p>
+                      <span className="text-sm font-medium text-slate-900">Maintenance Mode</span>
+                      <p className="text-xs text-slate-600">Temporarily disable user access</p>
                     </div>
                   </label>
                 </div>
@@ -214,8 +214,8 @@ export default function AdminSettings() {
                       className="mr-3"
                     />
                     <div>
-                      <span className="text-sm font-medium text-gray-900">Registration Enabled</span>
-                      <p className="text-xs text-gray-500">Allow new user registrations</p>
+                      <span className="text-sm font-medium text-slate-900">Registration Enabled</span>
+                      <p className="text-xs text-slate-600">Allow new user registrations</p>
                     </div>
                   </label>
                 </div>
@@ -223,23 +223,23 @@ export default function AdminSettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">API Rate Limit (requests/minute)</label>
+                  <label className="block text-sm font-medium text-slate-900 mb-2">API Rate Limit (requests/minute)</label>
                   <input
                     type="number"
                     value={settings.api_rate_limit}
                     onChange={(e) => setSettings(prev => ({ ...prev, api_rate_limit: parseInt(e.target.value) || 100 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Subscription Price (USD/month)</label>
+                  <label className="block text-sm font-medium text-slate-900 mb-2">Subscription Price (USD/month)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={settings.subscription_price}
                     onChange={(e) => setSettings(prev => ({ ...prev, subscription_price: parseFloat(e.target.value) || 10 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
               </div>
@@ -248,31 +248,31 @@ export default function AdminSettings() {
 
           {/* Credit Configuration */}
           <div className="bg-white rounded-lg shadow-sm border">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-slate-200">
               <div className="flex items-center">
-                <Database className="h-5 w-5 text-gray-600 mr-3" />
-                <h2 className="text-lg font-semibold text-gray-900">Credit Configuration</h2>
+                <Database className="h-5 w-5 text-slate-600 mr-3" />
+                <h2 className="text-lg font-semibold text-slate-900">Credit Configuration</h2>
               </div>
             </div>
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Default Credits for New Users</label>
+                  <label className="block text-sm font-medium text-slate-900 mb-2">Default Credits for New Users</label>
                   <input
                     type="number"
                     value={settings.default_credits}
                     onChange={(e) => setSettings(prev => ({ ...prev, default_credits: parseInt(e.target.value) || 100 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Credits per User</label>
+                  <label className="block text-sm font-medium text-slate-900 mb-2">Maximum Credits per User</label>
                   <input
                     type="number"
                     value={settings.max_credits_per_user}
                     onChange={(e) => setSettings(prev => ({ ...prev, max_credits_per_user: parseInt(e.target.value) || 10000 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
               </div>
@@ -281,15 +281,15 @@ export default function AdminSettings() {
 
           {/* Free Tier Configuration */}
           <div className="bg-white rounded-lg shadow-sm border">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-slate-200">
               <div className="flex items-center">
-                <Key className="h-5 w-5 text-gray-600 mr-3" />
-                <h2 className="text-lg font-semibold text-gray-900">Free Tier Configuration</h2>
+                <Key className="h-5 w-5 text-slate-600 mr-3" />
+                <h2 className="text-lg font-semibold text-slate-900">Free Tier Configuration</h2>
               </div>
             </div>
             <div className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Daily Requests Limit</label>
+                <label className="block text-sm font-medium text-slate-900 mb-2">Daily Requests Limit</label>
                 <input
                   type="number"
                   value={settings.free_tier_limits.daily_requests}
@@ -300,12 +300,12 @@ export default function AdminSettings() {
                       daily_requests: parseInt(e.target.value) || 50
                     }
                   }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Available Models (comma-separated)</label>
+                <label className="block text-sm font-medium text-slate-900 mb-2">Available Models (comma-separated)</label>
                 <input
                   type="text"
                   value={settings.free_tier_limits.models_available.join(', ')}
@@ -316,7 +316,7 @@ export default function AdminSettings() {
                       models_available: e.target.value.split(', ').filter(m => m.trim())
                     }
                   }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   placeholder="gpt-3.5-turbo, claude-3-haiku"
                 />
               </div>
@@ -325,29 +325,29 @@ export default function AdminSettings() {
 
           {/* Security Settings */}
           <div className="bg-white rounded-lg shadow-sm border">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-slate-200">
               <div className="flex items-center">
-                <Shield className="h-5 w-5 text-gray-600 mr-3" />
-                <h2 className="text-lg font-semibold text-gray-900">Security Settings</h2>
+                <Shield className="h-5 w-5 text-slate-600 mr-3" />
+                <h2 className="text-lg font-semibold text-slate-900">Security Settings</h2>
               </div>
             </div>
             <div className="p-6 space-y-6">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                <h3 className="text-sm font-medium text-yellow-800 mb-2">Admin Access Management</h3>
-                <p className="text-sm text-yellow-700 mb-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-md p-4">
+                <h3 className="text-sm font-medium text-slate-900 mb-2">Admin Access Management</h3>
+                <p className="text-sm text-slate-900 mb-3">
                   Current admin: {user?.email}
                 </p>
-                <p className="text-xs text-yellow-600">
+                <p className="text-xs text-slate-600">
                   To modify admin access, use the User Management section to grant or revoke admin privileges.
                 </p>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                <h3 className="text-sm font-medium text-blue-800 mb-2">Database Migration Status</h3>
-                <p className="text-sm text-blue-700 mb-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-md p-4">
+                <h3 className="text-sm font-medium text-slate-900 mb-2">Database Migration Status</h3>
+                <p className="text-sm text-slate-900 mb-3">
                   Admin system tables have been created and are ready for use.
                 </p>
-                <ul className="text-xs text-blue-600 space-y-1">
+                <ul className="text-xs text-slate-600 space-y-1">
                   <li>✓ Admin profiles with role management</li>
                   <li>✓ Coupon codes system</li>
                   <li>✓ Credit adjustments tracking</li>
@@ -359,10 +359,10 @@ export default function AdminSettings() {
 
           {/* Notification Settings */}
           <div className="bg-white rounded-lg shadow-sm border">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-slate-200">
               <div className="flex items-center">
-                <Bell className="h-5 w-5 text-gray-600 mr-3" />
-                <h2 className="text-lg font-semibold text-gray-900">Notification Settings</h2>
+                <Bell className="h-5 w-5 text-slate-600 mr-3" />
+                <h2 className="text-lg font-semibold text-slate-900">Notification Settings</h2>
               </div>
             </div>
             <div className="p-6 space-y-6">
@@ -370,32 +370,32 @@ export default function AdminSettings() {
                 <label className="flex items-center">
                   <input type="checkbox" className="mr-3" defaultChecked />
                   <div>
-                    <span className="text-sm font-medium text-gray-900">Email Notifications</span>
-                    <p className="text-xs text-gray-500">Receive email alerts for important events</p>
+                    <span className="text-sm font-medium text-slate-900">Email Notifications</span>
+                    <p className="text-xs text-slate-600">Receive email alerts for important events</p>
                   </div>
                 </label>
 
                 <label className="flex items-center">
                   <input type="checkbox" className="mr-3" defaultChecked />
                   <div>
-                    <span className="text-sm font-medium text-gray-900">New User Registrations</span>
-                    <p className="text-xs text-gray-500">Get notified when new users register</p>
+                    <span className="text-sm font-medium text-slate-900">New User Registrations</span>
+                    <p className="text-xs text-slate-600">Get notified when new users register</p>
                   </div>
                 </label>
 
                 <label className="flex items-center">
                   <input type="checkbox" className="mr-3" defaultChecked />
                   <div>
-                    <span className="text-sm font-medium text-gray-900">Subscription Events</span>
-                    <p className="text-xs text-gray-500">Alerts for new subscriptions and cancellations</p>
+                    <span className="text-sm font-medium text-slate-900">Subscription Events</span>
+                    <p className="text-xs text-slate-600">Alerts for new subscriptions and cancellations</p>
                   </div>
                 </label>
 
                 <label className="flex items-center">
                   <input type="checkbox" className="mr-3" />
                   <div>
-                    <span className="text-sm font-medium text-gray-900">System Alerts</span>
-                    <p className="text-xs text-gray-500">Critical system events and errors</p>
+                    <span className="text-sm font-medium text-slate-900">System Alerts</span>
+                    <p className="text-xs text-slate-600">Critical system events and errors</p>
                   </div>
                 </label>
               </div>
@@ -404,25 +404,25 @@ export default function AdminSettings() {
 
           {/* Platform Information */}
           <div className="bg-white rounded-lg shadow-sm border">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Platform Information</h2>
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900">Platform Information</h2>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                 <div>
-                  <p className="text-gray-600">Version</p>
+                  <p className="text-slate-600">Version</p>
                   <p className="font-medium">1.2.3</p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Environment</p>
+                  <p className="text-slate-600">Environment</p>
                   <p className="font-medium">Production</p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Database</p>
+                  <p className="text-slate-600">Database</p>
                   <p className="font-medium">Supabase PostgreSQL</p>
                 </div>
                 <div>
-                  <p className="text-gray-600">Last Updated</p>
+                  <p className="text-slate-600">Last Updated</p>
                   <p className="font-medium">{new Date().toLocaleDateString()}</p>
                 </div>
               </div>

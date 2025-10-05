@@ -113,16 +113,16 @@ export default function Navigation() {
   }
 
   return (
-    <nav className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-lg border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-[100]">
+    <nav className="bg-white/95 backdrop-blur-sm shadow-lg border-b border-slate-200/50 sticky top-0 z-[100]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-violet-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
               </div>
-              <span className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors duration-200">Polydev</span>
+              <span className="text-xl font-bold text-slate-900 group-hover:text-slate-600 transition-colors duration-200">Polydev</span>
             </Link>
           </div>
 
@@ -135,8 +135,8 @@ export default function Navigation() {
                   href={item.href}
                   className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 touch-manipulation active:scale-95 ${
                     isActive(item.href)
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                      ? 'bg-slate-100 text-slate-900 border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
                   {item.name}
@@ -148,15 +148,15 @@ export default function Navigation() {
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
             {!isMounted || loading ? (
-              <div className="w-16 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div className="w-16 h-8 bg-slate-200 rounded animate-pulse"></div>
             ) : isAuthenticated ? (
               <>
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-md hover:bg-slate-50 transition-colors"
                   >
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    <div className="w-8 h-8 bg-slate-900 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                       {(profile?.display_name || user?.email)?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <span className="max-w-32 truncate">{profile?.display_name || user?.email}</span>
@@ -171,64 +171,64 @@ export default function Navigation() {
                   </button>
 
                   {userDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 dark:divide-gray-700 z-[110]">
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 divide-y divide-slate-100 z-[110]">
                       <div className="px-4 py-3">
-                        <p className="text-sm text-gray-900 dark:text-white">Signed in as</p>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user?.email}</p>
+                        <p className="text-sm text-slate-900">Signed in as</p>
+                        <p className="text-sm font-medium text-slate-900 truncate">{user?.email}</p>
                       </div>
                       <div className="py-1">
                         <Link
                           href="/profile"
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                           onClick={() => setUserDropdownOpen(false)}
                         >
                           Profile
                         </Link>
                         <Link
                           href="/dashboard/models"
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                           onClick={() => setUserDropdownOpen(false)}
                         >
                           Models
                         </Link>
                         <Link
                           href="/dashboard/mcp-tokens"
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                           onClick={() => setUserDropdownOpen(false)}
                         >
                           MCP Tokens
                         </Link>
                         <Link
                           href="/dashboard/usage"
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                           onClick={() => setUserDropdownOpen(false)}
                         >
                           Usage & Analytics
                         </Link>
                         <Link
                           href="/dashboard/subscription"
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                           onClick={() => setUserDropdownOpen(false)}
                         >
                           👑 Subscription
                         </Link>
                         <Link
                           href="/dashboard/referrals"
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                           onClick={() => setUserDropdownOpen(false)}
                         >
                           🎁 Referrals
                         </Link>
                         <Link
                           href="/dashboard/preferences"
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                           onClick={() => setUserDropdownOpen(false)}
                         >
                           Preferences
                         </Link>
                         <Link
                           href="/settings"
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                           onClick={() => setUserDropdownOpen(false)}
                         >
                           Settings
@@ -240,7 +240,7 @@ export default function Navigation() {
                             signOut()
                             setUserDropdownOpen(false)
                           }}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="block w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                         >
                           Sign Out
                         </button>
@@ -253,26 +253,26 @@ export default function Navigation() {
               <>
                 <Link
                   href="/docs"
-                  className="text-slate-600 hover:text-slate-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 text-sm font-medium transition-colors"
+                  className="text-slate-600 hover:text-slate-900 px-3 py-2 text-sm font-medium transition-colors"
                 >
                   Docs
                 </Link>
                 <Link
                   href="/pricing"
-                  className="text-slate-600 hover:text-slate-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 text-sm font-medium transition-colors"
+                  className="text-slate-600 hover:text-slate-900 px-3 py-2 text-sm font-medium transition-colors"
                 >
                   Pricing
                 </Link>
                 <Link
                   href="/blog"
-                  className="text-slate-600 hover:text-slate-900 dark:text-gray-300 dark:hover:text-white px-3 py-2 text-sm font-medium transition-colors"
+                  className="text-slate-600 hover:text-slate-900 px-3 py-2 text-sm font-medium transition-colors"
                 >
                   Blog
                 </Link>
-                <div className="h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+                <div className="h-4 w-px bg-slate-300"></div>
                 <Link
                   href="/auth"
-                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-violet-500 text-white rounded-lg font-medium hover:shadow-lg transition-all duration-300"
+                  className="px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-700 transition-all duration-300"
                 >
                   Sign In
                 </Link>
@@ -284,7 +284,7 @@ export default function Navigation() {
           <div className="md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-violet-500"
+              className="inline-flex items-center justify-center p-2 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-slate-900"
             >
               <span className="sr-only">Open main menu</span>
               {/* Hamburger icon */}
@@ -314,7 +314,7 @@ export default function Navigation() {
         {/* Mobile Navigation */}
         {isOpen && (
           <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-slate-200 bg-white/95 backdrop-blur-sm">
               {navigation.map((item) => (
                 <Link
                   key={item.name}
@@ -322,42 +322,42 @@ export default function Navigation() {
                   onClick={() => setIsOpen(false)}
                   className={`block px-3 py-2 rounded-md text-base font-medium transition-all duration-200 touch-manipulation active:scale-95 ${
                     isActive(item.href)
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                      ? 'bg-slate-100 text-slate-900 border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
                 >
                   {item.name}
                 </Link>
               ))}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-1">
+              <div className="border-t border-slate-200 pt-4 space-y-1">
                 {!isMounted || loading ? (
                   <div className="px-3 py-2">
-                    <div className="w-24 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    <div className="w-24 h-8 bg-slate-200 rounded animate-pulse"></div>
                   </div>
                 ) : isAuthenticated ? (
                   <>
-                    <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 mb-2">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{profile?.display_name || user?.email}</p>
+                    <div className="px-3 py-2 border-b border-slate-200 mb-2">
+                      <p className="text-xs text-slate-600">Signed in as</p>
+                      <p className="text-sm font-medium text-slate-900 truncate">{profile?.display_name || user?.email}</p>
                     </div>
                     <Link
                       href="/profile"
                       onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     >
                       Profile
                     </Link>
                     <Link
                       href="/dashboard/subscription"
                       onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     >
                       👑 Subscription
                     </Link>
                     <Link
                       href="/settings"
                       onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     >
                       Settings
                     </Link>
@@ -366,7 +366,7 @@ export default function Navigation() {
                         signOut()
                         setIsOpen(false)
                       }}
-                      className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     >
                       Sign Out
                     </button>
@@ -376,28 +376,28 @@ export default function Navigation() {
                     <Link
                       href="/docs"
                       onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="block px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     >
                       Docs
                     </Link>
                     <Link
                       href="/pricing"
                       onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="block px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     >
                       Pricing
                     </Link>
                     <Link
                       href="/blog"
                       onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                      className="block px-3 py-2 rounded-md text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     >
                       Blog
                     </Link>
                     <Link
                       href="/auth"
                       onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 rounded-md text-base font-medium bg-gradient-to-r from-orange-500 to-violet-500 text-white hover:shadow-lg transition-all duration-300 mx-3 mt-4 text-center"
+                      className="block px-3 py-2 rounded-md text-base font-medium bg-slate-900 text-white hover:bg-slate-700 transition-all duration-300 mx-3 mt-4 text-center"
                     >
                       Sign In
                     </Link>

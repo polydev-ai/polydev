@@ -232,7 +232,7 @@ export default function ModelPreferenceSelector() {
           onError={(e) => {
             e.currentTarget.style.display = 'none'
             const fallback = document.createElement('div')
-            fallback.className = 'w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600'
+            fallback.className = 'w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-semibold text-slate-600'
             fallback.textContent = providerName[0]?.toUpperCase() || '?'
             e.currentTarget.parentElement?.appendChild(fallback)
           }}
@@ -251,7 +251,7 @@ export default function ModelPreferenceSelector() {
 
     // Fallback to first letter
     return (
-      <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
+      <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-semibold text-slate-600">
         {providerName[0]?.toUpperCase() || '?'}
       </div>
     )
@@ -269,44 +269,44 @@ export default function ModelPreferenceSelector() {
     switch (status) {
       case 'available':
         statusIcon = <Check className="w-3 h-3" />
-        statusColor = 'text-green-600'
+        statusColor = 'text-slate-900'
         break
       case 'fallback':
         statusIcon = <Zap className="w-3 h-3" />
-        statusColor = 'text-yellow-600'
+        statusColor = 'text-slate-900'
         break
       case 'locked':
         statusIcon = <Lock className="w-3 h-3" />
-        statusColor = 'text-gray-400'
+        statusColor = 'text-slate-400'
         break
       case 'unavailable':
         statusIcon = <AlertCircle className="w-3 h-3" />
-        statusColor = 'text-red-600'
+        statusColor = 'text-slate-900'
         break
     }
 
     // Source and cost badge - using explicit classes for Tailwind
     let sourceBadge
     if (primary_source === 'cli') {
-      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700">CLI • FREE</span>
+      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-900">CLI • FREE</span>
     } else if (primary_source === 'api') {
-      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">API • FREE</span>
+      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-900">API • FREE</span>
     } else if (primary_source === 'admin') {
       // Use tier-based colors but show generic "PLAN" label instead of internal tier names
       const tierStyles = {
-        premium: 'bg-purple-100 text-purple-700',
-        normal: 'bg-blue-100 text-blue-700',
-        eco: 'bg-green-100 text-green-700'
+        premium: 'bg-slate-100 text-slate-900',
+        normal: 'bg-slate-100 text-slate-900',
+        eco: 'bg-slate-100 text-slate-900'
       }
-      const tierStyle = tierStyles[tier as keyof typeof tierStyles] || 'bg-gray-100 text-gray-700'
+      const tierStyle = tierStyles[tier as keyof typeof tierStyles] || 'bg-slate-100 text-slate-700'
 
       sourceBadge = <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs ${tierStyle}`}>
         {perspectives_needed} PLAN
       </span>
     } else if (status === 'locked') {
-      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700">Upgrade Required</span>
+      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-700">Upgrade Required</span>
     } else if (status === 'unavailable') {
-      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-red-100 text-red-700">Unavailable</span>
+      sourceBadge = <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-900">Unavailable</span>
     }
 
     return (
@@ -324,75 +324,75 @@ export default function ModelPreferenceSelector() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+    <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-3">
           {isExpanded ? (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
+            <ChevronDown className="w-5 h-5 text-slate-400" />
           ) : (
-            <ChevronRight className="w-5 h-5 text-gray-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400" />
           )}
           <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-900">Model Preferences</h3>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <h3 className="text-lg font-semibold text-slate-900">Model Preferences</h3>
+            <p className="text-sm text-slate-500 mt-0.5">
               Select and reorder models for Chat and MCP Client (drag to reorder)
             </p>
           </div>
         </div>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-slate-500">
           {selectedChatModels.length} for Chat · {selectedMcpModels.length} for MCP
         </div>
       </button>
 
       {isExpanded && (
-        <div className="px-6 pb-6 border-t border-gray-100">
+        <div className="px-6 pb-6 border-t border-slate-100">
           <div className="mt-4 space-y-4">
             {/* Quota Display */}
             {loadingQuotas ? (
-              <div className="text-center py-2 text-gray-500">Loading quotas...</div>
+              <div className="text-center py-2 text-slate-500">Loading quotas...</div>
             ) : quotas && (
-              <div className="grid grid-cols-3 gap-3 p-3 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-lg">
                 <div>
-                  <div className="text-xs font-medium text-gray-600 mb-1">Premium</div>
+                  <div className="text-xs font-medium text-slate-600 mb-1">Premium</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-purple-600">
+                    <span className="text-lg font-semibold text-slate-900">
                       {quotas.premium.remaining}/{quotas.premium.total}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 mt-1">
                     <div
-                      className="bg-purple-600 h-1.5 rounded-full transition-all"
+                      className="bg-slate-100 h-1.5 rounded-full transition-all"
                       style={{ width: `${(quotas.premium.remaining / quotas.premium.total) * 100}%` }}
                     />
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-gray-600 mb-1">Normal</div>
+                  <div className="text-xs font-medium text-slate-600 mb-1">Normal</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-blue-600">
+                    <span className="text-lg font-semibold text-slate-900">
                       {quotas.normal.remaining}/{quotas.normal.total}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 mt-1">
                     <div
-                      className="bg-blue-600 h-1.5 rounded-full transition-all"
+                      className="bg-slate-100 h-1.5 rounded-full transition-all"
                       style={{ width: `${(quotas.normal.remaining / quotas.normal.total) * 100}%` }}
                     />
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-gray-600 mb-1">Eco</div>
+                  <div className="text-xs font-medium text-slate-600 mb-1">Eco</div>
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold text-green-600">
+                    <span className="text-lg font-semibold text-slate-900">
                       {quotas.eco.remaining}/{quotas.eco.total}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 mt-1">
                     <div
-                      className="bg-green-600 h-1.5 rounded-full transition-all"
+                      className="bg-slate-100 h-1.5 rounded-full transition-all"
                       style={{ width: `${(quotas.eco.remaining / quotas.eco.total) * 100}%` }}
                     />
                   </div>
@@ -402,15 +402,15 @@ export default function ModelPreferenceSelector() {
 
             {/* Selected Chat Models - Draggable */}
             {selectedChatModels.length > 0 && (
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <h4 className="font-semibold text-gray-900 mb-3">Selected for Chat ({selectedChatModels.length}) - Drag to Reorder</h4>
+              <div className="p-4 bg-slate-100 rounded-lg border border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-3">Selected for Chat ({selectedChatModels.length}) - Drag to Reorder</h4>
                 <DragDropContext onDragEnd={handleChatModelDragEnd}>
                   <Droppable droppableId="chat-models">
                     {(provided, snapshot) => (
                       <div
                         {...provided.droppableProps}
                         ref={provided.innerRef}
-                        className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-blue-100 rounded-lg p-2' : ''}`}
+                        className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-slate-100 rounded-lg p-2' : ''}`}
                       >
                         {selectedChatModels.map((modelId, index) => {
                           const model = getModelDetails(modelId)
@@ -424,11 +424,11 @@ export default function ModelPreferenceSelector() {
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   className={`flex items-center gap-3 p-3 bg-white border rounded-lg ${
-                                    snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-500' : 'border-gray-200'
+                                    snapshot.isDragging ? 'shadow-lg ring-2 ring-slate-900' : 'border-slate-200'
                                   } transition-all cursor-move`}
                                 >
-                                  <GripVertical className="w-4 h-4 text-gray-400" />
-                                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+                                  <GripVertical className="w-4 h-4 text-slate-400" />
+                                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-xs font-semibold text-slate-900">
                                     {index + 1}
                                   </div>
                                   {model.providerWebsite ? (
@@ -439,18 +439,18 @@ export default function ModelPreferenceSelector() {
                                     getProviderLogo(model.provider, model.providerName, model.providerLogo)
                                   )}
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm text-gray-900 truncate">{model.name}</div>
+                                    <div className="font-medium text-sm text-slate-900 truncate">{model.name}</div>
                                     {model.providerWebsite ? (
-                                      <a href={model.providerWebsite} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                                      <a href={model.providerWebsite} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-900 hover:text-slate-900 hover:underline">
                                         {model.providerName}
                                       </a>
                                     ) : (
-                                      <div className="text-xs text-gray-500">{model.providerName}</div>
+                                      <div className="text-xs text-slate-500">{model.providerName}</div>
                                     )}
                                   </div>
                                   <button
                                     onClick={() => toggleModelForChat(modelId)}
-                                    className="p-1 text-red-600 hover:text-red-700"
+                                    className="p-1 text-slate-900 hover:text-slate-900"
                                     title="Remove from chat"
                                   >
                                     ✕
@@ -470,15 +470,15 @@ export default function ModelPreferenceSelector() {
 
             {/* Selected MCP Models - Draggable */}
             {selectedMcpModels.length > 0 && (
-              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <h4 className="font-semibold text-gray-900 mb-3">Selected for MCP ({selectedMcpModels.length}) - Drag to Reorder</h4>
+              <div className="p-4 bg-slate-100 rounded-lg border border-slate-200">
+                <h4 className="font-semibold text-slate-900 mb-3">Selected for MCP ({selectedMcpModels.length}) - Drag to Reorder</h4>
                 <DragDropContext onDragEnd={handleMcpModelDragEnd}>
                   <Droppable droppableId="mcp-models">
                     {(provided, snapshot) => (
                       <div
                         {...provided.droppableProps}
                         ref={provided.innerRef}
-                        className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-purple-100 rounded-lg p-2' : ''}`}
+                        className={`space-y-2 ${snapshot.isDraggingOver ? 'bg-slate-100 rounded-lg p-2' : ''}`}
                       >
                         {selectedMcpModels.map((modelId, index) => {
                           const model = getModelDetails(modelId)
@@ -492,11 +492,11 @@ export default function ModelPreferenceSelector() {
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
                                   className={`flex items-center gap-3 p-3 bg-white border rounded-lg ${
-                                    snapshot.isDragging ? 'shadow-lg ring-2 ring-purple-500' : 'border-gray-200'
+                                    snapshot.isDragging ? 'shadow-lg ring-2 ring-slate-900' : 'border-slate-200'
                                   } transition-all cursor-move`}
                                 >
-                                  <GripVertical className="w-4 h-4 text-gray-400" />
-                                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-xs font-semibold text-purple-700">
+                                  <GripVertical className="w-4 h-4 text-slate-400" />
+                                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-xs font-semibold text-slate-900">
                                     {index + 1}
                                   </div>
                                   {model.providerWebsite ? (
@@ -507,18 +507,18 @@ export default function ModelPreferenceSelector() {
                                     getProviderLogo(model.provider, model.providerName, model.providerLogo)
                                   )}
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm text-gray-900 truncate">{model.name}</div>
+                                    <div className="font-medium text-sm text-slate-900 truncate">{model.name}</div>
                                     {model.providerWebsite ? (
-                                      <a href={model.providerWebsite} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                                      <a href={model.providerWebsite} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-900 hover:text-slate-900 hover:underline">
                                         {model.providerName}
                                       </a>
                                     ) : (
-                                      <div className="text-xs text-gray-500">{model.providerName}</div>
+                                      <div className="text-xs text-slate-500">{model.providerName}</div>
                                     )}
                                   </div>
                                   <button
                                     onClick={() => toggleModelForMcp(modelId)}
-                                    className="p-1 text-red-600 hover:text-red-700"
+                                    className="p-1 text-slate-900 hover:text-slate-900"
                                     title="Remove from MCP"
                                   >
                                     ✕
@@ -538,20 +538,20 @@ export default function ModelPreferenceSelector() {
 
             {/* Search bar */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search models or providers..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
               />
             </div>
 
             {/* Max models settings */}
-            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Max Chat Models
                 </label>
                 <input
@@ -560,11 +560,11 @@ export default function ModelPreferenceSelector() {
                   max="50"
                   value={maxChatModels}
                   onChange={(e) => setMaxChatModels(parseInt(e.target.value) || 10)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Max MCP Models
                 </label>
                 <input
@@ -573,20 +573,20 @@ export default function ModelPreferenceSelector() {
                   max="20"
                   value={maxMcpModels}
                   onChange={(e) => setMaxMcpModels(parseInt(e.target.value) || 5)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-900 focus:border-transparent"
                 />
               </div>
             </div>
 
             {/* Models by provider */}
             {modelsLoading ? (
-              <div className="text-center py-8 text-gray-500">Loading models...</div>
+              <div className="text-center py-8 text-slate-500">Loading models...</div>
             ) : (
               <div className="space-y-4 max-h-96 overflow-y-auto">
                 {Object.entries(modelsByProvider).map(([provider, models]) => {
                   const firstModel = models[0]
                   return (
-                    <div key={provider} className="border border-gray-200 rounded-lg p-4">
+                    <div key={provider} className="border border-slate-200 rounded-lg p-4">
                       <div className="flex items-center gap-2 mb-3">
                         {firstModel.providerWebsite ? (
                           <a href={firstModel.providerWebsite} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity" title={`Visit ${firstModel.providerName} website`}>
@@ -596,39 +596,39 @@ export default function ModelPreferenceSelector() {
                           getProviderLogo(firstModel.provider, firstModel.providerName, firstModel.providerLogo)
                         )}
                         {firstModel.providerWebsite ? (
-                          <a href={firstModel.providerWebsite} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:text-blue-800 hover:underline">
+                          <a href={firstModel.providerWebsite} target="_blank" rel="noopener noreferrer" className="font-semibold text-slate-900 hover:text-slate-900 hover:underline">
                             {firstModel.providerName}
                           </a>
                         ) : (
-                          <h4 className="font-semibold text-gray-900">{firstModel.providerName}</h4>
+                          <h4 className="font-semibold text-slate-900">{firstModel.providerName}</h4>
                         )}
-                        <span className="text-sm text-gray-500">({models.length} models)</span>
+                        <span className="text-sm text-slate-500">({models.length} models)</span>
                       </div>
 
                       <div className="space-y-2">
                         {models.map(model => (
-                          <div key={model.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
+                          <div key={model.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded">
                             <div className="flex-1">
-                              <div className="font-medium text-sm text-gray-900">{model.name}</div>
+                              <div className="font-medium text-sm text-slate-900">{model.name}</div>
                               <div className="flex items-center gap-2 mt-1 flex-wrap">
                                 {getAvailabilityIndicator(model.id)}
                                 {model.price && (
-                                  <div className="text-xs text-gray-500">
+                                  <div className="text-xs text-slate-500">
                                     ${model.price.input.toFixed(2)}/M in ${model.price.output.toFixed(2)}/M out
                                   </div>
                                 )}
                                 {model.features?.supportsImages && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-900">
                                     Vision
                                   </span>
                                 )}
                                 {model.features?.supportsReasoning && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-700">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-900">
                                     Reasoning
                                   </span>
                                 )}
                                 {model.tier === 'api' && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-slate-100 text-slate-900">
                                     API
                                   </span>
                                 )}
@@ -640,8 +640,8 @@ export default function ModelPreferenceSelector() {
                                 onClick={() => toggleModelForChat(model.id)}
                                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                                   selectedChatModels.includes(model.id)
-                                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    ? 'bg-slate-100 text-slate-900 hover:bg-slate-100'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                               >
                                 {selectedChatModels.includes(model.id) && <Check className="w-3 h-3 inline mr-1" />}
@@ -652,8 +652,8 @@ export default function ModelPreferenceSelector() {
                                 onClick={() => toggleModelForMcp(model.id)}
                                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                                   selectedMcpModels.includes(model.id)
-                                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    ? 'bg-slate-100 text-slate-900 hover:bg-slate-100'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                               >
                                 {selectedMcpModels.includes(model.id) && <Check className="w-3 h-3 inline mr-1" />}
@@ -668,7 +668,7 @@ export default function ModelPreferenceSelector() {
                 })}
 
                 {Object.keys(modelsByProvider).length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-slate-500">
                     {searchQuery ? 'No models found matching your search' : 'No models available'}
                   </div>
                 )}
@@ -676,11 +676,11 @@ export default function ModelPreferenceSelector() {
             )}
 
             {/* Save button */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
               <button
                 onClick={savePreferences}
                 disabled={isSaving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-colors flex items-center gap-2"
+                className="px-6 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:bg-slate-300 transition-colors flex items-center gap-2"
               >
                 {isSaving ? (
                   <>

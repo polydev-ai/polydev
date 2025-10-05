@@ -184,7 +184,7 @@ export default function UserManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-lg">Loading...</div>
       </div>
     )
@@ -192,14 +192,14 @@ export default function UserManagement() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-red-600">Access denied.</div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-lg text-slate-900">Access denied.</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -207,14 +207,14 @@ export default function UserManagement() {
             <div className="flex items-center">
               <button
                 onClick={() => router.push('/admin')}
-                className="mr-4 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="mr-4 p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
                 title="Back to Admin Portal"
               >
                 <Home className="h-5 w-5" />
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-                <p className="text-gray-600 mt-1">Manage users and admin roles</p>
+                <h1 className="text-3xl font-bold text-slate-900">User Management</h1>
+                <p className="text-slate-600 mt-1">Manage users and admin roles</p>
               </div>
             </div>
           </div>
@@ -226,40 +226,40 @@ export default function UserManagement() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <User className="h-8 w-8 text-blue-600" />
+              <User className="h-8 w-8 text-slate-900" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
+                <p className="text-sm font-medium text-slate-600">Total Users</p>
+                <p className="text-2xl font-bold text-slate-900">{stats.totalUsers}</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <ShieldCheck className="h-8 w-8 text-purple-600" />
+              <ShieldCheck className="h-8 w-8 text-slate-900" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Admin Users</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.adminUsers}</p>
+                <p className="text-sm font-medium text-slate-600">Admin Users</p>
+                <p className="text-2xl font-bold text-slate-900">{stats.adminUsers}</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <CreditCard className="h-8 w-8 text-green-600" />
+              <CreditCard className="h-8 w-8 text-slate-900" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Subscribed</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.subscribedUsers}</p>
+                <p className="text-sm font-medium text-slate-600">Subscribed</p>
+                <p className="text-2xl font-bold text-slate-900">{stats.subscribedUsers}</p>
               </div>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-sm border">
             <div className="flex items-center">
-              <CreditCard className="h-8 w-8 text-orange-600" />
+              <CreditCard className="h-8 w-8 text-slate-900" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Credits</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalCredits}</p>
+                <p className="text-sm font-medium text-slate-600">Total Credits</p>
+                <p className="text-2xl font-bold text-slate-900">{stats.totalCredits}</p>
               </div>
             </div>
           </div>
@@ -270,20 +270,20 @@ export default function UserManagement() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div className="flex items-center space-x-4">
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search users by email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-80"
+                  className="pl-10 pr-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 w-80"
                 />
               </div>
 
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
               >
                 <option value="all">All Users</option>
                 <option value="admin">Admin Users</option>
@@ -296,39 +296,35 @@ export default function UserManagement() {
 
         {/* Users Table */}
         <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credits</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subscription</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Credits</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Subscription</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Joined</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-slate-200">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <User className="h-5 w-5 text-gray-500" />
+                        <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
+                          <User className="h-5 w-5 text-slate-600" />
                         </div>
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.email}</div>
-                        <div className="text-sm text-gray-500">ID: {user.id.slice(0, 8)}...</div>
+                        <div className="text-sm font-medium text-slate-900">{user.email}</div>
+                        <div className="text-sm text-slate-600">ID: {user.id.slice(0, 8)}...</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      user.is_admin
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-900 border border-slate-200">
                       {user.is_admin ? (
                         <>
                           <ShieldCheck className="h-3 w-3 mr-1" />
@@ -342,19 +338,15 @@ export default function UserManagement() {
                       )}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                     {user.credits || 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.subscription_status === 'active'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-900 border border-slate-200">
                       {user.subscription_status === 'active' ? 'Pro' : 'Free'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                     {new Date(user.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
@@ -363,17 +355,13 @@ export default function UserManagement() {
                         setSelectedUser(user)
                         setShowRoleModal(true)
                       }}
-                      className={`${
-                        user.is_admin
-                          ? 'text-orange-600 hover:text-orange-900'
-                          : 'text-purple-600 hover:text-purple-900'
-                      }`}
+                      className="text-slate-900 hover:text-slate-600"
                     >
                       {user.is_admin ? 'Remove Admin' : 'Make Admin'}
                     </button>
                     <button
                       onClick={() => router.push(`/admin/credits?user=${user.id}`)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-slate-900 hover:text-slate-600"
                     >
                       Manage Credits
                     </button>
@@ -385,9 +373,9 @@ export default function UserManagement() {
 
           {filteredUsers.length === 0 && (
             <div className="text-center py-12">
-              <User className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
-              <p className="mt-1 text-sm text-gray-500">
+              <User className="mx-auto h-12 w-12 text-slate-400" />
+              <h3 className="mt-2 text-sm font-medium text-slate-900">No users found</h3>
+              <p className="mt-1 text-sm text-slate-600">
                 {searchTerm ? 'Try adjusting your search terms.' : 'No users match the selected filter.'}
               </p>
             </div>
@@ -401,13 +389,13 @@ export default function UserManagement() {
           <div className="bg-white rounded-lg max-w-md w-full">
             <div className="p-6">
               <div className="flex items-center mb-4">
-                <Shield className="h-6 w-6 text-orange-600 mr-3" />
-                <h3 className="text-lg font-semibold text-gray-900">
+                <Shield className="h-6 w-6 text-slate-900 mr-3" />
+                <h3 className="text-lg font-semibold text-slate-900">
                   {selectedUser.is_admin ? 'Remove Admin Access' : 'Grant Admin Access'}
                 </h3>
               </div>
 
-              <p className="text-sm text-gray-600 mb-6">
+              <p className="text-sm text-slate-600 mb-6">
                 {selectedUser.is_admin
                   ? `Are you sure you want to remove admin access from ${selectedUser.email}? They will lose access to all admin features.`
                   : `Are you sure you want to grant admin access to ${selectedUser.email}? They will have full administrative privileges.`
@@ -420,17 +408,13 @@ export default function UserManagement() {
                     setShowRoleModal(false)
                     setSelectedUser(null)
                   }}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="px-4 py-2 text-slate-700 bg-slate-100 rounded-md hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => toggleAdminRole(selectedUser.id, selectedUser.is_admin)}
-                  className={`px-4 py-2 text-white rounded-md ${
-                    selectedUser.is_admin
-                      ? 'bg-red-600 hover:bg-red-700'
-                      : 'bg-purple-600 hover:bg-purple-700'
-                  }`}
+                  className="px-4 py-2 text-white bg-slate-900 rounded-md hover:bg-slate-700"
                 >
                   {selectedUser.is_admin ? 'Remove Admin' : 'Grant Admin'}
                 </button>

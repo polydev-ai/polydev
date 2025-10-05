@@ -104,12 +104,12 @@ export const CreditPurchaseInterface: React.FC<CreditPurchaseInterfaceProps> = (
                 className={`cursor-pointer transition-all ${
                   selectedAmount === option.amount
                     ? 'ring-2 ring-primary border-primary'
-                    : 'hover:border-gray-300'
+                    : 'hover:border-slate-300'
                 } ${option.popular ? 'relative overflow-hidden' : ''}`}
                 onClick={() => setSelectedAmount(option.amount)}
               >
                 {option.popular && (
-                  <div className="absolute -right-8 top-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-1 text-xs font-medium transform rotate-45">
+                  <div className="absolute -right-8 top-4 bg-gradient-to-r from-slate-800 to-slate-900 text-white px-8 py-1 text-xs font-medium transform rotate-45">
                     <Star className="w-3 h-3 inline mr-1" />
                     POPULAR
                   </div>
@@ -136,7 +136,7 @@ export const CreditPurchaseInterface: React.FC<CreditPurchaseInterfaceProps> = (
                 
                 <CardContent className="text-center">
                   {option.bonus > 0 && (
-                    <div className="flex items-center justify-center text-green-600 text-sm mb-2">
+                    <div className="flex items-center justify-center text-slate-900 text-sm mb-2">
                       <Gift className="w-4 h-4 mr-1" />
                       {formatCurrency(option.bonus)} bonus
                     </div>
@@ -236,7 +236,7 @@ export const CreditPurchaseInterface: React.FC<CreditPurchaseInterfaceProps> = (
         </TabsContent>
       </Tabs>
 
-      <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+      <div className="bg-slate-50 rounded-lg p-4 space-y-2">
         <h3 className="font-medium flex items-center">
           <CreditCard className="w-4 h-4 mr-2" />
           Payment Information

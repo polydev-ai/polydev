@@ -328,7 +328,7 @@ export default function ModelsManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-lg">Loading...</div>
       </div>
     )
@@ -336,14 +336,14 @@ export default function ModelsManagement() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-lg text-red-600">Access denied.</div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-lg text-slate-900">Access denied.</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -351,23 +351,23 @@ export default function ModelsManagement() {
             <div className="flex items-center">
               <button
                 onClick={() => router.push('/admin')}
-                className="mr-4 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="mr-4 p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
                 title="Back to Admin Portal"
               >
                 <Home className="h-5 w-5" />
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Models Registry</h1>
-                <p className="text-gray-600 mt-1">Comprehensive AI model database with pricing and capabilities</p>
+                <h1 className="text-3xl font-bold text-slate-900">Models Registry</h1>
+                <p className="text-slate-600 mt-1">Comprehensive AI model database with pricing and capabilities</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-slate-600">
                 {filteredModels.length} of {models.length} models
               </div>
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="inline-flex items-center px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-md hover:bg-slate-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create New Model
@@ -382,10 +382,10 @@ export default function ModelsManagement() {
         {showCreateForm && (
           <div className="mb-8 bg-white rounded-lg shadow-sm border p-6">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Create New Model</h2>
+              <h2 className="text-xl font-semibold text-slate-900">Create New Model</h2>
               <button
                 onClick={() => setShowCreateForm(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-slate-600 hover:text-slate-900"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -402,13 +402,13 @@ export default function ModelsManagement() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
             <div className="relative">
-              <Search className="h-5 w-5 absolute left-3 top-3 text-gray-400" />
+              <Search className="h-5 w-5 absolute left-3 top-3 text-slate-600" />
               <input
                 type="text"
                 placeholder="Search models..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="pl-10 w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
               />
             </div>
 
@@ -416,7 +416,7 @@ export default function ModelsManagement() {
             <select
               value={filterProvider}
               onChange={(e) => setFilterProvider(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
             >
               <option value="">All Providers</option>
               {uniqueProviders.map(provider => (
@@ -428,7 +428,7 @@ export default function ModelsManagement() {
             <select
               value={filterCapability}
               onChange={(e) => setFilterCapability(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
             >
               <option value="">All Capabilities</option>
               <option value="vision">Vision Support</option>
@@ -442,7 +442,7 @@ export default function ModelsManagement() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'name' | 'cost' | 'context')}
-                className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
               >
                 <option value="name">Sort by Name</option>
                 <option value="cost">Sort by Cost</option>
@@ -450,7 +450,7 @@ export default function ModelsManagement() {
               </select>
               <button
                 onClick={() => setSortDesc(!sortDesc)}
-                className={`px-3 py-2 rounded-md ${sortDesc ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                className={`px-3 py-2 rounded-md ${sortDesc ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-900'}`}
               >
                 {sortDesc ? '↓' : '↑'}
               </button>
@@ -466,19 +466,15 @@ export default function ModelsManagement() {
               <div className="p-6 border-b">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    <h3 className="text-lg font-semibold text-slate-900 mb-1">
                       {model.display_name}
                     </h3>
-                    <p className="text-sm text-gray-500 font-mono mb-2">{model.name}</p>
+                    <p className="text-sm text-slate-600 font-mono mb-2">{model.name}</p>
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      <span className="text-xs bg-slate-100 text-slate-900 border border-slate-200 px-2 py-1 rounded">
                         {model.provider_id}
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        model.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
+                      <span className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-900 border border-slate-200">
                         {model.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
@@ -486,7 +482,7 @@ export default function ModelsManagement() {
                   <div className="flex space-x-1">
                     <button
                       onClick={() => duplicateModel(model)}
-                      className="p-2 rounded-md text-purple-600 hover:bg-purple-50"
+                      className="p-2 rounded-md text-slate-900 hover:bg-slate-50"
                       title="Duplicate model"
                     >
                       <Copy className="h-4 w-4" />
@@ -496,14 +492,14 @@ export default function ModelsManagement() {
                         setEditingModel(model)
                         setShowEditForm(true)
                       }}
-                      className="p-2 rounded-md text-blue-600 hover:bg-blue-50"
+                      className="p-2 rounded-md text-slate-900 hover:bg-slate-50"
                       title="Edit model"
                     >
                       <Edit className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => toggleModelStatus(model.id, model.is_active)}
-                      className={`p-2 rounded-md ${model.is_active ? 'text-red-600 hover:bg-red-50' : 'text-green-600 hover:bg-green-50'}`}
+                      className="p-2 rounded-md text-slate-900 hover:bg-slate-50"
                       title={model.is_active ? 'Deactivate model' : 'Activate model'}
                     >
                       <Settings className="h-4 w-4" />
@@ -513,29 +509,29 @@ export default function ModelsManagement() {
               </div>
 
               {/* Pricing */}
-              <div className="p-4 bg-gray-50">
+              <div className="p-4 bg-slate-50">
                 <div className="flex items-center mb-2">
-                  <DollarSign className="h-4 w-4 text-green-600 mr-2" />
-                  <span className="text-sm font-medium text-gray-700">Per Million Tokens</span>
+                  <DollarSign className="h-4 w-4 text-slate-900 mr-2" />
+                  <span className="text-sm font-medium text-slate-900">Per Million Tokens</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <span className="text-gray-500">Input:</span>
+                    <span className="text-slate-600">Input:</span>
                     <span className="ml-1 font-semibold">{formatCurrency(model.input_cost_per_million)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Output:</span>
+                    <span className="text-slate-600">Output:</span>
                     <span className="ml-1 font-semibold">{formatCurrency(model.output_cost_per_million)}</span>
                   </div>
                   {model.cache_read_cost_per_million && (
                     <div>
-                      <span className="text-gray-500">Cache Read:</span>
+                      <span className="text-slate-600">Cache Read:</span>
                       <span className="ml-1 font-semibold">{formatCurrency(model.cache_read_cost_per_million)}</span>
                     </div>
                   )}
                   {model.cache_write_cost_per_million && (
                     <div>
-                      <span className="text-gray-500">Cache Write:</span>
+                      <span className="text-slate-600">Cache Write:</span>
                       <span className="ml-1 font-semibold">{formatCurrency(model.cache_write_cost_per_million)}</span>
                     </div>
                   )}
@@ -546,25 +542,25 @@ export default function ModelsManagement() {
               <div className="p-4">
                 <div className="flex flex-wrap gap-2 mb-4">
                   {model.supports_vision && (
-                    <div className="flex items-center text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                    <div className="flex items-center text-xs bg-slate-100 text-slate-900 border border-slate-200 px-2 py-1 rounded">
                       <Image className="h-3 w-3 mr-1" />
                       Vision
                     </div>
                   )}
                   {model.supports_reasoning && (
-                    <div className="flex items-center text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                    <div className="flex items-center text-xs bg-slate-100 text-slate-900 border border-slate-200 px-2 py-1 rounded">
                       <Brain className="h-3 w-3 mr-1" />
                       Reasoning {model.reasoning_levels && `(L${model.reasoning_levels})`}
                     </div>
                   )}
                   {model.supports_tools && (
-                    <div className="flex items-center text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">
+                    <div className="flex items-center text-xs bg-slate-100 text-slate-900 border border-slate-200 px-2 py-1 rounded">
                       <Settings className="h-3 w-3 mr-1" />
                       Tools
                     </div>
                   )}
                   {model.supports_streaming && (
-                    <div className="flex items-center text-xs bg-cyan-100 text-cyan-800 px-2 py-1 rounded">
+                    <div className="flex items-center text-xs bg-slate-100 text-slate-900 border border-slate-200 px-2 py-1 rounded">
                       <Zap className="h-3 w-3 mr-1" />
                       Streaming
                     </div>
@@ -574,15 +570,15 @@ export default function ModelsManagement() {
                 {/* Technical Specs */}
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <span className="text-gray-500">Context:</span>
+                    <span className="text-slate-600">Context:</span>
                     <span className="ml-1 font-medium">{formatContextLength(model.context_length)}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Max Output:</span>
+                    <span className="text-slate-600">Max Output:</span>
                     <span className="ml-1 font-medium">{formatContextLength(model.max_tokens)}</span>
                   </div>
                   <div className="col-span-2">
-                    <span className="text-gray-500">Family:</span>
+                    <span className="text-slate-600">Family:</span>
                     <span className="ml-1 font-medium">{model.model_family} {model.model_version}</span>
                   </div>
                 </div>
@@ -593,14 +589,14 @@ export default function ModelsManagement() {
 
         {filteredModels.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-gray-500 mb-4">No models found matching your filters</div>
+            <div className="text-slate-600 mb-4">No models found matching your filters</div>
             <button
               onClick={() => {
                 setSearchTerm('')
                 setFilterProvider('')
                 setFilterCapability('')
               }}
-              className="text-blue-600 hover:text-blue-800"
+              className="text-slate-900 hover:text-slate-700"
             >
               Clear all filters
             </button>
@@ -670,12 +666,12 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">Edit Model: {model.name}</h3>
-              <p className="text-sm text-gray-500 mt-1">{model.provider_id} • {model.model_family}</p>
+              <h3 className="text-xl font-semibold text-slate-900">Edit Model: {model.name}</h3>
+              <p className="text-sm text-slate-600 mt-1">{model.provider_id} • {model.model_family}</p>
             </div>
             <button
               onClick={onCancel}
-              className="text-gray-400 hover:text-gray-600 p-2"
+              className="text-slate-600 hover:text-slate-900 p-2"
             >
               ✕
             </button>
@@ -684,79 +680,79 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Info */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+              <h4 className="text-lg font-medium text-slate-900 mb-4">Basic Information</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Model Name *
                   </label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="gpt-4o, claude-3-5-sonnet"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Display Name *
                   </label>
                   <input
                     type="text"
                     value={formData.display_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="GPT-4o, Claude 3.5 Sonnet"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Friendly ID
                   </label>
                   <input
                     type="text"
                     value={formData.friendly_id}
                     onChange={(e) => setFormData(prev => ({ ...prev, friendly_id: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="gpt4o, claude3-5-sonnet"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Provider Model ID
                   </label>
                   <input
                     type="text"
                     value={formData.provider_model_id}
                     onChange={(e) => setFormData(prev => ({ ...prev, provider_model_id: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="Provider-specific model identifier"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Model Family
                   </label>
                   <input
                     type="text"
                     value={formData.model_family}
                     onChange={(e) => setFormData(prev => ({ ...prev, model_family: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="GPT, Claude, Gemini"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Model Version
                   </label>
                   <input
                     type="text"
                     value={formData.model_version}
                     onChange={(e) => setFormData(prev => ({ ...prev, model_version: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="4o, 3.5, pro"
                   />
                 </div>
@@ -776,13 +772,13 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
 
             {/* Pricing (Per Million Tokens) */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <DollarSign className="h-5 w-5 mr-2 text-green-600" />
+              <h4 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
+                <DollarSign className="h-5 w-5 mr-2 text-slate-900" />
                 Pricing (Per Million Tokens)
               </h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Input Cost ($/1M tokens)
                   </label>
                   <input
@@ -790,12 +786,12 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                     step="0.01"
                     value={formData.input_cost_per_million}
                     onChange={(e) => setFormData(prev => ({ ...prev, input_cost_per_million: parseFloat(e.target.value) || 0 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="15.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Output Cost ($/1M tokens)
                   </label>
                   <input
@@ -803,12 +799,12 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                     step="0.01"
                     value={formData.output_cost_per_million}
                     onChange={(e) => setFormData(prev => ({ ...prev, output_cost_per_million: parseFloat(e.target.value) || 0 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="75.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Cache Read Cost ($/1M tokens)
                   </label>
                   <input
@@ -816,12 +812,12 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                     step="0.01"
                     value={formData.cache_read_cost_per_million || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, cache_read_cost_per_million: e.target.value ? parseFloat(e.target.value) : null }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="1.50 (optional)"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Cache Write Cost ($/1M tokens)
                   </label>
                   <input
@@ -829,7 +825,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                     step="0.01"
                     value={formData.cache_write_cost_per_million || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, cache_write_cost_per_million: e.target.value ? parseFloat(e.target.value) : null }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="18.75 (optional)"
                   />
                 </div>
@@ -838,29 +834,29 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
 
             {/* Technical Specifications */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Technical Specifications</h4>
+              <h4 className="text-lg font-medium text-slate-900 mb-4">Technical Specifications</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Context Length
                   </label>
                   <input
                     type="number"
                     value={formData.context_length}
                     onChange={(e) => setFormData(prev => ({ ...prev, context_length: parseInt(e.target.value) || 0 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="200000"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Max Output Tokens
                   </label>
                   <input
                     type="number"
                     value={formData.max_tokens}
                     onChange={(e) => setFormData(prev => ({ ...prev, max_tokens: parseInt(e.target.value) || 0 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="32000"
                   />
                 </div>
@@ -869,7 +865,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
 
             {/* Capabilities */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Capabilities</h4>
+              <h4 className="text-lg font-medium text-slate-900 mb-4">Capabilities</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <label className="flex items-center">
@@ -879,7 +875,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                       onChange={(e) => setFormData(prev => ({ ...prev, supports_vision: e.target.checked }))}
                       className="mr-3"
                     />
-                    <Image className="h-4 w-4 mr-2 text-purple-600" />
+                    <Image className="h-4 w-4 mr-2 text-slate-900" />
                     Vision Support
                   </label>
                   <label className="flex items-center">
@@ -889,7 +885,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                       onChange={(e) => setFormData(prev => ({ ...prev, supports_tools: e.target.checked }))}
                       className="mr-3"
                     />
-                    <Settings className="h-4 w-4 mr-2 text-indigo-600" />
+                    <Settings className="h-4 w-4 mr-2 text-slate-900" />
                     Tool Support
                   </label>
                 </div>
@@ -901,7 +897,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                       onChange={(e) => setFormData(prev => ({ ...prev, supports_streaming: e.target.checked }))}
                       className="mr-3"
                     />
-                    <Zap className="h-4 w-4 mr-2 text-cyan-600" />
+                    <Zap className="h-4 w-4 mr-2 text-slate-900" />
                     Streaming Support
                   </label>
                   <label className="flex items-center">
@@ -911,7 +907,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                       onChange={(e) => setFormData(prev => ({ ...prev, supports_reasoning: e.target.checked }))}
                       className="mr-3"
                     />
-                    <Brain className="h-4 w-4 mr-2 text-orange-600" />
+                    <Brain className="h-4 w-4 mr-2 text-slate-900" />
                     Reasoning Support
                   </label>
                 </div>
@@ -919,7 +915,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
 
               {formData.supports_reasoning && (
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Reasoning Levels (1-5)
                   </label>
                   <input
@@ -928,7 +924,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                     max="5"
                     value={formData.reasoning_levels || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, reasoning_levels: e.target.value ? parseInt(e.target.value) : null }))}
-                    className="w-32 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-32 border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="5"
                   />
                 </div>
@@ -941,7 +937,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className="px-6 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 inline-flex items-center"
+                  className="px-6 py-2 text-white bg-slate-900 rounded-md hover:bg-slate-700 inline-flex items-center"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete Model
@@ -951,13 +947,13 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                  className="px-6 py-2 text-slate-900 bg-slate-100 rounded-md hover:bg-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-6 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-700"
                 >
                   Save Changes
                 </button>
@@ -1011,16 +1007,16 @@ function ModelCreateForm({ onSave, onCancel }: {
     <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h4>
+              <h4 className="text-lg font-medium text-slate-900 mb-4">Basic Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Provider ID *
                   </label>
                   <select
                     value={formData.provider_id}
                     onChange={(e) => setFormData(prev => ({ ...prev, provider_id: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     required
                   >
                     <option value="">Select a provider...</option>
@@ -1071,76 +1067,76 @@ function ModelCreateForm({ onSave, onCancel }: {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Model Name *
                   </label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="gpt-4, claude-3-opus, etc."
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Display Name *
                   </label>
                   <input
                     type="text"
                     value={formData.display_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="GPT-4, Claude 3 Opus, etc."
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Friendly ID
                   </label>
                   <input
                     type="text"
                     value={formData.friendly_id}
                     onChange={(e) => setFormData(prev => ({ ...prev, friendly_id: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="gpt4, claude3opus, etc."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Provider Model ID
                   </label>
                   <input
                     type="text"
                     value={formData.provider_model_id}
                     onChange={(e) => setFormData(prev => ({ ...prev, provider_model_id: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="Provider-specific model identifier"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Model Family
                   </label>
                   <input
                     type="text"
                     value={formData.model_family}
                     onChange={(e) => setFormData(prev => ({ ...prev, model_family: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="GPT, Claude, Gemini, etc."
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Model Version
                   </label>
                   <input
                     type="text"
                     value={formData.model_version}
                     onChange={(e) => setFormData(prev => ({ ...prev, model_version: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="v1, turbo, pro, etc."
                   />
                 </div>
@@ -1149,10 +1145,10 @@ function ModelCreateForm({ onSave, onCancel }: {
 
             {/* Pricing Information */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Pricing (per million tokens)</h4>
+              <h4 className="text-lg font-medium text-slate-900 mb-4">Pricing (per million tokens)</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Input Cost per Million Tokens ($)
                   </label>
                   <input
@@ -1160,12 +1156,12 @@ function ModelCreateForm({ onSave, onCancel }: {
                     step="0.01"
                     value={formData.input_cost_per_million}
                     onChange={(e) => setFormData(prev => ({ ...prev, input_cost_per_million: parseFloat(e.target.value) || 0 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Output Cost per Million Tokens ($)
                   </label>
                   <input
@@ -1173,12 +1169,12 @@ function ModelCreateForm({ onSave, onCancel }: {
                     step="0.01"
                     value={formData.output_cost_per_million}
                     onChange={(e) => setFormData(prev => ({ ...prev, output_cost_per_million: parseFloat(e.target.value) || 0 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Cache Read Cost per Million Tokens ($)
                   </label>
                   <input
@@ -1186,12 +1182,12 @@ function ModelCreateForm({ onSave, onCancel }: {
                     step="0.01"
                     value={formData.cache_read_cost_per_million || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, cache_read_cost_per_million: e.target.value ? parseFloat(e.target.value) : null }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="Optional"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Cache Write Cost per Million Tokens ($)
                   </label>
                   <input
@@ -1199,7 +1195,7 @@ function ModelCreateForm({ onSave, onCancel }: {
                     step="0.01"
                     value={formData.cache_write_cost_per_million || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, cache_write_cost_per_million: e.target.value ? parseFloat(e.target.value) : null }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="Optional"
                   />
                 </div>
@@ -1208,29 +1204,29 @@ function ModelCreateForm({ onSave, onCancel }: {
 
             {/* Model Specifications */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Model Specifications</h4>
+              <h4 className="text-lg font-medium text-slate-900 mb-4">Model Specifications</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Context Length (tokens)
                   </label>
                   <input
                     type="number"
                     value={formData.context_length}
                     onChange={(e) => setFormData(prev => ({ ...prev, context_length: parseInt(e.target.value) || 0 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="8192"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Max Output Tokens
                   </label>
                   <input
                     type="number"
                     value={formData.max_tokens}
                     onChange={(e) => setFormData(prev => ({ ...prev, max_tokens: parseInt(e.target.value) || 0 }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="4096"
                   />
                 </div>
@@ -1239,7 +1235,7 @@ function ModelCreateForm({ onSave, onCancel }: {
 
             {/* Capabilities */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-4">Capabilities</h4>
+              <h4 className="text-lg font-medium text-slate-900 mb-4">Capabilities</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <label className="flex items-center">
@@ -1249,7 +1245,7 @@ function ModelCreateForm({ onSave, onCancel }: {
                       onChange={(e) => setFormData(prev => ({ ...prev, supports_vision: e.target.checked }))}
                       className="mr-3"
                     />
-                    <Image className="h-4 w-4 mr-2 text-purple-600" />
+                    <Image className="h-4 w-4 mr-2 text-slate-900" />
                     Vision Support
                   </label>
                   <label className="flex items-center">
@@ -1259,7 +1255,7 @@ function ModelCreateForm({ onSave, onCancel }: {
                       onChange={(e) => setFormData(prev => ({ ...prev, supports_tools: e.target.checked }))}
                       className="mr-3"
                     />
-                    <Settings className="h-4 w-4 mr-2 text-indigo-600" />
+                    <Settings className="h-4 w-4 mr-2 text-slate-900" />
                     Tool Support
                   </label>
                 </div>
@@ -1271,7 +1267,7 @@ function ModelCreateForm({ onSave, onCancel }: {
                       onChange={(e) => setFormData(prev => ({ ...prev, supports_streaming: e.target.checked }))}
                       className="mr-3"
                     />
-                    <Zap className="h-4 w-4 mr-2 text-cyan-600" />
+                    <Zap className="h-4 w-4 mr-2 text-slate-900" />
                     Streaming Support
                   </label>
                   <label className="flex items-center">
@@ -1281,7 +1277,7 @@ function ModelCreateForm({ onSave, onCancel }: {
                       onChange={(e) => setFormData(prev => ({ ...prev, supports_reasoning: e.target.checked }))}
                       className="mr-3"
                     />
-                    <Brain className="h-4 w-4 mr-2 text-orange-600" />
+                    <Brain className="h-4 w-4 mr-2 text-slate-900" />
                     Reasoning Support
                   </label>
                 </div>
@@ -1289,7 +1285,7 @@ function ModelCreateForm({ onSave, onCancel }: {
 
               {formData.supports_reasoning && (
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-900 mb-2">
                     Reasoning Levels (1-5)
                   </label>
                   <input
@@ -1298,7 +1294,7 @@ function ModelCreateForm({ onSave, onCancel }: {
                     max="5"
                     value={formData.reasoning_levels || ''}
                     onChange={(e) => setFormData(prev => ({ ...prev, reasoning_levels: e.target.value ? parseInt(e.target.value) : null }))}
-                    className="w-32 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-32 border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
                     placeholder="5"
                   />
                 </div>
@@ -1312,7 +1308,7 @@ function ModelCreateForm({ onSave, onCancel }: {
                     onChange={(e) => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
                     className="mr-3"
                   />
-                  <Eye className="h-4 w-4 mr-2 text-green-600" />
+                  <Eye className="h-4 w-4 mr-2 text-slate-900" />
                   Active (Available for use)
                 </label>
               </div>
@@ -1323,13 +1319,13 @@ function ModelCreateForm({ onSave, onCancel }: {
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-6 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                className="px-6 py-2 text-slate-900 bg-slate-100 rounded-md hover:bg-slate-200"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-6 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-700"
               >
                 Create Model
               </button>
