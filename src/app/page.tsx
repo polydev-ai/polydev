@@ -76,90 +76,106 @@ const PROBLEM_SCENARIOS = [
 
 const CODE_EXAMPLES = [
   {
-    title: "React State Management",
-    filename: "cart.tsx",
-    problem: "// Race conditions causing bugs",
-    code: `const [items, setItems] = useState([])
-const [total, setTotal] = useState(0)
+    title: "Production Database Crisis",
+    filename: "user-service.ts",
+    problem: "// N+1 query killing prod performance",
+    code: `async function getUsers() {
+  const users = await db.query('SELECT * FROM users')
 
-useEffect(() => {
-  setTotal(items.reduce((sum, i) =>
-    sum + i.price, 0))
-}, [items])
+  for (const user of users) {
+    user.posts = await db.query(
+      'SELECT * FROM posts WHERE user_id = ?',
+      [user.id]
+    )
+  }
 
-// Bug: total updates race with item changes`,
+  return users  // 10k users = 10k extra queries!
+}`,
     responses: [
       {
         model: "Claude Sonnet 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Use useReducer to handle cart state atomically. Calculate total directly in render with useMemo. Eliminates race conditions."
+        text: "Critical N+1 issue. Use JOIN or DataLoader to batch queries. Add query monitoring with pg-stats. Reduces 10k queries to 1."
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Replace useState with Zustand store. Compute totals as selectors. Better performance and no sync issues."
+        text: "Implement eager loading with Prisma or TypeORM. Add Redis caching layer. Use database connection pooling for scale."
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Implement custom hook with useReducer. Add memoized selectors for derived state. More maintainable."
+        text: "Batch with single LEFT JOIN query. Add GraphQL DataLoader pattern. Implement query result caching with 5min TTL."
       }
     ]
   },
   {
-    title: "Kubernetes Memory",
-    filename: "deployment.yaml",
-    problem: "// Pods keep getting OOMKilled",
-    code: `resources:
-  requests:
-    memory: "128Mi"
-    cpu: "100m"
-  limits:
-    memory: "256Mi"  # Too low for Node.js
-    cpu: "200m"`,
+    title: "Memory Leak in Production",
+    filename: "analytics.js",
+    problem: "// Event listeners causing memory leaks",
+    code: `class Analytics {
+  constructor() {
+    this.events = []
+    setInterval(() => {
+      this.cleanup()
+    }, 60000)
+  }
+
+  track(event) {
+    this.events.push({ ...event, ts: Date.now() })
+    window.addEventListener('beforeunload', () => {
+      this.flush()  // Leak: never removed!
+    })
+  }
+}`,
     responses: [
       {
         model: "Claude Sonnet 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Bump to 512Mi request, 1Gi limit. Add health checks. Node.js needs headroom for V8 heap."
+        text: "Remove event listeners in cleanup. Use WeakMap for event storage. Add memory profiling to catch leaks before deploy."
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Set 1Gi limit minimum. Add HPA for auto-scaling. Monitor with Prometheus to tune settings."
+        text: "Implement proper lifecycle management. Use AbortController for cleanup. Add heap snapshots to CI/CD pipeline."
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Increase to 1Gi limit. Implement vertical pod autoscaler. Add proper resource monitoring."
+        text: "Store listener refs for cleanup. Use FinalizationRegistry API. Add automated memory regression tests with Puppeteer."
       }
     ]
   },
   {
-    title: "Security Issue",
-    filename: "auth.py",
-    problem: "// SQL injection vulnerability",
-    code: `query = f"""
-  SELECT * FROM users
-  WHERE username='{username}'
-  AND password='{password}'  # Dangerous!
-"""
-user = db.execute(query).fetchone()`,
+    title: "Auth Bypass Vulnerability",
+    filename: "middleware.ts",
+    problem: "// Critical authentication bypass",
+    code: `app.use((req, res, next) => {
+  const token = req.headers.authorization
+
+  if (token && token.startsWith('Bearer ')) {
+    const user = jwt.decode(token.slice(7))
+    req.user = user  // No verification!
+    return next()
+  }
+
+  res.status(401).json({ error: 'Unauthorized' })
+})`,
     responses: [
       {
         model: "Claude Sonnet 4",
         avatar: "https://models.dev/logos/anthropic.svg",
-        text: "Critical: Use parameterized queries. Hash passwords with bcrypt. Add rate limiting and CSRF tokens."
+        text: "CRITICAL: Use jwt.verify() not decode(). Add secret key validation. Implement token rotation and rate limiting immediately."
       },
       {
         model: "GPT-5",
         avatar: "https://models.dev/logos/openai.svg",
-        text: "Switch to ORM with prepared statements. Never store plaintext passwords. Implement MFA."
+        text: "Replace with verified JWT library. Add Redis session store. Implement refresh tokens with short-lived access tokens."
       },
       {
         model: "Gemini 2.5 Pro",
         avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
-        text: "Use SQLAlchemy ORM. Hash with Argon2id. Add JWT tokens and input sanitization."
+        text: "Use passport.js with proper validation. Add JWKS endpoint verification. Implement distributed session management with TTL."
       }
     ]
   }

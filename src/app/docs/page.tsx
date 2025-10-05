@@ -999,10 +999,9 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                 </div>
 
                 {/* Navigation */}
-                <nav className="space-y-1">
-                  <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-4">Documentation</h3>
+                <nav className="space-y-6">
                   {docSections.map((section) => (
-                    <div key={section.id} className="space-y-1">
+                    <div key={section.id} className="space-y-3">
                       <button
                         onClick={() => {
                           setActiveSection(section.id)
@@ -1010,31 +1009,25 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                             handleItemClick(section.items[0])
                           }
                         }}
-                        className={`w-full text-left px-4 py-3 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                          activeSection === section.id
-                            ? 'text-slate-900 bg-slate-100 border border-slate-200'
-                            : 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
-                        }`}
+                        className="w-full text-left text-sm font-semibold text-slate-900"
                       >
                         {section.title}
                       </button>
-                      {activeSection === section.id && (
-                        <div className="ml-2 space-y-1 border-l-2 border-slate-200 pl-4">
-                          {section.items.map((item) => (
-                            <button
-                              key={item.href}
-                              onClick={() => handleItemClick(item)}
-                              className={`block w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
-                                activeItem === item.href.replace('#', '')
-                                  ? 'text-slate-900 bg-slate-100 font-medium'
-                                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                              }`}
-                            >
-                              {item.title}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      <div className="space-y-1">
+                        {section.items.map((item) => (
+                          <button
+                            key={item.href}
+                            onClick={() => handleItemClick(item)}
+                            className={`block w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
+                              activeItem === item.href.replace('#', '')
+                                ? 'text-slate-900 bg-slate-100 font-medium'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                            }`}
+                          >
+                            {item.title}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </nav>
@@ -1056,7 +1049,27 @@ Ready to configure authentication? [Continue to Authentication →](#authenticat
                 <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-12">
                   <article
                     id="doc-content"
-                    className="prose prose-slate max-w-none prose-xl prose-headings:text-slate-900 prose-headings:font-bold prose-headings:tracking-tight prose-h1:text-5xl prose-h1:mb-8 prose-h1:leading-tight prose-h2:text-4xl prose-h2:leading-tight prose-h2:mt-16 prose-h2:mb-8 prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-4 prose-h3:text-2xl prose-h3:mt-12 prose-h3:mb-6 prose-h3:font-semibold prose-p:text-slate-700 prose-p:leading-8 prose-p:mb-8 prose-p:text-lg prose-li:text-slate-700 prose-li:mb-3 prose-li:text-lg prose-a:text-slate-900 prose-a:font-medium prose-a:no-underline hover:prose-a:text-slate-700 hover:prose-a:underline prose-code:text-slate-900 prose-code:bg-slate-100 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:text-base prose-code:font-mono prose-code:font-medium prose-pre:bg-white prose-pre:text-slate-900 prose-pre:border prose-pre:border-slate-200 prose-blockquote:border-l-slate-900 prose-blockquote:bg-slate-50 prose-blockquote:py-6 prose-blockquote:px-8 prose-blockquote:my-10 prose-blockquote:rounded-r-lg prose-blockquote:border-l-4 prose-strong:text-slate-900 prose-strong:font-semibold max-w-3xl"
+                    className="prose prose-slate max-w-none
+                      prose-headings:scroll-m-20 prose-headings:font-semibold prose-headings:tracking-tight
+                      prose-h1:text-4xl prose-h1:mb-6 prose-h1:mt-2
+                      prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-2
+                      prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4
+                      prose-h4:text-xl prose-h4:mt-6 prose-h4:mb-2
+                      prose-p:leading-7 prose-p:text-slate-700 prose-p:mb-4
+                      prose-a:font-medium prose-a:text-slate-900 prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-slate-600
+                      prose-blockquote:mt-6 prose-blockquote:border-l-2 prose-blockquote:border-slate-300 prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:text-slate-700
+                      prose-code:relative prose-code:rounded prose-code:bg-slate-100 prose-code:px-[0.4rem] prose-code:py-[0.2rem] prose-code:font-mono prose-code:text-sm prose-code:font-medium prose-code:text-slate-900 prose-code:before:content-none prose-code:after:content-none
+                      prose-pre:bg-white prose-pre:text-slate-900 prose-pre:border prose-pre:border-slate-200 prose-pre:mt-6 prose-pre:mb-4 prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:py-4
+                      prose-ol:my-6 prose-ol:ml-6 prose-ol:list-decimal prose-ol:[&>li]:mt-2
+                      prose-ul:my-6 prose-ul:ml-6 prose-ul:list-disc prose-ul:[&>li]:mt-2
+                      prose-li:text-slate-700 prose-li:leading-7
+                      prose-table:my-6 prose-table:w-full prose-table:overflow-y-auto
+                      prose-th:border prose-th:border-slate-200 prose-th:px-4 prose-th:py-2 prose-th:text-left prose-th:font-semibold prose-th:bg-slate-50
+                      prose-td:border prose-td:border-slate-200 prose-td:px-4 prose-td:py-2 prose-td:text-left
+                      prose-img:rounded-lg prose-img:border prose-img:border-slate-200
+                      prose-hr:my-8 prose-hr:border-slate-200
+                      prose-strong:font-semibold prose-strong:text-slate-900
+                      max-w-3xl"
                     dangerouslySetInnerHTML={{ __html: content }}
                   />
                   <nav className="hidden lg:block sticky top-24 self-start text-sm border-l border-slate-200 pl-6">
