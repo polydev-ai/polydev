@@ -7,6 +7,8 @@ interface ChatSession {
   id: string
   title: string
   updated_at: string
+  created_at: string
+  archived: boolean
 }
 
 interface ChatSessionSidebarProps {
@@ -19,8 +21,8 @@ interface ChatSessionSidebarProps {
   currentSession: ChatSession | null
   sessionId: string
   deleteSession: (id: string) => Promise<boolean>
-  setCurrentSession: (session: ChatSession | null) => void
-  setMessages: (messages: any[]) => void
+  setCurrentSession: React.Dispatch<React.SetStateAction<ChatSession | null>>
+  setMessages: React.Dispatch<React.SetStateAction<any[]>>
 }
 
 function ChatSessionSidebarComponent({
