@@ -79,8 +79,8 @@ export function ApiConfigurationPanel({ className = '' }: ApiConfigurationPanelP
               onClick={() => setActiveTab('api-keys')}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === 'api-keys'
-                  ? 'border-slate-900 text-slate-900
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300
+                  ? 'border-slate-900 text-slate-900'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center space-x-2">
