@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboardData } from '../../hooks/useDashboardData'
@@ -40,8 +40,8 @@ export default function Dashboard() {
     }
   }, [dashboardRequestLogs])
 
-  // Get provider logo from models.dev providersRegistry (same as models page)
-  const getProviderLogoUrl = (providerName: string): string | null => {
+  // Get provider logo from models.dev providersRegistry (same as models page) - Memoized
+  const getProviderLogoUrl = useCallback((providerName: string): string | null => {
     if (!providerName || !providersRegistry || providersRegistry.length === 0) return null
 
     const normalized = providerName.toLowerCase()
@@ -86,52 +86,56 @@ export default function Dashboard() {
     }
 
     return provider?.logo_url || provider?.logo || null
-  }
+  }, [providersRegistry])
 
-  // Filter request logs
-  const filteredLogs = requestLogs.filter(log => {
-    // Provider filter
-    if (filterProvider && log.providers && Array.isArray(log.providers)) {
-      const hasProvider = log.providers.some((p: any) =>
-        p.provider?.toLowerCase().includes(filterProvider.toLowerCase())
-      )
-      if (!hasProvider) return false
-    }
-
-    // Status filter
-    if (filterStatus) {
-      const logStatus = log.status === 'success' || log.totalTokens > 0 ? 'success' : 'error'
-      if (logStatus !== filterStatus) return false
-    }
-
-    // Date range filter
-    if (filterDateRange !== 'all') {
-      const logDate = new Date(log.timestamp)
-      const now = new Date()
-
-      if (filterDateRange === 'today') {
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        if (logDate < todayStart) return false
-      } else if (filterDateRange === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        if (logDate < weekAgo) return false
-      } else if (filterDateRange === 'month') {
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-        if (logDate < monthStart) return false
+  // Filter request logs - Memoized for performance
+  const filteredLogs = useMemo(() => {
+    return requestLogs.filter(log => {
+      // Provider filter
+      if (filterProvider && log.providers && Array.isArray(log.providers)) {
+        const hasProvider = log.providers.some((p: any) =>
+          p.provider?.toLowerCase().includes(filterProvider.toLowerCase())
+        )
+        if (!hasProvider) return false
       }
-    }
 
-    return true
-  })
+      // Status filter
+      if (filterStatus) {
+        const logStatus = log.status === 'success' || log.totalTokens > 0 ? 'success' : 'error'
+        if (logStatus !== filterStatus) return false
+      }
 
-  // Get unique providers for filter dropdown
-  const uniqueProviders = Array.from(
-    new Set(
-      requestLogs.flatMap((log: any) =>
-        log.providers?.map((p: any) => p.provider) || []
+      // Date range filter
+      if (filterDateRange !== 'all') {
+        const logDate = new Date(log.timestamp)
+        const now = new Date()
+
+        if (filterDateRange === 'today') {
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          if (logDate < todayStart) return false
+        } else if (filterDateRange === 'week') {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          if (logDate < weekAgo) return false
+        } else if (filterDateRange === 'month') {
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+          if (logDate < monthStart) return false
+        }
+      }
+
+      return true
+    })
+  }, [requestLogs, filterProvider, filterStatus, filterDateRange])
+
+  // Get unique providers for filter dropdown - Memoized
+  const uniqueProviders = useMemo(() => {
+    return Array.from(
+      new Set(
+        requestLogs.flatMap((log: any) =>
+          log.providers?.map((p: any) => p.provider) || []
+        )
       )
-    )
-  ).sort()
+    ).sort()
+  }, [requestLogs])
 
   // Get all active providers (both with analytics data and configured providers)
   const allActiveProviders = useMemo(() => {
@@ -238,13 +242,13 @@ export default function Dashboard() {
     )
   }
 
-  const formatNumber = (num: number) => {
+  const formatNumber = useCallback((num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
     return num.toString()
-  }
+  }, [])
 
-  const formatTimeAgo = (timestamp: string) => {
+  const formatTimeAgo = useCallback((timestamp: string) => {
     const now = new Date()
     const time = new Date(timestamp)
     const diffMs = now.getTime() - time.getTime()
@@ -258,7 +262,7 @@ export default function Dashboard() {
 
     const diffDays = Math.floor(diffHours / 24)
     return `${diffDays}d ago`
-  }
+  }, [])
 
   return (
     <div className="min-h-screen bg-white">
