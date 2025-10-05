@@ -1,15 +1,14 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import {
   CreditCard,
-  Crown,
   MessageSquare,
-  Zap,
   Calendar,
   DollarSign,
   Settings,
@@ -53,6 +52,16 @@ const subscriptionCache = {
 }
 
 let activeRequest: Promise<any> | null = null
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+}
 
 export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
@@ -256,12 +265,17 @@ export default function SubscriptionPage() {
   } = computedValues
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <motion.div
+      className="container mx-auto p-6 space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div className="flex items-center justify-between" variants={itemVariants}>
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             Subscription
-            {isPro && <Crown className="h-6 w-6 text-slate-900" />}
+            {isPro && <Badge variant="default" className="ml-2 bg-slate-900 text-white">Pro</Badge>}
           </h1>
           <p className="text-muted-foreground mt-1">
             Manage your Polydev subscription and usage
@@ -270,7 +284,7 @@ export default function SubscriptionPage() {
         <Badge variant={(isPro || isPlus) ? "default" : "secondary"} className="text-sm">
           {isPro ? 'Pro Plan' : isPlus ? 'Plus Plan' : 'Free Plan'}
         </Badge>
-      </div>
+      </motion.div>
 
       {/* Message Display */}
       {message && (
@@ -286,7 +300,8 @@ export default function SubscriptionPage() {
       )}
 
       {/* Current Plan Status */}
-      <Card>
+      <motion.div variants={itemVariants}>
+      <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -299,12 +314,12 @@ export default function SubscriptionPage() {
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 {isPro ? (
                   <>
-                    <Crown className="h-5 w-5 text-slate-900" />
+                    <Badge variant="default" className="bg-slate-900 text-white">Pro</Badge>
                     Polydev Pro
                   </>
                 ) : isPlus ? (
                   <>
-                    <Crown className="h-5 w-5 text-slate-900" />
+                    <Badge variant="default" className="bg-slate-900 text-white">Plus</Badge>
                     Polydev Plus
                   </>
                 ) : (
@@ -346,9 +361,10 @@ export default function SubscriptionPage() {
           </div>
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Usage Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" variants={itemVariants}>
         {/* Message Usage */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -437,7 +453,7 @@ export default function SubscriptionPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-slate-900" />
+                
                 Plus Plan
               </div>
               {isPlus && <Badge className="bg-slate-900 text-white">Current</Badge>}
@@ -477,7 +493,7 @@ export default function SubscriptionPage() {
                   onClick={() => handleUpgrade('plus', 'month')}
                   disabled={isUpgrading}
                 >
-                  <Zap className="h-4 w-4 mr-2" />
+                  
                   {isUpgrading ? 'Processing...' : 'Monthly - $25/mo'}
                 </Button>
                 <Button
@@ -486,7 +502,7 @@ export default function SubscriptionPage() {
                   onClick={() => handleUpgrade('plus', 'year')}
                   disabled={isUpgrading}
                 >
-                  <Zap className="h-4 w-4 mr-2" />
+                  
                   {isUpgrading ? 'Processing...' : 'Annual - $240/yr ($20/mo)'}
                 </Button>
               </div>
@@ -499,7 +515,7 @@ export default function SubscriptionPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Crown className="h-5 w-5 text-slate-900" />
+                
                 Pro Plan
               </div>
               {isPro && <Badge className="bg-slate-900 text-white">Current</Badge>}
@@ -539,7 +555,7 @@ export default function SubscriptionPage() {
                   onClick={() => handleUpgrade('pro', 'month')}
                   disabled={isUpgrading}
                 >
-                  <Zap className="h-4 w-4 mr-2" />
+                  
                   {isUpgrading ? 'Processing...' : 'Monthly - $60/mo'}
                 </Button>
                 <Button
@@ -548,7 +564,7 @@ export default function SubscriptionPage() {
                   onClick={() => handleUpgrade('pro', 'year')}
                   disabled={isUpgrading}
                 >
-                  <Zap className="h-4 w-4 mr-2" />
+                  
                   {isUpgrading ? 'Processing...' : 'Annual - $600/yr ($50/mo)'}
                 </Button>
               </div>
@@ -556,6 +572,6 @@ export default function SubscriptionPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
-import { Plus, Eye, EyeOff, Copy, Trash2, Settings, Key, AlertCircle, Check, Clock, Zap } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Plus, Eye, EyeOff, Copy, Trash2, Settings, Key, AlertCircle, Check, Clock } from 'lucide-react'
 
 interface MCPToken {
   id: string
@@ -16,6 +17,16 @@ interface MCPToken {
   token_type?: 'api' | 'oauth'
   expires_at?: string
   full_token?: string
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
 }
 
 export default function MCPTokensPage() {
@@ -185,8 +196,13 @@ export default function MCPTokensPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
-      <div className="mb-8">
+    <motion.div
+      className="max-w-6xl mx-auto p-8"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div className="mb-8" variants={itemVariants}>
         <h1 className="text-3xl font-bold text-slate-900 mb-4">
           MCP API Tokens
         </h1>
@@ -208,7 +224,7 @@ export default function MCPTokensPage() {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {error && (
         <div className="bg-slate-50 border border-slate-200 text-slate-900 px-4 py-3 rounded mb-6 flex items-center space-x-2 font-medium">
@@ -261,7 +277,11 @@ export default function MCPTokensPage() {
       )}
 
       {/* Tokens List */}
-      <div className="bg-white shadow border border-slate-200 rounded-lg">
+      <motion.div
+        className="bg-white shadow border border-slate-200 rounded-lg hover:shadow-lg transition-shadow"
+        variants={itemVariants}
+        whileHover={{ scale: 1.01 }}
+      >
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
           <h2 className="text-xl font-semibold text-slate-900">
             Your MCP Tokens
@@ -392,7 +412,6 @@ export default function MCPTokensPage() {
                             {token.active ? 'Active' : 'Disabled'}
                           </span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTierBadge(token.rate_limit_tier)}`}>
-                            <Zap className="w-3 h-3 inline mr-1" />
                             {token.rate_limit_tier}
                           </span>
                         </div>
@@ -448,10 +467,14 @@ export default function MCPTokensPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Usage Instructions */}
-      <div className="mt-8 bg-slate-50 rounded-lg p-6 border border-slate-200">
+      <motion.div
+        className="mt-8 bg-slate-50 rounded-lg p-6 border border-slate-200 hover:shadow-lg transition-shadow"
+        variants={itemVariants}
+        whileHover={{ scale: 1.01 }}
+      >
         <h3 className="font-semibold text-slate-900 mb-4 flex items-center space-x-2">
           <Settings className="w-5 h-5" />
           <span>How to Use MCP Tokens</span>
@@ -517,7 +540,7 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"
             </pre>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

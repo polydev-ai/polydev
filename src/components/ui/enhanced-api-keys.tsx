@@ -5,7 +5,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { usePreferences } from '../../hooks/usePreferences'
 import { useEnhancedApiKeysData } from '../../hooks/useEnhancedApiKeysData'
 import { createClient } from '../../app/utils/supabase/client'
-import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, TrendingUp, AlertCircle, Check, Filter, Star, StarOff, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Wrench, Clock, RefreshCw, Copy, Crown, Leaf } from 'lucide-react'
+import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, AlertCircle, Check, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Clock, RefreshCw, Copy } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
 // Use API endpoint instead of direct modelsDevService import to avoid server-side imports in client component
@@ -675,10 +676,36 @@ export default function EnhancedApiKeysPage() {
     return acc
   }, {} as Record<string, ApiKey[]>)
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.3 }
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div
+        className="flex items-center justify-between"
+        variants={itemVariants}
+      >
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Models</h1>
           <p className="text-slate-600 mt-1">
@@ -718,8 +745,14 @@ export default function EnhancedApiKeysPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center space-x-2">
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center space-x-2"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
           <AlertCircle className="w-5 h-5 text-slate-900" />
           <span className="text-slate-900 font-medium">{error}</span>
           <button
@@ -728,11 +761,18 @@ export default function EnhancedApiKeysPage() {
           >
             ×
           </button>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {success && (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center space-x-2">
+      <AnimatePresence>
+        {success && (
+          <motion.div
+            className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center space-x-2"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
           <Check className="w-5 h-5 text-slate-900" />
           <span className="text-slate-900 font-medium">{success}</span>
           <button
@@ -741,24 +781,28 @@ export default function EnhancedApiKeysPage() {
           >
             ×
           </button>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Simple Mode: Unified Priority Waterfall */}
       {viewMode === 'simple' && (
-        <ModelPriorityWaterfall
+        <motion.div variants={itemVariants}>
+          <ModelPriorityWaterfall
           apiKeys={apiKeys}
           quota={quota}
           modelTiers={modelTiers}
           cliStatuses={cliStatuses}
           modelsDevProviders={modelsDevProviders}
           onRefresh={refresh}
-        />
+          />
+        </motion.div>
       )}
 
       {/* Advanced Mode: Detailed Controls */}
       {viewMode === 'advanced' && (
-        <Suspense fallback={
+        <motion.div variants={itemVariants}>
+          <Suspense fallback={
           <div className="bg-white rounded-lg border border-slate-200 p-6">
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
@@ -772,10 +816,15 @@ export default function EnhancedApiKeysPage() {
           {/* Model Preference Selector */}
           <ModelPreferenceSelector />
         </Suspense>
+        </motion.div>
       )}
 
       {/* CLI Tools Status Section */}
-      <div className="bg-white rounded-lg border border-slate-200">
+      <motion.div
+        className="bg-white rounded-lg border border-slate-200 hover:shadow-lg transition-shadow"
+        variants={itemVariants}
+        whileHover={{ scale: 1.01 }}
+      >
         <div className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -977,11 +1026,14 @@ export default function EnhancedApiKeysPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* API Keys Section */}
       {apiKeys.length > 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
+        <motion.div
+          className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-lg transition-shadow"
+          variants={itemVariants}
+        >
           <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center space-x-2">
             <Settings className="w-5 h-5" />
             <span>API Keys</span>
@@ -1043,13 +1095,19 @@ export default function EnhancedApiKeysPage() {
                                       </span>
                                     </div>
                                     {key.is_preferred && (
-                                      <span title="Preferred provider">
-                                        <Star className="w-4 h-4 text-slate-900 fill-current" />
+                                      <span
+                                        title="Preferred provider"
+                                        className="bg-slate-900 text-white px-2 py-0.5 rounded text-xs font-medium"
+                                      >
+                                        Preferred
                                       </span>
                                     )}
                                     {key.is_primary && (
-                                      <span title="Primary key for this provider">
-                                        <Crown className="w-4 h-4 text-slate-900 fill-current" />
+                                      <span
+                                        title="Primary key for this provider"
+                                        className="bg-slate-700 text-white px-2 py-0.5 rounded text-xs font-medium"
+                                      >
+                                        Primary
                                       </span>
                                     )}
                                     <button
@@ -1117,7 +1175,11 @@ export default function EnhancedApiKeysPage() {
                                     </div>
                                     <div className="flex space-x-2 pt-2">
                                       <button
-                                        className={`text-sm flex items-center space-x-1 ${key.is_primary ? 'text-slate-900 hover:text-slate-700' : 'text-slate-600 hover:text-slate-900'}`}
+                                        className={`text-sm flex items-center space-x-1 px-2 py-1 rounded ${
+                                          key.is_primary
+                                            ? 'bg-slate-900 text-white hover:bg-slate-700'
+                                            : 'text-slate-600 hover:text-slate-900 border border-slate-200'
+                                        }`}
                                         onClick={async () => {
                                           try {
                                             const response = await fetch(`/api/api-keys/${key.id}`, {
@@ -1134,7 +1196,6 @@ export default function EnhancedApiKeysPage() {
                                         }}
                                         title={key.is_primary ? 'Remove as primary' : 'Mark as primary'}
                                       >
-                                        <Crown className={`w-3 h-3 ${key.is_primary ? 'fill-current' : ''}`} />
                                         <span>{key.is_primary ? 'Primary' : 'Set Primary'}</span>
                                       </button>
                                       <button
@@ -1179,7 +1240,7 @@ export default function EnhancedApiKeysPage() {
               )}
             </Droppable>
           </DragDropContext>
-        </div>
+        </motion.div>
       )}
 
 
@@ -1402,7 +1463,7 @@ export default function EnhancedApiKeysPage() {
                     const outputCost = (model.output_cost_per_million || 0) // Already per 1M tokens
                     const modelTierInfo = getModelTier(model.id)
                     const tierBadge = modelTierInfo
-                      ? ` [${modelTierInfo.tier === 'premium' ? '👑 Premium' : modelTierInfo.tier === 'normal' ? '⭐ Normal' : '🌿 Eco'}]`
+                      ? ` [${modelTierInfo.tier.charAt(0).toUpperCase() + modelTierInfo.tier.slice(1)}]`
                       : ''
                     const priceText = inputCost > 0 || outputCost > 0
                       ? ` - $${inputCost.toFixed(2)}/$${outputCost.toFixed(2)} per 1M`
@@ -1424,13 +1485,10 @@ export default function EnhancedApiKeysPage() {
                 const modelTierInfo = getModelTier(selectedModel.id)
                 if (!modelTierInfo) return null
 
-                const TierIcon = modelTierInfo.tier === 'premium' ? Crown : modelTierInfo.tier === 'normal' ? Star : Leaf
-
                 return (
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <TierIcon className="w-4 h-4 text-slate-900" />
                         <span className="text-sm font-medium text-slate-900">
                           {modelTierInfo.tier.charAt(0).toUpperCase() + modelTierInfo.tier.slice(1)} Perspective Tier
                         </span>
@@ -1456,7 +1514,6 @@ export default function EnhancedApiKeysPage() {
                 return (
                   <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
                     <div className="flex items-center space-x-2 mb-2">
-                      <TrendingUp className="w-4 h-4 text-slate-900" />
                       <h4 className="text-sm font-medium text-slate-900">
                         Model Pricing
                       </h4>
@@ -1603,7 +1660,10 @@ export default function EnhancedApiKeysPage() {
       )}
 
       {/* All Available Models Section */}
-      <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
+      <motion.div
+        className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-lg transition-shadow"
+        variants={itemVariants}
+      >
         <button
           onClick={() => setAllModelsExpanded(!allModelsExpanded)}
           className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
@@ -1739,7 +1799,7 @@ export default function EnhancedApiKeysPage() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { createClient } from '../utils/supabase/client'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface UserProfile {
   id: string
@@ -224,11 +225,37 @@ export default function Profile() {
 
   const { displayName, avatarInitial, memberSince, formattedTokens } = computedValues
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.3 }
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-white py-8">
+    <motion.div
+      className="min-h-screen bg-white py-8"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow mb-8">
+        <motion.div
+          className="bg-white rounded-lg shadow mb-8 hover:shadow-lg transition-shadow"
+          variants={itemVariants}
+        >
           <div className="px-6 py-8">
             <div className="flex items-center space-x-6">
               <div className="h-24 w-24 bg-slate-900 rounded-full flex items-center justify-center">
@@ -263,11 +290,21 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <motion.div
+          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+          variants={containerVariants}
+        >
           {/* Stats Cards */}
           <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow p-6">
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
+              variants={containerVariants}
+            >
+              <motion.div
+                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+                variants={itemVariants}
+                whileHover={{ scale: 1.02 }}
+              >
                 <div className="flex items-center">
                   <div className="p-2 bg-slate-100 rounded-lg">
                     <svg className="h-6 w-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,9 +316,13 @@ export default function Profile() {
                     <p className="text-2xl font-bold text-slate-900">{stats?.totalChats || 0}</p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <motion.div
+                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+                variants={itemVariants}
+                whileHover={{ scale: 1.02 }}
+              >
                 <div className="flex items-center">
                   <div className="p-2 bg-slate-100 rounded-lg">
                     <svg className="h-6 w-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -293,9 +334,13 @@ export default function Profile() {
                     <p className="text-2xl font-bold text-slate-900">{formattedTokens}</p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <motion.div
+                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+                variants={itemVariants}
+                whileHover={{ scale: 1.02 }}
+              >
                 <div className="flex items-center">
                   <div className="p-2 bg-slate-100 rounded-lg">
                     <svg className="h-6 w-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -307,9 +352,13 @@ export default function Profile() {
                     <p className="text-2xl font-bold text-slate-900">{stats?.favoriteModel || 'N/A'}</p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <motion.div
+                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+                variants={itemVariants}
+                whileHover={{ scale: 1.02 }}
+              >
                 <div className="flex items-center">
                   <div className="p-2 bg-slate-100 rounded-lg">
                     <svg className="h-6 w-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -321,11 +370,14 @@ export default function Profile() {
                     <p className="text-2xl font-bold text-slate-900">{stats?.joinedDays || 0}</p>
                   </div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
             {/* Recent Activity */}
-            <div className="bg-white rounded-lg shadow">
+            <motion.div
+              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
+              variants={itemVariants}
+            >
               <div className="px-6 py-4 border-b border-slate-200">
                 <h3 className="text-lg font-medium text-slate-900">Recent Activity</h3>
               </div>
@@ -373,12 +425,15 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Profile Info */}
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
+            <motion.div
+              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+              variants={itemVariants}
+            >
               <h3 className="text-lg font-medium text-slate-900 mb-4">Profile Information</h3>
               <div className="space-y-3">
                 <div>
@@ -418,9 +473,12 @@ export default function Profile() {
                   Edit Profile
                 </a>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <motion.div
+              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+              variants={itemVariants}
+            >
               <h3 className="text-lg font-medium text-slate-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <a
@@ -442,10 +500,10 @@ export default function Profile() {
                   Explore Models
                 </a>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }

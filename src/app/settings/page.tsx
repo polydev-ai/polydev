@@ -1,10 +1,21 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
 import { useMemorySettings } from '../../hooks/useMemorySettings'
 import { createClient } from '../utils/supabase/client'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+}
 
 // Global cache for settings data
 const settingsCache = {
@@ -220,20 +231,25 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen bg-white py-8">
+    <motion.div
+      className="min-h-screen bg-white py-8"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow mb-8">
+        <motion.div className="bg-white rounded-lg shadow mb-8 hover:shadow-lg transition-shadow" variants={itemVariants}>
           <div className="px-6 py-4 border-b border-slate-200">
             <h1 className="text-2xl font-bold text-slate-900">Account Settings</h1>
             <p className="text-slate-600">Manage your account preferences and profile information</p>
           </div>
-        </div>
+        </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Navigation */}
-          <div className="lg:col-span-1">
-            <nav className="bg-white rounded-lg shadow">
+          <motion.div className="lg:col-span-1" variants={itemVariants}>
+            <nav className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
               <div className="p-4">
                 <h2 className="text-sm font-medium text-slate-600 uppercase tracking-wide mb-3">
                   Settings
@@ -279,13 +295,13 @@ export default function Settings() {
                 </ul>
               </div>
             </nav>
-          </div>
+          </motion.div>
 
           {/* Main Content */}
           <div className="lg:col-span-3">
             <form onSubmit={updateProfile} className="space-y-8">
               {/* Profile Information */}
-              <div className="bg-white rounded-lg shadow">
+              <motion.div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow" variants={itemVariants}>
                 <div className="px-6 py-4 border-b border-slate-200">
                   <h3 className="text-lg font-medium text-slate-900">Profile Information</h3>
                   <p className="text-sm text-slate-600">Update your personal details and preferences</p>
@@ -391,10 +407,10 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Notification Preferences */}
-              <div className="bg-white rounded-lg shadow">
+              <motion.div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow" variants={itemVariants}>
                 <div className="px-6 py-4 border-b border-slate-200">
                   <h3 className="text-lg font-medium text-slate-900">Notification Preferences</h3>
                   <p className="text-sm text-slate-600">Manage how you receive notifications</p>
@@ -448,10 +464,10 @@ export default function Settings() {
                     </label>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Memory Settings */}
-              <div className="bg-white rounded-lg shadow">
+              <motion.div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow" variants={itemVariants}>
                 <div className="px-6 py-4 border-b border-slate-200">
                   <h3 className="text-lg font-medium text-slate-900">Memory Settings</h3>
                   <p className="text-sm text-slate-600">Configure how AI remembers your conversations and projects</p>
@@ -542,10 +558,10 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Action Buttons */}
-              <div className="bg-white rounded-lg shadow">
+              <motion.div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow" variants={itemVariants}>
                 <div className="px-6 py-4">
                   {message && (
                     <div className={`mb-4 p-3 rounded-lg text-sm ${
@@ -575,11 +591,11 @@ export default function Settings() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </form>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

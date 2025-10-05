@@ -7,21 +7,16 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
-  Activity, 
+import {
+  Activity,
   Download,
   Calendar,
-  TrendingUp,
-  TrendingDown,
   DollarSign,
-  Zap,
   MessageCircle,
   RefreshCw,
-  Filter,
-  BarChart3,
-  PieChart,
-  LineChart
+  Filter
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/hooks/useAuth'
 
 interface UsageData {
@@ -360,10 +355,36 @@ export default function ActivityPage() {
     )
   }
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.3 }
+    }
+  }
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <motion.div
+      className="container mx-auto py-6 space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <motion.div
+        className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+        variants={itemVariants}
+      >
         <div>
           <h1 className="text-3xl font-bold">Activity Analytics</h1>
           <p className="text-muted-foreground">
@@ -383,7 +404,8 @@ export default function ActivityPage() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <motion.div variants={itemVariants}>
+        <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <CardTitle className="flex items-center">
             <Filter className="h-5 w-5 mr-2" />
@@ -490,15 +512,20 @@ export default function ActivityPage() {
             </div>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-            <MessageCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
+      <motion.div
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        variants={containerVariants}
+      >
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.totalSessions.toLocaleString()}</div>
             {comparison && (
@@ -510,13 +537,14 @@ export default function ActivityPage() {
               </p>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </motion.div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Tokens</CardTitle>
+            </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.totalTokens.toLocaleString()}</div>
             {comparison && (
@@ -528,13 +556,15 @@ export default function ActivityPage() {
               </p>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </motion.div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${summary.totalCost.toFixed(4)}</div>
             {comparison && (
@@ -546,24 +576,27 @@ export default function ActivityPage() {
               </p>
             )}
           </CardContent>
-        </Card>
+          </Card>
+        </motion.div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Cost/Session</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
+        <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg Cost/Session</CardTitle>
+            </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${summary.avgCostPerSession.toFixed(4)}</div>
             <p className="text-xs text-muted-foreground">
               {summary.avgTokensPerSession} avg tokens/session
             </p>
           </CardContent>
-        </Card>
-      </div>
+          </Card>
+        </motion.div>
+      </motion.div>
 
       {/* Analytics Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <motion.div variants={itemVariants}>
+        <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="providers">Providers</TabsTrigger>
@@ -574,10 +607,9 @@ export default function ActivityPage() {
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
+            <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <BarChart3 className="h-5 w-5 mr-2" />
                   Top Providers by Cost
                 </CardTitle>
               </CardHeader>
@@ -601,10 +633,9 @@ export default function ActivityPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <PieChart className="h-5 w-5 mr-2" />
                   Top Models by Usage
                 </CardTitle>
               </CardHeader>
@@ -633,7 +664,7 @@ export default function ActivityPage() {
         </TabsContent>
 
         <TabsContent value="providers" className="space-y-4">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle>Provider Statistics</CardTitle>
               <CardDescription>Detailed breakdown by AI provider</CardDescription>
@@ -668,7 +699,7 @@ export default function ActivityPage() {
         </TabsContent>
 
         <TabsContent value="models" className="space-y-4">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle>Model Statistics</CardTitle>
               <CardDescription>Detailed breakdown by AI model</CardDescription>
@@ -703,10 +734,9 @@ export default function ActivityPage() {
         </TabsContent>
 
         <TabsContent value="timeline" className="space-y-4">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <LineChart className="h-5 w-5 mr-2" />
                 Usage Timeline
               </CardTitle>
               <CardDescription>Activity over time (grouped by {groupBy})</CardDescription>
@@ -739,7 +769,7 @@ export default function ActivityPage() {
         </TabsContent>
 
         <TabsContent value="sessions" className="space-y-4">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle>Individual Sessions</CardTitle>
               <CardDescription>
@@ -789,7 +819,8 @@ export default function ActivityPage() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
-    </div>
+        </Tabs>
+      </motion.div>
+    </motion.div>
   )
 }

@@ -1,10 +1,21 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useAuth } from '../../../hooks/useAuth'
 import { Settings, Save, RefreshCw, Check, AlertCircle } from 'lucide-react'
 import TierPriorityPicker from '../../../components/TierPriorityPicker'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+}
 
 interface UserPreferences {
   id?: string
@@ -143,8 +154,13 @@ export default function PreferencesPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <div className="mb-8">
+    <motion.div
+      className="max-w-4xl mx-auto p-8"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div className="mb-8" variants={itemVariants}>
         <h1 className="text-3xl font-bold text-slate-900 mb-4">
           General Preferences
         </h1>
@@ -171,11 +187,11 @@ export default function PreferencesPage() {
             <span>Preferences saved successfully!</span>
           </div>
         )}
-      </div>
+      </motion.div>
 
       <div className="space-y-8">
         {/* Default Settings */}
-        <div className="bg-white shadow border border-slate-200 rounded-lg p-6">
+        <motion.div className="bg-white shadow border border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow" variants={itemVariants}>
           <h2 className="text-xl font-semibold text-slate-900 mb-6">
             Default Settings
           </h2>
@@ -313,10 +329,10 @@ export default function PreferencesPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* MCP Settings */}
-        <div className="bg-white shadow border border-slate-200 rounded-lg p-6">
+        <motion.div className="bg-white shadow border border-slate-200 rounded-lg p-6 hover:shadow-lg transition-shadow" variants={itemVariants}>
           <h2 className="text-xl font-semibold text-slate-900 mb-6">
             MCP Client Settings
           </h2>
@@ -391,13 +407,15 @@ export default function PreferencesPage() {
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Tier Fallback Priority */}
+        <motion.div variants={itemVariants}>
         <TierPriorityPicker />
+        </motion.div>
 
         {/* Save Button */}
-        <div className="flex justify-end">
+        <motion.div className="flex justify-end" variants={itemVariants}>
           <button
             onClick={savePreferences}
             disabled={saving}
@@ -415,8 +433,8 @@ export default function PreferencesPage() {
               </>
             )}
           </button>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }

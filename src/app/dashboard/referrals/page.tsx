@@ -1,24 +1,19 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { 
-  Users, 
-  Gift, 
-  Copy, 
-  CheckCircle, 
-  TrendingUp,
+import {
+  Users,
+  Copy,
+  CheckCircle,
   Calendar,
   Share2,
-  Award,
-  Crown,
-  BarChart3,
-  DollarSign,
-  Star
+  DollarSign
 } from 'lucide-react'
 
 interface ReferralTier {
@@ -46,6 +41,16 @@ interface ReferralCode {
   created_at: string
   uses_remaining: number
   total_uses: number
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
 }
 
 export default function ReferralsPage() {
@@ -180,8 +185,13 @@ export default function ReferralsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <motion.div
+      className="container mx-auto p-6 space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div className="flex items-center justify-between" variants={itemVariants}>
         <div>
           <h1 className="text-3xl font-bold">Referral Program</h1>
           <p className="text-muted-foreground mt-1">
@@ -189,10 +199,10 @@ export default function ReferralsPage() {
           </p>
         </div>
         <Badge variant="secondary" className="text-sm">
-          <Gift className="h-4 w-4 mr-1" />
+          
           {stats.bonusMessages} Bonus Messages
         </Badge>
-      </div>
+      </motion.div>
 
       {/* Message Display */}
       {message && (
@@ -208,10 +218,11 @@ export default function ReferralsPage() {
       )}
 
       {/* Tier Progress Card */}
-      <Card className="mb-6 bg-slate-50 border-slate-200">
+      <motion.div variants={itemVariants}>
+      <Card className="mb-6 bg-slate-50 border-slate-200 hover:shadow-lg transition-shadow">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Crown className="h-5 w-5 text-slate-900" />
+            
             Current Tier: {stats.currentTier.name}
             <Badge variant="secondary" className="ml-auto bg-slate-100 text-slate-900">
               {stats.completedReferrals} / {stats.nextTier?.minReferrals || stats.currentTier.minReferrals + '+'}
@@ -235,11 +246,11 @@ export default function ReferralsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
             <div className="flex items-center gap-2">
-              <Star className="h-4 w-4 text-slate-900" />
+              
               <span>{stats.currentTier.creditsBonus} credits per referral</span>
             </div>
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-slate-900" />
+              
               <span>{Math.round((stats.currentTier.bonusMultiplier - 1) * 100)}% bonus multiplier</span>
             </div>
             <div className="flex items-center gap-2">
@@ -268,10 +279,11 @@ export default function ReferralsPage() {
           )}
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+      <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" variants={itemVariants}>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -282,7 +294,7 @@ export default function ReferralsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">This Month</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -293,7 +305,7 @@ export default function ReferralsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
@@ -304,18 +316,19 @@ export default function ReferralsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Bonus Messages</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.bonusMessages}</div>
             <p className="text-xs text-muted-foreground">Total earned messages</p>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
+      <motion.div variants={itemVariants}>
       <Tabs defaultValue="generate" className="w-full">
         <TabsList>
           <TabsTrigger value="generate">My Referral Codes</TabsTrigger>
@@ -324,7 +337,7 @@ export default function ReferralsPage() {
         </TabsList>
 
         <TabsContent value="generate" className="space-y-4">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Share2 className="h-5 w-5" />
@@ -347,7 +360,7 @@ export default function ReferralsPage() {
           </Card>
 
           {referralCodes.length > 0 && (
-            <Card>
+            <Card className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <CardTitle>Your Referral Codes</CardTitle>
               </CardHeader>
@@ -388,10 +401,10 @@ export default function ReferralsPage() {
         </TabsContent>
 
         <TabsContent value="redeem" className="space-y-4">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Gift className="h-5 w-5" />
+                
                 Redeem Referral Code
               </CardTitle>
             </CardHeader>
@@ -419,10 +432,10 @@ export default function ReferralsPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
+                
                 Referral Analytics
               </CardTitle>
             </CardHeader>
@@ -469,7 +482,7 @@ export default function ReferralsPage() {
               {/* Tier Progress */}
               <div className="border rounded-lg p-4">
                 <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <Award className="h-4 w-4" />
+                  
                   Tier Progression
                 </h4>
                 <div className="space-y-2">
@@ -538,6 +551,7 @@ export default function ReferralsPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
