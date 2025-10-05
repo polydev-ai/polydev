@@ -527,7 +527,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <AnimatePresence mode="wait">
+                  <AnimatePresence>
                     {currentExample.responses.map((response, index) => (
                       <motion.div
                         key={`${currentExampleIndex}-${index}`}
