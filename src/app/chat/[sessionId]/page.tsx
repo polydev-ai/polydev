@@ -85,7 +85,11 @@ export default function Chat() {
         )
 
         if (validSavedModels.length > 0) {
-          setSelectedModels(validSavedModels)
+          // Only update if different to prevent infinite loop
+          setSelectedModels(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(validSavedModels)) return prev
+            return validSavedModels
+          })
           return
         }
       }
@@ -185,7 +189,11 @@ export default function Chat() {
 
       // If waterfall found models, use them
       if (priorityModels.length > 0) {
-        setSelectedModels(priorityModels)
+        // Only update if different to prevent infinite loop
+        setSelectedModels(prev => {
+          if (JSON.stringify(prev) === JSON.stringify(priorityModels)) return prev
+          return priorityModels
+        })
       } else {
         // Final fallback: Get top N configured models (prioritize admin models for users without API keys)
         const configuredModels = dashboardModels
@@ -210,7 +218,11 @@ export default function Chat() {
           .slice(0, perspectivesPerMessage)
           .map(m => m.id)
 
-        setSelectedModels(configuredModels)
+        // Only update if different to prevent infinite loop
+        setSelectedModels(prev => {
+          if (JSON.stringify(prev) === JSON.stringify(configuredModels)) return prev
+          return configuredModels
+        })
 
         // Log for debugging
         console.log('[Chat] Model selection fallback:', {

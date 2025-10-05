@@ -33,6 +33,29 @@ export default function Dashboard() {
   const [filterStatus, setFilterStatus] = useState<string>('')
   const [filterDateRange, setFilterDateRange] = useState<string>('all')
 
+  // Utility functions - must be before early returns to avoid hook order violations
+  const formatNumber = useCallback((num: number) => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
+    return num.toString()
+  }, [])
+
+  const formatTimeAgo = useCallback((timestamp: string) => {
+    const now = new Date()
+    const time = new Date(timestamp)
+    const diffMs = now.getTime() - time.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+
+    if (diffMins < 1) return 'just now'
+    if (diffMins < 60) return `${diffMins}m ago`
+
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours < 24) return `${diffHours}h ago`
+
+    const diffDays = Math.floor(diffHours / 24)
+    return `${diffDays}d ago`
+  }, [])
+
   // Use logs from dashboard data instead of separate fetch
   useEffect(() => {
     if (dashboardRequestLogs && dashboardRequestLogs.length > 0) {
@@ -241,28 +264,6 @@ export default function Dashboard() {
       </div>
     )
   }
-
-  const formatNumber = useCallback((num: number) => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
-    return num.toString()
-  }, [])
-
-  const formatTimeAgo = useCallback((timestamp: string) => {
-    const now = new Date()
-    const time = new Date(timestamp)
-    const diffMs = now.getTime() - time.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-
-    if (diffMins < 1) return 'just now'
-    if (diffMins < 60) return `${diffMins}m ago`
-
-    const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
-
-    const diffDays = Math.floor(diffHours / 24)
-    return `${diffDays}d ago`
-  }, [])
 
   return (
     <div className="min-h-screen bg-white">

@@ -206,10 +206,10 @@ export default function EnhancedApiKeysPage() {
     const providerId = normalizeId(rawProviderId)
     const legacyProvider = legacyProviders[providerId]
     const modelsDevProvider = modelsDevProviders.find(p => p.id === providerId)
-    
+
     // If neither exists, return null
     if (!legacyProvider && !modelsDevProvider) return null
-    
+
     // If only models.dev provider exists, create a basic provider config
     if (!legacyProvider && modelsDevProvider) {
       return {
@@ -223,7 +223,7 @@ export default function EnhancedApiKeysPage() {
         modelsDevData: modelsDevProvider
       }
     }
-    
+
     // If both exist, merge them with models.dev taking precedence for display data
     return {
       ...legacyProvider,
