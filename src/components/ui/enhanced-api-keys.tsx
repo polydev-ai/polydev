@@ -678,45 +678,43 @@ export default function EnhancedApiKeysPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl p-6 border border-slate-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 bg-clip-text">Models</h1>
-            <p className="text-slate-600 mt-2">
-              Configure providers and manage AI model access
-            </p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center bg-white rounded-lg p-1 border border-slate-200 shadow-sm">
-              <button
-                onClick={() => setViewMode('simple')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'simple'
-                    ? 'bg-slate-900 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                Simple
-              </button>
-              <button
-                onClick={() => setViewMode('advanced')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  viewMode === 'advanced'
-                    ? 'bg-slate-900 text-white shadow-md'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                }`}
-              >
-                Advanced
-              </button>
-            </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Models</h1>
+          <p className="text-slate-600 mt-1">
+            Configure providers, manage API keys, and access AI models via API keys, CLI, or credits
+          </p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200">
             <button
-              onClick={() => setShowAddForm(true)}
-              className="bg-slate-900 text-white px-5 py-2.5 rounded-lg hover:bg-slate-700 flex items-center space-x-2 shadow-md hover:shadow-lg transition-all"
+              onClick={() => setViewMode('simple')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'simple'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              <span>Add Provider</span>
+              Simple
+            </button>
+            <button
+              onClick={() => setViewMode('advanced')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'advanced'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Advanced
             </button>
           </div>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-700 flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Provider</span>
+          </button>
         </div>
       </div>
 
@@ -777,40 +775,38 @@ export default function EnhancedApiKeysPage() {
       )}
 
       {/* CLI Tools Status Section */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div className="bg-white rounded-lg border border-slate-200">
         <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                <Terminal className="w-5 h-5 text-slate-900" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  CLI Tools Status
-                </h2>
-                <p className="text-sm text-slate-600">
-                  Subscription-based CLI access
-                </p>
-              </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Terminal className="w-5 h-5" />
+              <h2 className="text-lg font-semibold text-slate-900">
+                CLI Tools Status
+              </h2>
             </div>
-            <button
-              onClick={refreshCliStatuses}
-              disabled={cliStatusLoading}
-              className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 flex items-center space-x-2 text-sm shadow-sm hover:shadow transition-all"
-            >
-              {cliStatusLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Refreshing...</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Refresh</span>
-                </>
-              )}
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={refreshCliStatuses}
+                disabled={cliStatusLoading}
+                className="bg-slate-900 text-white px-3 py-2 rounded-lg hover:bg-slate-700 disabled:opacity-50 flex items-center space-x-2 text-sm"
+              >
+                {cliStatusLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Refreshing...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    <span>Refresh Status</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
+          <p className="text-slate-600 mt-1 mb-4">
+            CLI status is automatically updated when MCP clients connect. Click "Refresh Status" to get latest data from server.
+          </p>
           
           {/* Enhanced CLI Status Display */}
           <div className="grid grid-cols-1 gap-4">
@@ -820,25 +816,20 @@ export default function EnhancedApiKeysPage() {
               const lastChecked = status?.last_checked_at ? new Date(status.last_checked_at).toLocaleString() : null
 
               return (
-                <div key={cliProvider.provider} className="border border-slate-200 rounded-xl p-4 bg-gradient-to-br from-white to-slate-50 hover:shadow-md transition-shadow">
+                <div key={cliProvider.provider} className="border border-slate-200 rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center flex-shrink-0">
-                          <Terminal className="w-4 h-4 text-slate-700" />
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-semibold text-slate-900">
-                            {cliProvider.name}
-                          </h3>
-                          {status?.cli_version && (
-                            <span className="text-xs bg-slate-900 text-white px-2 py-0.5 rounded-full">
-                              {status.cli_version}
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-medium text-slate-900">
+                          {cliProvider.name}
+                        </h3>
+                        {status?.cli_version && (
+                          <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
+                            {status.cli_version}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-sm text-slate-600 mt-2 ml-11">
+                      <p className="text-sm text-slate-600 mt-1">
                         {cliProvider.description}
                       </p>
 
@@ -990,22 +981,14 @@ export default function EnhancedApiKeysPage() {
 
       {/* API Keys Section */}
       {apiKeys.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                <Settings className="w-5 h-5 text-slate-900" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  API Keys
-                </h2>
-                <p className="text-sm text-slate-600">
-                  Drag to reorder priority
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="bg-white rounded-lg border border-slate-200 p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center space-x-2">
+            <Settings className="w-5 h-5" />
+            <span>API Keys</span>
+            <span className="text-sm text-slate-600 font-normal">
+              (Drag to reorder for MCP priority)
+            </span>
+          </h2>
           
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="api-keys">
@@ -1041,11 +1024,20 @@ export default function EnhancedApiKeysPage() {
                                       #{index + 1}
                                     </span>
                                     <div className="flex items-center space-x-2">
-                                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                                        <span className="text-xs font-bold text-slate-700 uppercase">
-                                          {(providerConfig?.name || key.provider).slice(0, 2)}
-                                        </span>
-                                      </div>
+                                      {(() => {
+                                        const providerData = getProviderDisplayData(key.provider)
+                                        return providerData?.logoUrl && (
+                                          <img
+                                            src={providerData.logoUrl}
+                                            alt={providerConfig?.name || key.provider}
+                                            className="w-5 h-5 rounded"
+                                            onError={(e) => {
+                                              console.error(`Failed to load provider logo: ${providerData.logoUrl}`)
+                                              e.currentTarget.style.display = 'none'
+                                            }}
+                                          />
+                                        )
+                                      })()}
                                       <span className="font-medium text-slate-900 capitalize">
                                         {providerConfig?.name || key.provider}
                                       </span>
@@ -1236,16 +1228,20 @@ export default function EnhancedApiKeysPage() {
                       ))
                     )}
                   </select>
-                  {/* Show selected provider indicator */}
+                  {/* Show selected provider logo */}
                   {formData.provider && (() => {
                     const providerData = getProviderDisplayData(formData.provider)
-                    return providerData && (
+                    return providerData?.logoUrl && (
                       <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                        <div className="w-4 h-4 rounded bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-                          <span className="text-[8px] font-bold text-slate-700">
-                            {providerData.displayName?.slice(0, 1).toUpperCase()}
-                          </span>
-                        </div>
+                        <img 
+                          src={providerData.logoUrl} 
+                          alt={providerData.displayName}
+                          className="w-4 h-4"
+                          onError={(e) => {
+                            console.error(`Failed to load logo: ${providerData.logoUrl}`)
+                            e.currentTarget.style.display = 'none'
+                          }}
+                        />
                       </div>
                     )
                   })()}
@@ -1259,11 +1255,18 @@ export default function EnhancedApiKeysPage() {
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-                          <span className="text-sm font-bold text-slate-700 uppercase">
-                            {providerData.displayName?.slice(0, 2)}
-                          </span>
-                        </div>
+                        {providerData.logoUrl && (
+                          <img
+                            src={providerData.logoUrl}
+                            alt={providerData.displayName}
+                            className="w-6 h-6"
+                            onError={(e) => {
+                              console.error(`Failed to load provider logo: ${providerData.logoUrl}`)
+                              // Fallback to Lucide icon if image fails to load
+                              e.currentTarget.style.display = 'none'
+                            }}
+                          />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-medium text-slate-900">
@@ -1272,31 +1275,21 @@ export default function EnhancedApiKeysPage() {
                         <p className="text-sm text-slate-600 mt-1">
                           {'enhancedDescription' in providerData ? providerData.enhancedDescription : providerData.description}
                         </p>
-                        <div className="mt-2 text-xs text-slate-600 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">API:</span>
-                            <code className="bg-slate-100 px-2 py-0.5 rounded">{providerData.baseUrl}</code>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Models:</span>
-                            <span>{'modelCount' in providerData ? providerData.modelCount : 'Multiple'} available</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Auth:</span>
-                            <span>{formData.provider === 'openrouter' ? 'Optional (Credits Available)' : 'Required'}</span>
-                          </div>
+                        <div className="mt-2 text-xs text-slate-600">
+                          <div>API URL: <code className="bg-slate-100 px-1 rounded">{providerData.baseUrl}</code></div>
+                          <div className="mt-1">Models: {'modelCount' in providerData ? providerData.modelCount : 'Multiple'} available</div>
+                          <div className="mt-1">Auth: {formData.provider === 'openrouter' ? 'API Key Optional (Credits Available)' : 'API Key Required'}</div>
                           {providerData.modelsDevData && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {'supportsVision' in providerData && providerData.supportsVision && <span className="bg-slate-100 text-slate-900 px-2 py-0.5 rounded text-xs border border-slate-200">Vision</span>}
-                              {'supportsTools' in providerData && providerData.supportsTools && <span className="bg-slate-100 text-slate-900 px-2 py-0.5 rounded text-xs border border-slate-200">Tools</span>}
-                              {'supportsReasoning' in providerData && providerData.supportsReasoning && <span className="bg-slate-100 text-slate-900 px-2 py-0.5 rounded text-xs border border-slate-200">Reasoning</span>}
-                              {'supportsPromptCaching' in providerData && providerData.supportsPromptCaching && <span className="bg-slate-100 text-slate-900 px-2 py-0.5 rounded text-xs border border-slate-200">Cache</span>}
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {'supportsVision' in providerData && providerData.supportsVision && <span className="bg-slate-100 text-slate-900 px-1 rounded text-xs border border-slate-200">Vision</span>}
+                              {'supportsTools' in providerData && providerData.supportsTools && <span className="bg-slate-100 text-slate-900 px-1 rounded text-xs border border-slate-200">Tools</span>}
+                              {'supportsReasoning' in providerData && providerData.supportsReasoning && <span className="bg-slate-100 text-slate-900 px-1 rounded text-xs border border-slate-200">Reasoning</span>}
+                              {'supportsPromptCaching' in providerData && providerData.supportsPromptCaching && <span className="bg-slate-100 text-slate-900 px-1 rounded text-xs border border-slate-200">Cache</span>}
                             </div>
                           )}
                           {providerData.websiteUrl && (
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">Website:</span>
-                              <a href={providerData.websiteUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-900">
+                            <div className="mt-1">
+                              Website: <a href={providerData.websiteUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-900">
                                 {providerData.websiteUrl.replace(/^https?:\/\//, '')}
                               </a>
                             </div>
@@ -1610,28 +1603,26 @@ export default function EnhancedApiKeysPage() {
       )}
 
       {/* All Available Models Section */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
         <button
           onClick={() => setAllModelsExpanded(!allModelsExpanded)}
-          className="w-full px-6 py-5 flex items-center justify-between hover:bg-gradient-to-r hover:from-slate-50 hover:to-slate-100 transition-all"
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
         >
-          <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center transition-transform ${allModelsExpanded ? 'rotate-0' : ''}`}>
-              {allModelsExpanded ? (
-                <ChevronDown className="w-5 h-5 text-slate-900" />
-              ) : (
-                <ChevronRight className="w-5 h-5 text-slate-900" />
-              )}
-            </div>
+          <div className="flex items-center gap-3">
+            {allModelsExpanded ? (
+              <ChevronDown className="w-5 h-5 text-slate-400" />
+            ) : (
+              <ChevronRight className="w-5 h-5 text-slate-400" />
+            )}
             <div className="text-left">
               <h3 className="text-lg font-semibold text-slate-900">All Available Models</h3>
               <p className="text-sm text-slate-600 mt-0.5">
-                Browse {modelsDevProviders.length} providers and their models
+                Browse all models from all providers
               </p>
             </div>
           </div>
-          <div className="bg-slate-900 text-white px-3 py-1.5 rounded-full text-sm font-medium">
-            {modelsDevProviders.length}
+          <div className="text-sm text-slate-600">
+            {modelsDevProviders.length} providers
           </div>
         </button>
 
@@ -1649,11 +1640,16 @@ export default function EnhancedApiKeysPage() {
                 <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-100"
                      onClick={() => toggleAvailableProviderExpanded(provider.id)}>
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-slate-700 uppercase">
-                        {provider.name.slice(0, 2)}
-                      </span>
-                    </div>
+                    {provider.logo && (
+                      <img
+                        src={provider.logo}
+                        alt={provider.name}
+                        className="w-6 h-6 rounded"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                    )}
                     <div>
                       <h3 className="font-medium text-slate-900">
                         {provider.name}
