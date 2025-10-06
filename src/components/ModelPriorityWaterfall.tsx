@@ -338,7 +338,6 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
               )
             })}
           </div>
-        </div>
       </div>
 
       {saving && (
