@@ -69,8 +69,22 @@ function AuthForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Simple Header with Logo */}
+      <div className="w-full py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">P</span>
+            </div>
+            <span className="text-xl font-bold text-slate-900">Polydev</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Auth Form */}
+      <div className="flex items-center justify-center px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
           {/* Header */}
           <div className="text-center">
@@ -199,6 +213,7 @@ function AuthForm() {
         <p className="mt-6 text-center text-xs text-slate-500">
           By continuing, you agree to our Terms of Service and Privacy Policy
         </p>
+        </div>
       </div>
     </div>
   )
