@@ -284,10 +284,8 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         </div>
 
         {/* Tier Priority */}
-        <div>
-          <div className="space-y-2">
-          <div className="space-y-2">
-            {tierPriority.map((tier: string, idx: number) => {
+        <div className="space-y-2">
+          {tierPriority.map((tier: string, idx: number) => {
               const { total, used } = getTierQuota(tier)
               const percentage = total > 0 ? (used / total) * 100 : 0
               const remaining = total - used
@@ -334,52 +332,6 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                   {tierModels.length > 0 && (
                     <div className="ml-9 text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded">
                       <span className="font-medium">Models:</span> {tierModels.join(', ')}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Provider Priority (GLOBAL) */}
-        <div className="ml-11">
-          <h5 className="text-xs font-semibold text-slate-700 mb-3 uppercase tracking-wide">Provider Priority · Global</h5>
-          <div className="space-y-2">
-            {allProviders.map((provider: string, idx: number) => {
-              const logo = getProviderLogo(provider)
-              const displayName = getProviderDisplayName(provider)
-              const providerModels = (modelTiers || [])
-                .filter(m => m.provider.toLowerCase() === provider.toLowerCase())
-                .map(m => `${m.display_name} (${m.tier})`)
-              return (
-                <div key={provider} className="bg-white border border-purple-200/60 rounded-lg p-3 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded">{idx + 1}</span>
-                    {logo && <img src={logo} alt={displayName} className="w-6 h-6 rounded shadow-sm" />}
-                    <span className="text-sm font-medium text-slate-900 flex-1">{displayName}</span>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => moveProvider(provider, 'up')}
-                        disabled={idx === 0 || saving}
-                        className="p-1.5 hover:bg-purple-50 rounded-lg disabled:opacity-30 transition-colors"
-                        title="Move up"
-                      >
-                        <ChevronUp className="w-4 h-4 text-slate-600" />
-                      </button>
-                      <button
-                        onClick={() => moveProvider(provider, 'down')}
-                        disabled={idx === allProviders.length - 1 || saving}
-                        className="p-1.5 hover:bg-purple-50 rounded-lg disabled:opacity-30 transition-colors"
-                        title="Move down"
-                      >
-                        <ChevronDown className="w-4 h-4 text-slate-600" />
-                      </button>
-                    </div>
-                  </div>
-                  {providerModels.length > 0 && (
-                    <div className="ml-9 mt-2 text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded">
-                      {providerModels.join(', ')}
                     </div>
                   )}
                 </div>
