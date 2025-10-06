@@ -107,8 +107,8 @@ export default function Navigation() {
     return pathname.startsWith(href)
   }
 
-  // Don't render navigation on landing page - it has its own custom nav
-  if (pathname === '/') {
+  // Don't render navigation on landing page or auth page
+  if (pathname === '/' || pathname === '/auth') {
     return null
   }
 
