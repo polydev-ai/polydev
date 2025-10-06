@@ -356,39 +356,43 @@ export default function EnhancedApiKeysPage() {
     }
   }, [apiKeys.length, preferences, preferencesLoading, syncingModels, user, hasCompletedInitialSync]) // Removed function from dependencies
 
-  // Preload models for existing providers in parallel
-  useEffect(() => {
-    if (apiKeys.length > 0) {
-      const uniqueProviders = [...new Set(apiKeys.map(key => key.provider))]
-      const providersToFetch = uniqueProviders.filter(provider =>
-        !providerModels[provider] && !loadingModels[provider]
-      )
+  // PERFORMANCE FIX: Disabled redundant model fetching - models are already loaded in initial fetch
+  // These useEffect hooks were causing 10+ sequential API calls (15-20s load time)
+  // The initial fetch in useEnhancedApiKeysData already includes all provider models
 
-      if (providersToFetch.length > 0) {
-        // Use the hook's fetchProviderModels function which handles loading states internally
-        Promise.allSettled(
-          providersToFetch.map(provider => fetchProviderModels(provider))
-        )
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKeys.length, fetchProviderModels])
+  // // Preload models for existing providers in parallel
+  // useEffect(() => {
+  //   if (apiKeys.length > 0) {
+  //     const uniqueProviders = [...new Set(apiKeys.map(key => key.provider))]
+  //     const providersToFetch = uniqueProviders.filter(provider =>
+  //       !providerModels[provider] && !loadingModels[provider]
+  //     )
 
-  // Preload models for all available providers to show in "All Available Models" section
-  useEffect(() => {
-    if (modelsDevProviders.length > 0) {
-      const providersToFetch = modelsDevProviders.filter(provider =>
-        (!provider.models || provider.models.length === 0) && !loadingModels[provider.id]
-      )
+  //     if (providersToFetch.length > 0) {
+  //       // Use the hook's fetchProviderModels function which handles loading states internally
+  //       Promise.allSettled(
+  //         providersToFetch.map(provider => fetchProviderModels(provider))
+  //       )
+  //     }
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [apiKeys.length, fetchProviderModels])
 
-      if (providersToFetch.length > 0) {
-        providersToFetch.forEach(provider => {
-          fetchProviderModels(provider.id)
-        })
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelsDevProviders.length, fetchProviderModels])
+  // // Preload models for all available providers to show in "All Available Models" section
+  // useEffect(() => {
+  //   if (modelsDevProviders.length > 0) {
+  //     const providersToFetch = modelsDevProviders.filter(provider =>
+  //       (!provider.models || provider.models.length === 0) && !loadingModels[provider.id]
+  //     )
+
+  //     if (providersToFetch.length > 0) {
+  //       providersToFetch.forEach(provider => {
+  //         fetchProviderModels(provider.id)
+  //       })
+  //     }
+  //   }
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [modelsDevProviders.length, fetchProviderModels])
 
   const updatePreferenceOrder = async (newPreferences: Record<string, ModelPreference>) => {
     try {
