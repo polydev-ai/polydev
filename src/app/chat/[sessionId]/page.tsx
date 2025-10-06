@@ -72,12 +72,12 @@ export default function Chat() {
   // Set selected models using waterfall priority logic
   // Priority: CLI Tools → User API Keys → Admin Keys (with tier + provider priority)
   useEffect(() => {
-    if (dashboardModels.length > 0 && preferences) {
+    if (dashboardModels.length > 0) {
       // Get perspectives_per_message setting (default to 2)
-      const perspectivesPerMessage = preferences.mcp_settings?.perspectives_per_message || 2
+      const perspectivesPerMessage = preferences?.mcp_settings?.perspectives_per_message || 2
 
       // Check if we have saved chat models preference
-      const savedChatModels = preferences.mcp_settings?.saved_chat_models
+      const savedChatModels = preferences?.mcp_settings?.saved_chat_models
       if (savedChatModels && savedChatModels.length > 0) {
         // Filter saved models to only include those that are still configured
         const validSavedModels = savedChatModels.filter(modelId =>
@@ -98,11 +98,11 @@ export default function Chat() {
       const priorityModels: string[] = []
 
       // Get source priority (default: CLI > API > Admin)
-      const sourcePriority = preferences.source_priority || ['cli', 'api', 'admin']
+      const sourcePriority = preferences?.source_priority || ['cli', 'api', 'admin']
 
       // Get tier and provider priorities
-      const tierPriority = preferences.mcp_settings?.tier_priority || ['normal', 'eco', 'premium']
-      const providerPriority = preferences.mcp_settings?.provider_priority || []
+      const tierPriority = preferences?.mcp_settings?.tier_priority || ['normal', 'eco', 'premium']
+      const providerPriority = preferences?.mcp_settings?.provider_priority || []
 
       for (const source of sourcePriority) {
         if (priorityModels.length >= perspectivesPerMessage) break
@@ -533,27 +533,13 @@ export default function Chat() {
     }
   }
 
-  const toggleModel = useCallback(async (modelId: string) => {
+  const toggleModel = useCallback((modelId: string) => {
     const newSelectedModels = selectedModels.includes(modelId)
       ? selectedModels.filter(id => id !== modelId)
       : [...selectedModels, modelId]
 
     setSelectedModels(newSelectedModels)
-
-    // Save to user preferences
-    if (updatePreferences && preferences) {
-      try {
-        await updatePreferences({
-          mcp_settings: {
-            ...preferences.mcp_settings,
-            saved_chat_models: newSelectedModels
-          }
-        })
-      } catch (error) {
-        // Continue silently - user can still use the interface
-      }
-    }
-  }, [selectedModels, updatePreferences, preferences])
+  }, [selectedModels])
 
   const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'admin' | 'premium' | 'normal' | 'eco') => {
     switch (tier) {

@@ -128,13 +128,21 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
     
+    // Use upsert to handle both new users and existing users
     const { data: updatedPreferences, error } = await supabase
       .from('user_preferences')
-      .update(filteredUpdates)
-      .eq('user_id', user.id)
+      .upsert(
+        {
+          user_id: user.id,
+          ...filteredUpdates
+        },
+        {
+          onConflict: 'user_id'
+        }
+      )
       .select()
       .single()
-    
+
     if (error) {
       console.error('Error updating preferences:', error)
       return NextResponse.json({ error: 'Failed to update preferences' }, { status: 500 })
