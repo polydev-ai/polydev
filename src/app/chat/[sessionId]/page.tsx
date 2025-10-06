@@ -69,10 +69,14 @@ export default function Chat() {
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Set selected models using waterfall priority logic
+  // Set selected models ONCE on initial load using waterfall priority logic
   // Priority: CLI Tools → User API Keys → Admin Keys (with tier + provider priority)
+  const hasInitializedModels = useRef(false)
+
   useEffect(() => {
-    if (dashboardModels.length > 0) {
+    if (dashboardModels.length > 0 && !hasInitializedModels.current) {
+      hasInitializedModels.current = true
+
       // Get perspectives_per_message setting (default to 2)
       const perspectivesPerMessage = preferences?.mcp_settings?.perspectives_per_message || 2
 
@@ -85,11 +89,7 @@ export default function Chat() {
         )
 
         if (validSavedModels.length > 0) {
-          // Only update if different to prevent infinite loop
-          setSelectedModels(prev => {
-            if (JSON.stringify(prev) === JSON.stringify(validSavedModels)) return prev
-            return validSavedModels
-          })
+          setSelectedModels(validSavedModels)
           return
         }
       }
@@ -189,11 +189,7 @@ export default function Chat() {
 
       // If waterfall found models, use them
       if (priorityModels.length > 0) {
-        // Only update if different to prevent infinite loop
-        setSelectedModels(prev => {
-          if (JSON.stringify(prev) === JSON.stringify(priorityModels)) return prev
-          return priorityModels
-        })
+        setSelectedModels(priorityModels)
       } else {
         // Final fallback: Get top N configured models (prioritize admin models for users without API keys)
         const configuredModels = dashboardModels
@@ -218,11 +214,7 @@ export default function Chat() {
           .slice(0, perspectivesPerMessage)
           .map(m => m.id)
 
-        // Only update if different to prevent infinite loop
-        setSelectedModels(prev => {
-          if (JSON.stringify(prev) === JSON.stringify(configuredModels)) return prev
-          return configuredModels
-        })
+        setSelectedModels(configuredModels)
 
         // Log for debugging
         console.log('[Chat] Model selection fallback:', {
@@ -233,7 +225,7 @@ export default function Chat() {
         })
       }
     }
-  }, [dashboardModels, preferences, apiKeys, cliStatuses])
+  }, [dashboardModels])
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
