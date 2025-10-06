@@ -330,18 +330,28 @@ export default function UnifiedUsagePage() {
     }
   }
 
+  // PERFORMANCE: Load critical data first, defer non-critical data
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
+
+      // Load critical data first (for initial render)
       await Promise.all([
-        fetchUsageData(), 
-        fetchCLIConfigs(), 
-        fetchSessions(),
-        fetchProvidersRegistry(),
-        fetchModelsRegistry(),
+        fetchUsageData(),
         fetchUserCredits()
       ])
+
       setLoading(false)
+
+      // Defer non-critical data to load after initial render
+      setTimeout(() => {
+        Promise.all([
+          fetchCLIConfigs(),
+          fetchSessions(),
+          fetchProvidersRegistry(),
+          fetchModelsRegistry()
+        ])
+      }, 100)
     }
     loadData()
   }, [timeframe, includeDetails, sourceFilter, providerFilter, modelFilter, limit, offset, useCustomRange, fromDate, toDate])

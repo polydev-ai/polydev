@@ -43,6 +43,14 @@ interface ReferralCode {
   total_uses: number
 }
 
+// PERFORMANCE: Cache for referral data to reduce API calls
+const referralsCache = {
+  stats: null as ReferralStats | null,
+  codes: null as ReferralCode[] | null,
+  timestamp: 0,
+  CACHE_DURATION: 5 * 60 * 1000 // 5 minutes
+}
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -73,12 +81,23 @@ export default function ReferralsPage() {
     fetchReferralData()
   }, [])
 
-  const fetchReferralData = async () => {
+  const fetchReferralData = async (forceRefresh = false) => {
     try {
+      // Check cache first (unless force refresh)
+      const now = Date.now()
+      if (!forceRefresh &&
+          referralsCache.stats &&
+          referralsCache.codes &&
+          (now - referralsCache.timestamp) < referralsCache.CACHE_DURATION) {
+        setStats(referralsCache.stats)
+        setReferralCodes(referralsCache.codes)
+        return
+      }
+
       const response = await fetch('/api/referrals')
       if (response.ok) {
         const data = await response.json()
-        
+
         // Map API response to expected stats format
         const mappedStats = {
           totalReferrals: data.stats?.totalReferrals || data.totalReferrals || 0,
@@ -90,20 +109,18 @@ export default function ReferralsPage() {
             const currentMonth = new Date().toISOString().substring(0, 7)
             return referralMonth === currentMonth
           }).length,
-          currentTier: data.stats?.currentTier || { 
-            id: 'bronze', 
-            name: 'Bronze Referrer', 
-            minReferrals: 0, 
-            bonusMultiplier: 1.0, 
-            creditsBonus: 100, 
-            features: ['Basic referral tracking', '100 credits per referral'] 
+          currentTier: data.stats?.currentTier || {
+            id: 'bronze',
+            name: 'Bronze Referrer',
+            minReferrals: 0,
+            bonusMultiplier: 1.0,
+            creditsBonus: 100,
+            features: ['Basic referral tracking', '100 credits per referral']
           },
           nextTier: data.stats?.nextTier,
           lifetime_value: data.stats?.lifetime_value || 0
         }
-        
-        setStats(mappedStats)
-        
+
         // Map referrals to expected code format
         const codes = (data.codes || data.referrals || []).map((referral: any) => ({
           code: referral.code || referral.referral_code,
@@ -111,7 +128,13 @@ export default function ReferralsPage() {
           uses_remaining: referral.uses_remaining || (referral.status === 'pending' ? 1 : 0),
           total_uses: referral.total_uses || (referral.status === 'completed' ? 1 : 0)
         }))
-        
+
+        // Update cache
+        referralsCache.stats = mappedStats
+        referralsCache.codes = codes
+        referralsCache.timestamp = now
+
+        setStats(mappedStats)
         setReferralCodes(codes)
       }
     } catch (error) {
@@ -131,7 +154,7 @@ export default function ReferralsPage() {
       if (response.ok) {
         const data = await response.json()
         setMessage({ type: 'success', text: `Generated new referral code: ${data.referralCode}` })
-        fetchReferralData()
+        fetchReferralData(true) // Force refresh after generating
       } else {
         const error = await response.json()
         setMessage({ type: 'error', text: error.error || 'Failed to generate code' })
@@ -145,7 +168,7 @@ export default function ReferralsPage() {
 
   const redeemReferralCode = async () => {
     if (!redeemCode.trim()) return
-    
+
     setIsRedeeming(true)
     try {
       const response = await fetch('/api/referrals', {
@@ -158,7 +181,7 @@ export default function ReferralsPage() {
         const data = await response.json()
         setMessage({ type: 'success', text: data.message || 'Successfully redeemed referral code!' })
         setRedeemCode('')
-        fetchReferralData()
+        fetchReferralData(true) // Force refresh after redeeming
       } else {
         const error = await response.json()
         setMessage({ type: 'error', text: error.error || 'Failed to redeem code' })
