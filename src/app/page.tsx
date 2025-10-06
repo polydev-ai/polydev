@@ -924,18 +924,15 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold mb-3 text-sm">Resources</h3>
               <ul className="space-y-2">
-                <li><Link href="/blog" className="text-slate-400 hover:text-white transition-colors text-sm">Blog</Link></li>
-                <li><Link href="/changelog" className="text-slate-400 hover:text-white transition-colors text-sm">Changelog</Link></li>
-                <li><Link href="/examples" className="text-slate-400 hover:text-white transition-colors text-sm">Examples</Link></li>
+                <li><Link href="/docs" className="text-slate-400 hover:text-white transition-colors text-sm">Documentation</Link></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="font-semibold mb-3 text-sm">Company</h3>
+              <h3 className="font-semibold mb-3 text-sm">Legal</h3>
               <ul className="space-y-2">
-                <li><Link href="/about" className="text-slate-400 hover:text-white transition-colors text-sm">About</Link></li>
-                <li><Link href="/privacy" className="text-slate-400 hover:text-white transition-colors text-sm">Privacy</Link></li>
-                <li><Link href="/terms" className="text-slate-400 hover:text-white transition-colors text-sm">Terms</Link></li>
+                <li><Link href="/privacy" className="text-slate-400 hover:text-white transition-colors text-sm">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="text-slate-400 hover:text-white transition-colors text-sm">Terms of Service</Link></li>
               </ul>
             </div>
 
@@ -950,12 +947,10 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center justify-between pt-6 border-t border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-white rounded-md flex items-center justify-center">
-                <span className="text-slate-900 font-bold text-xs">P</span>
-              </div>
+            <Link href="/" className="flex items-center gap-2">
+              <PolydevLogo size={32} className="text-white" />
               <span className="font-semibold text-sm">Polydev</span>
-            </div>
+            </Link>
             <p className="text-slate-400 text-sm">© 2025 Polydev AI. All rights reserved.</p>
           </div>
         </div>
