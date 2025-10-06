@@ -5,7 +5,7 @@ interface PolydevLogoProps {
   size?: number
 }
 
-export default function PolydevLogo({ className = '', size = 40 }: PolydevLogoProps) {
+export default function PolydevLogo({ className = '', size = 48 }: PolydevLogoProps) {
   return (
     <img
       src="/logo.svg"

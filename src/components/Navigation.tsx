@@ -120,7 +120,7 @@ export default function Navigation() {
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center gap-3 group">
-              <PolydevLogo size={40} className="text-slate-900 group-hover:text-slate-600 transition-colors duration-200" />
+              <PolydevLogo size={48} className="text-slate-900 group-hover:text-slate-600 transition-colors duration-200" />
               <span className="text-xl font-bold text-slate-900 group-hover:text-slate-600 transition-colors duration-200">Polydev</span>
             </Link>
           </div>
