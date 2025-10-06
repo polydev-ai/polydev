@@ -10,24 +10,24 @@ export default function PolydevLogo({ className = '', size = 32 }: PolydevLogoPr
     <svg
       width={size}
       height={size}
-      viewBox="0 0 100 100"
+      viewBox="0 0 512 512"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      {/* Top parallelogram */}
+      {/* Top right parallelogram - tilted upward */}
       <path
-        d="M50 10 L75 30 L55 45 L30 25 Z"
+        d="M256 80 L380 180 L320 260 L196 160 Z"
         fill="currentColor"
       />
-      {/* Bottom left parallelogram */}
+      {/* Bottom left parallelogram - tilted downward */}
       <path
-        d="M20 40 L45 60 L35 75 L10 55 Z"
+        d="M132 240 L256 340 L196 420 L72 320 Z"
         fill="currentColor"
       />
-      {/* Bottom right parallelogram */}
+      {/* Bottom right parallelogram - horizontal */}
       <path
-        d="M55 45 L80 65 L70 90 L45 70 Z"
+        d="M256 340 L440 420 L380 500 L196 420 Z"
         fill="currentColor"
       />
     </svg>
