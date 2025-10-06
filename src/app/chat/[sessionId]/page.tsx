@@ -680,7 +680,8 @@ export default function Chat() {
     return turns
   }, [messages, viewMode])
 
-  if (loading || modelsLoading || sessionsLoading) {
+  // Only block on auth loading - let models and sessions load in background
+  if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
@@ -747,11 +748,21 @@ export default function Chat() {
                     type="button"
                     onClick={() => setShowModelSelector(!showModelSelector)}
                     className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                    disabled={modelsLoading}
                   >
-                    <span className="mr-2">{selectedModels.length} models</span>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    {modelsLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-600 mr-2"></div>
+                        <span className="mr-2">Loading models...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="mr-2">{selectedModels.length} models</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </>
+                    )}
                   </button>
                   
                   {selectedModels.length > 1 && (
