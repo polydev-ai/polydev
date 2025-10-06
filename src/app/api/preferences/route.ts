@@ -23,7 +23,7 @@ export async function GET() {
       .from('user_preferences')
       .select('*')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
     
     if (error) {
       console.error('Database error fetching preferences:', error)

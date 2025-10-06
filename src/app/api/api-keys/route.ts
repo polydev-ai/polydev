@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         .from('user_preferences')
         .select('model_preferences')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
       
       if (!prefError && preferences) {
         // Update model preferences with new provider structure

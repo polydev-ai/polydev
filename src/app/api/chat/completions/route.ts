@@ -533,7 +533,7 @@ export async function POST(request: NextRequest) {
       .from('user_preferences')
       .select('mcp_settings')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     const perspectivesPerMessage = (userPrefs?.mcp_settings as any)?.perspectives_per_message || 2
 

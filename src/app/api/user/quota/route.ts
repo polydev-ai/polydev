@@ -26,7 +26,7 @@ export async function GET() {
       .from('user_perspective_quotas')
       .select('*')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (quotaError || !quota) {
       return NextResponse.json(

@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       .from('user_preferences')
       .select('model_preferences, mcp_settings')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (prefsError && prefsError.code !== 'PGRST116') {
       console.error('[sync-models] Error fetching preferences:', prefsError)

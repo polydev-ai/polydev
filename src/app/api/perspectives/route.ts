@@ -56,7 +56,7 @@ async function getUserPreferences(userId: string) {
     .from('user_preferences')
     .select('*')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
   
   if (error || !preferences) {
     console.error('Error getting user preferences:', error)

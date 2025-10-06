@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       .from('user_preferences')
       .select('mcp_settings')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     const tierPriority = (preferences?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
 

@@ -67,7 +67,7 @@ export async function getMaxOutputTokens(
       .from('user_preferences')
       .select('max_output_tokens_custom, max_output_tokens_premium, max_output_tokens_normal, max_output_tokens_eco')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
     // User custom setting (capped by admin global max)
     if (userPrefs?.max_output_tokens_custom) {

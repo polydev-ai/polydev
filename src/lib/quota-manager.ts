@@ -70,7 +70,7 @@ export class QuotaManager {
         .from('user_perspective_quotas')
         .select('*')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (error || !quota) {
         return {
@@ -96,7 +96,7 @@ export class QuotaManager {
           .from('user_perspective_quotas')
           .select('*')
           .eq('user_id', userId)
-          .single()
+          .maybeSingle()
 
         if (refreshedQuota) {
           Object.assign(quota, refreshedQuota)
@@ -193,7 +193,7 @@ export class QuotaManager {
         .from('user_perspective_quotas')
         .select('messages_used, ' + tierUsageKey)
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (fetchError || !currentQuota) {
         throw new Error('Failed to fetch current quota')
@@ -380,7 +380,7 @@ export class QuotaManager {
         .from('user_perspective_quotas')
         .select('plan_tier')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       const planTier = quota?.plan_tier || 'free'
 
@@ -390,7 +390,7 @@ export class QuotaManager {
         .select('*')
         .eq('user_id', userId)
         .eq('month_year', monthYear)
-        .single()
+        .maybeSingle()
 
       // Calculate new values
       const newTotalMessages = (currentSummary?.total_messages || 0) + 1
