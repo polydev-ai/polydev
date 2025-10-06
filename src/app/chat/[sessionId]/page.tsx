@@ -534,12 +534,22 @@ export default function Chat() {
   }
 
   const toggleModel = useCallback((modelId: string) => {
-    const newSelectedModels = selectedModels.includes(modelId)
-      ? selectedModels.filter(id => id !== modelId)
-      : [...selectedModels, modelId]
-
-    setSelectedModels(newSelectedModels)
-  }, [selectedModels])
+    console.log('[Chat] toggleModel called with:', modelId)
+    setSelectedModels(prev => {
+      const isCurrentlySelected = prev.includes(modelId)
+      const newModels = isCurrentlySelected
+        ? prev.filter(id => id !== modelId)
+        : [...prev, modelId]
+      console.log('[Chat] Model selection changed:', {
+        modelId,
+        action: isCurrentlySelected ? 'deselected' : 'selected',
+        previousCount: prev.length,
+        newCount: newModels.length,
+        newModels
+      })
+      return newModels
+    })
+  }, [])
 
   const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'admin' | 'premium' | 'normal' | 'eco') => {
     switch (tier) {
