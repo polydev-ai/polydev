@@ -24,19 +24,15 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error && data.user) {
-      // Initialize user data for new users (creates FREE subscription)
-      try {
-        await subscriptionManager.initializeUserData(data.user.id)
-        console.log('[Auth Callback] Initialized user data for:', data.user.id)
-      } catch (initError) {
-        console.warn('[Auth Callback] Failed to initialize user data:', initError)
-        // Don't block login if initialization fails
-      }
-      
+      // Initialize user data in background (don't await - don't block redirect)
+      subscriptionManager.initializeUserData(data.user.id)
+        .then(() => console.log('[Auth Callback] Initialized user data for:', data.user.id))
+        .catch(initError => console.warn('[Auth Callback] Failed to initialize user data:', initError))
+
       // Always use the site URL from environment or fallback to origin
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin
       const redirectUrl = `${siteUrl}${next}`
-      
+
       console.log('[Auth Callback] Redirecting to:', redirectUrl)
       return NextResponse.redirect(redirectUrl)
     } else {
