@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '../utils/supabase/client'
 
 function AuthForm() {
@@ -70,20 +71,27 @@ function AuthForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Simple Header with Logo */}
-      <div className="w-full py-6 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">P</span>
+      {/* Navigation - Same as Landing Page */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-slate-900 to-slate-700 rounded-md flex items-center justify-center">
+                <span className="text-white font-bold">P</span>
+              </div>
+              <span className="font-semibold text-lg">Polydev</span>
+            </Link>
+
+            <div className="hidden md:flex items-center gap-8">
+              <Link href="/docs" className="text-slate-600 hover:text-slate-900 transition-colors">Docs</Link>
+              <Link href="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
             </div>
-            <span className="text-xl font-bold text-slate-900">Polydev</span>
           </div>
         </div>
-      </div>
+      </nav>
 
       {/* Auth Form */}
-      <div className="flex items-center justify-center px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="flex items-center justify-center px-4 sm:px-6 lg:px-8 pt-32 pb-12">
         <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
           {/* Header */}
