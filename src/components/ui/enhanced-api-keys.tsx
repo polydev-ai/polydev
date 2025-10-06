@@ -751,41 +751,178 @@ export default function EnhancedApiKeysPage() {
         )}
       </AnimatePresence>
 
-      {/* Simple Mode: Unified Priority Waterfall */}
-      {viewMode === 'simple' && (
-        <div>
-          <ModelPriorityWaterfall
-          apiKeys={apiKeys}
-          quota={quota}
-          modelTiers={modelTiers}
-          cliStatuses={cliStatuses}
-          modelsDevProviders={modelsDevProviders}
-          onRefresh={refresh}
-          />
-        </div>
-      )}
+      {/* Model Routing Priority - Shows in BOTH modes */}
+      <ModelPriorityWaterfall
+        apiKeys={apiKeys}
+        quota={quota}
+        modelTiers={modelTiers}
+        cliStatuses={cliStatuses}
+        modelsDevProviders={modelsDevProviders}
+        onRefresh={refresh}
+      />
 
-      {/* Advanced Mode: Detailed Controls */}
+      {/* Advanced Mode: Additional Controls */}
       {viewMode === 'advanced' && (
-        <div>
+        <div className="space-y-6">
           <Suspense fallback={
-          <div className="bg-white rounded-lg border border-slate-200 p-6">
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-              <span className="ml-3 text-slate-600">Loading advanced settings...</span>
+            <div className="bg-white rounded-lg border border-slate-200 p-6">
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+                <span className="ml-3 text-slate-600">Loading advanced settings...</span>
+              </div>
             </div>
-          </div>
-        }>
-          {/* Model Source Priority Picker */}
-          <ModelSourcePriorityPicker />
+          }>
+            {/* Model Source Priority Picker */}
+            <ModelSourcePriorityPicker />
 
-          {/* Model Preference Selector */}
-          <ModelPreferenceSelector />
-        </Suspense>
+            {/* Model Preference Selector */}
+            <ModelPreferenceSelector />
+          </Suspense>
+
+          {/* All Available Models - Only in Advanced Mode */}
+          <div
+            className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-lg transition-shadow"
+          >
+            <button
+              onClick={() => setAllModelsExpanded(!allModelsExpanded)}
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                {allModelsExpanded ? (
+                  <ChevronDown className="w-5 h-5 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                )}
+                <div className="text-left">
+                  <h3 className="text-lg font-semibold text-slate-900">All Available Models</h3>
+                  <p className="text-sm text-slate-600 mt-0.5">
+                    Browse all models from all providers
+                  </p>
+                </div>
+              </div>
+              <div className="text-sm text-slate-600">
+                {modelsDevProviders.length} providers
+              </div>
+            </button>
+
+            {allModelsExpanded && (
+              <div className="px-6 pb-6 border-t border-slate-100">
+                <div className="mt-4 space-y-4">
+                  {modelsDevProviders.length === 0 ? (
+                    <div className="text-center py-8 text-slate-600">
+                      Loading available models...
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {modelsDevProviders.map((provider) => (
+                        <div key={provider.id} className="border rounded-lg bg-slate-50 border-slate-200">
+                          <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-100"
+                               onClick={() => toggleAvailableProviderExpanded(provider.id)}>
+                            <div className="flex items-center space-x-3">
+                              {provider.logo && (
+                                <img
+                                  src={provider.logo}
+                                  alt={provider.name}
+                                  className="w-6 h-6 rounded"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              )}
+                              <div>
+                                <h3 className="font-medium text-slate-900">
+                                  {provider.name}
+                                </h3>
+                                {provider.description && (
+                                  <p className="text-sm text-slate-600">
+                                    {provider.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <div className="text-sm text-slate-600">
+                                {provider.modelsCount || provider.models?.length || 0} models
+                              </div>
+                              <button className="text-slate-400 hover:text-slate-600">
+                                {expandedAvailableProviders[provider.id] ?
+                                  <ChevronDown className="w-4 h-4" /> :
+                                  <ChevronRight className="w-4 h-4" />
+                                }
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Only show models when expanded */}
+                          {expandedAvailableProviders[provider.id] && (
+                            <div className="px-4 pb-4">
+                              {/* Load and display models for this provider */}
+                              {provider.models && provider.models.length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                                  {provider.models.map((model) => (
+                                    <div key={model.id} className="bg-white border border-slate-200 rounded-lg p-3">
+                                      <div className="font-medium text-slate-900 text-sm">
+                                        {model.name}
+                                      </div>
+                                      {(model.pricing?.input || model.pricing?.output) && (
+                                        <div className="text-xs text-slate-600 mt-1">
+                                          ${model.pricing.input?.toFixed(2) || '0.00'} / ${model.pricing.output?.toFixed(2) || '0.00'} per 1M tokens
+                                        </div>
+                                      )}
+                                      {model.contextWindow && (
+                                        <div className="text-xs text-slate-600 mt-1">
+                                          {model.contextWindow.toLocaleString()} tokens
+                                        </div>
+                                      )}
+                                      <div className="flex items-center space-x-2 mt-2">
+                                        {(model.supportsVision || model.supports_vision) && (
+                                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
+                                            Vision
+                                          </span>
+                                        )}
+                                        {(model.supportsTools || model.supports_tools) && (
+                                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
+                                            Tools
+                                          </span>
+                                        )}
+                                        {(model.supportsReasoning || model.supports_reasoning) && (
+                                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
+                                            Reasoning
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Show loading state or fetch button for providers without models */}
+                              {(!provider.models || provider.models.length === 0) && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    fetchProviderModels(provider.id)
+                                  }}
+                                  disabled={loadingModels[provider.id]}
+                                  className="text-slate-600 hover:text-slate-900 text-sm disabled:opacity-50 mt-3"
+                                >
+                                  {loadingModels[provider.id] ? 'Loading models...' : 'Load models'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* CLI Tools Status Section */}
+      {/* CLI Tools Status Section - Detailed view */}
       <div
         className="bg-white rounded-lg border border-slate-200 hover:shadow-lg transition-shadow"
       >
@@ -1621,147 +1758,6 @@ export default function EnhancedApiKeysPage() {
           </div>
         </div>
       )}
-
-      {/* All Available Models Section */}
-      <div
-        className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-lg transition-shadow"
-      >
-        <button
-          onClick={() => setAllModelsExpanded(!allModelsExpanded)}
-          className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            {allModelsExpanded ? (
-              <ChevronDown className="w-5 h-5 text-slate-400" />
-            ) : (
-              <ChevronRight className="w-5 h-5 text-slate-400" />
-            )}
-            <div className="text-left">
-              <h3 className="text-lg font-semibold text-slate-900">All Available Models</h3>
-              <p className="text-sm text-slate-600 mt-0.5">
-                Browse all models from all providers
-              </p>
-            </div>
-          </div>
-          <div className="text-sm text-slate-600">
-            {modelsDevProviders.length} providers
-          </div>
-        </button>
-
-        {allModelsExpanded && (
-          <div className="px-6 pb-6 border-t border-slate-100">
-            <div className="mt-4 space-y-4">
-              {modelsDevProviders.length === 0 ? (
-                <div className="text-center py-8 text-slate-600">
-                  Loading available models...
-                </div>
-              ) : (
-                <div className="space-y-4">
-            {modelsDevProviders.map((provider) => (
-              <div key={provider.id} className="border rounded-lg bg-slate-50 border-slate-200">
-                <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-100"
-                     onClick={() => toggleAvailableProviderExpanded(provider.id)}>
-                  <div className="flex items-center space-x-3">
-                    {provider.logo && (
-                      <img
-                        src={provider.logo}
-                        alt={provider.name}
-                        className="w-6 h-6 rounded"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
-                      />
-                    )}
-                    <div>
-                      <h3 className="font-medium text-slate-900">
-                        {provider.name}
-                      </h3>
-                      {provider.description && (
-                        <p className="text-sm text-slate-600">
-                          {provider.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="text-sm text-slate-600">
-                      {provider.modelsCount || provider.models?.length || 0} models
-                    </div>
-                    <button className="text-slate-400 hover:text-slate-600">
-                      {expandedAvailableProviders[provider.id] ?
-                        <ChevronDown className="w-4 h-4" /> :
-                        <ChevronRight className="w-4 h-4" />
-                      }
-                    </button>
-                  </div>
-                </div>
-
-                {/* Only show models when expanded */}
-                {expandedAvailableProviders[provider.id] && (
-                  <div className="px-4 pb-4">
-                    {/* Load and display models for this provider */}
-                    {provider.models && provider.models.length > 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-                        {provider.models.map((model) => (
-                          <div key={model.id} className="bg-white border border-slate-200 rounded-lg p-3">
-                            <div className="font-medium text-slate-900 text-sm">
-                              {model.name}
-                            </div>
-                            {(model.pricing?.input || model.pricing?.output) && (
-                              <div className="text-xs text-slate-600 mt-1">
-                                ${model.pricing.input?.toFixed(2) || '0.00'} / ${model.pricing.output?.toFixed(2) || '0.00'} per 1M tokens
-                              </div>
-                            )}
-                            {model.contextWindow && (
-                              <div className="text-xs text-slate-600 mt-1">
-                                {model.contextWindow.toLocaleString()} tokens
-                              </div>
-                            )}
-                            <div className="flex items-center space-x-2 mt-2">
-                              {(model.supportsVision || model.supports_vision) && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
-                                  Vision
-                                </span>
-                              )}
-                              {(model.supportsTools || model.supports_tools) && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
-                                  Tools
-                                </span>
-                              )}
-                              {(model.supportsReasoning || model.supports_reasoning) && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
-                                  Reasoning
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Show loading state or fetch button for providers without models */}
-                    {(!provider.models || provider.models.length === 0) && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          fetchProviderModels(provider.id)
-                        }}
-                        disabled={loadingModels[provider.id]}
-                        className="text-slate-600 hover:text-slate-900 text-sm disabled:opacity-50 mt-3"
-                      >
-                        {loadingModels[provider.id] ? 'Loading models...' : 'Load models'}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

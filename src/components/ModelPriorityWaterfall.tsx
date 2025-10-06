@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { ChevronUp, ChevronDown, Terminal, Key, Crown, Info } from 'lucide-react'
+import { ChevronUp, ChevronDown, Terminal, Key, Crown, Info, Workflow, Settings } from 'lucide-react'
 import { usePreferences } from '../hooks/usePreferences'
 import { useDebouncedCallback } from 'use-debounce'
 
@@ -225,12 +225,18 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
 
   return (
     <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">📊 Model Routing Priority</h3>
+      <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+        <Workflow className="w-5 h-5" />
+        Model Routing Priority
+      </h3>
       <p className="text-sm text-slate-500 mb-6">Shows how your requests are routed (in order)</p>
 
       {/* Settings */}
       <div className="mb-6 p-4 bg-slate-50 rounded-lg">
-        <h4 className="text-sm font-medium text-slate-700 mb-2">⚙️ Settings</h4>
+        <h4 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+          <Settings className="w-4 h-4" />
+          Settings
+        </h4>
         <div className="flex items-center gap-4">
           <label className="text-sm text-slate-600">Perspectives per message:</label>
           <input
@@ -252,13 +258,15 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       {/* 1. CLI Tools */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">1️⃣</span>
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold text-xs flex-shrink-0">
+            1
+          </div>
           <Terminal className="w-5 h-5 text-slate-900" />
           <h4 className="font-medium text-slate-900">CLI TOOLS (Highest Priority - Always FREE)</h4>
         </div>
         {detectedCLI.length > 0 ? (
           <div className="ml-8 text-sm text-slate-900">
-            ✓ Detected: {detectedCLI.map(cli => cli.provider).join(', ')}
+            Detected: {detectedCLI.map(cli => cli.provider).join(', ')}
           </div>
         ) : (
           <div className="ml-8 text-sm text-slate-400">No CLI tools detected</div>
@@ -268,7 +276,9 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       {/* 2. User API Keys */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">2️⃣</span>
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 font-semibold text-xs flex-shrink-0">
+            2
+          </div>
           <Key className="w-5 h-5 text-slate-900" />
           <h4 className="font-medium text-slate-900">YOUR API KEYS (Your Models - Always FREE)</h4>
         </div>
@@ -313,7 +323,9 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       {/* 3. Admin Keys (Perspectives) */}
       <div>
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">3️⃣</span>
+          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-600 font-semibold text-xs flex-shrink-0">
+            3
+          </div>
           <Crown className="w-5 h-5 text-slate-900" />
           <h4 className="font-medium text-slate-900">ADMIN KEYS (Uses Your Quota)</h4>
         </div>
