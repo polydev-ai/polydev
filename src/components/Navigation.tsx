@@ -119,8 +119,8 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center gap-2 group">
-              <PolydevLogo size={48} className="text-slate-900 group-hover:text-slate-600 transition-colors duration-200" />
+            <Link href="/" className="flex items-center gap-1 group">
+              <PolydevLogo size={80} className="text-slate-900 group-hover:text-slate-600 transition-colors duration-200" />
               <span className="text-xl font-bold text-slate-900 group-hover:text-slate-600 transition-colors duration-200">Polydev</span>
             </Link>
           </div>

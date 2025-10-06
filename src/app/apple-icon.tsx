@@ -3,8 +3,8 @@ import { ImageResponse } from 'next/og'
 export const runtime = 'edge'
 
 export const size = {
-  width: 512,
-  height: 512,
+  width: 1024,
+  height: 1024,
 }
 
 export const contentType = 'image/png'
@@ -23,8 +23,8 @@ export default function AppleIcon() {
         }}
       >
         <svg
-          width="480"
-          height="480"
+          width="960"
+          height="960"
           viewBox="0 0 600 600"
           xmlns="http://www.w3.org/2000/svg"
         >
