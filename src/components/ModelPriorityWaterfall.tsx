@@ -62,9 +62,10 @@ interface Props {
   cliStatuses: CLIStatus[]
   modelsDevProviders: ModelsDevProvider[]
   onRefresh: () => Promise<void>
+  viewMode?: 'simple' | 'advanced'
 }
 
-export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cliStatuses, modelsDevProviders, onRefresh }: Props) {
+export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cliStatuses, modelsDevProviders, onRefresh, viewMode = 'simple' }: Props) {
   const { preferences, updatePreferences } = usePreferences()
   const [saving, setSaving] = useState(false)
 
@@ -270,106 +271,21 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         </div>
       </div>
 
-      {/* 1. CLI Tools */}
-      <div className="mb-4 p-4 bg-gradient-to-br from-blue-50/50 to-blue-100/30 rounded-xl border-l-4 border-blue-500">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500 text-white font-bold text-sm shadow-sm flex-shrink-0">
-            1
-          </div>
-          <div className="p-1.5 bg-white rounded-lg shadow-sm">
-            <Terminal className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-slate-900">CLI Tools</h4>
-            <p className="text-xs text-slate-600">Highest Priority · Always FREE</p>
-          </div>
-        </div>
-        {detectedCLI.length > 0 ? (
-          <div className="ml-11 mt-2 px-3 py-2 bg-white rounded-lg border border-blue-200/60 shadow-sm">
-            <span className="text-xs font-medium text-slate-600">Active: </span>
-            <span className="text-sm text-slate-900 font-medium">{detectedCLI.map(cli => cli.provider).join(', ')}</span>
-          </div>
-        ) : (
-          <div className="ml-11 text-sm text-slate-500 italic">No CLI tools detected</div>
-        )}
-      </div>
-
-      {/* 2. User API Keys */}
-      <div className="mb-4 p-4 bg-gradient-to-br from-green-50/50 to-green-100/30 rounded-xl border-l-4 border-green-500">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-green-500 text-white font-bold text-sm shadow-sm flex-shrink-0">
-            2
-          </div>
-          <div className="p-1.5 bg-white rounded-lg shadow-sm">
-            <Key className="w-4 h-4 text-green-600" />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-slate-900">Your API Keys</h4>
-            <p className="text-xs text-slate-600">Your Models · Always FREE</p>
-          </div>
-        </div>
-        {apiKeys.length > 0 ? (
-          <div className="ml-11 mt-2 space-y-2">
-            {apiKeys.map((key, idx) => {
-              const logo = getProviderLogo(key.provider)
-              const displayName = getProviderDisplayName(key.provider)
-              const modelName = key.default_model || 'Default'
-              return (
-                <div key={key.id} className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-green-200/60 shadow-sm hover:shadow-md transition-all">
-                  <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded">{idx + 1}</span>
-                  {logo && <img src={logo} alt={displayName} className="w-5 h-5 rounded" />}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-slate-900">{displayName}</span>
-                      <span className="text-xs text-slate-500">· {modelName}</span>
-                    </div>
-                    <span className="text-xs text-slate-400 font-mono">{key.key_preview}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => moveApiKey(idx, 'up')}
-                      disabled={idx === 0 || saving}
-                      className="p-1.5 hover:bg-green-50 rounded-lg disabled:opacity-30 transition-colors"
-                      title="Move up"
-                    >
-                      <ChevronUp className="w-4 h-4 text-slate-600" />
-                    </button>
-                    <button
-                      onClick={() => moveApiKey(idx, 'down')}
-                      disabled={idx === apiKeys.length - 1 || saving}
-                      className="p-1.5 hover:bg-green-50 rounded-lg disabled:opacity-30 transition-colors"
-                      title="Move down"
-                    >
-                      <ChevronDown className="w-4 h-4 text-slate-600" />
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="ml-11 text-sm text-slate-500 italic">No API keys configured</div>
-        )}
-      </div>
-
-      {/* 3. Admin Keys (Perspectives) */}
-      <div className="p-4 bg-gradient-to-br from-purple-50/50 to-purple-100/30 rounded-xl border-l-4 border-purple-500">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-purple-500 text-white font-bold text-sm shadow-sm flex-shrink-0">
-            3
-          </div>
+      {/* Admin Keys (Perspectives) - Tier Priority */}
+      <div className="p-5 bg-gradient-to-br from-purple-50/50 to-purple-100/30 rounded-xl border border-purple-200/60">
+        <div className="flex items-center gap-2 mb-4">
           <div className="p-1.5 bg-white rounded-lg shadow-sm">
             <Crown className="w-4 h-4 text-purple-600" />
           </div>
           <div className="flex-1">
-            <h4 className="font-semibold text-slate-900">Admin Keys</h4>
-            <p className="text-xs text-slate-600">Uses Your Perspective Quota</p>
+            <h4 className="text-sm font-semibold text-slate-900">Admin Tier Priority</h4>
+            <p className="text-xs text-slate-600">Perspective quota usage order</p>
           </div>
         </div>
 
         {/* Tier Priority */}
-        <div className="ml-11 mb-4">
-          <h5 className="text-xs font-semibold text-slate-700 mb-3 uppercase tracking-wide">Tier Priority</h5>
+        <div>
+          <div className="space-y-2">
           <div className="space-y-2">
             {tierPriority.map((tier: string, idx: number) => {
               const { total, used } = getTierQuota(tier)
