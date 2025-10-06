@@ -224,91 +224,123 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
   }
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-6">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-        <Workflow className="w-5 h-5" />
-        Model Routing Priority
-      </h3>
-      <p className="text-sm text-slate-500 mb-6">Shows how your requests are routed (in order)</p>
+    <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow duration-200 p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg">
+            <Workflow className="w-5 h-5 text-slate-700" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Model Routing Priority</h3>
+            <p className="text-xs text-slate-500 mt-0.5">How your requests are routed in order</p>
+          </div>
+        </div>
+      </div>
 
       {/* Settings */}
-      <div className="mb-6 p-4 bg-slate-50 rounded-lg">
-        <h4 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-          <Settings className="w-4 h-4" />
-          Settings
-        </h4>
+      <div className="mb-6 p-5 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl border border-slate-200/60">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-1.5 bg-white rounded-lg shadow-sm">
+            <Settings className="w-3.5 h-3.5 text-slate-600" />
+          </div>
+          <h4 className="text-sm font-semibold text-slate-700">Settings</h4>
+        </div>
         <div className="flex items-center gap-4">
-          <label className="text-sm text-slate-600">Perspectives per message:</label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={perspectivesPerMessage}
-            onChange={(e) => debouncedUpdatePerspectives(parseInt(e.target.value))}
-            className="flex-1 max-w-xs"
-            disabled={saving}
-          />
-          <span className="text-sm font-medium text-slate-900 w-8">{perspectivesPerMessage}</span>
-          <span title="Number of models to query simultaneously">
-            <Info className="w-4 h-4 text-slate-400" />
-          </span>
+          <label className="text-sm text-slate-600 font-medium">Perspectives per message</label>
+          <div className="flex-1 flex items-center gap-3">
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={perspectivesPerMessage}
+              onChange={(e) => debouncedUpdatePerspectives(parseInt(e.target.value))}
+              className="flex-1 max-w-xs h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider:bg-slate-700"
+              disabled={saving}
+            />
+            <span className="text-sm font-bold text-slate-900 bg-white px-3 py-1 rounded-lg shadow-sm border border-slate-200 min-w-[2.5rem] text-center">
+              {perspectivesPerMessage}
+            </span>
+          </div>
+          <div className="group relative">
+            <Info className="w-4 h-4 text-slate-400 cursor-help" />
+            <div className="absolute hidden group-hover:block bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg shadow-lg">
+              Number of models to query simultaneously
+            </div>
+          </div>
         </div>
       </div>
 
       {/* 1. CLI Tools */}
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-semibold text-xs flex-shrink-0">
+      <div className="mb-4 p-4 bg-gradient-to-br from-blue-50/50 to-blue-100/30 rounded-xl border-l-4 border-blue-500">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500 text-white font-bold text-sm shadow-sm flex-shrink-0">
             1
           </div>
-          <Terminal className="w-5 h-5 text-slate-900" />
-          <h4 className="font-medium text-slate-900">CLI TOOLS (Highest Priority - Always FREE)</h4>
+          <div className="p-1.5 bg-white rounded-lg shadow-sm">
+            <Terminal className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-semibold text-slate-900">CLI Tools</h4>
+            <p className="text-xs text-slate-600">Highest Priority · Always FREE</p>
+          </div>
         </div>
         {detectedCLI.length > 0 ? (
-          <div className="ml-8 text-sm text-slate-900">
-            Detected: {detectedCLI.map(cli => cli.provider).join(', ')}
+          <div className="ml-11 mt-2 px-3 py-2 bg-white rounded-lg border border-blue-200/60 shadow-sm">
+            <span className="text-xs font-medium text-slate-600">Active: </span>
+            <span className="text-sm text-slate-900 font-medium">{detectedCLI.map(cli => cli.provider).join(', ')}</span>
           </div>
         ) : (
-          <div className="ml-8 text-sm text-slate-400">No CLI tools detected</div>
+          <div className="ml-11 text-sm text-slate-500 italic">No CLI tools detected</div>
         )}
       </div>
 
       {/* 2. User API Keys */}
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600 font-semibold text-xs flex-shrink-0">
+      <div className="mb-4 p-4 bg-gradient-to-br from-green-50/50 to-green-100/30 rounded-xl border-l-4 border-green-500">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-green-500 text-white font-bold text-sm shadow-sm flex-shrink-0">
             2
           </div>
-          <Key className="w-5 h-5 text-slate-900" />
-          <h4 className="font-medium text-slate-900">YOUR API KEYS (Your Models - Always FREE)</h4>
+          <div className="p-1.5 bg-white rounded-lg shadow-sm">
+            <Key className="w-4 h-4 text-green-600" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-semibold text-slate-900">Your API Keys</h4>
+            <p className="text-xs text-slate-600">Your Models · Always FREE</p>
+          </div>
         </div>
         {apiKeys.length > 0 ? (
-          <div className="ml-8 space-y-1">
+          <div className="ml-11 mt-2 space-y-2">
             {apiKeys.map((key, idx) => {
               const logo = getProviderLogo(key.provider)
               const displayName = getProviderDisplayName(key.provider)
               const modelName = key.default_model || 'Default'
               return (
-                <div key={key.id} className="flex items-center gap-2 text-sm">
-                  <span className="text-slate-500">{idx + 1}.</span>
+                <div key={key.id} className="flex items-center gap-3 px-3 py-2 bg-white rounded-lg border border-green-200/60 shadow-sm hover:shadow-md transition-all">
+                  <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded">{idx + 1}</span>
                   {logo && <img src={logo} alt={displayName} className="w-5 h-5 rounded" />}
-                  <span className="text-slate-900">{displayName}</span>
-                  <span className="text-slate-500">({modelName})</span>
-                  <span className="text-slate-400">- {key.key_preview}</span>
-                  <div className="flex gap-1 ml-auto">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-slate-900">{displayName}</span>
+                      <span className="text-xs text-slate-500">· {modelName}</span>
+                    </div>
+                    <span className="text-xs text-slate-400 font-mono">{key.key_preview}</span>
+                  </div>
+                  <div className="flex gap-1">
                     <button
                       onClick={() => moveApiKey(idx, 'up')}
                       disabled={idx === 0 || saving}
-                      className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
+                      className="p-1.5 hover:bg-green-50 rounded-lg disabled:opacity-30 transition-colors"
+                      title="Move up"
                     >
-                      <ChevronUp className="w-4 h-4" />
+                      <ChevronUp className="w-4 h-4 text-slate-600" />
                     </button>
                     <button
                       onClick={() => moveApiKey(idx, 'down')}
                       disabled={idx === apiKeys.length - 1 || saving}
-                      className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
+                      className="p-1.5 hover:bg-green-50 rounded-lg disabled:opacity-30 transition-colors"
+                      title="Move down"
                     >
-                      <ChevronDown className="w-4 h-4" />
+                      <ChevronDown className="w-4 h-4 text-slate-600" />
                     </button>
                   </div>
                 </div>
@@ -316,66 +348,76 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
             })}
           </div>
         ) : (
-          <div className="ml-8 text-sm text-slate-400">No API keys configured</div>
+          <div className="ml-11 text-sm text-slate-500 italic">No API keys configured</div>
         )}
       </div>
 
       {/* 3. Admin Keys (Perspectives) */}
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-600 font-semibold text-xs flex-shrink-0">
+      <div className="p-4 bg-gradient-to-br from-purple-50/50 to-purple-100/30 rounded-xl border-l-4 border-purple-500">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-purple-500 text-white font-bold text-sm shadow-sm flex-shrink-0">
             3
           </div>
-          <Crown className="w-5 h-5 text-slate-900" />
-          <h4 className="font-medium text-slate-900">ADMIN KEYS (Uses Your Quota)</h4>
+          <div className="p-1.5 bg-white rounded-lg shadow-sm">
+            <Crown className="w-4 h-4 text-purple-600" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-semibold text-slate-900">Admin Keys</h4>
+            <p className="text-xs text-slate-600">Uses Your Perspective Quota</p>
+          </div>
         </div>
 
         {/* Tier Priority */}
-        <div className="ml-8 mb-3">
-          <h5 className="text-sm font-medium text-slate-700 mb-2">Tier Priority:</h5>
+        <div className="ml-11 mb-4">
+          <h5 className="text-xs font-semibold text-slate-700 mb-3 uppercase tracking-wide">Tier Priority</h5>
           <div className="space-y-2">
             {tierPriority.map((tier: string, idx: number) => {
               const { total, used } = getTierQuota(tier)
               const percentage = total > 0 ? (used / total) * 100 : 0
+              const remaining = total - used
               const tierModels = getModelsForTier(tier)
               return (
-                <div key={tier} className="border border-slate-200 rounded p-2">
-                  <div className="flex items-center gap-2 text-sm mb-1">
-                    <span className="text-slate-500">{idx + 1}.</span>
-                    <span className="text-slate-900 capitalize font-medium w-20">{tier}</span>
-                    <div className="flex-1 max-w-xs">
+                <div key={tier} className="bg-white border border-purple-200/60 rounded-lg p-3 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded">{idx + 1}</span>
+                    <span className="text-sm capitalize font-semibold text-slate-900">{tier}</span>
+                    <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-slate-200 rounded-full h-2">
+                        <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
                           <div
-                            className={`h-2 rounded-full ${
-                              percentage >= 90 ? 'bg-slate-300' : percentage >= 70 ? 'bg-slate-500' : 'bg-slate-700'
+                            className={`h-2 rounded-full transition-all ${
+                              percentage >= 90 ? 'bg-red-400' : percentage >= 70 ? 'bg-amber-400' : 'bg-emerald-400'
                             }`}
                             style={{ width: `${Math.min(percentage, 100)}%` }}
                           />
                         </div>
-                        <span className="text-xs text-slate-500 w-24">{used}/{total}</span>
+                        <div className="text-xs font-medium text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-200">
+                          {remaining} / {total}
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-1">
                       <button
                         onClick={() => moveTier(tier, 'up')}
                         disabled={idx === 0 || saving}
-                        className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
+                        className="p-1.5 hover:bg-purple-50 rounded-lg disabled:opacity-30 transition-colors"
+                        title="Move up"
                       >
-                        <ChevronUp className="w-4 h-4" />
+                        <ChevronUp className="w-4 h-4 text-slate-600" />
                       </button>
                       <button
                         onClick={() => moveTier(tier, 'down')}
                         disabled={idx === tierPriority.length - 1 || saving}
-                        className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
+                        className="p-1.5 hover:bg-purple-50 rounded-lg disabled:opacity-30 transition-colors"
+                        title="Move down"
                       >
-                        <ChevronDown className="w-4 h-4" />
+                        <ChevronDown className="w-4 h-4 text-slate-600" />
                       </button>
                     </div>
                   </div>
                   {tierModels.length > 0 && (
-                    <div className="ml-8 text-xs text-slate-600">
-                      Models: {tierModels.join(', ')}
+                    <div className="ml-9 text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded">
+                      <span className="font-medium">Models:</span> {tierModels.join(', ')}
                     </div>
                   )}
                 </div>
@@ -385,9 +427,9 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         </div>
 
         {/* Provider Priority (GLOBAL) */}
-        <div className="ml-8">
-          <h5 className="text-sm font-medium text-slate-700 mb-2">Provider Priority (applies to all tiers):</h5>
-          <div className="space-y-1">
+        <div className="ml-11">
+          <h5 className="text-xs font-semibold text-slate-700 mb-3 uppercase tracking-wide">Provider Priority · Global</h5>
+          <div className="space-y-2">
             {allProviders.map((provider: string, idx: number) => {
               const logo = getProviderLogo(provider)
               const displayName = getProviderDisplayName(provider)
@@ -395,30 +437,32 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                 .filter(m => m.provider.toLowerCase() === provider.toLowerCase())
                 .map(m => `${m.display_name} (${m.tier})`)
               return (
-                <div key={provider} className="border border-slate-200 rounded p-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-500">{idx + 1}.</span>
-                    {logo && <img src={logo} alt={displayName} className="w-5 h-5 rounded" />}
-                    <span className="text-slate-900">{displayName}</span>
-                    <div className="flex gap-1 ml-auto">
+                <div key={provider} className="bg-white border border-purple-200/60 rounded-lg p-3 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded">{idx + 1}</span>
+                    {logo && <img src={logo} alt={displayName} className="w-6 h-6 rounded shadow-sm" />}
+                    <span className="text-sm font-medium text-slate-900 flex-1">{displayName}</span>
+                    <div className="flex gap-1">
                       <button
                         onClick={() => moveProvider(provider, 'up')}
                         disabled={idx === 0 || saving}
-                        className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
+                        className="p-1.5 hover:bg-purple-50 rounded-lg disabled:opacity-30 transition-colors"
+                        title="Move up"
                       >
-                        <ChevronUp className="w-4 h-4" />
+                        <ChevronUp className="w-4 h-4 text-slate-600" />
                       </button>
                       <button
                         onClick={() => moveProvider(provider, 'down')}
                         disabled={idx === allProviders.length - 1 || saving}
-                        className="p-1 hover:bg-slate-100 rounded disabled:opacity-30"
+                        className="p-1.5 hover:bg-purple-50 rounded-lg disabled:opacity-30 transition-colors"
+                        title="Move down"
                       >
-                        <ChevronDown className="w-4 h-4" />
+                        <ChevronDown className="w-4 h-4 text-slate-600" />
                       </button>
                     </div>
                   </div>
                   {providerModels.length > 0 && (
-                    <div className="ml-8 text-xs text-slate-600 mt-1">
+                    <div className="ml-9 mt-2 text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded">
                       {providerModels.join(', ')}
                     </div>
                   )}
@@ -430,9 +474,9 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       </div>
 
       {saving && (
-        <div className="mt-4 text-sm text-slate-900 flex items-center gap-2">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-900"></div>
-          Saving changes...
+        <div className="mt-6 flex items-center justify-center gap-3 px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-300 border-t-slate-900"></div>
+          <span className="text-sm font-medium text-slate-700">Saving changes...</span>
         </div>
       )}
     </div>
