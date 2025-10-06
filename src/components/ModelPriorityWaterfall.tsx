@@ -224,6 +224,14 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       .map(m => m.display_name || m.provider)
   }
 
+  // Helper to get unique providers for a tier
+  const getProvidersForTier = (tier: string) => {
+    const providers = [...new Set((modelTiers || [])
+      .filter(m => m.tier === tier)
+      .map(m => m.provider))]
+    return providers
+  }
+
   return (
     <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow duration-200 p-6">
       <div className="flex items-center justify-between mb-6">
@@ -290,6 +298,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
               const percentage = total > 0 ? (used / total) * 100 : 0
               const remaining = total - used
               const tierModels = getModelsForTier(tier)
+              const tierProviders = getProvidersForTier(tier)
               return (
                 <div key={tier} className="bg-white border border-purple-200/60 rounded-lg p-3 shadow-sm hover:shadow-md transition-all">
                   <div className="flex items-center gap-3 mb-2">
@@ -329,6 +338,25 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                       </button>
                     </div>
                   </div>
+                  {tierProviders.length > 0 && (
+                    <div className="ml-9 mb-2 flex items-center gap-2 flex-wrap">
+                      {tierProviders.map(provider => {
+                        const logo = getProviderLogo(provider)
+                        return (
+                          <div key={provider} className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-slate-200">
+                            {logo ? (
+                              <img src={logo} alt={provider} className="w-4 h-4 object-contain" />
+                            ) : (
+                              <div className="w-4 h-4 bg-slate-200 rounded flex items-center justify-center text-[8px] font-bold text-slate-600">
+                                {provider.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="text-xs text-slate-700 font-medium">{getProviderDisplayName(provider)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                   {tierModels.length > 0 && (
                     <div className="ml-9 text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded">
                       <span className="font-medium">Models:</span> {tierModels.join(', ')}
