@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '../utils/supabase/client'
+import PolydevLogo from '../../components/PolydevLogo'
 
 function AuthForm() {
   const [isLoading, setIsLoading] = useState(false)
@@ -76,9 +77,7 @@ function AuthForm() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-slate-900 to-slate-700 rounded-md flex items-center justify-center">
-                <span className="text-white font-bold">P</span>
-              </div>
+              <PolydevLogo size={32} className="text-slate-900" />
               <span className="font-semibold text-lg">Polydev</span>
             </Link>
 

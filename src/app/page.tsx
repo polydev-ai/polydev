@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Code2, Sparkles, Zap, Check, ChevronRight, ChevronDown } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import PolydevLogo from '../components/PolydevLogo'
 
 // Enhanced Typewriter with gradient cursor
 function TypewriterText({ texts, delay = 50, pauseDuration = 3000 }: {
@@ -277,9 +278,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-slate-900 to-slate-700 rounded-md flex items-center justify-center">
-                <span className="text-white font-bold">P</span>
-              </div>
+              <PolydevLogo size={32} className="text-slate-900" />
               <span className="font-semibold text-lg">Polydev</span>
             </Link>
 

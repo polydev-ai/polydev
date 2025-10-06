@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '../hooks/useAuth'
 import { createClient } from '../app/utils/supabase/client'
+import PolydevLogo from './PolydevLogo'
 
 interface UserProfile {
   id: string
@@ -119,9 +120,7 @@ export default function Navigation() {
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
+              <PolydevLogo size={32} className="text-slate-900 group-hover:text-slate-600 transition-colors duration-200" />
               <span className="text-xl font-bold text-slate-900 group-hover:text-slate-600 transition-colors duration-200">Polydev</span>
             </Link>
           </div>
