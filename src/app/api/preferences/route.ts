@@ -29,39 +29,20 @@ export async function GET() {
       console.error('Database error fetching preferences:', error)
       console.error('Error details:', JSON.stringify(error, null, 2))
       
-      // If no preferences exist, create default ones
+      // If no preferences exist, return empty preferences (user configures via dashboard)
       if (error.code === 'PGRST116') {
         console.log('No preferences found; returning empty preferences for user:', user.id)
         const emptyPreferences = {
           user_id: user.id,
-          default_provider: 'openai',
-          default_model: 'gpt-4o',
-          preferred_providers: ['openai', 'anthropic', 'google'],
           usage_preference: 'auto', // auto, api_keys, credits, cli
-          source_priority: ['cli', 'api', 'admin', 'credits'], // Default priority order
+          source_priority: ['cli', 'api', 'admin'], // Default priority order
           prefer_own_keys: false,
-          model_preferences: {
-            openai: {
-              models: ['gpt-4o'],
-              order: 1
-            },
-            anthropic: {
-              models: ['claude-3-5-sonnet-20241022'],
-              order: 2
-            },
-            google: {
-              models: ['gemini-2.0-flash-exp'],
-              order: 3
-            },
-            'x-ai': {
-              models: ['grok-2-latest'],
-              order: 4
-            }
-          },
+          model_preferences: {}, // User selects models from dashboard/models page
           mcp_settings: {
             default_temperature: 0.7,
             default_max_tokens: 4000,
             auto_select_model: false,
+            saved_chat_models: [], // User selects models from dashboard
             memory_settings: {
               enable_conversation_memory: true,
               enable_project_memory: true,
