@@ -6,7 +6,7 @@ interface CLIStatusUpdate {
   provider: 'claude_code' | 'codex_cli' | 'gemini_cli'
   status: 'available' | 'unavailable' | 'not_installed' | 'checking'
   message?: string
-  user_id: string
+  user_id?: string  // Now optional since we can auto-extract from token
   mcp_token: string
   cli_version?: string
   cli_path?: string
@@ -64,12 +64,48 @@ export async function POST(request: NextRequest) {
     const body: CLIStatusUpdate = await request.json()
     const { provider, status, message, user_id, mcp_token, cli_version, cli_path, authenticated, last_used, additional_info } = body
 
-    // Validate required fields
-    if (!provider || !status || !user_id || !mcp_token) {
+    // Validate required fields - user_id is now optional since we can extract it from token
+    if (!provider || !status || !mcp_token) {
       return NextResponse.json({ 
         error: 'Missing required fields', 
-        required: ['provider', 'status', 'user_id', 'mcp_token']
+        required: ['provider', 'status', 'mcp_token']
       }, { status: 400 })
+    }
+
+    // Extract user ID from token if not provided
+    let actualUserId = user_id;
+    if (!actualUserId) {
+      try {
+        const supabase = createServerClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+        
+        const { createHash } = require('crypto')
+        const tokenHash = createHash('sha256').update(mcp_token).digest('hex')
+        
+        const { data: tokenData, error } = await supabase
+          .from('mcp_user_tokens')
+          .select('user_id')
+          .eq('token_hash', tokenHash)
+          .eq('active', true)
+          .single()
+
+        if (tokenData && !error) {
+          actualUserId = tokenData.user_id;
+          console.log(`[CLI Status] Auto-extracted user ID from token: ${actualUserId}`);
+        } else {
+          console.error('[CLI Status] Could not extract user ID from token:', error);
+          return NextResponse.json({ 
+            error: 'Invalid token or could not determine user ID' 
+          }, { status: 401 })
+        }
+      } catch (lookupError) {
+        console.error('[CLI Status] Token lookup error:', lookupError);
+        return NextResponse.json({ 
+          error: 'Failed to validate token' 
+        }, { status: 500 })
+      }
     }
 
     // Validate provider
@@ -111,7 +147,7 @@ export async function POST(request: NextRequest) {
     // Update or create CLI configuration
     // Only update columns that exist in the actual database schema
     const updateData = {
-      user_id,
+      user_id: actualUserId,
       provider,
       status,
       enabled: authenticated ?? false,  // Map authenticated to enabled
@@ -121,14 +157,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[DEBUG] Looking for existing configuration...');
-    console.log('[DEBUG] User ID:', user_id);
+    console.log('[DEBUG] User ID:', actualUserId);
     console.log('[DEBUG] Provider:', provider);
 
     // Try to update existing configuration
     const { data: existingConfig, error: selectError } = await supabase
       .from('cli_provider_configurations')
       .select('id')
-      .eq('user_id', user_id)
+      .eq('user_id', actualUserId)
       .eq('provider', provider)
       .single()
 

@@ -523,18 +523,20 @@ class StdioMCPWrapper {
     console.error('[Stdio Wrapper] Updating CLI status in database...');
     
     try {
-      // Get user token and ID from environment variables
+      // Get user token from environment variables
       const userToken = process.env.POLYDEV_MCP_TOKEN || this.userToken;
-      const userId = process.env.POLYDEV_USER_ID || '42ef0583-7488-436d-a81d-ddef55c0cde2';
       
-      console.error(`[Stdio Wrapper] Using user ID: ${userId}`);
+      if (!userToken) {
+        console.error('[Stdio Wrapper] No user token available for database updates');
+        return;
+      }
+      
       console.error(`[Stdio Wrapper] Using token: ${userToken ? userToken.substring(0, 20) + '...' : 'MISSING'}`);
       
       for (const [providerId, result] of Object.entries(results)) {
         const statusData = {
           provider: providerId,
           status: result.available ? 'available' : 'unavailable',
-          user_id: userId,
           mcp_token: userToken,
           cli_version: result.version || null,
           cli_path: result.cli_path || null,
