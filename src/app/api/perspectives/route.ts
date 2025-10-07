@@ -33,13 +33,6 @@ interface PerspectivesResponse {
   cached?: boolean
 }
 
-// Default model configurations
-const DEFAULT_MODELS = [
-  'gpt-4',
-  'claude-3-sonnet',
-  'gemini-pro'
-]
-
 async function getUserPreferences(userId: string) {
   // Use service role for backend operations
   let supabase = await createClient()
@@ -56,7 +49,7 @@ async function getUserPreferences(userId: string) {
     .from('user_preferences')
     .select('*')
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
   
   if (error || !preferences) {
     console.error('Error getting user preferences:', error)
@@ -468,20 +461,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Determine which models to use - user preferences or provided models or defaults
+    // Determine which models to use from API keys or saved chat models
     let modelsToUse = models
     if (!modelsToUse && userId) {
-      // Fetch user preferences to get their preferred models
-      const userPreferences = await getUserPreferences(userId)
-      if (userPreferences?.model_preferences) {
-        // Extract models from user preferences
-        modelsToUse = Object.values(userPreferences.model_preferences).filter(Boolean) as string[]
+      const supabase = await createClient()
+
+      // First try: Get models from user's API keys (dashboard/models page)
+      const { data: apiKeys } = await supabase
+        .from('user_api_keys')
+        .select('default_model, active')
+        .eq('user_id', userId)
+        .eq('active', true)
+        .eq('is_admin_key', false)
+        .order('priority_order', { ascending: true })
+
+      if (apiKeys && apiKeys.length > 0) {
+        modelsToUse = apiKeys
+          .map(k => k.default_model)
+          .filter(Boolean) as string[]
+      }
+
+      // Second try: Get from saved_chat_models in mcp_settings
+      if (!modelsToUse || modelsToUse.length === 0) {
+        const userPreferences = await getUserPreferences(userId)
+        const savedChatModels = (userPreferences?.mcp_settings as any)?.saved_chat_models
+        if (savedChatModels && Array.isArray(savedChatModels) && savedChatModels.length > 0) {
+          modelsToUse = savedChatModels
+        }
       }
     }
-    
-    // Fallback to default models if still no models specified
+
+    // If still no models, return error - user needs to configure API keys
     if (!modelsToUse || modelsToUse.length === 0) {
-      modelsToUse = DEFAULT_MODELS
+      return NextResponse.json({
+        error: 'No models configured. Please add API keys and select models at: https://polydev.ai/dashboard/models'
+      }, { status: 400 })
     }
 
     // Build the enhanced prompt with project context

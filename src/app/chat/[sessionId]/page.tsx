@@ -69,15 +69,19 @@ export default function Chat() {
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Set selected models using waterfall priority logic
+  // Set selected models ONCE on initial load using waterfall priority logic
   // Priority: CLI Tools → User API Keys → Admin Keys (with tier + provider priority)
+  const hasInitializedModels = useRef(false)
+
   useEffect(() => {
-    if (dashboardModels.length > 0 && preferences) {
+    if (dashboardModels.length > 0 && !hasInitializedModels.current) {
+      hasInitializedModels.current = true
+
       // Get perspectives_per_message setting (default to 2)
-      const perspectivesPerMessage = preferences.mcp_settings?.perspectives_per_message || 2
+      const perspectivesPerMessage = preferences?.mcp_settings?.perspectives_per_message || 2
 
       // Check if we have saved chat models preference
-      const savedChatModels = preferences.mcp_settings?.saved_chat_models
+      const savedChatModels = preferences?.mcp_settings?.saved_chat_models
       if (savedChatModels && savedChatModels.length > 0) {
         // Filter saved models to only include those that are still configured
         const validSavedModels = savedChatModels.filter(modelId =>
@@ -85,11 +89,7 @@ export default function Chat() {
         )
 
         if (validSavedModels.length > 0) {
-          // Only update if different to prevent infinite loop
-          setSelectedModels(prev => {
-            if (JSON.stringify(prev) === JSON.stringify(validSavedModels)) return prev
-            return validSavedModels
-          })
+          setSelectedModels(validSavedModels)
           return
         }
       }
@@ -98,11 +98,11 @@ export default function Chat() {
       const priorityModels: string[] = []
 
       // Get source priority (default: CLI > API > Admin)
-      const sourcePriority = preferences.source_priority || ['cli', 'api', 'admin']
+      const sourcePriority = preferences?.source_priority || ['cli', 'api', 'admin']
 
       // Get tier and provider priorities
-      const tierPriority = preferences.mcp_settings?.tier_priority || ['normal', 'eco', 'premium']
-      const providerPriority = preferences.mcp_settings?.provider_priority || []
+      const tierPriority = preferences?.mcp_settings?.tier_priority || ['normal', 'eco', 'premium']
+      const providerPriority = preferences?.mcp_settings?.provider_priority || []
 
       for (const source of sourcePriority) {
         if (priorityModels.length >= perspectivesPerMessage) break
@@ -189,11 +189,7 @@ export default function Chat() {
 
       // If waterfall found models, use them
       if (priorityModels.length > 0) {
-        // Only update if different to prevent infinite loop
-        setSelectedModels(prev => {
-          if (JSON.stringify(prev) === JSON.stringify(priorityModels)) return prev
-          return priorityModels
-        })
+        setSelectedModels(priorityModels)
       } else {
         // Final fallback: Get top N configured models (prioritize admin models for users without API keys)
         const configuredModels = dashboardModels
@@ -218,11 +214,7 @@ export default function Chat() {
           .slice(0, perspectivesPerMessage)
           .map(m => m.id)
 
-        // Only update if different to prevent infinite loop
-        setSelectedModels(prev => {
-          if (JSON.stringify(prev) === JSON.stringify(configuredModels)) return prev
-          return configuredModels
-        })
+        setSelectedModels(configuredModels)
 
         // Log for debugging
         console.log('[Chat] Model selection fallback:', {
@@ -233,7 +225,7 @@ export default function Chat() {
         })
       }
     }
-  }, [dashboardModels, preferences, apiKeys, cliStatuses])
+  }, [dashboardModels])
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -533,27 +525,23 @@ export default function Chat() {
     }
   }
 
-  const toggleModel = useCallback(async (modelId: string) => {
-    const newSelectedModels = selectedModels.includes(modelId)
-      ? selectedModels.filter(id => id !== modelId)
-      : [...selectedModels, modelId]
-
-    setSelectedModels(newSelectedModels)
-
-    // Save to user preferences
-    if (updatePreferences && preferences) {
-      try {
-        await updatePreferences({
-          mcp_settings: {
-            ...preferences.mcp_settings,
-            saved_chat_models: newSelectedModels
-          }
-        })
-      } catch (error) {
-        // Continue silently - user can still use the interface
-      }
-    }
-  }, [selectedModels, updatePreferences, preferences])
+  const toggleModel = useCallback((modelId: string) => {
+    console.log('[Chat] toggleModel called with:', modelId)
+    setSelectedModels(prev => {
+      const isCurrentlySelected = prev.includes(modelId)
+      const newModels = isCurrentlySelected
+        ? prev.filter(id => id !== modelId)
+        : [...prev, modelId]
+      console.log('[Chat] Model selection changed:', {
+        modelId,
+        action: isCurrentlySelected ? 'deselected' : 'selected',
+        previousCount: prev.length,
+        newCount: newModels.length,
+        newModels
+      })
+      return newModels
+    })
+  }, [])
 
   const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'admin' | 'premium' | 'normal' | 'eco') => {
     switch (tier) {
@@ -680,7 +668,8 @@ export default function Chat() {
     return turns
   }, [messages, viewMode])
 
-  if (loading || modelsLoading || sessionsLoading) {
+  // Only block on auth loading - let models and sessions load in background
+  if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
@@ -747,11 +736,21 @@ export default function Chat() {
                     type="button"
                     onClick={() => setShowModelSelector(!showModelSelector)}
                     className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                    disabled={modelsLoading}
                   >
-                    <span className="mr-2">{selectedModels.length} models</span>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    {modelsLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-slate-600 mr-2"></div>
+                        <span className="mr-2">Loading models...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="mr-2">{selectedModels.length} models</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </>
+                    )}
                   </button>
                   
                   {selectedModels.length > 1 && (

@@ -19,6 +19,13 @@ interface MCPToken {
   full_token?: string
 }
 
+// PERFORMANCE: Cache for MCP tokens to reduce API calls
+const tokensCache = {
+  data: null as MCPToken[] | null,
+  timestamp: 0,
+  CACHE_DURATION: 2 * 60 * 1000 // 2 minutes
+}
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -52,21 +59,36 @@ export default function MCPTokensPage() {
     }
   }, [user])
 
-  const fetchTokens = async () => {
+  const fetchTokens = async (forceRefresh = false) => {
     try {
       setLoading(true)
-      
+
+      // Check cache first (unless force refresh)
+      const now = Date.now()
+      if (!forceRefresh &&
+          tokensCache.data &&
+          (now - tokensCache.timestamp) < tokensCache.CACHE_DURATION) {
+        setTokens(tokensCache.data)
+        setLoading(false)
+        return
+      }
+
       const response = await fetch('/api/mcp/tokens', {
         credentials: 'include'
       })
       const data = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to fetch tokens')
       }
-      
+
       // Filter out OAuth tokens as they can't be used directly by users
       const filteredTokens = (data.tokens || []).filter((token: MCPToken) => token.token_type !== 'oauth')
+
+      // Update cache
+      tokensCache.data = filteredTokens
+      tokensCache.timestamp = now
+
       setTokens(filteredTokens)
     } catch (err: any) {
       setError(err.message)
@@ -102,7 +124,7 @@ export default function MCPTokensPage() {
       setGeneratedApiKey(data.api_key)
       setShowAddForm(false)
       setFormData({ token_name: '', token_type: 'api' })
-      await fetchTokens()
+      await fetchTokens(true) // Force refresh after creating
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -120,13 +142,13 @@ export default function MCPTokensPage() {
         credentials: 'include',
         body: JSON.stringify({ id: tokenId, active: !active })
       })
-      
+
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || 'Failed to update token')
       }
-      
-      await fetchTokens()
+
+      await fetchTokens(true) // Force refresh after toggling
     } catch (err: any) {
       setError(err.message)
     }
@@ -140,13 +162,13 @@ export default function MCPTokensPage() {
         method: 'DELETE',
         credentials: 'include'
       })
-      
+
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || 'Failed to delete token')
       }
-      
-      await fetchTokens()
+
+      await fetchTokens(true) // Force refresh after deleting
     } catch (err: any) {
       setError(err.message)
     }

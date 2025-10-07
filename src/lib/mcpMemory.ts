@@ -383,7 +383,7 @@ export class MCPMemoryManager {
         .from('user_preferences')
         .select('mcp_settings')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       const memorySettings = preferences?.mcp_settings?.memory_settings || {}
       

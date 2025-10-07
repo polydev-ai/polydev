@@ -242,46 +242,39 @@ export default function Dashboard() {
       })
   }, [providerAnalytics, providersRegistry])
 
-  // Fetch quota data
+  // PERFORMANCE: Parallelize quota and initial logs fetch on mount
   useEffect(() => {
-    const fetchQuotaData = async () => {
-      if (!user) return
-      try {
-        const response = await fetch('/api/user/quota', { credentials: 'include' })
-        if (response.ok) {
-          const data = await response.json()
-          setQuotaData(data)
-        }
-      } catch (error) {
-        console.error('Failed to fetch quota data:', error)
-      }
-    }
-    fetchQuotaData()
-  }, [user])
-
-  // Fetch request logs
-  useEffect(() => {
-    const fetchRequestLogs = async () => {
+    const fetchInitialData = async () => {
       if (!user) return
       setLogsLoading(true)
       try {
         const params = new URLSearchParams({ limit: '20', offset: '0' })
         if (logsFilter !== 'all') params.append('status', logsFilter)
 
-        const response = await fetch(`/api/dashboard/request-logs?${params}`, {
-          credentials: 'include'
-        })
-        if (response.ok) {
-          const data = await response.json()
-          setRequestLogs(data.logs || [])
+        // Fetch both quota and logs in parallel
+        const [quotaResponse, logsResponse] = await Promise.all([
+          fetch('/api/user/quota', { credentials: 'include' }),
+          fetch(`/api/dashboard/request-logs?${params}`, { credentials: 'include' })
+        ])
+
+        // Process quota data
+        if (quotaResponse.ok) {
+          const quotaData = await quotaResponse.json()
+          setQuotaData(quotaData)
+        }
+
+        // Process logs data
+        if (logsResponse.ok) {
+          const logsData = await logsResponse.json()
+          setRequestLogs(logsData.logs || [])
         }
       } catch (error) {
-        console.error('Failed to fetch request logs:', error)
+        console.error('Failed to fetch dashboard data:', error)
       } finally {
         setLogsLoading(false)
       }
     }
-    fetchRequestLogs()
+    fetchInitialData()
   }, [user, logsFilter])
 
   // Refresh data periodically

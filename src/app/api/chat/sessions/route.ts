@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { createHash } from 'crypto'
 
-async function authenticateRequest(request: NextRequest): Promise<{ user: any; preferences: any } | null> {
+async function authenticateRequest(request: NextRequest): Promise<{ user: any } | null> {
   const supabase = await createClient()
   
   // Check for MCP API key in Authorization header
@@ -28,21 +28,9 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
       .from('mcp_user_tokens')
       .update({ last_used_at: new Date().toISOString() })
       .eq('token_hash', tokenHash)
-    
-    // Get user preferences - NO HARDCODED DEFAULTS
-    const { data: preferences } = await supabase
-      .from('user_preferences')
-      .select('*')
-      .eq('user_id', token.user_id)
-      .single()
-    
-    if (!preferences) {
-      throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
-    }
-    
+
     return {
-      user: { id: token.user_id },
-      preferences
+      user: { id: token.user_id }
     }
   }
   
@@ -52,21 +40,9 @@ async function authenticateRequest(request: NextRequest): Promise<{ user: any; p
   if (!authUser) {
     return null
   }
-  
-  // Get user preferences
-  const { data: preferences } = await supabase
-    .from('user_preferences')
-    .select('*')
-    .eq('user_id', authUser.id)
-    .single()
-  
-  if (!preferences) {
-    throw new Error('User preferences not found. Please configure models at https://www.polydev.ai/dashboard/models')
-  }
-  
+
   return {
-    user: authUser,
-    preferences
+    user: authUser
   }
 }
 

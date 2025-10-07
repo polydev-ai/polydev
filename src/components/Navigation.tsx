@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '../hooks/useAuth'
 import { createClient } from '../app/utils/supabase/client'
+import PolydevLogo from './PolydevLogo'
 
 interface UserProfile {
   id: string
@@ -107,8 +108,8 @@ export default function Navigation() {
     return pathname.startsWith(href)
   }
 
-  // Don't render navigation on landing page - it has its own custom nav
-  if (pathname === '/') {
+  // Don't render navigation on landing page (auth page has its own nav)
+  if (pathname === '/' || pathname === '/auth') {
     return null
   }
 
@@ -118,11 +119,9 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-              <span className="text-xl font-bold text-slate-900 group-hover:text-slate-600 transition-colors duration-200">Polydev</span>
+            <Link href="/" className="flex items-center group">
+              <PolydevLogo size={80} className="text-slate-900 group-hover:text-slate-600 transition-colors duration-200" />
+              <span className="text-2xl font-bold text-slate-900 group-hover:text-slate-600 transition-colors duration-200 -ml-3">Polydev</span>
             </Link>
           </div>
 

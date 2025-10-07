@@ -3168,29 +3168,17 @@ async function handleSelectModelsInteractive(args: any, user: any, request: Next
 }
 
 // Helper function to get default model for a provider
-function getDefaultModelForProvider(provider: string): string {
-  const defaults: Record<string, string> = {
-    'openai': 'gpt-5-2025-08-07',
-    'openai-native': 'gpt-5-2025-08-07', 
-    'anthropic': 'claude-3-5-sonnet-20241022',
-    'gemini': 'gemini-2.0-flash-exp',
-    'google': 'gemini-2.0-flash-exp',
-    'xai': 'grok-4-0709',
-    'x-ai': 'grok-4-0709',
-    'openrouter': 'meta-llama/llama-3.2-90b-vision-instruct',
-    'groq': 'llama-3.3-70b-versatile',
-    'perplexity': 'llama-3.1-sonar-large-128k-online',
-    'deepseek': 'deepseek-chat',
-    'mistral': 'mistral-large-latest'
-  }
-  return defaults[provider] || 'gpt-5-2025-08-07'
+// Returns null if no default_model is configured - user must set it in dashboard
+function getDefaultModelForProvider(provider: string): string | null {
+  // No hardcoded defaults - user must configure default_model in dashboard/models
+  return null
 }
 
 // Get models from available API keys and user preferences
 function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): string[] {
   if (!apiKeys || apiKeys.length === 0) {
-    console.log('[MCP] No API keys available, using system defaults')
-    return ['gpt-5-2025-08-07'] // System fallback
+    console.log('[MCP] No API keys available')
+    return [] // User must configure API keys in dashboard
   }
   
   console.log('[MCP] Getting models from API keys and preferences')
@@ -3217,21 +3205,22 @@ function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): s
       })
       
       if (matchingApiKey) {
-        // Use the model from preferences, or the default model from API key, or provider default
+        // Use the model from preferences or the default model from API key
         let selectedModel: string | null = null
-        
+
         if (pref && typeof pref === 'object' && (pref as any).models && Array.isArray((pref as any).models) && (pref as any).models.length > 0) {
           selectedModel = (pref as any).models[0]
         } else if (matchingApiKey.default_model) {
           selectedModel = matchingApiKey.default_model
-        } else {
-          selectedModel = getDefaultModelForProvider(normalizedPrefProvider)
         }
-        
+        // No hardcoded fallback - user must set default_model in API key
+
         if (selectedModel) {
           models.push(selectedModel)
           usedProviders.add(normalizedPrefProvider)
           console.log(`[MCP] Added model from preferences: ${selectedModel} (${matchingApiKey.provider})`)
+        } else {
+          console.log(`[MCP] No model configured for ${matchingApiKey.provider} - user must set default_model in dashboard`)
         }
       } else {
         console.log(`[MCP] Preference provider ${prefProvider} not found in API keys`)
@@ -3242,24 +3231,23 @@ function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): s
   // Then, add models from remaining API keys that weren't in preferences (max 3 total)
   for (const apiKey of apiKeys) {
     if (models.length >= 3) break // Limit to 3 models for performance
-    
+
     const normalizedProvider = normalizeProviderName(apiKey.provider)
     if (!usedProviders.has(normalizedProvider)) {
-      const selectedModel = apiKey.default_model || getDefaultModelForProvider(normalizedProvider)
+      const selectedModel = apiKey.default_model
       if (selectedModel) {
         models.push(selectedModel)
         usedProviders.add(normalizedProvider)
         console.log(`[MCP] Added model from available API key: ${selectedModel} (${apiKey.provider})`)
+      } else {
+        console.log(`[MCP] Skipping ${apiKey.provider} - no default_model configured`)
       }
     }
   }
-  
-  // If still no models, use the first available API key's default model or provider default
+
+  // If still no models, return empty array - user must configure default_model in dashboard
   if (models.length === 0 && apiKeys.length > 0) {
-    const firstApiKey = apiKeys[0]
-    const fallbackModel = firstApiKey.default_model || getDefaultModelForProvider(normalizeProviderName(firstApiKey.provider))
-    models.push(fallbackModel)
-    console.log(`[MCP] Used fallback model from first API key: ${fallbackModel} (${firstApiKey.provider})`)
+    console.log(`[MCP] No models available - all API keys missing default_model. User must configure in dashboard/models`)
   }
   
   console.log(`[MCP] Final selected models: ${models.join(', ')}`)
@@ -3344,9 +3332,9 @@ function getModelsFromPreferences(modelPreferences: any): string[] {
   
   // Extract first model from each provider in order
   const models = sortedProviders
-    .map(([provider, pref]: [string, any]) => pref.models[0] || getDefaultModelForProvider(provider))
-    .filter(Boolean)
-  
+    .map(([provider, pref]: [string, any]) => pref.models[0]) // No hardcoded fallback
+    .filter(Boolean) // Filter out null/undefined values
+
   return models.length > 0 ? models : []
 }
 

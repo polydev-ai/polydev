@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowRight, Code2, Sparkles, Zap, Check, ChevronRight, ChevronDown } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import PolydevLogo from '../components/PolydevLogo'
 
 // Enhanced Typewriter with gradient cursor
 function TypewriterText({ texts, delay = 50, pauseDuration = 3000 }: {
@@ -276,11 +277,9 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-slate-900 to-slate-700 rounded-md flex items-center justify-center">
-                <span className="text-white font-bold">P</span>
-              </div>
-              <span className="font-semibold text-lg">Polydev</span>
+            <Link href="/" className="flex items-center">
+              <PolydevLogo size={80} className="text-slate-900" />
+              <span className="font-semibold text-2xl -ml-3">Polydev</span>
             </Link>
 
             <div className="hidden md:flex items-center gap-8">
@@ -925,18 +924,15 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold mb-3 text-sm">Resources</h3>
               <ul className="space-y-2">
-                <li><Link href="/blog" className="text-slate-400 hover:text-white transition-colors text-sm">Blog</Link></li>
-                <li><Link href="/changelog" className="text-slate-400 hover:text-white transition-colors text-sm">Changelog</Link></li>
-                <li><Link href="/examples" className="text-slate-400 hover:text-white transition-colors text-sm">Examples</Link></li>
+                <li><Link href="/docs" className="text-slate-400 hover:text-white transition-colors text-sm">Documentation</Link></li>
               </ul>
             </div>
 
             <div>
-              <h3 className="font-semibold mb-3 text-sm">Company</h3>
+              <h3 className="font-semibold mb-3 text-sm">Legal</h3>
               <ul className="space-y-2">
-                <li><Link href="/about" className="text-slate-400 hover:text-white transition-colors text-sm">About</Link></li>
-                <li><Link href="/privacy" className="text-slate-400 hover:text-white transition-colors text-sm">Privacy</Link></li>
-                <li><Link href="/terms" className="text-slate-400 hover:text-white transition-colors text-sm">Terms</Link></li>
+                <li><Link href="/privacy" className="text-slate-400 hover:text-white transition-colors text-sm">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="text-slate-400 hover:text-white transition-colors text-sm">Terms of Service</Link></li>
               </ul>
             </div>
 
@@ -951,12 +947,10 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center justify-between pt-6 border-t border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-white rounded-md flex items-center justify-center">
-                <span className="text-slate-900 font-bold text-xs">P</span>
-              </div>
-              <span className="font-semibold text-sm">Polydev</span>
-            </div>
+            <Link href="/" className="flex items-center">
+              <PolydevLogo size={48} className="text-white" />
+              <span className="font-semibold text-lg -ml-2">Polydev</span>
+            </Link>
             <p className="text-slate-400 text-sm">© 2025 Polydev AI. All rights reserved.</p>
           </div>
         </div>

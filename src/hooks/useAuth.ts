@@ -34,6 +34,10 @@ export function useAuth() {
   const signOut = async () => {
     await supabase.auth.signOut()
     setUser(null)
+    // Redirect to auth page after sign out
+    if (typeof window !== 'undefined') {
+      window.location.href = '/auth'
+    }
   }
 
   return {

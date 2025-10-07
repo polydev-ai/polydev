@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
       .from('user_preferences')
       .select('source_priority')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     const sourcePriority = (preferences?.source_priority as string[]) || ['cli', 'api', 'admin']
 

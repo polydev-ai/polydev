@@ -124,7 +124,7 @@ async function getUserModels(userId: string): Promise<Record<string, any> | null
       .from('user_preferences')
       .select('model_preferences')
       .eq('user_id', userId)
-      .single()
+      .maybeSingle()
 
     if (error || !data?.model_preferences) {
       console.log('No user model preferences found:', error?.message)
