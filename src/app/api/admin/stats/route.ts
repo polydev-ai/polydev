@@ -1,106 +1,102 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/app/utils/supabase/server'
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function GET() {
+const MASTER_CONTROLLER_URL = process.env.MASTER_CONTROLLER_URL || 'http://192.168.5.82:4000';
+
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = await createClient();
 
-    // Check if user is admin
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin status
+    // Check admin access
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_admin')
+      .select('role')
       .eq('id', user.id)
-      .single()
+      .single();
 
-    if (!profile?.is_admin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Use raw SQL queries with admin privileges to get accurate counts
-    const statsQueries = [
-      // Total users
-      supabase.rpc('get_admin_stat', { stat_type: 'total_users' }),
-
-      // Active subscriptions
-      supabase.rpc('get_admin_stat', { stat_type: 'active_subscriptions' }),
-
-      // Active models
-      supabase.rpc('get_admin_stat', { stat_type: 'active_models' }),
-
-      // Total API calls
-      supabase.rpc('get_admin_stat', { stat_type: 'total_api_calls' }),
-
-      // Chat sessions
-      supabase.rpc('get_admin_stat', { stat_type: 'chat_sessions' }),
-
-      // Chat messages
-      supabase.rpc('get_admin_stat', { stat_type: 'chat_messages' }),
-
-      // Usage sessions
-      supabase.rpc('get_admin_stat', { stat_type: 'usage_sessions' })
-    ]
-
-    const results = await Promise.allSettled(statsQueries)
-
-    // Fallback to direct queries if RPC doesn't exist
-    let stats = {
-      totalUsers: 4, // Known from Supabase MCP query
-      activeSubscriptions: 4,
-      activeModels: 673,
-      totalApiCalls: 289,
-      chatSessions: 321,
-      chatMessages: 598,
-      usageSessions: 258,
-      totalCreditsIssued: 0,
-      revenue: 0
+    // Fetch stats from Master Controller
+    const response = await fetch(`${MASTER_CONTROLLER_URL}/api/admin/stats`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch stats from Master Controller');
     }
 
-    // Try to get revenue data
-    try {
-      const { data: revenueData } = await supabase
-        .from('purchase_history')
-        .select('amount_paid')
-        .eq('status', 'completed')
+    const masterStats = await response.json();
 
-      const totalRevenue = revenueData?.reduce((sum, r) => sum + (parseFloat(String(r.amount_paid)) || 0), 0) || 0
-      stats.revenue = totalRevenue
-    } catch (err) {
-      console.log('Revenue query failed, using 0')
-    }
+    // Get additional stats from database
+    const [
+      { count: totalUsers },
+      { count: activeUsers },
+      { count: totalVMs },
+      { count: runningVMs },
+      { count: activeAuthSessions },
+      { data: recentEvents }
+    ] = await Promise.all([
+      supabase.from('users').select('*', { count: 'exact', head: true }),
+      supabase.from('users').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('vms').select('*', { count: 'exact', head: true }),
+      supabase.from('vms').select('*', { count: 'exact', head: true }).eq('status', 'running'),
+      supabase.from('auth_sessions').select('*', { count: 'exact', head: true }).in('status', ['pending', 'in_progress']),
+      supabase.from('events').select('*').order('created_at', { ascending: false }).limit(10)
+    ]);
 
-    // Try to get credits data
-    try {
-      const { data: creditsData } = await supabase
-        .from('admin_credit_adjustments')
-        .select('amount')
+    // Get VPS host stats
+    const { data: vpsHosts } = await supabase
+      .from('vps_hosts')
+      .select('*');
 
-      const totalCreditsIssued = creditsData?.reduce((sum, r) => sum + (parseFloat(String(r.amount)) || 0), 0) || 0
-      stats.totalCreditsIssued = totalCreditsIssued
-    } catch (err) {
-      console.log('Credits query failed, using 0')
-    }
+    // Calculate usage by subscription plan
+    const { data: usersByPlan } = await supabase
+      .from('users')
+      .select('subscription_plan')
+      .eq('status', 'active');
 
-    console.log('🔧 Admin Stats API returning:', stats)
+    const planCounts = usersByPlan?.reduce((acc, u) => {
+      acc[u.subscription_plan] = (acc[u.subscription_plan] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>) || {};
 
     return NextResponse.json({
-      success: true,
-      stats,
-      message: 'Admin statistics retrieved successfully',
-      timestamp: new Date().toISOString()
-    })
+      users: {
+        total: totalUsers || 0,
+        active: activeUsers || 0,
+        byPlan: planCounts
+      },
+      vms: {
+        total: totalVMs || 0,
+        running: runningVMs || 0,
+        stopped: (totalVMs || 0) - (runningVMs || 0)
+      },
+      authSessions: {
+        active: activeAuthSessions || 0
+      },
+      vpsHosts: vpsHosts?.map(host => ({
+        hostname: host.hostname,
+        ipAddress: host.ip_address,
+        status: host.status,
+        totalVMs: host.total_vms,
+        activeVMs: host.active_vms,
+        cpuUsage: host.cpu_usage_percent,
+        memoryUsage: host.memory_usage_percent
+      })) || [],
+      recentEvents: recentEvents || [],
+      masterController: masterStats
+    });
 
   } catch (error) {
-    console.error('Admin stats API error:', error)
-    return NextResponse.json({
-      error: 'Failed to retrieve admin statistics',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    console.error('[Admin Stats API] Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

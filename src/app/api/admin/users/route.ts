@@ -1,160 +1,80 @@
-import { NextResponse } from 'next/server'
-import { createClient, createAdminClient } from '@/app/utils/supabase/server'
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
-export async function GET() {
+const MASTER_CONTROLLER_URL = process.env.MASTER_CONTROLLER_URL || 'http://192.168.5.82:4000';
+
+export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = await createClient();
 
-    // Check if user is admin
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check admin status
+    // Check if user is admin (you should implement proper admin check)
+    // For now, checking if email matches admin domain or role
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_admin')
+      .select('role')
       .eq('id', user.id)
-      .single()
+      .single();
 
-    if (!profile?.is_admin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (profile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
     }
 
-    // Get all user data using admin client to bypass RLS
-    const adminClient = createAdminClient()
-    const { data: users, error: usersError } = await adminClient
-      .from('profiles')
+    // Get pagination params
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const perPage = parseInt(searchParams.get('per_page') || '50');
+    const search = searchParams.get('search') || '';
+    const status = searchParams.get('status') || '';
+
+    // Build query
+    let query = supabase
+      .from('users')
       .select(`
-        id,
-        email,
-        full_name,
-        is_admin,
-        created_at,
-        subscription_tier,
-        monthly_queries,
-        queries_used,
-        api_keys_count
-      `)
-      .order('created_at', { ascending: false })
+        *,
+        vms(vm_id, status, ip_address, vps_host, created_at)
+      `, { count: 'exact' });
+
+    // Apply filters
+    if (search) {
+      query = query.ilike('email', `%${search}%`);
+    }
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    // Apply pagination
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+    query = query.range(from, to);
+
+    // Execute query
+    const { data: users, error: usersError, count } = await query;
 
     if (usersError) {
-      console.error('Error fetching users:', usersError)
-      return NextResponse.json({
-        error: 'Failed to fetch users',
-        details: usersError.message
-      }, { status: 500 })
+      throw usersError;
     }
 
-    // Get subscription data for each user using admin client
-    const { data: subscriptions } = await adminClient
-      .from('user_subscriptions')
-      .select('user_id, tier, status')
-
-    // Get user credits using admin client
-    const { data: credits } = await adminClient
-      .from('user_credits')
-      .select('user_id, balance, promotional_balance')
-
-    // Combine data
-    const enrichedUsers = (users || []).map(user => {
-      const subscription = subscriptions?.find(sub => sub.user_id === user.id)
-      const credit = credits?.find(cred => cred.user_id === user.id)
-
-      return {
-        ...user,
-        subscription_status: subscription?.status || 'none',
-        subscription_tier: subscription?.tier || user.subscription_tier || 'free',
-        credits: credit ? (credit.balance + credit.promotional_balance) : 0,
-        last_login: null // Could add this if we track it
+    return NextResponse.json({
+      users,
+      pagination: {
+        page,
+        perPage,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / perPage)
       }
-    })
-
-    console.log(`📊 Admin Users API: Found ${enrichedUsers.length} users`)
-
-    return NextResponse.json({
-      success: true,
-      users: enrichedUsers,
-      count: enrichedUsers.length,
-      timestamp: new Date().toISOString()
-    })
+    });
 
   } catch (error) {
-    console.error('Admin users API error:', error)
-    return NextResponse.json({
-      error: 'Failed to retrieve admin users',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
-  }
-}
-
-export async function PATCH(request: Request) {
-  try {
-    const supabase = await createClient()
-
-    // Check if user is admin
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check admin status
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile?.is_admin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
-    }
-
-    const { userId, action, value } = await request.json()
-
-    if (!userId || !action) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-
-    let updateData: any = {}
-
-    switch (action) {
-      case 'toggle_admin':
-        updateData = { is_admin: value }
-        break
-      case 'update_tier':
-        updateData = { subscription_tier: value }
-        break
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-    }
-
-    const adminClient = createAdminClient()
-    const { error: updateError } = await adminClient
-      .from('profiles')
-      .update(updateData)
-      .eq('id', userId)
-
-    if (updateError) {
-      console.error('Error updating user:', updateError)
-      return NextResponse.json({
-        error: 'Failed to update user',
-        details: updateError.message
-      }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'User updated successfully'
-    })
-
-  } catch (error) {
-    console.error('Admin users update API error:', error)
-    return NextResponse.json({
-      error: 'Failed to update user',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    console.error('[Admin Users API] Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

@@ -1,0 +1,29 @@
+[Unit]
+Description=Polydev Master Controller
+Documentation=https://github.com/polydev-ai/master-controller
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/master-controller
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/master-controller/.env
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=master-controller
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Graceful shutdown
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
