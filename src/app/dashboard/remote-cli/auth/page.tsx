@@ -59,7 +59,7 @@ function AuthFlowContent() {
 
   const loadSession = async () => {
     try {
-      const res = await fetch(`/api/vm/auth/${sessionId}`);
+      const res = await fetch(`/api/auth/session/${sessionId}`);
       if (!res.ok) throw new Error('Failed to load session');
 
       const data = await res.json();
@@ -99,7 +99,7 @@ function AuthFlowContent() {
 
   const handleCancelAuth = async () => {
     try {
-      await fetch(`/api/vm/auth/${sessionId}/cancel`, { method: 'POST' });
+      await fetch(`/api/auth/session/${sessionId}/cancel`, { method: 'POST' });
       router.push('/dashboard/remote-cli');
     } catch (err) {
       toast.error('Failed to cancel authentication');
