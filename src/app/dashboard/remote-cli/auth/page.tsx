@@ -77,6 +77,10 @@ function AuthFlowContent() {
           setStep('vm_ready');
           if (data.vm) setVmInfo(data.vm);
           break;
+        case 'awaiting_user_auth':
+          setStep('authenticating');
+          if (data.vm) setVmInfo(data.vm);
+          break;
         case 'authenticating':
           setStep('authenticating');
           break;
