@@ -1,13 +1,13 @@
 /**
- * VM Browser Agent
- * Provides web-based browser access via noVNC for OAuth authentication
+ * VM Browser Agent - OAuth Proxy for CLI Tools
  *
- * Architecture:
- * - User accesses web interface in their browser
- * - noVNC connects to TigerVNC server in VM
- * - User manually authenticates in Chromium browser running in VM
- * - Agent extracts credentials after authentication
- * - No automation - user does everything manually
+ * This agent runs inside each Firecracker VM and handles the OAuth flow for CLI tools:
+ * 1. Spawns CLI tool (codex signin, claude, gemini-cli auth)
+ * 2. CLI starts OAuth callback server on localhost:1455
+ * 3. Extracts OAuth URL from CLI output
+ * 4. Serves OAuth URL to frontend via /oauth-url endpoint
+ * 5. Proxies OAuth callbacks from http://{vmIP}:8080/auth/callback to localhost:1455
+ * 6. Monitors credential files until auth completes
  */
 
 const http = require('http');
@@ -16,6 +16,10 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const PORT = 8080;
+const CLI_OAUTH_PORT = 1455; // Standard port for codex/claude OAuth callbacks
+
+// Active auth sessions
+const authSessions = new Map(); // sessionId -> { provider, cliProcess, oauthUrl, credPath, completed }
 
 // Logger
 const logger = {
@@ -46,36 +50,42 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({
         status: 'ok',
         timestamp: new Date().toISOString(),
-        vncRunning: await checkVNCRunning(),
-        browserRunning: await checkBrowserRunning()
+        activeSessions: authSessions.size
       }));
       return;
     }
 
-    // Start browser session for provider
+    // Start CLI OAuth flow
     if (url.pathname.startsWith('/auth/') && req.method === 'POST') {
       const provider = url.pathname.split('/')[2];
-      await handleStartAuth(req, res, provider);
+      await handleStartCLIAuth(req, res, provider);
       return;
     }
 
-    // Get credential status
+    // Get OAuth URL for frontend iframe
+    if (url.pathname === '/oauth-url' && req.method === 'GET') {
+      const sessionId = url.searchParams.get('sessionId');
+      await handleGetOAuthURL(res, sessionId);
+      return;
+    }
+
+    // Proxy OAuth callback to CLI's localhost server
+    if (url.pathname === '/auth/callback' && req.method === 'GET') {
+      await handleOAuthCallback(req, res);
+      return;
+    }
+
+    // Check if authentication completed
     if (url.pathname === '/credentials/status' && req.method === 'GET') {
-      const provider = url.searchParams.get('provider');
-      await handleCredentialStatus(res, provider);
+      const sessionId = url.searchParams.get('sessionId');
+      await handleCredentialStatus(res, sessionId);
       return;
     }
 
-    // Extract credentials (called after user completes auth)
-    if (url.pathname === '/credentials/extract' && req.method === 'POST') {
-      await handleExtractCredentials(req, res);
-      return;
-    }
-
-    // Test authentication
-    if (url.pathname.startsWith('/test-auth/') && req.method === 'GET') {
-      const provider = url.pathname.split('/')[2];
-      await handleTestAuth(provider, res);
+    // Get extracted credentials
+    if (url.pathname === '/credentials/get' && req.method === 'GET') {
+      const sessionId = url.searchParams.get('sessionId');
+      await handleGetCredentials(res, sessionId);
       return;
     }
 
@@ -91,274 +101,306 @@ const server = http.createServer(async (req, res) => {
 });
 
 /**
- * Start authentication session
- * Opens browser to provider's OAuth page
- * User will manually log in via VNC interface
+ * Start CLI OAuth flow
+ * Spawns the CLI tool (codex signin, claude, gemini-cli auth)
+ * Captures OAuth URL from CLI output
  */
-async function handleStartAuth(req, res, provider) {
+async function handleStartCLIAuth(req, res, provider) {
   const body = await readBody(req);
   const { sessionId } = JSON.parse(body);
 
-  logger.info('Starting auth session', { provider, sessionId });
+  logger.info('Starting CLI auth', { provider, sessionId });
 
-  // Determine OAuth URL for provider
-  let oauthUrl;
+  // Determine CLI command and credential path
+  let cliCommand, cliArgs, credPath;
+
   switch (provider) {
     case 'codex':
+    case 'codex_cli':
+      cliCommand = 'codex';
+      cliArgs = ['signin'];
+      credPath = path.join(process.env.HOME || '/root', '.config/openai/auth.json');
+      break;
+
     case 'claude_code':
-      oauthUrl = 'https://platform.openai.com/auth/login';
+      cliCommand = 'claude';
+      cliArgs = []; // Claude CLI auto-starts auth on first run
+      credPath = path.join(process.env.HOME || '/root', '.claude/credentials.json');
       break;
+
     case 'gemini_cli':
-      oauthUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+      cliCommand = 'gemini-cli';
+      cliArgs = ['auth'];
+      credPath = path.join(process.env.HOME || '/root', '.config/gemini-cli/credentials.json');
       break;
+
     default:
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Unknown provider' }));
       return;
   }
 
-  // Launch Firefox with OAuth URL
-  // Browser will be visible in VNC session
-  spawn('firefox', [
-    oauthUrl
-  ], {
-    detached: true,
-    stdio: 'ignore',
+  // Spawn CLI process
+  const cliProcess = spawn(cliCommand, cliArgs, {
     env: {
       ...process.env,
-      DISPLAY: ':1'  // VNC display
+      HOME: process.env.HOME || '/root'
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  // Capture OAuth URL from CLI output
+  let oauthUrl = null;
+  const outputLines = [];
+
+  const extractOAuthURL = (data) => {
+    const text = data.toString();
+    outputLines.push(text);
+    logger.info('CLI output', { provider, text: text.substring(0, 200) });
+
+    // Look for OAuth URL patterns
+    const urlPatterns = [
+      /https:\/\/auth\.openai\.com\/oauth\/authorize\?[^\s]+/,  // Codex
+      /https:\/\/[^\s]*claude[^\s]*auth[^\s]+/i,                 // Claude Code
+      /https:\/\/accounts\.google\.com\/o\/oauth2[^\s]+/         // Gemini
+    ];
+
+    for (const pattern of urlPatterns) {
+      const match = text.match(pattern);
+      if (match) {
+        oauthUrl = match[0];
+        // Rewrite redirect_uri to point to our proxy
+        oauthUrl = oauthUrl.replace(
+          /redirect_uri=http(?:s)?%3A%2F%2Flocalhost(?:%3A\d+)?/g,
+          `redirect_uri=http%3A%2F%2F${getVMIP()}%3A8080`
+        ).replace(
+          /redirect_uri=http(?:s)?:\/\/localhost(?::\d+)?/g,
+          `redirect_uri=http://${getVMIP()}:8080`
+        );
+        logger.info('Extracted OAuth URL', { provider, oauthUrl });
+        break;
+      }
     }
-  }).unref();
+  };
 
-  logger.info('Browser launched', { provider, url: oauthUrl });
+  cliProcess.stdout.on('data', extractOAuthURL);
+  cliProcess.stderr.on('data', extractOAuthURL);
 
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({
-    success: true,
-    message: 'Browser opened. Complete authentication in VNC session.',
-    vncUrl: `http://${req.headers.host}/vnc`,
-    provider
-  }));
+  // Store session
+  authSessions.set(sessionId, {
+    provider,
+    cliProcess,
+    oauthUrl: () => oauthUrl, // Getter function
+    credPath,
+    completed: false,
+    startedAt: Date.now()
+  });
+
+  // Wait briefly for OAuth URL to be captured
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  if (oauthUrl) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      success: true,
+      message: 'CLI OAuth server started',
+      sessionId,
+      oauthUrl
+    }));
+  } else {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      success: true,
+      message: 'CLI started, waiting for OAuth URL...',
+      sessionId,
+      cliOutput: outputLines.join('\n').substring(0, 500)
+    }));
+  }
 }
 
 /**
- * Check credential status
+ * Get OAuth URL for frontend to display in iframe
  */
-async function handleCredentialStatus(res, provider) {
-  let credPath;
+async function handleGetOAuthURL(res, sessionId) {
+  const session = authSessions.get(sessionId);
 
-  switch (provider) {
-    case 'codex':
-      credPath = '/root/.codex/credentials.json';
-      break;
-    case 'claude_code':
-      credPath = '/root/.claude/credentials.json';
-      break;
-    case 'gemini_cli':
-      credPath = '/root/.config/gcloud/credentials.json';
-      break;
-    default:
-      res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unknown provider' }));
-      return;
+  if (!session) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Session not found' }));
+    return;
+  }
+
+  const oauthUrl = typeof session.oauthUrl === 'function' ? session.oauthUrl() : session.oauthUrl;
+
+  if (!oauthUrl) {
+    res.writeHead(202, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      waiting: true,
+      message: 'Waiting for CLI to generate OAuth URL...',
+      elapsedMs: Date.now() - session.startedAt
+    }));
+    return;
+  }
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ oauthUrl }));
+}
+
+/**
+ * Proxy OAuth callback to CLI's localhost:1455 server
+ * Frontend redirects here after user logs in
+ */
+async function handleOAuthCallback(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+
+  logger.info('OAuth callback received', {
+    query: url.search,
+    hasCode: url.searchParams.has('code'),
+    hasError: url.searchParams.has('error')
+  });
+
+  // Forward to CLI's localhost OAuth server
+  try {
+    const proxyUrl = `http://localhost:${CLI_OAUTH_PORT}/auth/callback${url.search}`;
+
+    const proxyRes = await fetch(proxyUrl, {
+      method: 'GET',
+      headers: {
+        'Host': `localhost:${CLI_OAUTH_PORT}`,
+        'User-Agent': 'PolydevOAuthProxy/1.0'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    // Forward response to browser
+    res.writeHead(proxyRes.status, {
+      'Content-Type': proxyRes.headers.get('content-type') || 'text/html'
+    });
+
+    const responseText = await proxyRes.text();
+    res.end(responseText);
+
+    logger.info('OAuth callback proxied', { status: proxyRes.status });
+
+  } catch (error) {
+    logger.error('OAuth callback proxy failed', { error: error.message });
+
+    // Show success page anyway - CLI might have saved credentials
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Authentication Complete</title></head>
+      <body>
+        <h1>Authentication Complete</h1>
+        <p>You can close this window and return to the dashboard.</p>
+        <script>setTimeout(() => window.close(), 2000);</script>
+      </body>
+      </html>
+    `);
+  }
+}
+
+/**
+ * Check if credentials file exists (auth completed)
+ */
+async function handleCredentialStatus(res, sessionId) {
+  const session = authSessions.get(sessionId);
+
+  if (!session) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Session not found' }));
+    return;
   }
 
   try {
-    await fs.access(credPath);
-    const stats = await fs.stat(credPath);
+    await fs.access(session.credPath);
+    const stats = await fs.stat(session.credPath);
+
+    // Mark session as completed
+    session.completed = true;
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       authenticated: true,
-      path: credPath,
-      modifiedAt: stats.mtime
+      path: session.credPath,
+      modifiedAt: stats.mtime,
+      provider: session.provider
     }));
+
   } catch {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ authenticated: false }));
+    res.end(JSON.stringify({
+      authenticated: false,
+      waiting: true,
+      elapsedMs: Date.now() - session.startedAt
+    }));
   }
 }
 
 /**
- * Extract credentials from browser
- * Reads cookies/localStorage from Chromium profile
+ * Get extracted credentials
  */
-async function handleExtractCredentials(req, res) {
-  const body = await readBody(req);
-  const { provider, sessionId } = JSON.parse(body);
+async function handleGetCredentials(res, sessionId) {
+  const session = authSessions.get(sessionId);
 
-  logger.info('Extracting credentials', { provider, sessionId });
+  if (!session) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Session not found' }));
+    return;
+  }
+
+  if (!session.completed) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Authentication not completed yet' }));
+    return;
+  }
 
   try {
-    let credentials;
+    const credData = await fs.readFile(session.credPath, 'utf-8');
+    const credentials = JSON.parse(credData);
 
-    // Extract based on provider
-    switch (provider) {
-      case 'codex':
-      case 'claude_code':
-        credentials = await extractOpenAICredentials();
-        break;
-      case 'gemini_cli':
-        credentials = await extractGoogleCredentials();
-        break;
-      default:
-        throw new Error('Unknown provider');
+    // Clean up session
+    if (session.cliProcess && !session.cliProcess.killed) {
+      session.cliProcess.kill();
     }
-
-    logger.info('Credentials extracted', { provider, hasCredentials: !!credentials });
+    authSessions.delete(sessionId);
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       success: true,
-      credentials
+      provider: session.provider,
+      credentials,
+      credPath: session.credPath
     }));
 
   } catch (error) {
-    logger.error('Credential extraction failed', { provider, error: error.message });
-
+    logger.error('Failed to read credentials', { error: error.message, path: session.credPath });
     res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      success: false,
-      error: error.message
-    }));
+    res.end(JSON.stringify({ error: 'Failed to read credentials', message: error.message }));
   }
 }
 
 /**
- * Extract OpenAI credentials from Firefox
+ * Get VM's IP address from network interface
  */
-async function extractOpenAICredentials() {
-  const profilePath = '/root/.mozilla/firefox/*.default-release';
-  const cookiesPath = path.join(profilePath, 'cookies.sqlite');
+function getVMIP() {
+  const os = require('os');
+  const interfaces = os.networkInterfaces();
 
-  // Read cookies using sqlite3
-  // This is a simplified version - actual implementation would use sqlite3 module
-  // or extract from browser's cookie store
-
-  const { execSync } = require('child_process');
-
-  try {
-    // Extract session token from cookies
-    const result = execSync(
-      `sqlite3 "${cookiesPath}" "SELECT name, value FROM cookies WHERE host_key LIKE '%openai.com%';"`,
-      { encoding: 'utf-8' }
-    );
-
-    // Parse cookie data
-    const lines = result.trim().split('\n');
-    const cookies = {};
-
-    for (const line of lines) {
-      const [name, value] = line.split('|');
-      if (name && value) {
-        cookies[name] = value;
-      }
-    }
-
-    return {
-      sessionToken: cookies['__Secure-next-auth.session-token'],
-      cookies,
-      provider: 'openai'
-    };
-
-  } catch (error) {
-    logger.error('Failed to extract OpenAI credentials', { error: error.message });
-    throw error;
-  }
-}
-
-/**
- * Extract Google credentials
- */
-async function extractGoogleCredentials() {
-  const profilePath = '/root/.config/chromium/Default';
-  const cookiesPath = path.join(profilePath, 'Cookies');
-
-  const { execSync } = require('child_process');
-
-  try {
-    const result = execSync(
-      `sqlite3 "${cookiesPath}" "SELECT name, value FROM cookies WHERE host_key LIKE '%google.com%';"`,
-      { encoding: 'utf-8' }
-    );
-
-    const lines = result.trim().split('\n');
-    const cookies = {};
-
-    for (const line of lines) {
-      const [name, value] = line.split('|');
-      if (name && value) {
-        cookies[name] = value;
-      }
-    }
-
-    return {
-      cookies,
-      provider: 'google'
-    };
-
-  } catch (error) {
-    logger.error('Failed to extract Google credentials', { error: error.message });
-    throw error;
-  }
-}
-
-/**
- * Test if provider is authenticated
- */
-async function handleTestAuth(provider, res) {
-  let credPath;
-
-  switch (provider) {
-    case 'codex':
-      credPath = '/root/.codex/credentials.json';
-      break;
-    case 'claude_code':
-      credPath = '/root/.claude/credentials.json';
-      break;
-    case 'gemini_cli':
-      credPath = '/root/.config/gcloud/credentials.json';
-      break;
-    default:
-      res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Unknown provider' }));
-      return;
+  // Look for eth0 (common in VMs)
+  if (interfaces.eth0) {
+    const ipv4 = interfaces.eth0.find(addr => addr.family === 'IPv4');
+    if (ipv4) return ipv4.address;
   }
 
-  try {
-    await fs.access(credPath);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ authenticated: true, path: credPath }));
-  } catch {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ authenticated: false }));
+  // Fallback to any non-localhost IPv4
+  for (const iface of Object.values(interfaces)) {
+    const ipv4 = iface.find(addr => addr.family === 'IPv4' && !addr.internal);
+    if (ipv4) return ipv4.address;
   }
-}
 
-/**
- * Check if VNC server is running
- */
-async function checkVNCRunning() {
-  try {
-    const { execSync } = require('child_process');
-    execSync('pgrep Xvnc', { stdio: 'pipe' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Check if browser is running
- */
-async function checkBrowserRunning() {
-  try {
-    const { execSync } = require('child_process');
-    execSync('pgrep firefox', { stdio: 'pipe' });
-    return true;
-  } catch {
-    return false;
-  }
+  return 'localhost';
 }
 
 /**
@@ -373,8 +415,18 @@ function readBody(req) {
   });
 }
 
+// Cleanup on exit
+process.on('SIGTERM', () => {
+  logger.info('Shutting down, cleaning up sessions...');
+  for (const [sessionId, session] of authSessions.entries()) {
+    if (session.cliProcess && !session.cliProcess.killed) {
+      session.cliProcess.kill();
+    }
+  }
+  process.exit(0);
+});
+
 // Start server
 server.listen(PORT, '0.0.0.0', () => {
-  logger.info('VM Browser Agent started', { port: PORT });
-  logger.info('VNC will be accessible via noVNC web interface');
+  logger.info('VM Browser Agent started', { port: PORT, vmIP: getVMIP() });
 });

@@ -137,85 +137,68 @@ class BrowserVMAuth {
   }
 
   /**
-   * Authenticate Codex via Puppeteer
-   * Codex OAuth flow: browser redirects to localhost:1455/success?id_token=...
+   * Authenticate Codex - Starts CLI OAuth flow in VM
+   * User completes OAuth in frontend iframe, credentials saved to VM
    */
   async authenticateCodex(sessionId, vmIP) {
-    logger.info('Authenticating Codex', { sessionId, vmIP });
-
-    // Call Puppeteer script on Browser VM via HTTP API
-    const response = await fetch(`http://${vmIP}:8080/auth/codex`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId }),
-      signal: AbortSignal.timeout(120000) // 2 min timeout
-    });
-
-    if (!response.ok) {
-      throw new Error(`Codex auth failed: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-
-    if (!result.success || !result.credentials) {
-      throw new Error('Codex authentication failed');
-    }
-
-    return result.credentials;
+    return await this.authenticateCLI(sessionId, vmIP, 'codex');
   }
 
   /**
-   * Authenticate Claude Code via Puppeteer
-   * Claude Code uses device code flow
+   * Authenticate Claude Code - Starts CLI OAuth flow in VM
    */
   async authenticateClaudeCode(sessionId, vmIP) {
-    logger.info('Authenticating Claude Code', { sessionId, vmIP });
-
-    const response = await fetch(`http://${vmIP}:8080/auth/claude_code`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId }),
-      signal: AbortSignal.timeout(120000)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Claude Code auth failed: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-
-    if (!result.success || !result.credentials) {
-      throw new Error('Claude Code authentication failed');
-    }
-
-    return result.credentials;
+    return await this.authenticateCLI(sessionId, vmIP, 'claude_code');
   }
 
   /**
-   * Authenticate Gemini CLI via Puppeteer
-   * Gemini CLI uses Google OAuth
+   * Authenticate Gemini CLI - Starts CLI OAuth flow in VM
    */
   async authenticateGeminiCLI(sessionId, vmIP) {
-    logger.info('Authenticating Gemini CLI', { sessionId, vmIP });
+    return await this.authenticateCLI(sessionId, vmIP, 'gemini_cli');
+  }
 
-    const response = await fetch(`http://${vmIP}:8080/auth/gemini_cli`, {
+  /**
+   * Generic CLI OAuth flow
+   * 1. Start CLI tool in VM (spawns OAuth callback server on localhost:1455)
+   * 2. Return immediately - frontend will poll /oauth-url and show in iframe
+   * 3. User logs in via iframe → OAuth callback proxied to VM's localhost:1455
+   * 4. CLI saves credentials to file
+   * 5. Frontend polls /credentials/status until ready
+   */
+  async authenticateCLI(sessionId, vmIP, provider) {
+    logger.info('Starting CLI OAuth flow', { sessionId, vmIP, provider });
+
+    // Start CLI tool - this spawns OAuth server and captures OAuth URL
+    const startResponse = await fetch(`http://${vmIP}:8080/auth/${provider}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId }),
-      signal: AbortSignal.timeout(120000)
+      signal: AbortSignal.timeout(10000)
     });
 
-    if (!response.ok) {
-      throw new Error(`Gemini CLI auth failed: ${response.statusText}`);
+    if (!startResponse.ok) {
+      throw new Error(`Failed to start ${provider} CLI: ${startResponse.statusText}`);
     }
 
-    const result = await response.json();
+    const startResult = await startResponse.json();
 
-    if (!result.success || !result.credentials) {
-      throw new Error('Gemini CLI authentication failed');
+    if (!startResult.success) {
+      throw new Error(`Failed to start ${provider} OAuth flow`);
     }
 
-    return result.credentials;
+    logger.info('CLI OAuth flow started', {
+      sessionId,
+      provider,
+      hasOAuthUrl: !!startResult.oauthUrl
+    });
+
+    // Return success - frontend will handle the rest
+    // Frontend polls /oauth-url to get OAuth URL
+    // Frontend shows OAuth URL in iframe
+    // User logs in → callback proxied to VM
+    // Frontend polls /credentials/status until ready
+    return { started: true, sessionId, provider, oauthUrl: startResult.oauthUrl };
   }
 
   /**

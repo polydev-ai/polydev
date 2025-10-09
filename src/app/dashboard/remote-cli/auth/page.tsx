@@ -44,6 +44,9 @@ function AuthFlowContent() {
   const [error, setError] = useState<string | null>(null);
   const [vmInfo, setVmInfo] = useState<any>(null);
   const [showBrowser, setShowBrowser] = useState(false);
+  const [oauthUrl, setOauthUrl] = useState<string | null>(null);
+  const [pollingOAuthUrl, setPollingOAuthUrl] = useState(false);
+  const [pollingCredentials, setPollingCredentials] = useState(false);
 
   useEffect(() => {
     if (!sessionId || !provider) {
@@ -56,6 +59,64 @@ function AuthFlowContent() {
     const interval = setInterval(loadSession, 3000); // Poll every 3s
     return () => clearInterval(interval);
   }, [sessionId, provider]);
+
+  // Poll for OAuth URL when VM is ready
+  useEffect(() => {
+    if (!vmInfo || !sessionId || oauthUrl || pollingOAuthUrl) return;
+
+    const pollOAuthUrl = async () => {
+      try {
+        setPollingOAuthUrl(true);
+        const res = await fetch(`http://${vmInfo.ip_address}:8080/oauth-url?sessionId=${sessionId}`, {
+          signal: AbortSignal.timeout(5000)
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data.oauthUrl) {
+          setOauthUrl(data.oauthUrl);
+          setPollingOAuthUrl(false);
+        }
+      } catch (err) {
+        // Silently continue polling
+      }
+    };
+
+    pollOAuthUrl();
+    const interval = setInterval(pollOAuthUrl, 2000); // Poll every 2s
+    return () => clearInterval(interval);
+  }, [vmInfo, sessionId, oauthUrl, pollingOAuthUrl]);
+
+  // Poll for credential status when OAuth URL is shown
+  useEffect(() => {
+    if (!vmInfo || !sessionId || !showBrowser || pollingCredentials) return;
+
+    const pollCredentials = async () => {
+      try {
+        setPollingCredentials(true);
+        const res = await fetch(`http://${vmInfo.ip_address}:8080/credentials/status?sessionId=${sessionId}`, {
+          signal: AbortSignal.timeout(5000)
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data.authenticated) {
+          // Credentials saved - update session status
+          setStep('authenticating');
+          // Trigger session reload to pick up completion
+          setTimeout(loadSession, 1000);
+        }
+      } catch (err) {
+        // Silently continue polling
+      }
+    };
+
+    pollCredentials();
+    const interval = setInterval(pollCredentials, 3000); // Poll every 3s
+    return () => clearInterval(interval);
+  }, [vmInfo, sessionId, showBrowser, pollingCredentials]);
 
   const loadSession = async () => {
     try {
@@ -357,16 +418,26 @@ function AuthFlowContent() {
                             size="sm"
                             variant="default"
                             onClick={() => setShowBrowser(true)}
+                            disabled={!oauthUrl}
                           >
-                            Start Authentication
-                            <Terminal className="w-3 h-3 ml-2" />
+                            {oauthUrl ? (
+                              <>
+                                Start Authentication
+                                <Terminal className="w-3 h-3 ml-2" />
+                              </>
+                            ) : (
+                              <>
+                                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                                Waiting for OAuth URL...
+                              </>
+                            )}
                           </Button>
-                        ) : (
+                        ) : oauthUrl ? (
                           <div className="border-2 border-primary rounded-lg overflow-hidden bg-background">
                             <div className="flex items-center justify-between px-3 py-2 bg-muted border-b">
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Shield className="w-3 h-3" />
-                                <span className="font-mono">{vmInfo.ip_address}:8080</span>
+                                <span className="font-mono">CLI OAuth Flow</span>
                               </div>
                               <Button
                                 size="sm"
@@ -378,11 +449,16 @@ function AuthFlowContent() {
                               </Button>
                             </div>
                             <iframe
-                              src={`http://${vmInfo.ip_address}:8080/auth/${provider}`}
+                              src={oauthUrl}
                               className="w-full h-[600px] bg-white"
                               title="Authentication Browser"
-                              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
                             />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Loading OAuth URL from CLI...</span>
                           </div>
                         )}
                       </div>
