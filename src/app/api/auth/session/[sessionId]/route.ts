@@ -28,7 +28,17 @@ export async function GET(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ session });
+    // Include VM info if available
+    const response: any = { session };
+    if (session.vm_ip) {
+      response.vm = {
+        ip_address: session.vm_ip,
+        vm_id: session.vm_id,
+        vnc_url: session.vnc_url
+      };
+    }
+
+    return NextResponse.json(response);
   } catch (error: any) {
     console.error('Error fetching auth session:', error);
     return NextResponse.json(
