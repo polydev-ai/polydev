@@ -43,6 +43,7 @@ function AuthFlowContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [vmInfo, setVmInfo] = useState<any>(null);
+  const [showBrowser, setShowBrowser] = useState(false);
 
   useEffect(() => {
     if (!sessionId || !provider) {
@@ -336,43 +337,74 @@ function AuthFlowContent() {
                       <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
                         1
                       </div>
-                      <div>
-                        <p className="font-medium mb-1">Open the authentication URL</p>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Click the button below to open the OAuth authentication page in a new tab
+                      <div className="flex-1">
+                        <p className="font-medium mb-1">Authenticate with {getProviderName(provider!)}</p>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Complete the OAuth authentication below. The browser will open inside this page.
                         </p>
-                        <Button size="sm" variant="outline" asChild>
-                          <a href={`http://${vmInfo.ip_address}:8080/auth/${provider}`} target="_blank">
-                            Open Auth Page
-                            <ExternalLink className="w-3 h-3 ml-2" />
-                          </a>
-                        </Button>
+                        {!showBrowser ? (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => setShowBrowser(true)}
+                          >
+                            Start Authentication
+                            <Terminal className="w-3 h-3 ml-2" />
+                          </Button>
+                        ) : (
+                          <div className="border-2 border-primary rounded-lg overflow-hidden bg-background">
+                            <div className="flex items-center justify-between px-3 py-2 bg-muted border-b">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Shield className="w-3 h-3" />
+                                <span className="font-mono">{vmInfo.ip_address}:8080</span>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setShowBrowser(false)}
+                                className="h-6 px-2"
+                              >
+                                Close
+                              </Button>
+                            </div>
+                            <iframe
+                              src={`http://${vmInfo.ip_address}:8080/auth/${provider}`}
+                              className="w-full h-[600px] bg-white"
+                              title="Authentication Browser"
+                              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                        2
-                      </div>
-                      <div>
-                        <p className="font-medium mb-1">Complete the OAuth flow</p>
-                        <p className="text-sm text-muted-foreground">
-                          Log in with your {getProviderName(provider!)} account and authorize access to the CLI tool
-                        </p>
-                      </div>
-                    </div>
+                    {showBrowser && (
+                      <>
+                        <div className="flex gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                            2
+                          </div>
+                          <div>
+                            <p className="font-medium mb-1">Complete the OAuth flow in the browser above</p>
+                            <p className="text-sm text-muted-foreground">
+                              Log in with your {getProviderName(provider!)} account and authorize access
+                            </p>
+                          </div>
+                        </div>
 
-                    <div className="flex gap-3">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                        3
-                      </div>
-                      <div>
-                        <p className="font-medium mb-1">Wait for confirmation</p>
-                        <p className="text-sm text-muted-foreground">
-                          Once authenticated, we'll automatically detect it and complete the setup
-                        </p>
-                      </div>
-                    </div>
+                        <div className="flex gap-3">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                            3
+                          </div>
+                          <div>
+                            <p className="font-medium mb-1">We'll detect completion automatically</p>
+                            <p className="text-sm text-muted-foreground">
+                              Once you authorize, credentials will be securely stored and the page will advance
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
