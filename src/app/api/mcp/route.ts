@@ -1380,9 +1380,28 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.log(`[MCP] No API keys found, using fallback model:`, models)
   }
 
-  // Use temperature and max_tokens from args or simple defaults
+  // Fetch default max_tokens from admin config
+  let defaultMaxTokens = 10000 // Fallback default
+  try {
+    const { data: mcpConfig } = await serviceRoleSupabase
+      .from('admin_pricing_config')
+      .select('config_value')
+      .eq('config_key', 'mcp_default_max_tokens')
+      .single()
+
+    if (mcpConfig?.config_value?.max_tokens) {
+      defaultMaxTokens = mcpConfig.config_value.max_tokens
+      console.log(`[MCP] Using admin-configured max_tokens: ${defaultMaxTokens}`)
+    } else {
+      console.log(`[MCP] No admin config found, using fallback max_tokens: ${defaultMaxTokens}`)
+    }
+  } catch (error) {
+    console.log(`[MCP] Error fetching admin max_tokens config, using fallback:`, error)
+  }
+
+  // Use temperature and max_tokens from args or admin defaults
   const temperature = args.temperature ?? 0.7
-  const maxTokens = args.max_tokens ?? 1000
+  const maxTokens = args.max_tokens ?? defaultMaxTokens
 
   console.log(`[MCP] Using temperature: ${temperature}, maxTokens: ${maxTokens}`)
   console.log(`[MCP] Getting perspectives for user ${user.id}: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`)

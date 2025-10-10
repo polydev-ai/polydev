@@ -19,6 +19,10 @@ interface SystemSettings {
   }
 }
 
+interface McpSettings {
+  max_tokens: number
+}
+
 export default function AdminSettings() {
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -36,6 +40,11 @@ export default function AdminSettings() {
     }
   })
   const [saving, setSaving] = useState(false)
+  const [mcpSettings, setMcpSettings] = useState<McpSettings>({
+    max_tokens: 10000
+  })
+  const [mcpLoading, setMcpLoading] = useState(false)
+  const [mcpSaving, setMcpSaving] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -47,6 +56,7 @@ export default function AdminSettings() {
   useEffect(() => {
     if (isAdmin) {
       loadSettings()
+      loadMcpSettings()
     }
   }, [isAdmin])
 
@@ -98,6 +108,49 @@ export default function AdminSettings() {
       console.log('Loading settings (using defaults for now)')
     } catch (error) {
       console.error('Error loading settings:', error)
+    }
+  }
+
+  async function loadMcpSettings() {
+    setMcpLoading(true)
+    try {
+      const response = await fetch('/api/admin/mcp-settings')
+      const data = await response.json()
+
+      if (data.success && data.settings) {
+        setMcpSettings(data.settings)
+      }
+    } catch (error) {
+      console.error('Error loading MCP settings:', error)
+    } finally {
+      setMcpLoading(false)
+    }
+  }
+
+  async function saveMcpSettings() {
+    setMcpSaving(true)
+    try {
+      const response = await fetch('/api/admin/mcp-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(mcpSettings),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save MCP settings')
+      }
+
+      await logActivity('update_mcp_settings', `Updated MCP max_tokens to ${mcpSettings.max_tokens}`)
+      alert('MCP settings saved successfully!')
+    } catch (error) {
+      console.error('Error saving MCP settings:', error)
+      alert('Error saving MCP settings: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    } finally {
+      setMcpSaving(false)
     }
   }
 
@@ -243,6 +296,58 @@ export default function AdminSettings() {
                   />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* MCP Token Configuration */}
+          <div className="bg-white rounded-lg shadow-sm border">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Key className="h-5 w-5 text-slate-600 mr-3" />
+                  <h2 className="text-lg font-semibold text-slate-900">MCP Default Max Tokens</h2>
+                </div>
+                <button
+                  onClick={saveMcpSettings}
+                  disabled={mcpSaving || mcpLoading}
+                  className="inline-flex items-center px-3 py-1.5 bg-slate-900 text-white text-sm rounded-md hover:bg-slate-700 disabled:bg-slate-400"
+                >
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                  {mcpSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              {mcpLoading ? (
+                <div className="text-sm text-slate-600">Loading MCP settings...</div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-900 mb-2">Default Max Output Tokens for MCP</label>
+                    <input
+                      type="number"
+                      min="1000"
+                      max="200000"
+                      value={mcpSettings.max_tokens}
+                      onChange={(e) => setMcpSettings({ max_tokens: parseInt(e.target.value) || 10000 })}
+                      className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                      placeholder="10000"
+                    />
+                    <p className="text-xs text-slate-600 mt-1">
+                      Default maximum output tokens for MCP get_perspectives requests when not explicitly specified. Recommended: 10,000+ for models with thinking tokens (Gemini 2.5 Pro)
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-md p-4">
+                    <h3 className="text-sm font-medium text-slate-900 mb-2">ℹ️ About MCP Max Tokens</h3>
+                    <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
+                      <li>Used when <code className="bg-slate-200 px-1 rounded">max_tokens</code> parameter is not provided in MCP requests</li>
+                      <li>Prevents MAX_TOKENS errors with models that use thinking tokens (e.g., Gemini 2.5 Pro)</li>
+                      <li>Higher values allow more comprehensive responses but may increase costs</li>
+                      <li>Users can override this per-request by providing <code className="bg-slate-200 px-1 rounded">max_tokens</code> parameter</li>
+                    </ul>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
