@@ -3,39 +3,54 @@ import { createClient } from '@/app/utils/supabase/server';
 
 const MASTER_CONTROLLER_URL = process.env.MASTER_CONTROLLER_URL || 'http://192.168.5.82:4000';
 
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient();
+// VM startup can take up to 3 minutes, so we need a longer timeout
+export const maxDuration = 300; // 5 minutes
 
+export async function POST(request: NextRequest) {
+  console.log('[VM AUTH] 1. Starting POST /api/vm/auth');
+  try {
+    console.log('[VM AUTH] 2. Creating Supabase client');
+    const supabase = await createClient();
+    console.log('[VM AUTH] 3. Supabase client created');
+
+    console.log('[VM AUTH] 4. Getting user');
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    console.log('[VM AUTH] 5. User retrieved:', user?.id);
 
     if (!user) {
+      console.log('[VM AUTH] 6. No user - returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    console.log('[VM AUTH] 7. Parsing request body');
     const body = await request.json();
     const { provider } = body;
+    console.log('[VM AUTH] 8. Provider:', provider);
 
     if (!provider) {
+      console.log('[VM AUTH] 9. No provider - returning 400');
       return NextResponse.json(
         { error: 'Provider is required' },
         { status: 400 }
       );
     }
 
+    console.log('[VM AUTH] 10. Starting fetch to master-controller:', MASTER_CONTROLLER_URL);
     // Start authentication via Master Controller
     const response = await fetch(`${MASTER_CONTROLLER_URL}/api/auth/start`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         userId: user.id,
-        provider 
+        provider
       }),
+      signal: AbortSignal.timeout(300000), // 5 minute timeout for VM startup
     });
+    console.log('[VM AUTH] 11. Fetch completed with status:', response.status);
 
     if (!response.ok) {
       const error = await response.json();
@@ -48,7 +63,13 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error('VM auth error:', error);
+    console.error('VM auth error DETAILS:', {
+      message: error.message,
+      name: error.name,
+      cause: error.cause,
+      stack: error.stack,
+      fullError: error
+    });
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
@@ -84,6 +105,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(300000), // 5 minute timeout
     });
 
     if (!response.ok) {

@@ -43,6 +43,7 @@ const config = {
     goldenMemory: process.env.GOLDEN_MEMORY,
     goldenKernel: process.env.GOLDEN_KERNEL,
     goldenRootfs: process.env.GOLDEN_ROOTFS,
+    goldenBrowserRootfs: process.env.GOLDEN_BROWSER_ROOTFS || '/var/lib/firecracker/snapshots/base/golden-browser-rootfs.ext4',
     socketsDir: `${process.env.FIRECRACKER_BASE || '/var/lib/firecracker'}/sockets`,
     usersDir: `${process.env.FIRECRACKER_BASE || '/var/lib/firecracker'}/users`,
     jailDir: `${process.env.FIRECRACKER_BASE || '/var/lib/firecracker'}/jail`
@@ -68,19 +69,19 @@ const config = {
   // VM Resources
   vm: {
     cli: {
-      vcpu: parseFloat(process.env.CLI_VM_VCPU) || 0.5,
+      vcpu: parseInt(process.env.CLI_VM_VCPU, 10) || 1,  // Changed from parseFloat with default 0.5 to parseInt with default 1 (Firecracker requires integer vCPUs)
       memoryMB: parseInt(process.env.CLI_VM_MEMORY_MB, 10) || 256
     },
     browser: {
-      vcpu: parseFloat(process.env.BROWSER_VM_VCPU) || 2,
+      vcpu: parseInt(process.env.BROWSER_VM_VCPU, 10) || 2,  // Changed from parseFloat to parseInt (Firecracker requires integer vCPUs)
       memoryMB: parseInt(process.env.BROWSER_VM_MEMORY_MB, 10) || 2048
     }
   },
 
   // Rate Limiting
   rateLimit: {
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 900000,
-    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60000, // 1 minute
+    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 1000 // 1000 requests per minute
   },
 
   // Monitoring

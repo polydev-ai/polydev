@@ -5,6 +5,7 @@
 
 const { spawn, execSync } = require('child_process');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const config = require('../config');
@@ -144,16 +145,17 @@ class VMManager {
   async createVMConfig(vmId, vmType, tapDevice, ipAddress) {
     const vcpu = vmType === 'browser' ? config.vm.browser.vcpu : config.vm.cli.vcpu;
     const memory = vmType === 'browser' ? config.vm.browser.memoryMB : config.vm.cli.memoryMB;
+    const vmDir = path.join(config.firecracker.usersDir, vmId);
 
     const vmConfig = {
       'boot-source': {
         kernel_image_path: config.firecracker.goldenKernel,
-        boot_args: `console=ttyS0 reboot=k panic=1 pci=off ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0::eth0:off`
+        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0:${vmId}:eth0:on`
       },
       'drives': [
         {
           drive_id: 'rootfs',
-          path_on_host: path.join(config.firecracker.usersDir, vmId, 'rootfs.ext4'),
+          path_on_host: path.join(vmDir, 'rootfs.ext4'),
           is_root_device: true,
           is_read_only: false
         }
@@ -168,11 +170,11 @@ class VMManager {
       'machine-config': {
         vcpu_count: Math.floor(vcpu),
         mem_size_mib: memory,
-        ht_enabled: false
+        smt: false
       }
     };
 
-    const configPath = path.join(config.firecracker.usersDir, vmId, 'vm-config.json');
+    const configPath = path.join(vmDir, 'vm-config.json');
     await fs.writeFile(configPath, JSON.stringify(vmConfig, null, 2));
 
     return configPath;
@@ -189,20 +191,39 @@ class VMManager {
   /**
    * Clone golden snapshot for new VM
    */
-  async cloneGoldenSnapshot(vmId) {
+  async cloneGoldenSnapshot(vmId, vmType = 'cli') {
     const vmDir = path.join(config.firecracker.usersDir, vmId);
     await fs.mkdir(vmDir, { recursive: true });
 
     try {
-      // CoW copy of rootfs
-      const rootfsSrc = config.firecracker.goldenRootfs;
+      // CoW copy of rootfs - use different golden rootfs based on VM type
+      const rootfsSrc = vmType === 'browser'
+        ? config.firecracker.goldenBrowserRootfs || config.firecracker.goldenRootfs
+        : config.firecracker.goldenRootfs;
       const rootfsDst = path.join(vmDir, 'rootfs.ext4');
       execSync(`cp --reflink=auto ${rootfsSrc} ${rootfsDst}`, { stdio: 'pipe' });
 
-      // Copy snapshot and memory (for resume capability)
+      // Copy snapshot and memory (for resume capability) only if files exist
       if (config.firecracker.goldenSnapshot && config.firecracker.goldenMemory) {
-        execSync(`cp ${config.firecracker.goldenSnapshot} ${vmDir}/snapshot.snap`, { stdio: 'pipe' });
-        execSync(`cp ${config.firecracker.goldenMemory} ${vmDir}/memory.mem`, { stdio: 'pipe' });
+        if (fsSync.existsSync(config.firecracker.goldenSnapshot) &&
+            fsSync.existsSync(config.firecracker.goldenMemory)) {
+          execSync(`cp ${config.firecracker.goldenSnapshot} ${vmDir}/snapshot.snap`, { stdio: 'pipe' });
+          execSync(`cp ${config.firecracker.goldenMemory} ${vmDir}/memory.mem`, { stdio: 'pipe' });
+          logger.debug('Snapshot files copied for VM', { vmId });
+        } else {
+          logger.debug('Golden snapshot files not found, skipping snapshot copy', { vmId });
+        }
+      }
+
+      // DIAGNOSTIC: Log vmType before injection check
+      logger.info('[CLONE-SNAPSHOT] Checking vmType for OAuth agent injection', { vmId, vmType, vmTypeType: typeof vmType });
+
+      // For Browser VMs, inject OAuth agent
+      if (vmType === 'browser') {
+        logger.info('[CLONE-SNAPSHOT] vmType is "browser", proceeding with OAuth agent injection', { vmId });
+        await this.injectOAuthAgent(vmId, rootfsDst);
+      } else {
+        logger.info('[CLONE-SNAPSHOT] vmType is NOT "browser", skipping OAuth agent injection', { vmId, vmType });
       }
 
       logger.info('Golden snapshot cloned', { vmId, vmDir });
@@ -213,44 +234,211 @@ class VMManager {
   }
 
   /**
+   * Inject OAuth agent into Browser VM rootfs
+   * Mounts the ext4 image, copies agent files, and sets up systemd service
+   */
+  async injectOAuthAgent(vmId, rootfsPath) {
+    const mountPoint = `/tmp/vm-inject-${vmId}`;
+
+    try {
+      logger.info('[INJECT-AGENT] Starting OAuth agent injection', { vmId });
+
+      // Create mount point
+      execSync(`mkdir -p ${mountPoint}`, { stdio: 'pipe' });
+
+      // Mount rootfs
+      execSync(`mount -o loop ${rootfsPath} ${mountPoint}`, { stdio: 'pipe' });
+      logger.info('[INJECT-AGENT] Rootfs mounted', { vmId, mountPoint });
+
+      // Remove old agent directories if they exist (golden snapshot may have old paths)
+      const oldAgentDir = path.join(mountPoint, 'opt/vm-agent');
+      const agentDir = path.join(mountPoint, 'opt/vm-browser-agent');
+      try {
+        execSync(`rm -rf ${oldAgentDir} ${agentDir}`, { stdio: 'pipe' });
+        logger.info('[INJECT-AGENT] Removed old agent directories', { vmId });
+      } catch (err) {
+        logger.debug('[INJECT-AGENT] No old directories to remove', { vmId });
+      }
+
+      // Create agent directory in VM
+      execSync(`mkdir -p ${agentDir}`, { stdio: 'pipe' });
+
+      // Copy agent files from master-controller repo
+      const srcAgentDir = path.join(__dirname, '../../vm-browser-agent');
+
+      // Check if agent files exist
+      if (!fsSync.existsSync(path.join(srcAgentDir, 'server.js'))) {
+        throw new Error('vm-browser-agent/server.js not found in repository');
+      }
+
+      if (!fsSync.existsSync(path.join(srcAgentDir, 'node'))) {
+        throw new Error('vm-browser-agent/node binary not found in repository');
+      }
+
+      execSync(`cp ${srcAgentDir}/server.js ${agentDir}/`, { stdio: 'pipe' });
+      execSync(`cp ${srcAgentDir}/package.json ${agentDir}/`, { stdio: 'pipe' });
+      execSync(`cp ${srcAgentDir}/node ${agentDir}/`, { stdio: 'pipe' });
+      execSync(`chmod +x ${agentDir}/node`, { stdio: 'pipe' });
+      logger.info('[INJECT-AGENT] Agent files copied (including bundled Node.js)', { vmId });
+
+      // Remove old systemd service if it exists (golden snapshot may have stale version)
+      const oldServicePath = path.join(mountPoint, 'etc/systemd/system/vm-browser-agent.service');
+      const oldSymlinkPath = path.join(mountPoint, 'etc/systemd/system/multi-user.target.wants/vm-browser-agent.service');
+      try {
+        execSync(`rm -f ${oldServicePath} ${oldSymlinkPath}`, { stdio: 'pipe' });
+        logger.info('[INJECT-AGENT] Removed old service files', { vmId });
+      } catch (err) {
+        // Files may not exist, ignore
+        logger.debug('[INJECT-AGENT] No old service to remove', { vmId });
+      }
+
+      // Create systemd service file
+      const serviceContent = `[Unit]
+Description=VM Browser OAuth Agent
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/vm-browser-agent
+Environment=NODE_ENV=production
+ExecStart=/opt/vm-browser-agent/node /opt/vm-browser-agent/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+`;
+
+      const servicePath = path.join(mountPoint, 'etc/systemd/system/vm-browser-agent.service');
+      await fs.writeFile(servicePath, serviceContent);
+      logger.info('[INJECT-AGENT] Systemd service created', { vmId });
+
+      // Enable service (create symlink)
+      const symlinkTarget = '/etc/systemd/system/vm-browser-agent.service';
+      const symlinkPath = path.join(mountPoint, 'etc/systemd/system/multi-user.target.wants/vm-browser-agent.service');
+      execSync(`mkdir -p ${path.dirname(symlinkPath)}`, { stdio: 'pipe' });
+      execSync(`ln -sf ${symlinkTarget} ${symlinkPath}`, { stdio: 'pipe' });
+      logger.info('[INJECT-AGENT] Service enabled', { vmId });
+
+      logger.info('[INJECT-AGENT] OAuth agent injection complete', { vmId });
+
+    } catch (error) {
+      logger.error('[INJECT-AGENT] Failed to inject OAuth agent', {
+        vmId,
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
+    } finally {
+      // Always unmount
+      try {
+        execSync(`umount ${mountPoint}`, { stdio: 'pipe' });
+        execSync(`rmdir ${mountPoint}`, { stdio: 'pipe' });
+        logger.info('[INJECT-AGENT] Rootfs unmounted', { vmId });
+      } catch (unmountErr) {
+        logger.warn('[INJECT-AGENT] Failed to unmount rootfs', {
+          vmId,
+          error: unmountErr.message
+        });
+      }
+    }
+  }
+
+  /**
+   * Helper: Timeout wrapper for promises
+   */
+  withTimeout(promise, ms, label) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+      )
+    ]);
+  }
+
+  /**
    * Create and start a new VM
    */
   async createVM(userId, vmType, decodoPort = null, decodoIP = null) {
     const vmId = `vm-${crypto.randomUUID()}`;
+    const startTime = Date.now();
 
     try {
-      logger.info('Creating VM', { vmId, userId, vmType });
+      logger.info('[VM-CREATE] Starting VM creation', { vmId, userId, vmType, startTime: new Date().toISOString() });
 
-      // Allocate resources
-      const ipAddress = this.allocateIP(vmId);
-      const tapDevice = await this.createTAPDevice(vmId, ipAddress);
+      // Allocate resources (should be instant)
+      logger.info('[VM-CREATE] Step 1: Allocating IP', { vmId });
+      const ipAddress = await this.withTimeout(
+        Promise.resolve(this.allocateIP(vmId)),
+        5000,
+        `[${vmId}] allocateIP`
+      );
+      logger.info('[VM-CREATE] Step 1: IP allocated', { vmId, ipAddress, elapsed: Date.now() - startTime });
+
+      // Create TAP device
+      logger.info('[VM-CREATE] Step 2: Creating TAP device', { vmId });
+      const tapDevice = await this.withTimeout(
+        this.createTAPDevice(vmId, ipAddress),
+        5000,
+        `[${vmId}] createTAPDevice`
+      );
+      logger.info('[VM-CREATE] Step 2: TAP device created', { vmId, tapDevice, elapsed: Date.now() - startTime });
 
       // Clone golden snapshot
-      await this.cloneGoldenSnapshot(vmId);
+      logger.info('[VM-CREATE] Step 3: Cloning golden snapshot', { vmId, vmType });
+      await this.withTimeout(
+        this.cloneGoldenSnapshot(vmId, vmType),
+        15000,
+        `[${vmId}] cloneGoldenSnapshot`
+      );
+      logger.info('[VM-CREATE] Step 3: Snapshot cloned', { vmId, elapsed: Date.now() - startTime });
 
       // Create VM config
-      const configPath = await this.createVMConfig(vmId, vmType, tapDevice, ipAddress);
+      logger.info('[VM-CREATE] Step 4: Creating VM config', { vmId });
+      const configPath = await this.withTimeout(
+        this.createVMConfig(vmId, vmType, tapDevice, ipAddress),
+        5000,
+        `[${vmId}] createVMConfig`
+      );
+      logger.info('[VM-CREATE] Step 4: Config created', { vmId, configPath, elapsed: Date.now() - startTime });
 
       // Create database record
       const vcpu = vmType === 'browser' ? config.vm.browser.vcpu : config.vm.cli.vcpu;
       const memory = vmType === 'browser' ? config.vm.browser.memoryMB : config.vm.cli.memoryMB;
 
-      await db.vms.create({
-        vm_id: vmId,
-        user_id: userId,
-        vm_type: vmType,
-        vcpu_count: vcpu,
-        memory_mb: memory,
-        ip_address: ipAddress,
-        tap_device: tapDevice,
-        status: 'created'
-      });
+      logger.info('[VM-CREATE] Step 5: Creating database record', { vmId });
+      await this.withTimeout(
+        db.vms.create({
+          vm_id: vmId,
+          user_id: userId,
+          type: vmType,        // NOT NULL column (legacy)
+          vm_type: vmType,     // Nullable column (new)
+          vcpu_count: vcpu,
+          memory_mb: memory,
+          ip_address: ipAddress,
+          tap_device: tapDevice,
+          status: 'running'
+        }),
+        5000,
+        `[${vmId}] db.vms.create`
+      );
+      logger.info('[VM-CREATE] Step 5: Database record created', { vmId, elapsed: Date.now() - startTime });
 
-      // Start Firecracker
+      // Start Firecracker (this is the longest step)
+      logger.info('[VM-CREATE] Step 6: Starting Firecracker', { vmId });
       const socketPath = path.join(config.firecracker.socketsDir, `${vmId}.sock`);
-      await this.startFirecracker(vmId, configPath, socketPath, decodoPort, decodoIP);
+      await this.withTimeout(
+        this.startFirecracker(vmId, configPath, socketPath, decodoPort, decodoIP),
+        25000,  // 25 seconds - just under the API timeout
+        `[${vmId}] startFirecracker`
+      );
+      logger.info('[VM-CREATE] Step 6: Firecracker started', { vmId, elapsed: Date.now() - startTime });
 
-      logger.info('VM created successfully', { vmId, ipAddress, vmType });
+      const totalTime = Date.now() - startTime;
+      logger.info('[VM-CREATE] VM created successfully', { vmId, ipAddress, vmType, totalTime });
 
       return {
         vmId,
@@ -260,10 +448,22 @@ class VMManager {
         status: 'running'
       };
     } catch (error) {
-      logger.error('VM creation failed', { vmId, userId, error: error.message });
+      const elapsed = Date.now() - startTime;
+      logger.error('[VM-CREATE] VM creation failed', {
+        vmId,
+        userId,
+        vmType,
+        error: error.message,
+        stack: error.stack,
+        elapsed,
+        failedAt: new Date().toISOString()
+      });
 
       // Cleanup on failure
-      await this.cleanupVM(vmId, false);
+      logger.info('[VM-CREATE] Cleaning up failed VM', { vmId });
+      await this.cleanupVM(vmId, false).catch(cleanupErr =>
+        logger.warn('[VM-CREATE] Cleanup failed', { vmId, error: cleanupErr.message })
+      );
 
       throw error;
     }
@@ -275,28 +475,30 @@ class VMManager {
   async startFirecracker(vmId, configPath, socketPath, decodoPort, decodoIP) {
     return new Promise((resolve, reject) => {
       const vmDir = path.join(config.firecracker.usersDir, vmId);
-      const logPath = path.join(vmDir, 'firecracker.log');
+      const consolePath = path.join(vmDir, 'console.log');
 
       // Ensure socket directory exists
       const socketDir = path.dirname(socketPath);
       execSync(`mkdir -p ${socketDir}`, { stdio: 'pipe' });
 
-      // Build Firecracker command
-      const args = [
-        '--api-sock', socketPath,
-        '--config-file', configPath,
-        '--log-path', logPath,
-        '--level', 'Info',
-        '--show-level',
-        '--show-log-origin'
-      ];
-
-      // Add snapshot resume if available
+      // Check if snapshot exists (will be loaded via API after Firecracker starts)
       const snapshotPath = path.join(vmDir, 'snapshot.snap');
       const memoryPath = path.join(vmDir, 'memory.mem');
-      if (fs.existsSync(snapshotPath) && fs.existsSync(memoryPath)) {
-        args.push('--snapshot-path', snapshotPath);
-        args.push('--mem-path', memoryPath);
+      const hasSnapshot = fsSync.existsSync(snapshotPath) && fsSync.existsSync(memoryPath);
+
+      // Build Firecracker command
+      // IMPORTANT: When loading snapshot, do NOT use --config-file as it auto-starts the VM
+      // The snapshot contains all configuration (network, drives, machine-config, etc.)
+      const binary = config.firecracker.binary;
+      const args = [
+        '--api-sock', socketPath,
+        '--log-path', '/dev/null',  // Disable firecracker internal logging
+        '--level', 'Off'            // No internal log output
+      ];
+
+      // Only add config file if NOT loading snapshot (cold boot)
+      if (!hasSnapshot) {
+        args.push('--config-file', configPath);
       }
 
       // Build environment with Decodo proxy if provided
@@ -308,27 +510,78 @@ class VMManager {
         env.DECODO_FIXED_IP = decodoIP;
       }
 
-      // Spawn Firecracker
-      const proc = spawn(config.firecracker.binary, args, {
+      // Open console.log file descriptor for writing VM serial console output (ttyS0)
+      // Must use openSync to get file descriptor (integer) for spawn stdio
+      const consoleFd = fsSync.openSync(consolePath, 'a');
+
+      // Open firecracker-error.log for stderr output (Firecracker internal errors)
+      const errorLogPath = path.join(vmDir, 'firecracker-error.log');
+      const errorFd = fsSync.openSync(errorLogPath, 'a');
+
+      // Log spawn details for debugging
+      logger.info('[SPAWN-DEBUG] About to spawn Firecracker', {
+        vmId,
+        binary,
+        args: args.join(' '),
+        consoleFd,
+        errorFd,
+        consolePath,
+        errorLogPath,
+        vmDir,
+        hasProxy: !!(decodoPort && decodoIP)
+      });
+
+      // Check file descriptor validity
+      try {
+        const stats = fsSync.fstatSync(consoleFd);
+        logger.info('[SPAWN-DEBUG] Console FD valid', { vmId, consoleFd, isFile: stats.isFile() });
+      } catch (err) {
+        logger.error('[SPAWN-DEBUG] Console FD invalid!', { vmId, consoleFd, error: err.message });
+      }
+
+      // Spawn Firecracker with stdout redirected to console.log (serial console / ttyS0)
+      // stderr redirected to firecracker-error.log (Firecracker internal errors)
+      logger.info('[SPAWN-DEBUG] Calling spawn()', { vmId });
+      const proc = spawn(binary, args, {
         detached: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: ['ignore', consoleFd, errorFd],  // stdin=ignore, stdout=console.log, stderr=error.log
         env
       });
 
+      logger.info('[SPAWN-DEBUG] spawn() returned', { vmId, pid: proc.pid, pidType: typeof proc.pid });
+
       proc.unref();
 
-      let startupOutput = '';
+      // Wait for Firecracker to start (check socket creation)
       const startupTimeout = setTimeout(() => {
         proc.kill();
         reject(new Error('Firecracker startup timeout'));
       }, 30000); // 30 second timeout
 
-      proc.stdout.on('data', (data) => {
-        startupOutput += data.toString();
-        // Look for successful boot indicators
-        if (startupOutput.includes('Guest started')) {
+      // Poll for socket file creation as startup indicator
+      let pollCount = 0;
+      const checkInterval = setInterval(async () => {
+        pollCount++;
+        const socketExists = fsSync.existsSync(socketPath);
+
+        // Log every 10th check (once per second)
+        if (pollCount % 10 === 0 || socketExists) {
+          logger.info('[SOCKET-POLL] Checking for socket', {
+            vmId,
+            pollCount,
+            socketPath,
+            socketExists,
+            elapsed: Date.now() - Date.now() // Will show elapsed if we add start timestamp
+          });
+        }
+
+        if (socketExists) {
+          clearInterval(checkInterval);
           clearTimeout(startupTimeout);
+
           this.activeVMs.set(vmId, { proc, socketPath });
+
+          logger.info('[SOCKET-POLL] Socket detected! Setting up VM', { vmId, pollCount });
 
           // Update database with PID
           db.vms.update(vmId, {
@@ -337,28 +590,102 @@ class VMManager {
             status: 'running'
           }).catch(err => logger.error('Failed to update VM status', { vmId, error: err.message }));
 
-          logger.info('Firecracker started', { vmId, pid: proc.pid });
+          logger.info('Firecracker started', { vmId, pid: proc.pid, consolePath });
+
+          // Close FDs in parent process (child still has them open)
+          try {
+            fsSync.closeSync(consoleFd);
+            fsSync.closeSync(errorFd);
+          } catch (err) {
+            logger.warn('Failed to close FDs', { vmId, error: err.message });
+          }
+
+          // Load snapshot via API if it exists
+          if (hasSnapshot) {
+            try {
+              logger.info('Loading snapshot via API', { vmId, snapshotPath, memoryPath });
+              await this.loadSnapshot(socketPath, snapshotPath, memoryPath);
+              logger.info('Snapshot loaded successfully', { vmId });
+            } catch (error) {
+              logger.error('Failed to load snapshot via API', { vmId, error: error.message });
+              proc.kill();
+              reject(new Error(`Snapshot loading failed: ${error.message}`));
+              return;
+            }
+          }
+
           resolve({ pid: proc.pid, socketPath });
         }
-      });
-
-      proc.stderr.on('data', (data) => {
-        logger.debug('Firecracker stderr', { vmId, output: data.toString() });
-      });
+      }, 100); // Check every 100ms
 
       proc.on('error', (error) => {
+        clearInterval(checkInterval);
         clearTimeout(startupTimeout);
-        logger.error('Firecracker process error', { vmId, error: error.message });
+        // Close FDs on error
+        try {
+          fsSync.closeSync(consoleFd);
+          fsSync.closeSync(errorFd);
+        } catch (err) {
+          // Ignore close errors
+        }
+        logger.error('[SPAWN-ERROR] Firecracker spawn error', {
+          vmId,
+          errorCode: error.code,
+          errorErrno: error.errno,
+          errorSyscall: error.syscall,
+          errorPath: error.path,
+          errorMessage: error.message,
+          errorStack: error.stack
+        });
         reject(error);
       });
 
       proc.on('exit', (code, signal) => {
+        clearInterval(checkInterval);
         clearTimeout(startupTimeout);
         this.activeVMs.delete(vmId);
-        logger.info('Firecracker exited', { vmId, code, signal });
 
+        logger.info('[SPAWN-EXIT] Firecracker process exited', {
+          vmId,
+          code,
+          signal,
+          pid: proc.pid,
+          socketExists: fsSync.existsSync(socketPath),
+          elapsed: Date.now() - Date.now() // Will show timing if we add start timestamp
+        });
+
+        // Close FDs when process exits
+        try {
+          fsSync.closeSync(consoleFd);
+          fsSync.closeSync(errorFd);
+        } catch (err) {
+          // Ignore close errors (might already be closed)
+        }
+
+        // If exit code is non-zero, read error log before rejecting
         if (code !== 0 && code !== null) {
-          reject(new Error(`Firecracker exited with code ${code}`));
+          try {
+            const errorLog = fsSync.readFileSync(errorLogPath, 'utf8');
+            const consoleLog = fsSync.readFileSync(consolePath, 'utf8');
+            logger.error('[SPAWN-EXIT] Firecracker exited with error', {
+              vmId,
+              code,
+              signal,
+              errorLog: errorLog.slice(-500),
+              consoleLog: consoleLog.slice(-500)
+            });
+            reject(new Error(`Firecracker exited with code ${code}: ${errorLog.trim().slice(-500)}`));
+          } catch (readErr) {
+            logger.error('[SPAWN-EXIT] Firecracker exited, log read failed', {
+              vmId,
+              code,
+              signal,
+              errorReadFailed: readErr.message
+            });
+            reject(new Error(`Firecracker exited with code ${code}`));
+          }
+        } else {
+          logger.info('[SPAWN-EXIT] Firecracker exited normally', { vmId, code, signal });
         }
       });
     });
@@ -495,6 +822,51 @@ class VMManager {
         destroyed_at: new Date().toISOString()
       });
     }
+  }
+
+  /**
+   * Load snapshot via Firecracker API
+   */
+  async loadSnapshot(socketPath, snapshotPath, memoryPath) {
+    const http = require('http');
+
+    return new Promise((resolve, reject) => {
+      const payload = JSON.stringify({
+        snapshot_path: snapshotPath,
+        mem_backend: {
+          backend_path: memoryPath,
+          backend_type: 'File'
+        },
+        enable_diff_snapshots: false,
+        resume_vm: true
+      });
+
+      const options = {
+        socketPath,
+        path: '/snapshot/load',
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      };
+
+      const req = http.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode === 204 || res.statusCode === 200) {
+            resolve(data);
+          } else {
+            reject(new Error(`Firecracker API error: ${res.statusCode} ${data}`));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
   }
 
   /**

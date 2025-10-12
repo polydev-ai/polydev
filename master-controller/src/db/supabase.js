@@ -159,15 +159,43 @@ const db = {
     },
 
     async findByUserId(userId) {
+      // DEBUG: Log query parameters
+      logger.info('[FINDBYUSERID] Query starting', { userId });
+
+      // DEBUG: First check all VMs for this user
+      const { data: allVMs } = await supabase
+        .from('vms')
+        .select('vm_id, vm_type, destroyed_at, created_at, status')
+        .eq('user_id', userId);
+
+      logger.info('[FINDBYUSERID] All VMs for user', {
+        userId,
+        count: allVMs?.length || 0,
+        vms: allVMs
+      });
+
+      // Modified query: use ORDER BY + LIMIT instead of .single() to handle multiple CLI VMs
       const { data, error } = await supabase
         .from('vms')
         .select('*')
         .eq('user_id', userId)
         .eq('vm_type', 'cli')
-        .single();
+        .is('destroyed_at', null)  // Only return active VMs (not destroyed)
+        .order('created_at', { ascending: false })  // Get most recent first
+        .limit(1);  // Limit to 1 result
 
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
+      logger.info('[FINDBYUSERID] Query result', {
+        userId,
+        found: !!data?.[0],
+        vmId: data?.[0]?.vm_id,
+        vmType: data?.[0]?.vm_type,
+        destroyedAt: data?.[0]?.destroyed_at,
+        errorCode: error?.code,
+        errorMessage: error?.message
+      });
+
+      if (error) throw error;
+      return data?.[0] || null;  // Return first element or null
     },
 
     async update(vmId, updates) {
@@ -229,16 +257,19 @@ const db = {
    */
   credentials: {
     async create(userId, provider, encryptedData) {
+      // Use upsert to handle duplicate credentials (update if exists, insert if not)
       const { data, error } = await supabase
         .from('provider_credentials')
-        .insert({
+        .upsert({
           user_id: userId,
           provider,
-          encrypted_data: encryptedData.encrypted,
+          encrypted_credentials: encryptedData.encrypted,
           encryption_iv: encryptedData.iv,
           encryption_tag: encryptedData.authTag,
           encryption_salt: encryptedData.salt,
           is_valid: true
+        }, {
+          onConflict: 'user_id,provider'  // Specify the unique constraint columns
         })
         .select()
         .single();

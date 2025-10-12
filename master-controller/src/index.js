@@ -29,6 +29,20 @@ const server = http.createServer(app);
 // WebSocket server
 const wss = new WebSocket.Server({ server });
 
+// CRITICAL: Log EVERY incoming request at the very entry point (before all middleware)
+app.use((req, res, next) => {
+  const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  req.requestId = requestId;
+  logger.info('[REQUEST-ENTRY] Incoming request', {
+    requestId,
+    method: req.method,
+    url: req.url,
+    ip: req.ip || req.socket.remoteAddress,
+    timestamp: new Date().toISOString()
+  });
+  next();
+});
+
 // Middleware
 app.use(helmet());
 app.use(express.json({ limit: '10mb' }));
@@ -66,6 +80,17 @@ app.get('/health', (req, res) => {
     status: 'ok',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
+  });
+});
+
+// Canary endpoint - minimal, no middleware dependencies
+app.get('/api/debug/ping', (req, res) => {
+  logger.info('[CANARY] /api/debug/ping hit', { requestId: req.requestId });
+  res.status(200).json({
+    success: true,
+    message: 'pong',
+    timestamp: new Date().toISOString(),
+    requestId: req.requestId
   });
 });
 

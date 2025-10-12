@@ -113,7 +113,7 @@ export async function GET() {
           }
         }
       },
-      "/api/vm/auth/start": {
+      "/api/vm/auth": {
         "post": {
           "tags": ["Authentication"],
           "summary": "Start authentication session",
@@ -129,7 +129,7 @@ export async function GET() {
                   "properties": {
                     "provider": {
                       "type": "string",
-                      "enum": ["codex_cli", "claude_code", "gemini_cli"],
+                      "enum": ["codex", "claude_code", "gemini_cli"],
                       "description": "AI provider to authenticate with"
                     }
                   }
@@ -150,6 +150,35 @@ export async function GET() {
             },
             "400": {"description": "Invalid provider"},
             "401": {"description": "Unauthorized"}
+          }
+        },
+        "get": {
+          "tags": ["Authentication"],
+          "summary": "Check auth session status",
+          "description": "Returns the current status of an authentication session",
+          "security": [{"bearerAuth": []}],
+          "parameters": [
+            {
+              "name": "sessionId",
+              "in": "query",
+              "required": true,
+              "schema": {"type": "string"},
+              "description": "Authentication session ID"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Session status retrieved",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/AuthSession"
+                  }
+                }
+              }
+            },
+            "401": {"description": "Unauthorized"},
+            "404": {"description": "Session not found"}
           }
         }
       },

@@ -196,10 +196,24 @@ async function handleStartCLIAuth(req, res, provider) {
     startedAt: Date.now()
   });
 
-  // Wait briefly for OAuth URL to be captured
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  // Poll for OAuth URL with timeout
+  const maxWaitMs = 15000; // 15 seconds
+  const pollIntervalMs = 1000; // 1 second
+  const startTime = Date.now();
+
+  while (!oauthUrl && (Date.now() - startTime) < maxWaitMs) {
+    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+    logger.info('Polling for OAuth URL', {
+      provider,
+      sessionId,
+      elapsed: Date.now() - startTime,
+      hasUrl: !!oauthUrl,
+      cliOutputLines: outputLines.length
+    });
+  }
 
   if (oauthUrl) {
+    logger.info('OAuth URL captured successfully', { provider, sessionId, oauthUrl: oauthUrl.substring(0, 100) });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       success: true,
@@ -208,6 +222,13 @@ async function handleStartCLIAuth(req, res, provider) {
       oauthUrl
     }));
   } else {
+    logger.warn('OAuth URL not captured within timeout', {
+      provider,
+      sessionId,
+      elapsed: Date.now() - startTime,
+      cliOutputLines: outputLines.length,
+      cliOutput: outputLines.join('\n').substring(0, 500)
+    });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       success: true,

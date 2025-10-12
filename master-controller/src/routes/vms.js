@@ -89,4 +89,77 @@ router.get('/statistics/summary', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/vms/:vmId/diagnostics
+ * Get VM diagnostic information including console logs
+ */
+router.get('/:vmId/diagnostics', async (req, res) => {
+  try {
+    const { vmId } = req.params;
+    const { lines = 100 } = req.query;
+
+    const fs = require('fs').promises;
+    const path = require('path');
+    const { execSync } = require('child_process');
+    const config = require('../config');
+
+    const vmDir = path.join(config.firecracker.usersDir, vmId);
+    const consolePath = path.join(vmDir, 'console.log');
+    const errorLogPath = path.join(vmDir, 'firecracker-error.log');
+
+    const diagnostics = {
+      vmId,
+      timestamp: new Date().toISOString(),
+      consoleLogs: null,
+      firecrackerErrors: null,
+      vmDirExists: false,
+      consoleFileSize: 0,
+      errorFileSize: 0
+    };
+
+    // Check if VM directory exists
+    try {
+      await fs.access(vmDir);
+      diagnostics.vmDirExists = true;
+    } catch {
+      return res.json(diagnostics);
+    }
+
+    // Read console logs (last N lines)
+    try {
+      const stat = await fs.stat(consolePath);
+      diagnostics.consoleFileSize = stat.size;
+
+      if (stat.size > 0) {
+        const output = execSync(`tail -n ${lines} "${consolePath}"`, { encoding: 'utf8' });
+        diagnostics.consoleLogs = output;
+      } else {
+        diagnostics.consoleLogs = '(empty file)';
+      }
+    } catch (error) {
+      diagnostics.consoleLogs = `Error reading console.log: ${error.message}`;
+    }
+
+    // Read firecracker error logs (last N lines)
+    try {
+      const stat = await fs.stat(errorLogPath);
+      diagnostics.errorFileSize = stat.size;
+
+      if (stat.size > 0) {
+        const output = execSync(`tail -n ${lines} "${errorLogPath}"`, { encoding: 'utf8' });
+        diagnostics.firecrackerErrors = output;
+      } else {
+        diagnostics.firecrackerErrors = '(empty file)';
+      }
+    } catch (error) {
+      diagnostics.firecrackerErrors = `Error reading firecracker-error.log: ${error.message}`;
+    }
+
+    res.json(diagnostics);
+  } catch (error) {
+    logger.error('Get VM diagnostics failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

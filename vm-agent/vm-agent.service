@@ -1,0 +1,15 @@
+[Unit]
+Description=VM Agent HTTP Server (Health Check + Credentials)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/vm-agent/health-server.py
+Restart=always
+RestartSec=0.5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

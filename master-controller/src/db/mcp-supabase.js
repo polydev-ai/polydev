@@ -196,7 +196,7 @@ class MCPSupabaseClient {
     createCredential: (userId, provider, encryptedData) => `
       INSERT INTO provider_credentials (
         user_id, provider,
-        encrypted_data, encryption_iv, encryption_tag, encryption_salt,
+        encrypted_credentials, encryption_iv, encryption_tag, encryption_salt,
         is_valid
       ) VALUES (
         '${userId}', '${provider}',
@@ -206,7 +206,7 @@ class MCPSupabaseClient {
       )
       ON CONFLICT (user_id, provider)
       DO UPDATE SET
-        encrypted_data = EXCLUDED.encrypted_data,
+        encrypted_credentials = EXCLUDED.encrypted_credentials,
         encryption_iv = EXCLUDED.encryption_iv,
         encryption_tag = EXCLUDED.encryption_tag,
         encryption_salt = EXCLUDED.encryption_salt,

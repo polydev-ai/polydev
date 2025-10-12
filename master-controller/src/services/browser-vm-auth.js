@@ -317,36 +317,74 @@ class BrowserVMAuth {
         await vmManager.resumeVM(cliVM.vm_id);
       }
 
-      // Determine credential file path based on provider
-      let credentialPath;
+      // Determine credential file path inside VM based on provider
+      let vmCredentialPath;
       switch (provider) {
         case 'codex':
-          credentialPath = '/root/.codex/credentials.json';
+          vmCredentialPath = '/root/.codex/credentials.json';
           break;
         case 'claude_code':
-          credentialPath = '/root/.claude/credentials.json';
+          vmCredentialPath = '/root/.claude/credentials.json';
           break;
         case 'gemini_cli':
-          credentialPath = '/root/.gemini/credentials.json';
+          vmCredentialPath = '/root/.gemini/credentials.json';
           break;
         default:
           throw new Error(`Unknown provider: ${provider}`);
       }
 
-      // Write credentials via API to CLI VM
-      const response = await fetch(`http://${cliVM.ip_address}:8080/credentials/write`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          path: credentialPath,
-          content: JSON.stringify(credentials),
-          mode: '0600' // Secure file permissions
-        }),
-        signal: AbortSignal.timeout(10000)
-      });
+      // Write credentials directly to VM rootfs via filesystem
+      // CLI VM doesn't have HTTP service, so we write directly to its ext4 image
+      const { execSync } = require('child_process');
+      const config = require('../config');
+      const path = require('path');
+      const fs = require('fs').promises;
 
-      if (!response.ok) {
-        throw new Error(`Failed to write credentials: ${response.statusText}`);
+      // Path to VM's rootfs on host
+      const vmDir = path.join(config.firecracker.usersDir, cliVM.vm_id);
+      const rootfsPath = path.join(vmDir, 'rootfs.ext4');
+
+      // Create temporary directory for mounting
+      const mountPoint = path.join('/tmp', `vm-mount-${cliVM.vm_id}`);
+
+      try {
+        // Create mount point
+        execSync(`mkdir -p ${mountPoint}`, { stdio: 'pipe' });
+
+        // Mount the rootfs (ext4 image)
+        execSync(`mount -o loop ${rootfsPath} ${mountPoint}`, { stdio: 'pipe' });
+
+        // Create credential directory inside VM filesystem if it doesn't exist
+        const credDir = path.dirname(vmCredentialPath);
+        const hostCredDir = path.join(mountPoint, credDir.slice(1)); // Remove leading /
+        execSync(`mkdir -p ${hostCredDir}`, { stdio: 'pipe' });
+
+        // Write credentials file
+        const hostCredPath = path.join(mountPoint, vmCredentialPath.slice(1));
+        await fs.writeFile(hostCredPath, JSON.stringify(credentials, null, 2));
+
+        // Set secure permissions (600 = rw-------)
+        execSync(`chmod 600 ${hostCredPath}`, { stdio: 'pipe' });
+        execSync(`chown root:root ${hostCredPath}`, { stdio: 'pipe' });
+
+        logger.info('Credentials written directly to VM filesystem', {
+          userId,
+          provider,
+          vmId: cliVM.vm_id,
+          vmPath: vmCredentialPath,
+          hostPath: hostCredPath
+        });
+      } finally {
+        // Always unmount, even if write failed
+        try {
+          execSync(`umount ${mountPoint}`, { stdio: 'pipe' });
+          execSync(`rmdir ${mountPoint}`, { stdio: 'pipe' });
+        } catch (unmountErr) {
+          logger.warn('Failed to unmount VM rootfs', {
+            vmId: cliVM.vm_id,
+            error: unmountErr.message
+          });
+        }
       }
 
       logger.info('Credentials transferred successfully', {
