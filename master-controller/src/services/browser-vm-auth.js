@@ -18,6 +18,9 @@ class BrowserVMAuth {
    * Creates browser VM, runs OAuth flow, captures credentials
    */
   async startAuthentication(userId, provider) {
+    let cliVM = null;
+    let browserVM = null;
+
     try {
       logger.info('Starting authentication', { userId, provider });
 
@@ -25,8 +28,21 @@ class BrowserVMAuth {
       const authSession = await db.authSessions.create(userId, provider);
       const sessionId = authSession.session_id;
 
-      // Create browser VM
-      const browserVM = await vmManager.createVM(userId, 'browser');
+      // STEP 1: Create CLI VM first (user will need this to chat)
+      // Don't wait for CLI VM - it doesn't have the health service and we don't need it until after OAuth
+      logger.info('Creating CLI VM before authentication', { userId, provider });
+      cliVM = await vmManager.createVM(userId, 'cli');
+      logger.info('CLI VM created successfully', {
+        userId,
+        vmId: cliVM.vmId,
+        ipAddress: cliVM.ipAddress
+      });
+
+      // Note: VM info is already stored in vms table by createVM(), no need to update users table
+
+      // STEP 2: Create browser VM for OAuth
+      logger.info('Creating browser VM for OAuth', { userId, provider });
+      browserVM = await vmManager.createVM(userId, 'browser');
 
       // Store session data
       this.authSessions.set(sessionId, {
@@ -78,11 +94,16 @@ class BrowserVMAuth {
     } catch (error) {
       logger.error('Authentication failed', { userId, provider, error: error.message });
 
-      // Cleanup on failure
-      const session = this.authSessions.get(sessionId);
-      if (session?.browserVMId) {
-        await vmManager.destroyVM(session.browserVMId).catch(err =>
+      // Cleanup on failure - destroy both VMs
+      if (browserVM?.vmId) {
+        await vmManager.destroyVM(browserVM.vmId).catch(err =>
           logger.warn('Failed to cleanup browser VM', { error: err.message })
+        );
+      }
+
+      if (cliVM?.vmId) {
+        await vmManager.destroyVM(cliVM.vmId).catch(err =>
+          logger.warn('Failed to cleanup CLI VM', { error: err.message })
         );
       }
 
@@ -97,24 +118,60 @@ class BrowserVMAuth {
     const startTime = Date.now();
     const checkInterval = 2000; // 2 seconds
 
+    logger.info('[WAIT-VM-READY] Starting health check', { vmIP, maxWaitMs });
+
     while (Date.now() - startTime < maxWaitMs) {
       try {
+        logger.info('[WAIT-VM-READY] Attempting health check', {
+          vmIP,
+          elapsed: Date.now() - startTime,
+          url: `http://${vmIP}:8080/health`
+        });
+
         // Try to connect to HTTP server on VM (should be running in golden snapshot)
         const response = await fetch(`http://${vmIP}:8080/health`, {
           signal: AbortSignal.timeout(5000)
         });
 
+        logger.info('[WAIT-VM-READY] Got response', {
+          vmIP,
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok
+        });
+
+        const body = await response.text();
+        logger.info('[WAIT-VM-READY] Response body', { vmIP, body });
+
         if (response.ok) {
-          logger.info('VM ready', { vmIP });
+          logger.info('[WAIT-VM-READY] VM ready!', { vmIP });
           return true;
         }
+
+        logger.warn('[WAIT-VM-READY] Response not OK', {
+          vmIP,
+          status: response.status,
+          body
+        });
       } catch (err) {
-        // VM not ready yet, continue waiting
+        logger.warn('[WAIT-VM-READY] Health check failed', {
+          vmIP,
+          error: err.message,
+          code: err.code,
+          elapsed: Date.now() - startTime
+        });
       }
+
+      logger.info('[WAIT-VM-READY] Waiting before retry', {
+        vmIP,
+        waitMs: checkInterval,
+        totalElapsed: Date.now() - startTime
+      });
 
       await new Promise(resolve => setTimeout(resolve, checkInterval));
     }
 
+    logger.error('[WAIT-VM-READY] Timeout exceeded', { vmIP, maxWaitMs });
     throw new Error(`VM not ready after ${maxWaitMs}ms`);
   }
 
@@ -226,16 +283,34 @@ class BrowserVMAuth {
   /**
    * Transfer credentials to CLI VM
    * Writes credential files to CLI VM's filesystem
+   * CLI VM should already exist (created in startAuthentication)
    */
   async transferCredentialsToCLIVM(userId, provider, credentials) {
     try {
       logger.info('Transferring credentials to CLI VM', { userId, provider });
 
-      // Get user's CLI VM
-      const cliVM = await db.vms.findByUserId(userId);
-      if (!cliVM) {
-        throw new Error('CLI VM not found for user');
+      // Get user's CLI VM (should exist - created in startAuthentication)
+      logger.info('[TRANSFER] About to call findByUserId', { userId });
+      let cliVM;
+      try {
+        cliVM = await db.vms.findByUserId(userId);
+        logger.info('[TRANSFER] findByUserId returned', { found: !!cliVM, vmId: cliVM?.vm_id });
+      } catch (err) {
+        logger.error('[TRANSFER] findByUserId threw error', { error: err.message, stack: err.stack });
+        throw err;
       }
+
+      if (!cliVM) {
+        logger.error('CLI VM not found - this should not happen!', { userId, provider });
+        throw new Error('CLI VM not found after authentication');
+      }
+
+      logger.info('CLI VM found - transferring credentials', {
+        userId,
+        provider,
+        vmId: cliVM.vm_id,
+        vmStatus: cliVM.status
+      });
 
       if (cliVM.status !== 'running') {
         // Resume VM if hibernated
@@ -273,9 +348,6 @@ class BrowserVMAuth {
       if (!response.ok) {
         throw new Error(`Failed to write credentials: ${response.statusText}`);
       }
-
-      // Update user status
-      await db.users.update(userId, { status: 'authenticated' });
 
       logger.info('Credentials transferred successfully', {
         userId,
@@ -345,7 +417,7 @@ class BrowserVMAuth {
 
       // Decrypt credentials
       const credentials = credentialEncryption.decrypt({
-        encrypted: credData.encrypted_data,
+        encrypted: credData.encrypted_credentials,
         iv: credData.encryption_iv,
         authTag: credData.encryption_tag,
         salt: credData.encryption_salt
