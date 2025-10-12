@@ -10,7 +10,6 @@ import * as path from 'path'
 import * as fs from 'fs'
 import * as os from 'os'
 const which = require('which')
-const shell = require('shelljs')
 
 const execAsync = promisify(exec)
 
@@ -20,8 +19,8 @@ export interface CLIProvider {
   executable: string
   versionCommand: string
   authCheckCommand: string
-  chatCommand: string
-  supportsStdin: boolean
+  chatCommand: string | string[]
+  alternateChatCommands?: Array<string | string[]>
   supportsArgs: boolean
   installInstructions: string
   authInstructions: string
@@ -45,6 +44,7 @@ export interface CLIResponse {
   error?: string
   tokensUsed?: number
   latencyMs?: number
+  mode?: 'stdin' | 'args'
 }
 
 export class CLIManager {
@@ -64,8 +64,7 @@ export class CLIManager {
         executable: 'claude',
         versionCommand: 'claude --version',
         authCheckCommand: 'claude auth status',
-        chatCommand: 'claude chat',
-        supportsStdin: true,
+        chatCommand: ['claude', 'chat'],
         supportsArgs: true,
         installInstructions: 'Install via: npm install -g @anthropic-ai/claude-code',
         authInstructions: 'Authenticate with: claude auth login'
@@ -76,8 +75,12 @@ export class CLIManager {
         executable: 'codex',
         versionCommand: 'codex --version',
         authCheckCommand: 'codex auth status',
-        chatCommand: 'codex chat',
-        supportsStdin: true,
+        chatCommand: ['exec'],
+        alternateChatCommands: [
+          ['chat'],
+          ['prompt'],
+          ['ask']
+        ],
         supportsArgs: true,
         installInstructions: 'Install Codex CLI from OpenAI',
         authInstructions: 'Authenticate with: codex auth'
@@ -88,8 +91,7 @@ export class CLIManager {
         executable: 'gemini',
         versionCommand: 'gemini --version',
         authCheckCommand: 'gemini auth status',
-        chatCommand: 'gemini chat',
-        supportsStdin: true,
+        chatCommand: ['gemini', 'chat'],
         supportsArgs: true,
         installInstructions: 'Install Gemini CLI from Google',
         authInstructions: 'Authenticate with: gemini auth login'
@@ -197,19 +199,56 @@ export class CLIManager {
       }
     }
 
+    if (providerId === 'codex_cli' && timeoutMs < 90000) {
+      timeoutMs = 90000
+    }
+
     const startTime = Date.now()
 
     try {
-      let result: string
+      const commandVariants = [
+        this.normalizeCommand(provider.chatCommand),
+        ...(provider.alternateChatCommands || []).map(cmd => this.normalizeCommand(cmd))
+      ].filter(parts => parts.length > 0)
 
-      if (mode === 'stdin' && provider.supportsStdin) {
-        result = await this.sendPromptViaStdin(provider, prompt, timeoutMs)
-      } else if (mode === 'args' && provider.supportsArgs) {
-        result = await this.sendPromptViaArgs(provider, prompt, timeoutMs)
-      } else {
+      if (commandVariants.length === 0) {
+        throw new Error(`${provider.name} does not have a valid chat command configured`)
+      }
+
+      if (provider.id === 'codex_cli') {
+        const execArgs = commandVariants.find(parts => parts.includes('exec')) || commandVariants[0]
+        const result = await this.executeCodexExec(provider.executable, execArgs, prompt, timeoutMs)
+        return {
+          success: true,
+          content: result,
+          latencyMs: Date.now() - startTime,
+          mode: 'args'
+        }
+      }
+
+      let result: string | undefined
+      let effectiveMode: 'stdin' | 'args' = 'args'
+      let lastError: Error | undefined
+
+      for (const commandParts of commandVariants) {
+        if (!provider.supportsArgs) {
+          lastError = new Error(`${provider.name} does not support args mode`)
+          continue
+        }
+
+        try {
+          result = await this.sendPromptViaArgs(commandParts, prompt, timeoutMs)
+          break
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error))
+        }
+      }
+
+      if (typeof result !== 'string') {
         return {
           success: false,
-          error: `${provider.name} does not support ${mode} mode`
+          error: lastError?.message || 'CLI execution failed',
+          latencyMs: Date.now() - startTime
         }
       }
 
@@ -218,7 +257,8 @@ export class CLIManager {
       return {
         success: true,
         content: result,
-        latencyMs
+        latencyMs,
+        mode: effectiveMode
       }
 
     } catch (error) {
@@ -310,67 +350,212 @@ export class CLIManager {
     }
   }
 
-  /**
-   * Send prompt via stdin mode
-   */
-  private async sendPromptViaStdin(
-    provider: CLIProvider,
+  private normalizeCommand(command: string | string[]): string[] {
+    if (Array.isArray(command)) {
+      return command.map(part => part.trim()).filter(Boolean)
+    }
+    return command.split(/\s+/).map(part => part.trim()).filter(Boolean)
+  }
+
+  private async sendPromptViaArgs(
+    commandParts: string[],
     prompt: string,
     timeoutMs: number
   ): Promise<string> {
+    if (commandParts.length === 0) {
+      throw new Error('Invalid CLI command configuration')
+    }
+
+    const [executable, ...baseArgs] = commandParts
+    const args = [...baseArgs, prompt]
+
+    if (process.env.POLYDEV_CLI_DEBUG) {
+      console.log(`[CLI Debug] Executing (args) ${executable} ${args.join(' ')}`)
+    }
+
     return new Promise((resolve, reject) => {
-      const child = spawn(provider.chatCommand, [], {
+      const baseTmp = process.env.POLYDEV_CLI_TMPDIR || process.env.TMPDIR || os.tmpdir()
+      const tmpDir = path.join(baseTmp, 'polydev-codex')
+      try {
+        fs.mkdirSync(tmpDir, { recursive: true })
+      } catch (error) {
+        console.warn('[CLI Debug] Failed to create Codex temp dir:', error)
+      }
+
+      const child = spawn(executable, args, {
         stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: timeoutMs
-      })
-
-      let stdout = ''
-      let stderr = ''
-
-      child.stdout?.on('data', (data) => {
-        stdout += data.toString()
-      })
-
-      child.stderr?.on('data', (data) => {
-        stderr += data.toString()
-      })
-
-      child.on('close', (code) => {
-        if (code === 0) {
-          resolve(stdout.trim())
-        } else {
-          reject(new Error(`CLI exited with code ${code}: ${stderr}`))
+        shell: process.platform === 'win32',
+        env: {
+          ...process.env,
+          TMPDIR: tmpDir,
+          TEMP: tmpDir,
+          TMP: tmpDir
         }
       })
 
-      child.on('error', (error) => {
-        reject(error)
-      })
+      console.log(`[CLI Debug] Spawning Codex process: ${executable} ${args.join(' ')}`)
 
-      // Send prompt via stdin
+      // No stdin needed for exec mode; close immediately to avoid hangs.
       if (child.stdin) {
-        child.stdin.write(prompt)
         child.stdin.end()
       }
+
+      let stdout = ''
+      let stderr = ''
+      let finished = false
+
+      const timeoutHandle = setTimeout(() => {
+        if (!finished) {
+          finished = true
+          try {
+            child.kill('SIGTERM')
+            setTimeout(() => {
+              if (!child.killed) {
+                child.kill('SIGKILL')
+              }
+            }, 1500)
+          } catch {}
+          reject(new Error(`CLI command timeout after ${timeoutMs}ms`))
+        }
+      }, timeoutMs)
+
+      child.stdout?.on('data', data => {
+        stdout += data.toString()
+      })
+
+      child.stderr?.on('data', data => {
+        stderr += data.toString()
+      })
+
+      child.on('close', code => {
+        if (finished) return
+        finished = true
+        clearTimeout(timeoutHandle)
+
+        if (process.env.POLYDEV_CLI_DEBUG) {
+          console.log(`[CLI Debug] (args) exit code ${code}`)
+          if (stdout) console.log(`[CLI Debug] stdout: ${stdout.trim().slice(0, 500)}`)
+          if (stderr) console.log(`[CLI Debug] stderr: ${stderr.trim().slice(0, 500)}`)
+        }
+
+        const trimmedStdout = stdout.trim()
+        const trimmedStderr = stderr.trim()
+
+        if (code === 0) {
+          resolve(trimmedStdout || trimmedStderr)
+        } else {
+          const message = trimmedStderr || trimmedStdout || `CLI command failed (code ${code})`
+          reject(new Error(message))
+        }
+      })
+
+      child.on('error', error => {
+        if (finished) return
+        finished = true
+        clearTimeout(timeoutHandle)
+        reject(error)
+      })
     })
   }
 
-  /**
-   * Send prompt via command arguments
-   */
-  private async sendPromptViaArgs(
-    provider: CLIProvider,
+  private async executeCodexExec(
+    executable: string,
+    commandArgs: string[],
     prompt: string,
     timeoutMs: number
   ): Promise<string> {
-    const command = `${provider.chatCommand} "${prompt.replace(/"/g, '\\"')}"`
-    
-    try {
-      const { stdout } = await execAsync(command, { timeout: timeoutMs })
-      return stdout.trim()
-    } catch (error) {
-      throw new Error(`CLI command failed: ${error}`)
+    if (!executable) {
+      throw new Error('Missing Codex executable')
     }
+
+    if (!commandArgs || commandArgs.length === 0) {
+      throw new Error('Invalid Codex command configuration')
+    }
+
+    const workingDir = process.cwd()
+    const args = [
+      ...commandArgs,
+      '--sandbox',
+      'workspace-write',
+      '--skip-git-repo-check',
+      '--cd',
+      workingDir,
+      prompt
+    ]
+
+    return new Promise((resolve, reject) => {
+      const child = spawn(executable, args, {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: process.platform === 'win32'
+      })
+
+      if (child.stdin) {
+        child.stdin.end()
+      }
+
+      let stdout = ''
+      let stderr = ''
+      let resolved = false
+
+      const stop = (handler: () => void) => {
+        if (!resolved) {
+          resolved = true
+          try {
+            child.kill('SIGTERM')
+          } catch {}
+          handler()
+        }
+      }
+
+      const timeoutHandle = setTimeout(() => {
+        stop(() => reject(new Error(`Codex exec timeout after ${timeoutMs}ms`)))
+      }, timeoutMs)
+
+      const flushIfComplete = () => {
+        const bulletMatch = stdout.match(/•\s*(.+)/)
+        if (bulletMatch && bulletMatch[1]) {
+          const answer = bulletMatch[1].trim()
+          clearTimeout(timeoutHandle)
+          stop(() => resolve(answer))
+        }
+      }
+
+      child.stdout?.on('data', data => {
+        stdout += data.toString()
+        flushIfComplete()
+      })
+
+      child.stderr?.on('data', data => {
+        stderr += data.toString()
+      })
+
+      child.on('close', code => {
+        if (resolved) return
+        resolved = true
+        clearTimeout(timeoutHandle)
+
+        const trimmedStdout = stdout.trim()
+        const trimmedStderr = stderr.trim()
+
+        if (code === 0 && trimmedStdout) {
+          const bulletMatch = trimmedStdout.match(/•\s*(.+)/)
+          if (bulletMatch && bulletMatch[1]) {
+            resolve(bulletMatch[1].trim())
+            return
+          }
+          resolve(trimmedStdout)
+        } else {
+          reject(new Error(trimmedStderr || trimmedStdout || `Codex exited with code ${code}`))
+        }
+      })
+
+      child.on('error', error => {
+        if (resolved) return
+        resolved = true
+        clearTimeout(timeoutHandle)
+        reject(error)
+      })
+    })
   }
 
   /**

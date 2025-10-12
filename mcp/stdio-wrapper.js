@@ -3,7 +3,39 @@
 // Lightweight stdio wrapper with local CLI functionality and remote Polydev MCP server fallback
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { CLIManager } = require('../lib/cliManager');
+
+function ensureWritableTmpDir() {
+  const candidates = [
+    process.env.POLYDEV_TMPDIR,
+    '/tmp/polydev',
+    '/tmp',
+    path.join(os.tmpdir(), 'polydev'),
+    path.join(process.cwd(), '.polydev-tmp')
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      fs.mkdirSync(candidate, { recursive: true });
+      fs.accessSync(candidate, fs.constants.W_OK);
+      return candidate;
+    } catch (error) {
+      console.warn(`[Stdio Wrapper] TMP candidate not writable (${candidate}):`, error.message);
+    }
+  }
+
+  console.error('[Stdio Wrapper] No writable TMP directory found; Codex CLI will fail.');
+  return null;
+}
+
+const writableTmp = ensureWritableTmpDir();
+if (writableTmp) {
+  process.env.TMPDIR = writableTmp;
+  process.env.TMP = writableTmp;
+  process.env.TEMP = writableTmp;
+  console.error(`[Stdio Wrapper] Using TMP directory: ${writableTmp}`);
+}
 
 class StdioMCPWrapper {
   constructor() {
@@ -212,7 +244,7 @@ class StdioMCPWrapper {
       // Save status locally to file-based cache
       await this.saveLocalCliStatus(results);
 
-      // NEW: Update database with CLI status
+      // Update database with CLI status
       await this.updateCliStatusInDatabase(results);
       
       return {
@@ -250,10 +282,10 @@ class StdioMCPWrapper {
         results = status;
       } else {
         // Get all providers status
-        const providers = this.cliManager.getAvailableProviders();
+        const providers = this.cliManager.getProviders();
         for (const provider of providers) {
           const status = await this.cliManager.getCliStatus(provider.id);
-          results[provider.id] = status[provider.id];
+          results[provider.id] = status;
         }
       }
 
@@ -280,7 +312,7 @@ class StdioMCPWrapper {
   }
 
   /**
-   * Local CLI prompt sending with remote perspectives fallback/supplement
+   * Local CLI prompt sending with ALL available CLIs + remote perspectives
    */
   async localSendCliPrompt(args) {
     console.error(`[Stdio Wrapper] Local CLI prompt sending with perspectives`);
@@ -290,49 +322,68 @@ class StdioMCPWrapper {
       
       // Ensure timeout_ms is valid (not undefined, null, Infinity, or negative)
       if (!timeout_ms || timeout_ms === Infinity || timeout_ms < 1 || timeout_ms > 300000) {
-        timeout_ms = 30000 // Default to 30 seconds
+        timeout_ms = 30000; // Default to 30 seconds
       }
       
       if (!prompt) {
         throw new Error('prompt is required');
       }
 
-      // Auto-select best available provider if none specified
-      if (!provider_id) {
-        provider_id = await this.selectBestProvider();
-        console.error(`[Stdio Wrapper] Auto-selected provider: ${provider_id}`);
-      }
-
       // Use reasonable timeout for CLI responses (15 seconds instead of 5)
       const gracefulTimeout = Math.min(timeout_ms, 15000);
-      
-      // Start both operations concurrently for better performance
-      const [localResult, perspectivesResult] = await Promise.allSettled([
-        this.cliManager.sendCliPrompt(provider_id, prompt, mode, gracefulTimeout),
-        this.callPerspectivesForCli(args, null)
-      ]);
 
-      // Process results
-      const localResponse = localResult.status === 'fulfilled' ? localResult.value : {
-        success: false,
-        error: `CLI check failed: ${localResult.reason?.message || 'Unknown error'}`,
-        latency_ms: gracefulTimeout,
-        timestamp: new Date().toISOString()
-      };
+      let localResults = [];
 
-      const perspectivesResponse = perspectivesResult.status === 'fulfilled' ? perspectivesResult.value : {
-        success: false,
-        error: `Perspectives failed: ${perspectivesResult.reason?.message || 'Unknown error'}`,
-        timestamp: new Date().toISOString()
-      };
+      if (provider_id) {
+        // Specific provider requested - use only that one
+        console.error(`[Stdio Wrapper] Using specific provider: ${provider_id}`);
+        const result = await this.cliManager.sendCliPrompt(provider_id, prompt, mode, gracefulTimeout);
+        localResults = [{ provider_id, ...result }];
+      } else {
+        // No specific provider - use ALL available local CLIs
+        console.error(`[Stdio Wrapper] Using all available local CLIs`);
+        const availableProviders = await this.getAllAvailableProviders();
+        
+        if (availableProviders.length === 0) {
+          console.error(`[Stdio Wrapper] No local CLIs available, will use remote perspectives only`);
+          localResults = [];
+        } else {
+          console.error(`[Stdio Wrapper] Found ${availableProviders.length} available CLIs: ${availableProviders.join(', ')}`);
+          
+          // Run all CLI prompts concurrently
+          const cliPromises = availableProviders.map(async (providerId) => {
+            try {
+              const result = await this.cliManager.sendCliPrompt(providerId, prompt, mode, gracefulTimeout);
+              return { provider_id: providerId, ...result };
+            } catch (error) {
+              console.error(`[Stdio Wrapper] CLI ${providerId} failed:`, error.message);
+              return {
+                provider_id: providerId,
+                success: false,
+                error: error.message,
+                latency_ms: gracefulTimeout
+              };
+            }
+          });
 
-      // Record usage locally (file-based analytics) - non-blocking
-      this.recordLocalUsage(provider_id, prompt, localResponse).catch(err => {
-        console.error('[Stdio Wrapper] Usage recording failed (non-critical):', err.message);
-      });
+          localResults = await Promise.all(cliPromises);
+        }
+      }
 
-      // Combine results
-      return this.combineCliAndPerspectives(localResponse, perspectivesResponse, args);
+      // Get remote perspectives (only for models not covered by local CLIs)
+      const perspectivesResult = await this.callPerspectivesForCli(args, localResults);
+
+      // Record usage for all CLI responses
+      for (const localResult of localResults) {
+        if (localResult.provider_id) {
+          this.recordLocalUsage(localResult.provider_id, prompt, localResult).catch(err => {
+            console.error(`[Stdio Wrapper] Usage recording failed for ${localResult.provider_id} (non-critical):`, err.message);
+          });
+        }
+      }
+
+      // Combine all results
+      return this.combineAllCliAndPerspectives(localResults, perspectivesResult, args);
 
     } catch (error) {
       console.error('[Stdio Wrapper] Local CLI prompt error:', error);
@@ -346,43 +397,35 @@ class StdioMCPWrapper {
   }
 
   /**
-   * Select the best available CLI provider automatically
+   * Get all available and authenticated CLI providers
    */
-  async selectBestProvider() {
+  async getAllAvailableProviders() {
     try {
-      const allStatus = await this.cliManager.getCliStatus();
+      const results = await this.cliManager.forceCliDetection();
+      const availableProviders = [];
       
       // Priority order: claude_code > codex_cli > gemini_cli
       const priorityOrder = ['claude_code', 'codex_cli', 'gemini_cli'];
       
       for (const providerId of priorityOrder) {
-        const status = allStatus[providerId];
+        const status = results[providerId];
         if (status && status.available && status.authenticated) {
-          return providerId;
+          availableProviders.push(providerId);
         }
       }
       
-      // If no authenticated provider, return the first available one
-      for (const providerId of priorityOrder) {
-        const status = allStatus[providerId];
-        if (status && status.available) {
-          return providerId;
-        }
-      }
-      
-      // Default fallback to claude_code (will trigger remote perspectives)
-      return 'claude_code';
+      return availableProviders;
       
     } catch (error) {
-      console.error('[Stdio Wrapper] Provider selection failed, defaulting to claude_code:', error);
-      return 'claude_code';
+      console.error('[Stdio Wrapper] Failed to get available providers:', error);
+      return [];
     }
   }
 
   /**
    * Call remote perspectives for CLI prompts
    */
-  async callPerspectivesForCli(args, localResult) {
+  async callPerspectivesForCli(args, localResults) {
     console.error(`[Stdio Wrapper] Calling remote perspectives for CLI prompt`);
     
     try {
@@ -440,76 +483,99 @@ class StdioMCPWrapper {
   }
 
   /**
-   * Combine local CLI and remote perspectives results
+   * Combine multiple CLI results and remote perspectives
    */
-  combineCliAndPerspectives(localResult, perspectivesResult, args) {
+  combineAllCliAndPerspectives(localResults, perspectivesResult, args) {
     const combinedResult = {
       success: true,
       timestamp: new Date().toISOString(),
-      provider: args.provider_id,
       mode: args.mode,
+      local_cli_count: localResults.length,
       sections: {
-        local: localResult,
+        local: localResults,
         remote: perspectivesResult
       }
     };
 
-    // Determine overall success and fallback status
-    if (localResult.success && perspectivesResult.success) {
-      combinedResult.content = this.formatCombinedResponse(localResult, perspectivesResult, false);
-      combinedResult.tokens_used = localResult.tokens_used || 0;
-      combinedResult.latency_ms = localResult.latency_ms || 0;
-    } else if (!localResult.success && perspectivesResult.success) {
-      // Fallback case
-      combinedResult.content = this.formatCombinedResponse(localResult, perspectivesResult, true);
+    // Check if any local CLIs succeeded
+    const successfulClis = localResults.filter(result => result.success);
+    const hasSomeLocalSuccess = successfulClis.length > 0;
+
+    // Determine overall success and content
+    if (hasSomeLocalSuccess && perspectivesResult.success) {
+      combinedResult.content = this.formatMultipleCliResponse(localResults, perspectivesResult, false);
+      combinedResult.tokens_used = successfulClis.reduce((total, cli) => total + (cli.tokens_used || 0), 0);
+      combinedResult.latency_ms = Math.max(...successfulClis.map(cli => cli.latency_ms || 0));
+    } else if (!hasSomeLocalSuccess && perspectivesResult.success) {
+      // Complete fallback case - no local CLIs worked
+      combinedResult.content = this.formatMultipleCliResponse(localResults, perspectivesResult, true);
       combinedResult.fallback_used = true;
       combinedResult.tokens_used = 0; // No local tokens used
-    } else if (localResult.success && !perspectivesResult.success) {
-      // Local succeeded, remote failed
-      combinedResult.content = this.formatCombinedResponse(localResult, perspectivesResult, false);
-      combinedResult.tokens_used = localResult.tokens_used || 0;
-      combinedResult.latency_ms = localResult.latency_ms || 0;
+    } else if (hasSomeLocalSuccess && !perspectivesResult.success) {
+      // Local CLIs succeeded, remote failed
+      combinedResult.content = this.formatMultipleCliResponse(localResults, perspectivesResult, false);
+      combinedResult.tokens_used = successfulClis.reduce((total, cli) => total + (cli.tokens_used || 0), 0);
+      combinedResult.latency_ms = Math.max(...successfulClis.map(cli => cli.latency_ms || 0));
     } else {
       // Both failed
       combinedResult.success = false;
-      combinedResult.error = `Local CLI failed: ${localResult.error}; Perspectives also failed: ${perspectivesResult.error}`;
+      const cliErrors = localResults.map(cli => `${cli.provider_id}: ${cli.error}`).join('; ');
+      combinedResult.error = `All local CLIs failed: ${cliErrors}; Perspectives also failed: ${perspectivesResult.error}`;
     }
 
     return combinedResult;
   }
 
   /**
-   * Format combined response text
+   * Format multiple CLI responses with remote perspectives
    */
-  formatCombinedResponse(localResult, perspectivesResult, isFallback) {
+  formatMultipleCliResponse(localResults, perspectivesResult, isFallback) {
     let formatted = '';
 
-    if (localResult.success) {
-      // Local CLI succeeded
-      formatted += `🟢 **Local CLI Response** (${localResult.provider} - ${localResult.mode} mode)\n\n`;
-      formatted += `${localResult.content}\n\n`;
-      formatted += `*Latency: ${localResult.latency_ms || 0}ms | Tokens: ${localResult.tokens_used || 0}*\n\n`;
-      formatted += `---\n\n`;
-    } else if (isFallback) {
-      // Local CLI failed, using fallback
-      formatted += `⚠️ **Local CLI unavailable**: ${localResult.error}\n`;
-      formatted += `Using perspectives fallback.\n\n`;
-      formatted += `---\n\n`;
+    // Show all local CLI responses
+    const successfulClis = localResults.filter(result => result.success);
+    const failedClis = localResults.filter(result => !result.success);
+
+    if (successfulClis.length > 0) {
+      // Show successful CLI responses
+      for (const cliResult of successfulClis) {
+        formatted += `🟢 **Local CLI Response** (${cliResult.provider_id} - ${cliResult.mode || 'args'} mode)\n\n`;
+        formatted += `${cliResult.content}\n\n`;
+        formatted += `*Latency: ${cliResult.latency_ms || 0}ms | Tokens: ${cliResult.tokens_used || 0}*\n\n`;
+        formatted += `---\n\n`;
+      }
     }
 
+    if (failedClis.length > 0 && successfulClis.length === 0) {
+      // All local CLIs failed
+      formatted += `⚠️ **All Local CLIs Unavailable**\n`;
+      for (const cliResult of failedClis) {
+        formatted += `- ${cliResult.provider_id}: ${cliResult.error}\n`;
+      }
+      formatted += `Using perspectives fallback.\n\n`;
+      formatted += `---\n\n`;
+    } else if (failedClis.length > 0) {
+      // Some CLIs failed, some succeeded
+      formatted += `⚠️ **Some CLIs Failed**\n`;
+      for (const cliResult of failedClis) {
+        formatted += `- ${cliResult.provider_id}: ${cliResult.error}\n`;
+      }
+      formatted += `\n---\n\n`;
+    }
+
+    // Add remote perspectives
     if (perspectivesResult.success) {
       if (perspectivesResult.raw) {
-        // Raw content is already formatted - use as-is without any additional title
-        // The remote server already includes proper headers like "Multiple AI Perspectives"
+        // Raw content is already formatted - use as-is
         formatted += `${perspectivesResult.content}\n\n`;
       } else {
-        // Legacy formatting for non-raw content (shouldn't be used with current server)
-        const title = isFallback ? '🧠 **Perspectives Fallback**' : '🧠 **Supplemental Multi-Model Perspectives**';
+        // Legacy formatting
+        const title = (successfulClis.length === 0) ? '🧠 **Perspectives Fallback**' : '🧠 **Supplemental Multi-Model Perspectives**';
         formatted += `${title}\n\n`;
         formatted += `${perspectivesResult.content}\n\n`;
       }
-    } else if (!isFallback) {
-      // Show remote error only if not in fallback mode
+    } else if (successfulClis.length > 0) {
+      // Show remote error only if we have local success
       formatted += `❌ **Perspectives request failed**: ${perspectivesResult.error}\n\n`;
     }
 
@@ -554,7 +620,6 @@ class StdioMCPWrapper {
         console.error(`[Stdio Wrapper] Updating ${providerId} with data:`, JSON.stringify({
           provider: statusData.provider,
           status: statusData.status,
-          user_id: statusData.user_id,
           authenticated: statusData.authenticated
         }, null, 2));
 
@@ -780,14 +845,20 @@ class StdioMCPWrapper {
       return `❌ **CLI Error**\n\n${result.error}\n\n*Timestamp: ${result.timestamp}*`;
     }
 
-    // Handle combined CLI + perspectives response
+    // Handle combined CLI + perspectives response (single or multiple CLIs)
     if (result.sections) {
       return result.content;
     }
 
     if (result.content) {
       // Standard prompt response
-      return `✅ **CLI Response** (${result.provider || 'Unknown'} - ${result.mode || 'unknown'} mode)\n\n${result.content}\n\n*Latency: ${result.latency_ms || 0}ms | Tokens: ${result.tokens_used || 0} | ${result.timestamp}*`;
+      const cliCount = result.local_cli_count || 1;
+      
+      if (cliCount > 1) {
+        return `✅ **Multi-CLI Response** (${cliCount} local CLIs + perspectives)\n\n${result.content}\n\n*Total Latency: ${result.latency_ms || 0}ms | Total Tokens: ${result.tokens_used || 0} | ${result.timestamp}*`;
+      } else {
+        return `✅ **CLI Response** (${result.provider || 'Unknown'} - ${result.mode || 'unknown'} mode)\n\n${result.content}\n\n*Latency: ${result.latency_ms || 0}ms | Tokens: ${result.tokens_used || 0} | ${result.timestamp}*`;
+      }
     } else {
       // Status/detection response
       let formatted = `✅ **CLI Operation Success**\n\n`;
