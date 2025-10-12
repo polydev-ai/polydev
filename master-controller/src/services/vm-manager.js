@@ -150,7 +150,7 @@ class VMManager {
     const vmConfig = {
       'boot-source': {
         kernel_image_path: config.firecracker.goldenKernel,
-        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0:${vmId}:eth0:on`
+        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0:${vmId}:eth0:off`
       },
       'drives': [
         {

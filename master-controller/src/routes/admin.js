@@ -196,4 +196,34 @@ router.get('/metrics/recent', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/system/restart
+ * Restart the master-controller service (requires systemd)
+ */
+router.post('/system/restart', async (req, res) => {
+  try {
+    const { exec } = require('child_process');
+
+    logger.warn('System restart requested via admin API');
+
+    // Send response immediately before restarting
+    res.json({
+      success: true,
+      message: 'Restart initiated. Service will be back in ~5 seconds.'
+    });
+
+    // Restart after 1 second delay to ensure response is sent
+    setTimeout(() => {
+      exec('systemctl restart master-controller', (error) => {
+        if (error) {
+          logger.error('Failed to restart via systemctl', { error: error.message });
+        }
+      });
+    }, 1000);
+  } catch (error) {
+    logger.error('System restart failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
