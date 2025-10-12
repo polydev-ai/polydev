@@ -18,28 +18,63 @@ class VMManager {
     this.ipPool = new Set(); // Available IPs from pool
     this.usedIPs = new Map(); // vmId -> IP
     this.tapDevices = new Map(); // vmId -> tap device name
-
-    this.initializeIPPool();
+    this.initPromise = this.initializeIPPool(); // Track initialization promise
   }
 
   /**
-   * Initialize IP pool from config
+   * Initialize IP pool from config and database
+   * Queries database to exclude IPs already allocated to running VMs
    */
-  initializeIPPool() {
+  async initializeIPPool() {
     const [start, end] = this.parseIPRange(
       config.network.ipPoolStart,
       config.network.ipPoolEnd
     );
 
+    // Add all IPs from range to pool
     for (let i = start; i <= end; i++) {
       const ip = this.intToIP(i);
       this.ipPool.add(ip);
     }
 
-    logger.info('IP pool initialized', {
-      poolSize: this.ipPool.size,
-      range: `${config.network.ipPoolStart} - ${config.network.ipPoolEnd}`
-    });
+    const totalIPs = this.ipPool.size;
+
+    // Query database for VMs with allocated IPs (running or hibernated)
+    try {
+      const runningVMs = await db.vms.list({
+        status: 'running',
+        excludeDestroyed: true
+      });
+
+      const hibernatedVMs = await db.vms.list({
+        status: 'hibernated',
+        excludeDestroyed: true
+      });
+
+      const allocatedVMs = [...runningVMs, ...hibernatedVMs];
+
+      // Remove already-allocated IPs from pool and add to usedIPs map
+      for (const vm of allocatedVMs) {
+        if (vm.ip_address) {
+          this.ipPool.delete(vm.ip_address);
+          this.usedIPs.set(vm.vm_id, vm.ip_address);
+        }
+      }
+
+      logger.info('IP pool initialized from database', {
+        totalIPs,
+        allocatedIPs: allocatedVMs.length,
+        availableIPs: this.ipPool.size,
+        range: `${config.network.ipPoolStart} - ${config.network.ipPoolEnd}`,
+        allocatedVMIds: allocatedVMs.map(vm => `${vm.vm_id.substring(0, 8)} (${vm.ip_address})`).join(', ')
+      });
+    } catch (error) {
+      logger.error('Failed to query existing VMs for IP allocation', {
+        error: error.message,
+        fallbackPoolSize: this.ipPool.size
+      });
+      // Continue with full IP pool on error - better than failing startup
+    }
   }
 
   /**
@@ -71,8 +106,12 @@ class VMManager {
 
   /**
    * Allocate IP from pool
+   * Waits for initialization to complete before allocating
    */
-  allocateIP(vmId) {
+  async allocateIP(vmId) {
+    // Wait for IP pool initialization to complete
+    await this.initPromise;
+
     if (this.ipPool.size === 0) {
       throw new Error('IP pool exhausted');
     }
@@ -150,7 +189,7 @@ class VMManager {
     const vmConfig = {
       'boot-source': {
         kernel_image_path: config.firecracker.goldenKernel,
-        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0:${vmId}:eth0:off`
+        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0::eth0:off`
       },
       'drives': [
         {
@@ -369,10 +408,10 @@ WantedBy=multi-user.target
     try {
       logger.info('[VM-CREATE] Starting VM creation', { vmId, userId, vmType, startTime: new Date().toISOString() });
 
-      // Allocate resources (should be instant)
+      // Allocate resources (waits for IP pool init, then allocates)
       logger.info('[VM-CREATE] Step 1: Allocating IP', { vmId });
       const ipAddress = await this.withTimeout(
-        Promise.resolve(this.allocateIP(vmId)),
+        this.allocateIP(vmId),  // Already returns a promise
         5000,
         `[${vmId}] allocateIP`
       );
