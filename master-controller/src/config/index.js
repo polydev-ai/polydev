@@ -97,6 +97,12 @@ const config = {
     errorLogFile: process.env.ERROR_LOG_FILE || '/var/log/polydev/master-controller-error.log'
   },
 
+  // Debug Options
+  debug: {
+    // Keep failed Browser VMs alive for debugging (don't destroy on health check failure)
+    keepFailedBrowserVMs: process.env.DEBUG_KEEP_FAILED_BROWSER_VMS === 'true'
+  },
+
   // WebSocket
   websocket: {
     heartbeatInterval: parseInt(process.env.WS_HEARTBEAT_INTERVAL, 10) || 30000,

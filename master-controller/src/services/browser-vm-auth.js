@@ -94,11 +94,23 @@ class BrowserVMAuth {
     } catch (error) {
       logger.error('Authentication failed', { userId, provider, error: error.message });
 
-      // Cleanup on failure - destroy both VMs
+      const config = require('../config');
+
+      // Cleanup on failure - destroy VMs
+      // For Browser VMs: Check debug flag before destroying
       if (browserVM?.vmId) {
-        await vmManager.destroyVM(browserVM.vmId).catch(err =>
-          logger.warn('Failed to cleanup browser VM', { error: err.message })
-        );
+        if (config.debug.keepFailedBrowserVMs) {
+          logger.warn('[DEBUG] Keeping failed Browser VM alive for debugging', {
+            vmId: browserVM.vmId,
+            vmIP: browserVM.ipAddress,
+            provider,
+            debugFlag: 'DEBUG_KEEP_FAILED_BROWSER_VMS=true'
+          });
+        } else {
+          await vmManager.destroyVM(browserVM.vmId).catch(err =>
+            logger.warn('Failed to cleanup browser VM', { error: err.message })
+          );
+        }
       }
 
       if (cliVM?.vmId) {
