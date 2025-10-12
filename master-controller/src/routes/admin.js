@@ -226,4 +226,71 @@ router.post('/system/restart', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/vm/:vmId/console
+ * Get VM console log output
+ */
+router.get('/vm/:vmId/console', async (req, res) => {
+  try {
+    const { vmId } = req.params;
+    const lines = parseInt(req.query.lines) || 500;
+    const config = require('../config');
+    const fs = require('fs').promises;
+    const path = require('path');
+
+    const consolePath = path.join(config.firecracker.usersDir, vmId, 'console.log');
+
+    try {
+      const content = await fs.readFile(consolePath, 'utf-8');
+      const logLines = content.split('\n').slice(-lines);
+
+      res.json({
+        vmId,
+        lines: logLines.length,
+        content: logLines.join('\n'),
+        consolePath
+      });
+    } catch (readError) {
+      logger.warn('Console log not found', { vmId, consolePath });
+      res.status(404).json({
+        error: 'Console log not found',
+        consolePath
+      });
+    }
+  } catch (error) {
+    logger.error('Get VM console failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/vms/recent
+ * Get list of recent VMs with optional filters
+ */
+router.get('/vms/recent', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const vmType = req.query.vmType;
+
+    let query = db.supabase
+      .from('vms')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (vmType) {
+      query = query.eq('vm_type', vmType);
+    }
+
+    const { data: vms, error } = await query;
+
+    if (error) throw error;
+
+    res.json({ vms: vms || [] });
+  } catch (error) {
+    logger.error('Get recent VMs failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
