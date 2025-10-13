@@ -381,7 +381,7 @@
             "minLength": 1
           }
         },
-        "required": ["provider_id", "prompt"]
+        "required": ["prompt"]
       },
       "outputSchema": {
         "type": "object",

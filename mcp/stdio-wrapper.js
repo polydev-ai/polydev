@@ -98,8 +98,14 @@ class StdioMCPWrapper {
           };
         
         case 'tools/call':
-          // Handle CLI tools locally, forward others to remote server
+          // Handle get_perspectives with local CLIs + remote perspectives
           const toolName = params.name;
+          
+          if (toolName === 'get_perspectives') {
+            return await this.handleGetPerspectivesWithCLIs(params, id);
+          }
+          
+          // Handle other CLI tools locally
           if (toolName.startsWith('polydev.') && this.isCliTool(toolName)) {
             return await this.handleLocalCliTool(request);
           } else {
@@ -172,6 +178,45 @@ class StdioMCPWrapper {
       'polydev.send_cli_prompt'
     ];
     return cliTools.includes(toolName);
+  }
+
+  /**
+   * Handle get_perspectives with local CLIs + remote perspectives
+   */
+  async handleGetPerspectivesWithCLIs(params, id) {
+    console.error(`[Stdio Wrapper] Handling get_perspectives with local CLIs + remote`);
+    
+    try {
+      // Use existing localSendCliPrompt logic which already:
+      // 1. Checks all local CLIs
+      // 2. Calls remote perspectives
+      // 3. Combines results
+      const result = await this.localSendCliPrompt(params.arguments);
+      
+      return {
+        jsonrpc: '2.0',
+        id,
+        result: {
+          content: [
+            {
+              type: 'text',
+              text: result.content || this.formatCliResponse(result)
+            }
+          ]
+        }
+      };
+
+    } catch (error) {
+      console.error(`[Stdio Wrapper] get_perspectives error:`, error);
+      return {
+        jsonrpc: '2.0',
+        id,
+        error: {
+          code: -32603,
+          message: error.message
+        }
+      };
+    }
   }
 
   /**
