@@ -196,4 +196,101 @@ router.get('/metrics/recent', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/admin/system/restart
+ * Restart the master-controller service (requires systemd)
+ */
+router.post('/system/restart', async (req, res) => {
+  try {
+    const { exec } = require('child_process');
+
+    logger.warn('System restart requested via admin API');
+
+    // Send response immediately before restarting
+    res.json({
+      success: true,
+      message: 'Restart initiated. Service will be back in ~5 seconds.'
+    });
+
+    // Restart after 1 second delay to ensure response is sent
+    setTimeout(() => {
+      exec('systemctl restart master-controller', (error) => {
+        if (error) {
+          logger.error('Failed to restart via systemctl', { error: error.message });
+        }
+      });
+    }, 1000);
+  } catch (error) {
+    logger.error('System restart failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/vm/:vmId/console
+ * Get VM console log output
+ */
+router.get('/vm/:vmId/console', async (req, res) => {
+  try {
+    const { vmId } = req.params;
+    const lines = parseInt(req.query.lines) || 500;
+    const config = require('../config');
+    const fs = require('fs').promises;
+    const path = require('path');
+
+    const consolePath = path.join(config.firecracker.usersDir, vmId, 'console.log');
+
+    try {
+      const content = await fs.readFile(consolePath, 'utf-8');
+      const logLines = content.split('\n').slice(-lines);
+
+      res.json({
+        vmId,
+        lines: logLines.length,
+        content: logLines.join('\n'),
+        consolePath
+      });
+    } catch (readError) {
+      logger.warn('Console log not found', { vmId, consolePath });
+      res.status(404).json({
+        error: 'Console log not found',
+        consolePath
+      });
+    }
+  } catch (error) {
+    logger.error('Get VM console failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/admin/vms/recent
+ * Get list of recent VMs with optional filters
+ */
+router.get('/vms/recent', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const vmType = req.query.vmType;
+
+    let query = db.supabase
+      .from('vms')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (vmType) {
+      query = query.eq('vm_type', vmType);
+    }
+
+    const { data: vms, error } = await query;
+
+    if (error) throw error;
+
+    res.json({ vms: vms || [] });
+  } catch (error) {
+    logger.error('Get recent VMs failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

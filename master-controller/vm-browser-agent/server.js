@@ -140,51 +140,45 @@ async function handleStartCLIAuth(req, res, provider) {
       return;
   }
 
-  // Spawn CLI process
+  // Create browser capture script for BROWSER env var
+  const captureScriptPath = `/tmp/capture-browser-${sessionId}.sh`;
+  const captureOutputPath = `/tmp/oauth-url-${sessionId}.txt`;
+
+  const captureScript = `#!/bin/bash
+# Capture OAuth URL from browser launch attempt
+echo "$1" > "${captureOutputPath}"
+echo "BROWSER CAPTURE: $1" >&2
+exit 0
+`;
+
+  await fs.writeFile(captureScriptPath, captureScript);
+  await fs.chmod(captureScriptPath, 0o755);
+
+  logger.info('Created browser capture script', { provider, sessionId, captureScriptPath });
+
+  // Spawn CLI process with BROWSER env var to intercept browser launch
   const cliProcess = spawn(cliCommand, cliArgs, {
     env: {
       ...process.env,
-      HOME: process.env.HOME || '/root'
+      HOME: process.env.HOME || '/root',
+      BROWSER: captureScriptPath  // Intercept browser launch URLs
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
-  // Capture OAuth URL from CLI output
+  // Capture OAuth URL from BROWSER script output file
   let oauthUrl = null;
   const outputLines = [];
 
-  const extractOAuthURL = (data) => {
+  // Also monitor stdout/stderr for debugging
+  const logOutput = (data) => {
     const text = data.toString();
     outputLines.push(text);
     logger.info('CLI output', { provider, text: text.substring(0, 200) });
-
-    // Look for OAuth URL patterns
-    const urlPatterns = [
-      /https:\/\/auth\.openai\.com\/oauth\/authorize\?[^\s]+/,  // Codex
-      /https:\/\/[^\s]*claude[^\s]*auth[^\s]+/i,                 // Claude Code
-      /https:\/\/accounts\.google\.com\/o\/oauth2[^\s]+/         // Gemini
-    ];
-
-    for (const pattern of urlPatterns) {
-      const match = text.match(pattern);
-      if (match) {
-        oauthUrl = match[0];
-        // Rewrite redirect_uri to point to our proxy
-        oauthUrl = oauthUrl.replace(
-          /redirect_uri=http(?:s)?%3A%2F%2Flocalhost(?:%3A\d+)?/g,
-          `redirect_uri=http%3A%2F%2F${getVMIP()}%3A8080`
-        ).replace(
-          /redirect_uri=http(?:s)?:\/\/localhost(?::\d+)?/g,
-          `redirect_uri=http://${getVMIP()}:8080`
-        );
-        logger.info('Extracted OAuth URL', { provider, oauthUrl });
-        break;
-      }
-    }
   };
 
-  cliProcess.stdout.on('data', extractOAuthURL);
-  cliProcess.stderr.on('data', extractOAuthURL);
+  cliProcess.stdout.on('data', logOutput);
+  cliProcess.stderr.on('data', logOutput);
 
   // Store session
   authSessions.set(sessionId, {
@@ -196,19 +190,42 @@ async function handleStartCLIAuth(req, res, provider) {
     startedAt: Date.now()
   });
 
-  // Poll for OAuth URL with timeout
+  // Poll for OAuth URL from capture file with timeout
   const maxWaitMs = 15000; // 15 seconds
   const pollIntervalMs = 1000; // 1 second
   const startTime = Date.now();
 
   while (!oauthUrl && (Date.now() - startTime) < maxWaitMs) {
+    // Try reading captured URL from file
+    try {
+      const capturedUrl = await fs.readFile(captureOutputPath, 'utf-8');
+      if (capturedUrl.trim()) {
+        oauthUrl = capturedUrl.trim();
+
+        // Rewrite redirect_uri to point to our proxy
+        oauthUrl = oauthUrl.replace(
+          /redirect_uri=http(?:s)?%3A%2F%2Flocalhost(?:%3A\d+)?/g,
+          `redirect_uri=http%3A%2F%2F${getVMIP()}%3A8080`
+        ).replace(
+          /redirect_uri=http(?:s)?:\/\/localhost(?::\d+)?/g,
+          `redirect_uri=http://${getVMIP()}:8080`
+        );
+
+        logger.info('Captured OAuth URL via BROWSER env var', { provider, oauthUrl: oauthUrl.substring(0, 100) });
+        break;
+      }
+    } catch (err) {
+      // File doesn't exist yet, keep waiting
+    }
+
     await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
     logger.info('Polling for OAuth URL', {
       provider,
       sessionId,
       elapsed: Date.now() - startTime,
       hasUrl: !!oauthUrl,
-      cliOutputLines: outputLines.length
+      cliOutputLines: outputLines.length,
+      captureFile: captureOutputPath
     });
   }
 

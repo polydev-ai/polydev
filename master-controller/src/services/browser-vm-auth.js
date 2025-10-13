@@ -94,11 +94,23 @@ class BrowserVMAuth {
     } catch (error) {
       logger.error('Authentication failed', { userId, provider, error: error.message });
 
-      // Cleanup on failure - destroy both VMs
+      const config = require('../config');
+
+      // Cleanup on failure - destroy VMs
+      // For Browser VMs: Check debug flag before destroying
       if (browserVM?.vmId) {
-        await vmManager.destroyVM(browserVM.vmId).catch(err =>
-          logger.warn('Failed to cleanup browser VM', { error: err.message })
-        );
+        if (config.debug.keepFailedBrowserVMs) {
+          logger.warn('[DEBUG] Keeping failed Browser VM alive for debugging', {
+            vmId: browserVM.vmId,
+            vmIP: browserVM.ipAddress,
+            provider,
+            debugFlag: 'DEBUG_KEEP_FAILED_BROWSER_VMS=true'
+          });
+        } else {
+          await vmManager.destroyVM(browserVM.vmId).catch(err =>
+            logger.warn('Failed to cleanup browser VM', { error: err.message })
+          );
+        }
       }
 
       if (cliVM?.vmId) {
@@ -218,10 +230,11 @@ class BrowserVMAuth {
   /**
    * Generic CLI OAuth flow
    * 1. Start CLI tool in VM (spawns OAuth callback server on localhost:1455)
-   * 2. Return immediately - frontend will poll /oauth-url and show in iframe
-   * 3. User logs in via iframe → OAuth callback proxied to VM's localhost:1455
-   * 4. CLI saves credentials to file
-   * 5. Frontend polls /credentials/status until ready
+   * 2. Store OAuth URL in database for frontend to display
+   * 3. Wait for user to complete OAuth in frontend iframe
+   * 4. CLI saves credentials to file after OAuth callback
+   * 5. Backend polls /credentials/status until ready
+   * 6. Retrieve actual credentials from /credentials/get
    */
   async authenticateCLI(sessionId, vmIP, provider) {
     logger.info('Starting CLI OAuth flow', { sessionId, vmIP, provider });
@@ -250,12 +263,83 @@ class BrowserVMAuth {
       hasOAuthUrl: !!startResult.oauthUrl
     });
 
-    // Return success - frontend will handle the rest
-    // Frontend polls /oauth-url to get OAuth URL
-    // Frontend shows OAuth URL in iframe
-    // User logs in → callback proxied to VM
-    // Frontend polls /credentials/status until ready
-    return { started: true, sessionId, provider, oauthUrl: startResult.oauthUrl };
+    // Store OAuth URL in database for frontend to display
+    if (startResult.oauthUrl) {
+      await db.authSessions.update(sessionId, {
+        auth_url: startResult.oauthUrl,
+        status: 'awaiting_user_auth'
+      });
+      logger.info('OAuth URL stored in database', { sessionId, provider });
+    }
+
+    // Wait for user to complete OAuth and credentials to be saved
+    logger.info('Waiting for user to complete OAuth flow', { sessionId, provider });
+    const maxWaitMs = 300000; // 5 minutes for user to complete OAuth
+    const pollIntervalMs = 2000; // Poll every 2 seconds
+    const credStartTime = Date.now();
+
+    while (Date.now() - credStartTime < maxWaitMs) {
+      try {
+        const statusResponse = await fetch(
+          `http://${vmIP}:8080/credentials/status?sessionId=${sessionId}`,
+          { signal: AbortSignal.timeout(5000) }
+        );
+
+        if (statusResponse.ok) {
+          const status = await statusResponse.json();
+          logger.info('Credentials status check', {
+            sessionId,
+            provider,
+            authenticated: status.authenticated,
+            elapsed: Date.now() - credStartTime
+          });
+
+          if (status.authenticated) {
+            logger.info('OAuth completed, retrieving credentials', { sessionId, provider });
+            break;
+          }
+        }
+      } catch (err) {
+        // Ignore polling errors, keep waiting
+        logger.debug('Status check failed, continuing to wait', {
+          sessionId,
+          error: err.message
+        });
+      }
+
+      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+    }
+
+    // Check if we timed out
+    if (Date.now() - credStartTime >= maxWaitMs) {
+      throw new Error(`OAuth timeout: User did not complete authentication within ${maxWaitMs / 1000} seconds`);
+    }
+
+    // Retrieve actual credentials from OAuth agent
+    logger.info('Retrieving credentials from OAuth agent', { sessionId, provider });
+    const credsResponse = await fetch(
+      `http://${vmIP}:8080/credentials/get?sessionId=${sessionId}`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+
+    if (!credsResponse.ok) {
+      throw new Error(`Failed to retrieve credentials: ${credsResponse.statusText}`);
+    }
+
+    const credsResult = await credsResponse.json();
+
+    if (!credsResult.success || !credsResult.credentials) {
+      throw new Error('Failed to retrieve credentials from OAuth agent');
+    }
+
+    logger.info('Credentials retrieved successfully', {
+      sessionId,
+      provider,
+      hasCredentials: !!credsResult.credentials
+    });
+
+    // Return ACTUAL credentials, not metadata
+    return credsResult.credentials;
   }
 
   /**
