@@ -589,6 +589,7 @@ exit 0
     const session = authSessions.get(sessionId);
 
     if (session?.automation) {
+      // Claude Code automation
       if (!session.automation.themeAccepted && text.includes('Choose the text style')) {
         session.automation.themeAccepted = true;
         setTimeout(() => {
@@ -636,11 +637,24 @@ exit 0
           }
         }, 200);
       }
+
+      // Codex CLI automation
+      if (!session.automation.codexPressEnterSent && /Press Enter to continue/i.test(text)) {
+        session.automation.codexPressEnterSent = true;
+        setTimeout(() => {
+          try {
+            cliProcess.stdin?.write('\r');
+            logger.info('Auto-pressed Enter to continue in Codex CLI (selecting option 1)', { provider, sessionId });
+          } catch (error) {
+            logger.warn('Failed to auto-press Enter in Codex CLI', { provider, sessionId, error: error.message });
+          }
+        }, 200);
+      }
     }
 
     if (!oauthUrl) {
       const match = text.match(/https:\/\/[^\s]+/i);
-      if (match && match[0].includes('claude.ai')) {
+      if (match && (match[0].includes('claude.ai') || match[0].includes('auth.openai.com'))) {
         oauthUrl = normalizeOAuthUrl(match[0]);
         logger.info('Captured OAuth URL from CLI output', { provider, sessionId, oauthUrl: oauthUrl.substring(0, 120) });
         launchBrowserForSession(sessionId, oauthUrl);
@@ -671,7 +685,8 @@ exit 0
       themeAccepted: false,
       loginCommandSent: false,
       loginMethodSelected: false,
-      loginSuccessAcknowledged: false
+      loginSuccessAcknowledged: false,
+      codexPressEnterSent: false
     },
     browserLaunched: false,
     browserLaunchInProgress: false,
