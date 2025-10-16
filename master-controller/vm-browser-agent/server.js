@@ -560,7 +560,8 @@ exit 0
     env: {
       ...process.env,
       HOME: process.env.HOME || '/root',
-      BROWSER: captureScriptPath  // Intercept browser launch URLs
+      BROWSER: captureScriptPath,  // Intercept browser launch URLs
+      TERM: 'dumb'  // Disable terminal features like cursor position queries
     },
     stdio: ['pipe', 'pipe', 'pipe']
   });
