@@ -539,7 +539,7 @@ exit 0
   let commandParts = [cliCommand, ...cliArgs];
 
   // Codex CLI requires expect wrapper to respond to VT100 cursor position queries
-  // It sends \u001b[6n and times out if no response is received
+  // It sends ESC[6n (VT100 cursor position query) and times out if no response is received
   if (provider === 'codex' || provider === 'codex_cli') {
     // Create expect script to intercept cursor query and respond
     const expectScriptPath = `/tmp/codex-expect-${sessionId}.exp`;
@@ -559,18 +559,14 @@ spawn ${cliCommand} ${cliArgs.join(' ')}
 
 # Main expect loop
 expect {
-    # Respond to cursor position query
-    "\\u001b\\[6n" {
-        send "\\u001b\\[1;1R"
+    # Respond to cursor position query (ESC[6n) with fake position (ESC[1;1R)
+    "\\033\\[6n" {
+        send "\\033\\[1;1R"
         exp_continue
     }
-    # Handle other terminal control sequences that might need responses
-    "\\u001b\\[>7u" {
-        # Modern keyboard protocol - just acknowledge
-        exp_continue
-    }
-    "\\u001b\\[?2004h" {
-        # Bracketed paste mode - just acknowledge
+    # Ignore other terminal control sequences
+    # Match ESC followed by any control sequence
+    -re "\\033\\[\\[?0-9;\\]*[a-zA-Z]" {
         exp_continue
     }
     # Wait for process to exit

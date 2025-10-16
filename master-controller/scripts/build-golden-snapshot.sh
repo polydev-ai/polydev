@@ -214,6 +214,101 @@ install_cli_tools() {
     log_info "CLI tools installed"
 }
 
+# Setup VNC and remote desktop (for Browser VMs)
+setup_vnc() {
+    log_info "Setting up VNC and remote desktop services..."
+
+    # Install VNC, websockify, and desktop components
+    chroot rootfs apt-get install -y \
+        xvfb \
+        x11vnc \
+        websockify \
+        novnc \
+        openbox \
+        xdotool \
+        python3-numpy
+
+    # Create Xvfb systemd service
+    cat > rootfs/etc/systemd/system/xvfb.service <<'EOF'
+[Unit]
+Description=X Virtual Frame Buffer
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/Xvfb :1 -screen 0 1280x800x24 -nolisten tcp
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Create openbox systemd service
+    cat > rootfs/etc/systemd/system/openbox.service <<'EOF'
+[Unit]
+Description=Openbox Window Manager
+After=xvfb.service
+Requires=xvfb.service
+
+[Service]
+Type=simple
+User=root
+Environment="DISPLAY=:1"
+ExecStart=/usr/bin/openbox
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Create x11vnc systemd service
+    cat > rootfs/etc/systemd/system/x11vnc.service <<'EOF'
+[Unit]
+Description=x11vnc VNC Server
+After=openbox.service
+Requires=openbox.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/x11vnc -display :1 -rfbport 5900 -listen 127.0.0.1 -nopw -forever -shared
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Create websockify systemd service
+    cat > rootfs/etc/systemd/system/websockify.service <<'EOF'
+[Unit]
+Description=Websockify VNC Proxy
+After=x11vnc.service
+Requires=x11vnc.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/websockify --web /usr/share/novnc 0.0.0.0:6080 localhost:5900
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Enable all VNC services
+    chroot rootfs systemctl enable xvfb.service
+    chroot rootfs systemctl enable openbox.service
+    chroot rootfs systemctl enable x11vnc.service
+    chroot rootfs systemctl enable websockify.service
+
+    log_info "VNC and remote desktop services configured"
+}
+
 # Setup VM Browser Agent (OAuth proxy for Browser VMs)
 setup_vm_api() {
     log_info "Setting up VM Browser Agent..."
@@ -506,6 +601,7 @@ main() {
     configure_system
     install_packages
     install_cli_tools
+    setup_vnc
     setup_vm_api
     cleanup_rootfs
     get_kernel
