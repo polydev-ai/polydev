@@ -11,12 +11,16 @@
  */
 
 const http = require('http');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 
 const PORT = 8080;
 const CLI_OAUTH_PORT = 1455; // Standard port for codex/claude OAuth callbacks
+const BROWSER_DISPLAY = process.env.BROWSER_DISPLAY || ':1';
+
+const pendingBrowserLaunches = new Map(); // sessionId -> oauthUrl waiting for session registration
 
 // Active auth sessions
 const authSessions = new Map(); // sessionId -> { provider, cliProcess, oauthUrl, credPath, completed }
@@ -27,6 +31,260 @@ const logger = {
   error: (msg, meta = {}) => console.error(JSON.stringify({ level: 'error', msg, ...meta, timestamp: new Date().toISOString() })),
   warn: (msg, meta = {}) => console.warn(JSON.stringify({ level: 'warn', msg, ...meta, timestamp: new Date().toISOString() }))
 };
+
+function activateBrowserWindow() {
+  const env = { ...process.env, DISPLAY: BROWSER_DISPLAY };
+  const commands = [
+    'xdotool search --onlyvisible --classname Firefox windowactivate --sync',
+    'xdotool search --onlyvisible --class Firefox windowactivate --sync',
+    'xdotool search --onlyvisible --classname firefox windowactivate --sync',
+    'xdotool search --onlyvisible --class firefox windowactivate --sync',
+    'xdotool search --onlyvisible --classname Chromium windowactivate --sync',
+    'xdotool search --onlyvisible --class Chromium windowactivate --sync',
+    'xdotool search --onlyvisible --class chromium windowactivate --sync'
+  ];
+
+  for (const cmd of commands) {
+    try {
+      execSync(cmd, { stdio: 'ignore', env });
+      return true;
+    } catch (error) {
+      // Try next command
+    }
+  }
+
+  return false;
+}
+
+function navigateBrowserTo(url, sessionId) {
+  if (!activateBrowserWindow()) {
+    return false;
+  }
+
+  try {
+    const env = { ...process.env, DISPLAY: BROWSER_DISPLAY };
+    execSync('xdotool key --clearmodifiers ctrl+l', { stdio: 'ignore', env });
+    execSync(`xdotool type --delay 10 "${url.replace(/"/g, '\\"')}"`, { stdio: 'ignore', env });
+    execSync('xdotool key Return', { stdio: 'ignore', env });
+
+    logger.info('Navigated browser to URL via xdotool', {
+      sessionId,
+      url: url.substring(0, 100)
+    });
+
+    return true;
+  } catch (error) {
+    logger.warn('Failed to navigate browser via xdotool', {
+      sessionId,
+      error: error.message
+    });
+    return false;
+  }
+}
+
+function normalizeOAuthUrl(url) {
+  if (!url) return url;
+
+  // Don't replace localhost - browser runs INSIDE the VM, so localhost is correct
+  // The browser and OAuth agent are on the same machine (the VM)
+  return url
+    .trim()
+    .replace(/[)\]]+$/, '');
+}
+
+function resolveBrowserExecutable() {
+  const candidates = [
+    process.env.BROWSER_EXECUTABLE,
+    '/usr/bin/firefox',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/snap/bin/chromium'
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      if (fsSync.existsSync(candidate)) {
+        return candidate;
+      }
+    } catch (error) {
+      logger.warn('Failed to stat browser candidate', { candidate, error: error.message });
+    }
+  }
+  return null;
+}
+
+function launchBrowserForSession(sessionId, oauthUrl) {
+  if (!oauthUrl) return;
+
+  const session = authSessions.get(sessionId);
+  if (!session) {
+    pendingBrowserLaunches.set(sessionId, oauthUrl);
+    return;
+  }
+
+  // Reuse existing browser window if possible
+  if (navigateBrowserTo(oauthUrl, sessionId)) {
+    session.browserLaunched = true;
+    session.browserLaunchInProgress = false;
+    return;
+  }
+
+  if (session.browserLaunchInProgress || session.browserLaunched) {
+    return;
+  }
+
+  session.browserLaunchInProgress = true;
+
+  try {
+    const browserExecutable = resolveBrowserExecutable();
+    if (!browserExecutable) {
+      throw new Error('No supported browser executable found (expected chromium-browser or firefox)');
+    }
+
+    const proxyConfig = session?.proxyConfig || {};
+
+    const executableName = path.basename(browserExecutable).toLowerCase();
+    const isFirefox = executableName.includes('firefox');
+    const chromiumProfile = '/root/.config/chromium';
+    const firefoxProfile = '/root/.mozilla/firefox/oauth-profile';
+
+    const args = isFirefox
+      ? [
+          '--no-remote',
+          '--profile', firefoxProfile,
+          '--private-window',
+          '--width', '1280',
+          '--height', '720',
+          oauthUrl
+        ]
+      : [
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--disable-session-crashed-bubble',
+          '--disable-features=Translate,AutomationControlled',
+          '--password-store=basic',
+          `--user-data-dir=${chromiumProfile}`,
+          '--allow-running-insecure-content',
+          '--disable-web-security',
+          '--enable-features=OverlayScrollbar',
+          oauthUrl
+        ];
+
+    if (isFirefox) {
+      try {
+        fsSync.mkdirSync(firefoxProfile, { recursive: true });
+      } catch (error) {
+        logger.warn('Failed to ensure Firefox profile directory', { sessionId, error: error.message });
+      }
+    } else {
+      try {
+        fsSync.mkdirSync(chromiumProfile, { recursive: true });
+      } catch (error) {
+        logger.warn('Failed to ensure Chromium user data dir', { sessionId, error: error.message });
+      }
+    }
+
+    if (isFirefox) {
+      try {
+        execSync('pkill -f firefox', { stdio: 'ignore' });
+      } catch {}
+    } else {
+      try {
+        execSync('pkill -f chromium-browser', { stdio: 'ignore' });
+      } catch {}
+    }
+
+    const proxyUrl = proxyConfig.httpsProxy || proxyConfig.httpProxy || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY;
+    if (proxyUrl && !isFirefox) {
+      try {
+        const parsed = new URL(proxyUrl);
+        const proxyArg = `${parsed.protocol}//${parsed.username ? `${parsed.username}:${parsed.password}@` : ''}${parsed.hostname}${parsed.port ? `:${parsed.port}` : ''}`;
+        args.splice(args.length - 1, 0, `--proxy-server=${proxyArg}`);
+        const bypassDefaults = ['<-loopback>', 'localhost', '127.0.0.1', '192.168.100.0/24'];
+        const existingBypass = proxyConfig.noProxy || process.env.NO_PROXY || process.env.no_proxy;
+        const bypassList = existingBypass
+          ? `${existingBypass},${bypassDefaults.join(',')}`
+          : bypassDefaults.join(',');
+        args.splice(args.length - 1, 0, `--proxy-bypass-list=${bypassList}`);
+        logger.info('Launching Chromium with proxy', {
+          sessionId,
+          provider: session.provider,
+          proxyServer: proxyArg,
+          bypassList
+        });
+      } catch (error) {
+        logger.warn('Invalid proxy URL, skipping Chromium proxy configuration', {
+          sessionId,
+          provider: session.provider,
+          proxyUrl,
+          error: error.message
+        });
+      }
+    }
+
+    const env = {
+      ...process.env,
+      DISPLAY: BROWSER_DISPLAY,
+      PULSE_SERVER: process.env.PULSE_SERVER || 'unix:/run/pulse/native'
+    };
+
+    if (proxyConfig?.httpProxy && !isFirefox) {
+      env.HTTP_PROXY = proxyConfig.httpProxy;
+      env.ALL_PROXY = proxyConfig.httpProxy;
+    }
+    if (!isFirefox) {
+      if (proxyConfig?.httpsProxy) {
+        env.HTTPS_PROXY = proxyConfig.httpsProxy;
+      } else if (proxyConfig?.httpProxy) {
+        env.HTTPS_PROXY = proxyConfig.httpProxy;
+      }
+      if (proxyConfig?.noProxy) {
+        env.NO_PROXY = proxyConfig.noProxy;
+      }
+    }
+
+    const browserProcess = spawn(browserExecutable, args, {
+      env,
+      stdio: 'ignore',
+      detached: true
+    });
+
+    browserProcess.on('exit', (code, signal) => {
+      logger.info('Chromium exited', { sessionId, code, signal });
+      const s = authSessions.get(sessionId);
+      if (s) {
+        s.browserLaunched = false;
+        s.browserLaunchInProgress = false;
+        s.browserProcess = null;
+      }
+    });
+
+    browserProcess.unref();
+
+    session.browserLaunched = true;
+    session.browserProcess = browserProcess;
+    logger.info('Launched browser for OAuth', {
+      sessionId,
+      provider: session.provider,
+      executable: browserExecutable,
+      oauthUrl: oauthUrl.substring(0, 120)
+    });
+  } catch (error) {
+    session.browserLaunchInProgress = false;
+    logger.error('Failed to launch Chromium', { sessionId, error: error.message });
+  }
+}
+
+// Surface otherwise silent failures from the runtime so the health check does not hang forever
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught exception', { error: error?.message, stack: error?.stack });
+});
+
+process.on('unhandledRejection', (reason) => {
+  const message = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  logger.error('Unhandled rejection', { error: message, stack });
+});
 
 // HTTP server
 const server = http.createServer(async (req, res) => {
@@ -89,6 +347,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Open URL in browser (trigger navigation to OAuth URL)
+    if (url.pathname === '/open-url' && req.method === 'POST') {
+      await handleOpenURL(req, res);
+      return;
+    }
+
     // 404
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not Found' }));
@@ -107,9 +371,29 @@ const server = http.createServer(async (req, res) => {
  */
 async function handleStartCLIAuth(req, res, provider) {
   const body = await readBody(req);
-  const { sessionId } = JSON.parse(body);
+  let payload;
+  try {
+    payload = JSON.parse(body);
+  } catch (error) {
+    logger.error('Failed to parse auth payload', { provider, error: error.message, rawBody: body?.slice?.(0, 500) });
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+    return;
+  }
 
-  logger.info('Starting CLI auth', { provider, sessionId });
+  const sessionId = payload?.sessionId;
+  const debugOptions = payload?.debug || payload?.debugOptions || {};
+  const runStrace = debugOptions?.strace === true || debugOptions?.runStrace === true;
+  const runExtraDiagnostics = debugOptions?.skipConnectivityChecks !== true;
+
+  if (!sessionId) {
+    logger.warn('Missing sessionId in auth payload', { provider, payloadKeys: Object.keys(payload || {}) });
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'sessionId is required' }));
+    return;
+  }
+
+  logger.info('Starting CLI auth', { provider, sessionId, runStrace, runExtraDiagnostics });
 
   // Determine CLI command and credential path
   let cliCommand, cliArgs, credPath;
@@ -124,8 +408,8 @@ async function handleStartCLIAuth(req, res, provider) {
 
     case 'claude_code':
       cliCommand = 'claude';
-      cliArgs = []; // Claude CLI auto-starts auth on first run
-      credPath = path.join(process.env.HOME || '/root', '.claude/credentials.json');
+      cliArgs = [];
+      credPath = path.join(process.env.HOME || '/root', '.claude/.credentials.json');
       break;
 
     case 'gemini_cli':
@@ -156,14 +440,137 @@ exit 0
 
   logger.info('Created browser capture script', { provider, sessionId, captureScriptPath });
 
+  if (provider === 'claude_code') {
+    try {
+      const resolvPath = '/etc/resolv.conf';
+      try {
+        const stat = await fs.lstat(resolvPath);
+        if (stat.isSymbolicLink()) {
+          await fs.unlink(resolvPath);
+        }
+      } catch (err) {
+        // ignore if file is missing or already regular file
+      }
+
+      const resolvContent = 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n';
+      await fs.writeFile(resolvPath, resolvContent, 'utf-8');
+      logger.info('Overrode /etc/resolv.conf with static DNS entries', { provider, sessionId, resolvContent });
+    } catch (error) {
+      logger.warn('Failed to override resolv.conf', { provider, sessionId, error: error.message });
+    }
+
+    try {
+      await fs.writeFile('/tmp/set-default-route.sh', '#!/bin/bash\nip route replace default via 192.168.100.1 dev eth0\n', 'utf-8');
+      await fs.chmod('/tmp/set-default-route.sh', 0o755);
+      execSync('/tmp/set-default-route.sh');
+      logger.info('Ensured default route for Browser VM', { provider, sessionId });
+    } catch (error) {
+      logger.warn('Failed to set default route', { provider, sessionId, error: error.message });
+    }
+
+    const diagSummaries = [];
+    if (debugOptions?.skipConnectivityChecks === true) {
+      logger.info('Skipping connectivity diagnostics', { provider, sessionId });
+    } else {
+      const captureTail = data => {
+        if (!data) return '';
+        try {
+          return data.toString().slice(-500);
+        } catch {
+          return '';
+        }
+      };
+
+      const runDiagnostic = (label, command) => {
+        try {
+          const result = execSync(command, { stdio: ['ignore', 'pipe', 'pipe'] });
+          const summary = { label, success: true, command, stdoutTail: captureTail(result) };
+          diagSummaries.push(summary);
+          logger.info(`${label} succeeded`, {
+            provider,
+            sessionId,
+            command,
+            stdout: summary.stdoutTail
+          });
+        } catch (error) {
+          const summary = {
+            label,
+            success: false,
+            command,
+            error: error.message,
+            stdoutTail: captureTail(error.stdout),
+            stderrTail: captureTail(error.stderr)
+          };
+          diagSummaries.push(summary);
+          logger.error(`${label} failed`, {
+            provider,
+            sessionId,
+            command,
+            error: error.message,
+            stdout: summary.stdoutTail,
+            stderr: summary.stderrTail
+          });
+        }
+      };
+
+      runDiagnostic('Anthropic API connectivity test', 'curl -sv https://api.anthropic.com -o /tmp/anthropic-curl.log --max-time 20');
+
+      if (runExtraDiagnostics) {
+        runDiagnostic('Claude Web connectivity test', 'curl -sv https://claude.ai -o /tmp/claude-ai-curl.log --max-time 20');
+        runDiagnostic('TCP dial claude.ai:443', 'nc -zvw5 claude.ai 443');
+        runDiagnostic('TCP dial api.anthropic.com:443', 'nc -zvw5 api.anthropic.com 443');
+      }
+
+      logger.info('Connectivity diagnostics completed', {
+        provider,
+        sessionId,
+        runExtraDiagnostics,
+        diagnostics: diagSummaries
+      });
+    }
+
+    payload.__diagnostics = diagSummaries;
+  }
+
   // Spawn CLI process with BROWSER env var to intercept browser launch
-  const cliProcess = spawn(cliCommand, cliArgs, {
+  let scriptLogPath = null;
+  let straceLogPath = null;
+
+  let commandParts = [cliCommand, ...cliArgs];
+
+  // Use a pseudo-terminal for Claude CLI and Codex CLI so they behave like interactive sessions
+  // Both require a TTY to run properly
+  if (provider === 'claude_code' || provider === 'codex' || provider === 'codex_cli') {
+    scriptLogPath = `/tmp/${provider}-login-${sessionId}.log`;
+    const joinedArgs = [cliCommand, ...cliArgs].join(' ');
+    commandParts = ['script', '-q', '--return', '-c', joinedArgs, scriptLogPath];
+  }
+
+  let command = commandParts[0];
+  let args = commandParts.slice(1);
+
+  if (runStrace) {
+    straceLogPath = `/tmp/claude-strace-${sessionId}.log`;
+    command = 'strace';
+    args = ['-ttt', '-f', '-o', straceLogPath, ...commandParts];
+    logger.info('Running CLI under strace', { provider, sessionId, straceLogPath });
+  }
+
+  const cliProcess = spawn(command, args, {
     env: {
       ...process.env,
       HOME: process.env.HOME || '/root',
       BROWSER: captureScriptPath  // Intercept browser launch URLs
     },
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+
+  cliProcess.on('error', (error) => {
+    logger.error('CLI process failed to spawn', { provider, sessionId, error: error?.message, stack: error?.stack });
+  });
+
+  cliProcess.on('exit', (code, signal) => {
+    logger.info('CLI process exited', { provider, sessionId, code, signal });
   });
 
   // Capture OAuth URL from BROWSER script output file
@@ -175,10 +582,73 @@ exit 0
     const text = data.toString();
     outputLines.push(text);
     logger.info('CLI output', { provider, text: text.substring(0, 200) });
+
+    const session = authSessions.get(sessionId);
+
+    if (session?.automation) {
+      if (!session.automation.themeAccepted && text.includes('Choose the text style')) {
+        session.automation.themeAccepted = true;
+        setTimeout(() => {
+          try {
+            cliProcess.stdin?.write('\r');
+            logger.info('Auto-confirmed theme selection', { provider, sessionId });
+          } catch (error) {
+            logger.warn('Failed to auto-confirm theme selection', { provider, sessionId, error: error.message });
+          }
+        }, 200);
+      }
+
+      if (!session.automation.loginCommandSent && /Paste code here if prompted/i.test(text)) {
+        session.automation.loginCommandSent = true;
+        setTimeout(() => {
+          try {
+            cliProcess.stdin?.write('/login\n');
+            logger.info('Issued /login command to Claude CLI', { provider, sessionId });
+          } catch (error) {
+            logger.warn('Failed to send /login command automatically', { provider, sessionId, error: error.message });
+          }
+        }, 200);
+      }
+
+      if (!session.automation.loginMethodSelected && /Select login method/i.test(text)) {
+        session.automation.loginMethodSelected = true;
+        setTimeout(() => {
+          try {
+            cliProcess.stdin?.write('\r');
+            logger.info('Accepted default login method in Claude CLI', { provider, sessionId });
+          } catch (error) {
+            logger.warn('Failed to accept login method automatically', { provider, sessionId, error: error.message });
+          }
+        }, 200);
+      }
+
+      if (!session.automation.loginSuccessAcknowledged && /Login successful/i.test(text)) {
+        session.automation.loginSuccessAcknowledged = true;
+        setTimeout(() => {
+          try {
+            cliProcess.stdin?.write('\r');
+            logger.info('Acknowledged login completion in Claude CLI', { provider, sessionId });
+          } catch (error) {
+            logger.warn('Failed to acknowledge Claude CLI login completion', { provider, sessionId, error: error.message });
+          }
+        }, 200);
+      }
+    }
+
+    if (!oauthUrl) {
+      const match = text.match(/https:\/\/[^\s]+/i);
+      if (match && match[0].includes('claude.ai')) {
+        oauthUrl = normalizeOAuthUrl(match[0]);
+        logger.info('Captured OAuth URL from CLI output', { provider, sessionId, oauthUrl: oauthUrl.substring(0, 120) });
+        launchBrowserForSession(sessionId, oauthUrl);
+      }
+    }
   };
 
   cliProcess.stdout.on('data', logOutput);
   cliProcess.stderr.on('data', logOutput);
+
+  // For Claude CLI automation happens reactively within logOutput
 
   // Store session
   authSessions.set(sessionId, {
@@ -187,8 +657,29 @@ exit 0
     oauthUrl: () => oauthUrl, // Getter function
     credPath,
     completed: false,
-    startedAt: Date.now()
+    startedAt: Date.now(),
+    proxyConfig: payload.proxy || null,  // Store DeCoKo proxy config for browser
+    debug: {
+      scriptLogPath,
+      straceLogPath,
+      diagnostics: payload.__diagnostics || null
+    },
+    automation: {
+      themeAccepted: false,
+      loginCommandSent: false,
+      loginMethodSelected: false,
+      loginSuccessAcknowledged: false
+    },
+    browserLaunched: false,
+    browserLaunchInProgress: false,
+    browserProcess: null
   });
+
+  const pendingUrl = pendingBrowserLaunches.get(sessionId);
+  if (pendingUrl) {
+    pendingBrowserLaunches.delete(sessionId);
+    launchBrowserForSession(sessionId, pendingUrl);
+  }
 
   // Poll for OAuth URL from capture file with timeout
   const maxWaitMs = 15000; // 15 seconds
@@ -200,18 +691,10 @@ exit 0
     try {
       const capturedUrl = await fs.readFile(captureOutputPath, 'utf-8');
       if (capturedUrl.trim()) {
-        oauthUrl = capturedUrl.trim();
-
-        // Rewrite redirect_uri to point to our proxy
-        oauthUrl = oauthUrl.replace(
-          /redirect_uri=http(?:s)?%3A%2F%2Flocalhost(?:%3A\d+)?/g,
-          `redirect_uri=http%3A%2F%2F${getVMIP()}%3A8080`
-        ).replace(
-          /redirect_uri=http(?:s)?:\/\/localhost(?::\d+)?/g,
-          `redirect_uri=http://${getVMIP()}:8080`
-        );
+        oauthUrl = normalizeOAuthUrl(capturedUrl);
 
         logger.info('Captured OAuth URL via BROWSER env var', { provider, oauthUrl: oauthUrl.substring(0, 100) });
+        launchBrowserForSession(sessionId, oauthUrl);
         break;
       }
     } catch (err) {
@@ -358,6 +841,15 @@ async function handleCredentialStatus(res, sessionId) {
     // Mark session as completed
     session.completed = true;
 
+    if (session.browserProcess && !session.browserProcess.killed) {
+      try {
+        session.browserProcess.kill('SIGTERM');
+        logger.info('Terminated Chromium after successful authentication', { sessionId });
+      } catch (error) {
+        logger.warn('Failed to terminate Chromium process', { sessionId, error: error.message });
+      }
+    }
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       authenticated: true,
@@ -402,7 +894,13 @@ async function handleGetCredentials(res, sessionId) {
     if (session.cliProcess && !session.cliProcess.killed) {
       session.cliProcess.kill();
     }
+    if (session.browserProcess && !session.browserProcess.killed) {
+      try {
+        session.browserProcess.kill('SIGTERM');
+      } catch {}
+    }
     authSessions.delete(sessionId);
+    pendingBrowserLaunches.delete(sessionId);
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
@@ -416,6 +914,100 @@ async function handleGetCredentials(res, sessionId) {
     logger.error('Failed to read credentials', { error: error.message, path: session.credPath });
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Failed to read credentials', message: error.message }));
+  }
+}
+
+/**
+ * Open URL in browser
+ * Triggers Firefox/Chromium to navigate to the specified URL
+ */
+async function handleOpenURL(req, res) {
+  try {
+    const body = await readBody(req);
+    let payload;
+
+    try {
+      payload = JSON.parse(body);
+    } catch (error) {
+      logger.error('Failed to parse open-url payload', { error: error.message });
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid JSON payload' }));
+      return;
+    }
+
+    const { url, sessionId } = payload;
+
+    if (!url) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'url is required' }));
+      return;
+    }
+
+    logger.info('Opening URL in browser', { url: url.substring(0, 100), sessionId });
+
+    // If sessionId provided, try to use existing session's browser
+    if (sessionId) {
+      const session = authSessions.get(sessionId);
+      if (session) {
+        // If browser already launched, navigate it to the new URL using xdotool
+        if (session.browserLaunched && session.browserProcess && !session.browserProcess.killed) {
+          if (navigateBrowserTo(url, sessionId)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, method: 'keyboard_navigation' }));
+            return;
+          }
+        }
+
+        // Browser not launched yet or navigation failed, launch it
+        launchBrowserForSession(sessionId, url);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, method: 'browser_launch' }));
+        return;
+      }
+    }
+
+    // No session provided or session not found
+    // Try xdotool navigation to existing browser first
+    try {
+      // Try Firefox first, then Chromium
+      if (navigateBrowserTo(url)) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, method: 'keyboard_navigation' }));
+        return;
+      }
+    } catch (error) {
+      logger.warn('xdotool navigation failed, will launch new browser', { error: error.message });
+    }
+
+    // No existing browser found, launch new one
+    const browserExecutable = resolveBrowserExecutable();
+    if (!browserExecutable) {
+      throw new Error('No supported browser executable found');
+    }
+
+    const env = {
+      ...process.env,
+      DISPLAY: BROWSER_DISPLAY
+    };
+
+    const browserProcess = spawn(browserExecutable, [url], {
+      env,
+      stdio: 'ignore',
+      detached: true
+    });
+
+    browserProcess.unref();
+
+    logger.info('Launched standalone browser for URL', { url: url.substring(0, 100) });
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, method: 'standalone_launch' }));
+
+  } catch (error) {
+    logger.error('Failed to open URL', { error: error.message, stack: error.stack });
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: error.message }));
   }
 }
 
@@ -465,6 +1057,21 @@ process.on('SIGTERM', () => {
 });
 
 // Start server
+server.on('error', (error) => {
+  logger.error('HTTP server error', { error: error?.message, stack: error?.stack });
+});
+
+server.on('clientError', (error, socket) => {
+  logger.warn('HTTP client error', { error: error?.message });
+  if (socket?.end) {
+    try {
+      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+    } catch (err) {
+      logger.warn('Failed to close socket after client error', { error: err?.message });
+    }
+  }
+});
+
 server.listen(PORT, '0.0.0.0', () => {
   logger.info('VM Browser Agent started', { port: PORT, vmIP: getVMIP() });
 });
