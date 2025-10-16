@@ -27,7 +27,7 @@ log_error() {
 # Configuration
 SNAPSHOT_DIR="${FIRECRACKER_BASE:-/var/lib/firecracker}/snapshots/base"
 BUILD_DIR="/tmp/fc-golden-build"
-ROOTFS_SIZE="2G"
+ROOTFS_SIZE="8G"
 VM_IP="192.168.100.10"
 BRIDGE_IP="192.168.100.1"
 
@@ -60,8 +60,8 @@ create_rootfs() {
     mkdir -p "$BUILD_DIR"
     cd "$BUILD_DIR"
 
-    # Create empty ext4 filesystem
-    dd if=/dev/zero of=rootfs.ext4 bs=1M count=2048
+    # Create empty ext4 filesystem (8GB for all packages + CLI tools)
+    dd if=/dev/zero of=rootfs.ext4 bs=1M count=8192
     mkfs.ext4 -F rootfs.ext4
 
     # Mount rootfs
@@ -143,7 +143,8 @@ install_packages() {
         udev \
         dbus \
         python3 \
-        python3-pip
+        python3-pip \
+        expect
 
     # Install Node.js 20
     log_info "Installing Node.js 20..."
@@ -178,9 +179,18 @@ install_cli_tools() {
     log_info "Installing puppeteer..."
     chroot rootfs npm install -g puppeteer
 
+    # Install Chromium browser (required for OAuth automation)
+    log_info "Installing Chromium browser..."
+    chroot rootfs apt-get update
+    if ! chroot rootfs apt-get install -y chromium-browser; then
+        log_warn "chromium-browser package install failed, attempting snap installation"
+        chroot rootfs apt-get install -y snapd
+        chroot rootfs snap install chromium
+    fi
+    chroot rootfs bash -c 'if [ -x /snap/bin/chromium ] && [ ! -e /usr/bin/chromium-browser ]; then ln -sf /snap/bin/chromium /usr/bin/chromium-browser; fi'
+
     # Install Chrome dependencies for Puppeteer
     chroot rootfs apt-get install -y \
-        chromium-browser \
         fonts-liberation \
         libasound2 \
         libatk-bridge2.0-0 \
