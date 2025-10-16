@@ -7,6 +7,8 @@ const { vmManager } = require('./vm-manager');
 const { db } = require('../db/supabase');
 const { credentialEncryption } = require('../utils/encryption');
 const logger = require('../utils/logger').module('browser-auth');
+const config = require('../config');
+const { cliStreamingService } = require('./cli-streaming');
 
 class BrowserVMAuth {
   constructor() {
@@ -19,6 +21,7 @@ class BrowserVMAuth {
    */
   async startAuthentication(userId, provider) {
     let cliVM = null;
+    let cliVMInfo = null;
     let browserVM = null;
 
     try {
@@ -28,21 +31,85 @@ class BrowserVMAuth {
       const authSession = await db.authSessions.create(userId, provider);
       const sessionId = authSession.session_id;
 
-      // STEP 1: Create CLI VM first (user will need this to chat)
-      // Don't wait for CLI VM - it doesn't have the health service and we don't need it until after OAuth
-      logger.info('Creating CLI VM before authentication', { userId, provider });
-      cliVM = await vmManager.createVM(userId, 'cli');
-      logger.info('CLI VM created successfully', {
+      // STEP 1: Ensure user has an active CLI VM (with Decodo proxy assigned)
+      logger.info('Ensuring CLI VM exists before authentication', { userId, provider });
+      cliVM = await db.vms.findByUserId(userId);
+      if (!cliVM) {
+        logger.info('No active CLI VM found, provisioning via CLI streaming service', { userId });
+        cliVM = await cliStreamingService.ensureCLIVM(userId);
+      } else {
+        logger.info('Reusing existing CLI VM', {
+          userId,
+          vmId: cliVM.vm_id,
+          status: cliVM.status,
+          vmIP: cliVM.ip_address
+        });
+      }
+
+      cliVMInfo = {
+        vmId: cliVM?.vm_id || cliVM?.vmId,
+        ipAddress: cliVM?.ip_address || cliVM?.ipAddress,
+        status: cliVM?.status
+      };
+
+      // Refresh user record to get Decodo proxy metadata
+      const userRecord = await db.users.findById(userId);
+      let decodoPort = userRecord?.decodo_proxy_port;
+      let decodoIP = userRecord?.decodo_fixed_ip;
+
+      if (!decodoPort || !decodoIP) {
+        logger.warn('User missing Decodo proxy assignment, allocating now', { userId, decodoPort, decodoIP });
+        decodoPort = await cliStreamingService.allocateDecodoPort(userId);
+        decodoIP = await cliStreamingService.getDecodoFixedIP(decodoPort);
+        await db.users.assignDecodoPort(userId, decodoPort, decodoIP);
+      }
+
+      // STEP 2: Create browser VM for OAuth, forcing outbound traffic through Decodo proxy
+      logger.info('Creating browser VM for OAuth', {
         userId,
-        vmId: cliVM.vmId,
-        ipAddress: cliVM.ipAddress
+        provider,
+        sessionId,
+        decodoPort,
+        decodoIP,
+        decodoIPMasked: decodoIP ? `${decodoIP.substring(0, decodoIP.lastIndexOf('.'))}.x` : null
       });
 
-      // Note: VM info is already stored in vms table by createVM(), no need to update users table
+      try {
+        browserVM = await vmManager.createVM(userId, 'browser', decodoPort, decodoIP);
+        logger.info('Browser VM created successfully', {
+          userId,
+          provider,
+          sessionId,
+          browserVMId: browserVM.vmId,
+          browserVMIP: browserVM.ipAddress
+        });
+      } catch (vmCreateError) {
+        logger.error('BROWSER VM CREATION FAILED', {
+          userId,
+          provider,
+          sessionId,
+          error: vmCreateError.message,
+          stack: vmCreateError.stack,
+          decodoPort,
+          decodoIP
+        });
 
-      // STEP 2: Create browser VM for OAuth
-      logger.info('Creating browser VM for OAuth', { userId, provider });
-      browserVM = await vmManager.createVM(userId, 'browser');
+        // Update session status to failed
+        await db.authSessions.update(sessionId, {
+          status: 'failed',
+          error_message: `Browser VM creation failed: ${vmCreateError.message}`
+        }).catch(err => logger.error('Failed to update session status', { error: err.message }));
+
+        throw vmCreateError;  // Re-throw to trigger cleanup
+      }
+
+      const novncURL = this.buildNoVNCUrl(sessionId, browserVM.ipAddress);
+
+      const proxyConfig = decodoPort && decodoIP ? {
+        httpProxy: `http://${config.decodo.user}:${config.decodo.password}@${config.decodo.host}:${decodoPort}`,
+        httpsProxy: `http://${config.decodo.user}:${config.decodo.password}@${config.decodo.host}:${decodoPort}`,
+        noProxy: '127.0.0.1,localhost,192.168.100.0/24'
+      } : null;
 
       // Store session data
       this.authSessions.set(sessionId, {
@@ -50,51 +117,62 @@ class BrowserVMAuth {
         provider,
         browserVMId: browserVM.vmId,
         browserIP: browserVM.ipAddress,
+        novncURL,
         status: 'vm_created',
-        startedAt: new Date()
+        startedAt: new Date(),
+        proxyConfig
       });
 
-      // Update session in database
+      // Update session in database with Browser VM details
+      logger.info('Updating session with Browser VM details', {
+        userId,
+        provider,
+        sessionId,
+        browserVMId: browserVM.vmId,
+        browserVMIP: browserVM.ipAddress
+      });
+
       await db.authSessions.update(sessionId, {
-        vm_id: browserVM.vmId,
-        vm_ip: browserVM.ipAddress,
+        browser_vm_id: browserVM.vmId,  // Store Browser VM ID in correct field
+        vm_ip: browserVM.ipAddress,  // Browser VM IP for OAuth agent access
+        vnc_url: novncURL,
         status: 'vm_created'
       });
 
-      // Wait for VM to be ready, then start OAuth flow
-      await this.waitForVMReady(browserVM.ipAddress);
+      logger.info('Session updated successfully', {
+        userId,
+        provider,
+        sessionId,
+        status: 'vm_created'
+      });
 
-      // Execute OAuth automation based on provider
-      const credentials = await this.executeOAuthFlow(
+      // Kick off OAuth automation in background - respond immediately
+      this.runAsyncOAuthFlow({
         sessionId,
         provider,
-        browserVM.ipAddress
-      );
+        userId,
+        browserVM,
+        cliVMInfo,
+        proxyConfig
+      });
 
-      // Store encrypted credentials
-      await this.storeCredentials(userId, provider, credentials);
-
-      // Transfer credentials to CLI VM
-      await this.transferCredentialsToCLIVM(userId, provider, credentials);
-
-      // Destroy browser VM
-      await vmManager.destroyVM(browserVM.vmId);
-
-      // Update session status
-      await db.authSessions.updateStatus(sessionId, 'completed');
-      this.authSessions.delete(sessionId);
-
-      logger.info('Authentication completed', { userId, provider, sessionId });
+      logger.info('Authentication flow dispatched', {
+        userId,
+        provider,
+        sessionId,
+        browserVMId: browserVM.vmId,
+        browserIP: browserVM.ipAddress
+      });
 
       return {
         success: true,
         sessionId,
-        provider
+        provider,
+        novncURL,
+        browserIP: browserVM.ipAddress
       };
     } catch (error) {
       logger.error('Authentication failed', { userId, provider, error: error.message });
-
-      const config = require('../config');
 
       // Cleanup on failure - destroy VMs
       // For Browser VMs: Check debug flag before destroying
@@ -113,8 +191,8 @@ class BrowserVMAuth {
         }
       }
 
-      if (cliVM?.vmId) {
-        await vmManager.destroyVM(cliVM.vmId).catch(err =>
+      if (cliVMInfo?.vmId) {
+        await vmManager.destroyVM(cliVMInfo.vmId).catch(err =>
           logger.warn('Failed to cleanup CLI VM', { error: err.message })
         );
       }
@@ -124,9 +202,83 @@ class BrowserVMAuth {
   }
 
   /**
+   * Continue OAuth flow asynchronously so HTTP request can return immediately
+   */
+  runAsyncOAuthFlow({ sessionId, provider, userId, browserVM, cliVMInfo, proxyConfig }) {
+    (async () => {
+      let finalStatus = 'completed';
+      try {
+        await this.waitForVMReady(browserVM.ipAddress);
+
+        // Update status to 'ready' so frontend knows it can start polling
+        await db.authSessions.updateStatus(sessionId, 'ready');
+        this.authSessions.set(sessionId, {
+          ...this.authSessions.get(sessionId),
+          status: 'ready'
+        });
+
+        const credentials = await this.executeOAuthFlow(sessionId, provider, browserVM.ipAddress, proxyConfig);
+        await this.storeCredentials(userId, provider, credentials);
+        await this.transferCredentialsToCLIVM(userId, provider, credentials);
+
+        await db.authSessions.updateStatus(sessionId, 'completed');
+
+        logger.info('Authentication completed', { userId, provider, sessionId });
+      } catch (error) {
+        finalStatus = error.message?.startsWith('OAuth timeout') ? 'timeout' : 'failed';
+
+        logger.error('Authentication flow failed', {
+          userId,
+          provider,
+          sessionId,
+          error: error.message
+        });
+
+        await db.authSessions.updateStatus(sessionId, finalStatus, {
+          error_message: error.message
+        }).catch(err =>
+          logger.warn('Failed to persist auth session failure status', {
+            sessionId,
+            error: err.message
+          })
+        );
+      } finally {
+        // Cleanup browser VM unless we're debugging
+        if (browserVM?.vmId) {
+          const keepVM = config.debug.keepFailedBrowserVMs && finalStatus !== 'completed';
+          if (keepVM) {
+            logger.warn('[DEBUG] Keeping browser VM alive for debugging', {
+              sessionId,
+              vmId: browserVM.vmId,
+              vmIP: browserVM.ipAddress
+            });
+          } else {
+            await vmManager.destroyVM(browserVM.vmId).catch(err =>
+              logger.warn('Failed to cleanup browser VM', {
+                sessionId,
+                vmId: browserVM.vmId,
+                error: err.message
+              })
+            );
+          }
+        }
+
+        this.authSessions.delete(sessionId);
+      }
+    })().catch(err =>
+      logger.error('Async authentication runner crashed', {
+        sessionId,
+        provider,
+        error: err.message
+      })
+    );
+  }
+
+  /**
    * Wait for VM to be network-ready
    */
-  async waitForVMReady(vmIP, maxWaitMs = 60000) {
+  async waitForVMReady(vmIP, maxWaitMs = config.performance.browserVmHealthTimeoutMs) {
+    const http = require('http');
     const startTime = Date.now();
     const checkInterval = 2000; // 2 seconds
 
@@ -140,20 +292,32 @@ class BrowserVMAuth {
           url: `http://${vmIP}:8080/health`
         });
 
-        // Try to connect to HTTP server on VM (should be running in golden snapshot)
-        const response = await fetch(`http://${vmIP}:8080/health`, {
-          signal: AbortSignal.timeout(5000)
+        // Use http.get instead of fetch to avoid Node.js fetch() EHOSTUNREACH issues with private IPs
+        const response = await new Promise((resolve, reject) => {
+          const req = http.get({
+            hostname: vmIP,
+            port: 8080,
+            path: '/health',
+            timeout: 5000
+          }, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => resolve({ ok: res.statusCode === 200, status: res.statusCode, body }));
+          });
+          req.on('error', reject);
+          req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Request timeout'));
+          });
         });
 
         logger.info('[WAIT-VM-READY] Got response', {
           vmIP,
           status: response.status,
-          statusText: response.statusText,
           ok: response.ok
         });
 
-        const body = await response.text();
-        logger.info('[WAIT-VM-READY] Response body', { vmIP, body });
+        logger.info('[WAIT-VM-READY] Response body', { vmIP, body: response.body });
 
         if (response.ok) {
           logger.info('[WAIT-VM-READY] VM ready!', { vmIP });
@@ -163,7 +327,7 @@ class BrowserVMAuth {
         logger.warn('[WAIT-VM-READY] Response not OK', {
           vmIP,
           status: response.status,
-          body
+          body: response.body
         });
       } catch (err) {
         logger.warn('[WAIT-VM-READY] Health check failed', {
@@ -190,16 +354,16 @@ class BrowserVMAuth {
   /**
    * Execute OAuth flow based on provider
    */
-  async executeOAuthFlow(sessionId, provider, vmIP) {
+  async executeOAuthFlow(sessionId, provider, vmIP, proxyConfig) {
     logger.info('Executing OAuth flow', { sessionId, provider, vmIP });
 
     switch (provider) {
       case 'codex':
-        return await this.authenticateCodex(sessionId, vmIP);
+        return await this.authenticateCodex(sessionId, vmIP, proxyConfig);
       case 'claude_code':
-        return await this.authenticateClaudeCode(sessionId, vmIP);
+        return await this.authenticateClaudeCode(sessionId, vmIP, proxyConfig);
       case 'gemini_cli':
-        return await this.authenticateGeminiCLI(sessionId, vmIP);
+        return await this.authenticateGeminiCLI(sessionId, vmIP, proxyConfig);
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -209,22 +373,22 @@ class BrowserVMAuth {
    * Authenticate Codex - Starts CLI OAuth flow in VM
    * User completes OAuth in frontend iframe, credentials saved to VM
    */
-  async authenticateCodex(sessionId, vmIP) {
-    return await this.authenticateCLI(sessionId, vmIP, 'codex');
+  async authenticateCodex(sessionId, vmIP, proxyConfig) {
+    return await this.authenticateCLI(sessionId, vmIP, 'codex', proxyConfig);
   }
 
   /**
    * Authenticate Claude Code - Starts CLI OAuth flow in VM
    */
-  async authenticateClaudeCode(sessionId, vmIP) {
-    return await this.authenticateCLI(sessionId, vmIP, 'claude_code');
+  async authenticateClaudeCode(sessionId, vmIP, proxyConfig) {
+    return await this.authenticateCLI(sessionId, vmIP, 'claude_code', proxyConfig);
   }
 
   /**
    * Authenticate Gemini CLI - Starts CLI OAuth flow in VM
    */
-  async authenticateGeminiCLI(sessionId, vmIP) {
-    return await this.authenticateCLI(sessionId, vmIP, 'gemini_cli');
+  async authenticateGeminiCLI(sessionId, vmIP, proxyConfig) {
+    return await this.authenticateCLI(sessionId, vmIP, 'gemini_cli', proxyConfig);
   }
 
   /**
@@ -236,22 +400,63 @@ class BrowserVMAuth {
    * 5. Backend polls /credentials/status until ready
    * 6. Retrieve actual credentials from /credentials/get
    */
-  async authenticateCLI(sessionId, vmIP, provider) {
-    logger.info('Starting CLI OAuth flow', { sessionId, vmIP, provider });
+  async authenticateCLI(sessionId, vmIP, provider, proxyConfig) {
+    logger.info('Starting CLI OAuth flow', { sessionId, vmIP, provider, hasProxyConfig: !!proxyConfig });
 
-    // Start CLI tool - this spawns OAuth server and captures OAuth URL
-    const startResponse = await fetch(`http://${vmIP}:8080/auth/${provider}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId }),
-      signal: AbortSignal.timeout(10000)
-    });
-
-    if (!startResponse.ok) {
-      throw new Error(`Failed to start ${provider} CLI: ${startResponse.statusText}`);
+    const debugPayload = {};
+    if (config.debug.enableStrace) {
+      debugPayload.runStrace = true;
+    }
+    if (config.debug.skipConnectivityDiagnostics) {
+      debugPayload.skipConnectivityChecks = true;
     }
 
-    const startResult = await startResponse.json();
+    const requestPayload = { sessionId };
+    if (proxyConfig) {
+      requestPayload.proxy = proxyConfig;
+    }
+    if (Object.keys(debugPayload).length > 0) {
+      requestPayload.debug = debugPayload;
+    }
+
+    // Start CLI tool - this spawns OAuth server and captures OAuth URL
+    // Use http.request instead of fetch to avoid Node.js fetch() EHOSTUNREACH issues
+    const http = require('http');
+    const startResult = await new Promise((resolve, reject) => {
+      const payload = JSON.stringify(requestPayload);
+      const req = http.request({
+        hostname: vmIP,
+        port: 8080,
+        path: `/auth/${provider}`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        },
+        timeout: config.performance.cliOAuthStartTimeoutMs
+      }, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          if (res.statusCode !== 200) {
+            reject(new Error(`Failed to start ${provider} CLI: HTTP ${res.statusCode} ${res.statusMessage}`));
+          } else {
+            try {
+              resolve(JSON.parse(body));
+            } catch (err) {
+              reject(new Error(`Invalid JSON response from VM: ${err.message}`));
+            }
+          }
+        });
+      });
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error(`Request timeout after ${config.performance.cliOAuthStartTimeoutMs}ms`));
+      });
+      req.write(payload);
+      req.end();
+    });
 
     if (!startResult.success) {
       throw new Error(`Failed to start ${provider} OAuth flow`);
@@ -280,24 +485,45 @@ class BrowserVMAuth {
 
     while (Date.now() - credStartTime < maxWaitMs) {
       try {
-        const statusResponse = await fetch(
-          `http://${vmIP}:8080/credentials/status?sessionId=${sessionId}`,
-          { signal: AbortSignal.timeout(5000) }
-        );
-
-        if (statusResponse.ok) {
-          const status = await statusResponse.json();
-          logger.info('Credentials status check', {
-            sessionId,
-            provider,
-            authenticated: status.authenticated,
-            elapsed: Date.now() - credStartTime
+        // Use http.get instead of fetch to avoid EHOSTUNREACH issues
+        const status = await new Promise((resolve, reject) => {
+          const req = http.get({
+            hostname: vmIP,
+            port: 8080,
+            path: `/credentials/status?sessionId=${sessionId}`,
+            timeout: 5000
+          }, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+              if (res.statusCode === 200) {
+                try {
+                  resolve(JSON.parse(body));
+                } catch {
+                  reject(new Error('Invalid JSON response'));
+                }
+              } else {
+                reject(new Error(`HTTP ${res.statusCode}`));
+              }
+            });
           });
+          req.on('error', reject);
+          req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Request timeout'));
+          });
+        });
 
-          if (status.authenticated) {
-            logger.info('OAuth completed, retrieving credentials', { sessionId, provider });
-            break;
-          }
+        logger.info('Credentials status check', {
+          sessionId,
+          provider,
+          authenticated: status.authenticated,
+          elapsed: Date.now() - credStartTime
+        });
+
+        if (status.authenticated) {
+          logger.info('OAuth completed, retrieving credentials', { sessionId, provider });
+          break;
         }
       } catch (err) {
         // Ignore polling errors, keep waiting
@@ -317,16 +543,33 @@ class BrowserVMAuth {
 
     // Retrieve actual credentials from OAuth agent
     logger.info('Retrieving credentials from OAuth agent', { sessionId, provider });
-    const credsResponse = await fetch(
-      `http://${vmIP}:8080/credentials/get?sessionId=${sessionId}`,
-      { signal: AbortSignal.timeout(10000) }
-    );
-
-    if (!credsResponse.ok) {
-      throw new Error(`Failed to retrieve credentials: ${credsResponse.statusText}`);
-    }
-
-    const credsResult = await credsResponse.json();
+    const credsResult = await new Promise((resolve, reject) => {
+      const req = http.get({
+        hostname: vmIP,
+        port: 8080,
+        path: `/credentials/get?sessionId=${sessionId}`,
+        timeout: 10000
+      }, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          if (res.statusCode !== 200) {
+            reject(new Error(`Failed to retrieve credentials: HTTP ${res.statusCode} ${res.statusMessage}`));
+          } else {
+            try {
+              resolve(JSON.parse(body));
+            } catch (err) {
+              reject(new Error(`Invalid JSON response: ${err.message}`));
+            }
+          }
+        });
+      });
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request timeout after 10000ms'));
+      });
+    });
 
     if (!credsResult.success || !credsResult.credentials) {
       throw new Error('Failed to retrieve credentials from OAuth agent');
@@ -344,16 +587,50 @@ class BrowserVMAuth {
 
   /**
    * Store encrypted credentials in database
+   * For Claude Code: If subscription is "max", store for both claude_code_pro and claude_code_max
    */
   async storeCredentials(userId, provider, credentials) {
     try {
-      // Encrypt credentials
-      const encryptedData = credentialEncryption.encrypt(credentials);
+      // For Claude Code, check subscription type and store accordingly
+      if (provider === 'claude_code' && credentials?.claudeAiOauth?.subscriptionType) {
+        const subscriptionType = credentials.claudeAiOauth.subscriptionType;
 
-      // Store in database (upsert)
-      await db.credentials.create(userId, provider, encryptedData);
+        logger.info('Detected Claude Code subscription', {
+          userId,
+          subscriptionType
+        });
 
-      logger.info('Credentials stored', { userId, provider });
+        // If user has Max subscription, store for BOTH Pro and Max
+        // (Max includes all Pro features)
+        if (subscriptionType === 'max') {
+          // Store as claude_code_max
+          const encryptedMax = credentialEncryption.encrypt(credentials);
+          await db.credentials.create(userId, 'claude_code_max', encryptedMax);
+          logger.info('Credentials stored for claude_code_max', { userId });
+
+          // ALSO store as claude_code_pro (Max includes Pro)
+          const encryptedPro = credentialEncryption.encrypt(credentials);
+          await db.credentials.create(userId, 'claude_code_pro', encryptedPro);
+          logger.info('Credentials stored for claude_code_pro (Max includes Pro)', { userId });
+        } else if (subscriptionType === 'pro') {
+          // Only store as claude_code_pro
+          const encryptedPro = credentialEncryption.encrypt(credentials);
+          await db.credentials.create(userId, 'claude_code_pro', encryptedPro);
+          logger.info('Credentials stored for claude_code_pro', { userId });
+        } else {
+          logger.warn('Unknown Claude Code subscription type, storing as claude_code', {
+            userId,
+            subscriptionType
+          });
+          const encryptedData = credentialEncryption.encrypt(credentials);
+          await db.credentials.create(userId, provider, encryptedData);
+        }
+      } else {
+        // Non-Claude Code providers or missing subscription info: store normally
+        const encryptedData = credentialEncryption.encrypt(credentials);
+        await db.credentials.create(userId, provider, encryptedData);
+        logger.info('Credentials stored', { userId, provider });
+      }
     } catch (error) {
       logger.error('Failed to store credentials', {
         userId,
@@ -484,6 +761,37 @@ class BrowserVMAuth {
       });
       throw error;
     }
+  }
+
+  buildNoVNCUrl(sessionId, vmIP) {
+    const explicitBase = config.browser?.novncBaseUrl || process.env.NOVNC_BASE_URL;
+
+    if (explicitBase) {
+      try {
+        const resolved = explicitBase
+          .replace(/{{\s*SESSION_ID\s*}}/gi, sessionId)
+          .replace(/{{\s*VM_IP\s*}}/gi, vmIP)
+          .replace(/:sessionId/gi, sessionId)
+          .replace(/:vmIp/gi, vmIP);
+
+        if (resolved.startsWith('http')) {
+          return resolved;
+        }
+
+        const base = process.env.MASTER_CONTROLLER_PUBLIC_URL || process.env.MASTER_CONTROLLER_URL || `http://localhost:${config.server.port || 4000}`;
+        return `${base.replace(/\/$/, '')}${resolved.startsWith('/') ? '' : '/'}${resolved}`;
+      } catch (error) {
+        logger.warn('Failed to build noVNC URL from NOVNC_BASE_URL, falling back to controller route', {
+          vmIP,
+          sessionId,
+          error: error.message,
+          explicitBase
+        });
+      }
+    }
+
+    const base = process.env.MASTER_CONTROLLER_PUBLIC_URL || process.env.MASTER_CONTROLLER_URL || `http://localhost:${config.server.port || 4000}`;
+    return `${base.replace(/\/$/, '')}/api/auth/session/${sessionId}/novnc`;
   }
 
   /**
