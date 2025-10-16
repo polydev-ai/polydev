@@ -214,15 +214,15 @@ install_cli_tools() {
     log_info "CLI tools installed"
 }
 
-# Setup VM API server
+# Setup VM Browser Agent (OAuth proxy for Browser VMs)
 setup_vm_api() {
-    log_info "Setting up VM API server..."
+    log_info "Setting up VM Browser Agent..."
 
-    # Create API server directory
-    mkdir -p rootfs/opt/vm-api
+    # Create OAuth agent directory (will be replaced by injection during Browser VM creation)
+    mkdir -p rootfs/opt/vm-browser-agent
 
-    # Copy VM API server files
-    cat > rootfs/opt/vm-api/server.js <<'EOF'
+    # Create placeholder server.js (will be replaced by injection during Browser VM creation)
+    cat > rootfs/opt/vm-browser-agent/server.js <<'EOF'
 /**
  * VM API Server
  * Runs inside each VM to handle authentication, credential management, and prompt execution
@@ -422,17 +422,17 @@ server.listen(PORT, () => {
 });
 EOF
 
-    # Create systemd service
-    cat > rootfs/etc/systemd/system/vm-api.service <<EOF
+    # Create systemd service for Browser VM OAuth agent
+    cat > rootfs/etc/systemd/system/vm-browser-agent.service <<EOF
 [Unit]
-Description=VM API Server
+Description=VM Browser OAuth Agent
 After=network.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/opt/vm-api
-ExecStart=/usr/bin/node /opt/vm-api/server.js
+WorkingDirectory=/opt/vm-browser-agent
+ExecStart=/usr/bin/node /opt/vm-browser-agent/server.js
 Restart=always
 RestartSec=5
 
@@ -441,9 +441,9 @@ WantedBy=multi-user.target
 EOF
 
     # Enable service
-    chroot rootfs systemctl enable vm-api
+    chroot rootfs systemctl enable vm-browser-agent
 
-    log_info "VM API server configured"
+    log_info "VM Browser Agent configured"
 }
 
 # Cleanup
