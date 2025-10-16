@@ -121,9 +121,13 @@ install_packages() {
     # Copy resolv.conf for package installation
     cp /etc/resolv.conf rootfs/etc/resolv.conf
 
-    # Enable universe repository for python3-pip
-    chroot rootfs bash -c "echo 'deb http://archive.ubuntu.com/ubuntu jammy universe' >> /etc/apt/sources.list"
-    chroot rootfs bash -c "echo 'deb http://archive.ubuntu.com/ubuntu jammy-updates universe' >> /etc/apt/sources.list"
+    # Configure complete apt sources (main, universe, updates, security)
+    cat > rootfs/etc/apt/sources.list <<EOF
+deb http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu jammy-security main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu jammy-backports main restricted universe multiverse
+EOF
 
     # Update package lists
     chroot rootfs apt-get update
