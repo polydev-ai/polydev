@@ -538,9 +538,67 @@ exit 0
 
   let commandParts = [cliCommand, ...cliArgs];
 
-  // Use a pseudo-terminal for Claude CLI and Codex CLI so they behave like interactive sessions
-  // Both require a TTY to run properly
-  if (provider === 'claude_code' || provider === 'codex' || provider === 'codex_cli') {
+  // Codex CLI requires expect wrapper to respond to VT100 cursor position queries
+  // It sends \u001b[6n and times out if no response is received
+  if (provider === 'codex' || provider === 'codex_cli') {
+    // Create expect script to intercept cursor query and respond
+    const expectScriptPath = `/tmp/codex-expect-${sessionId}.exp`;
+    const expectScript = `#!/usr/bin/expect -f
+# Spawn Codex CLI with environment variables
+set env(TERM) "dumb"
+set env(CI) "true"
+set env(NO_COLOR) "1"
+set env(BROWSER) "${captureScriptPath}"
+set env(HOME) "$env(HOME)"
+
+# Increase timeout for the entire script
+set timeout 30
+
+# Spawn the Codex CLI
+spawn ${cliCommand} ${cliArgs.join(' ')}
+
+# Main expect loop
+expect {
+    # Respond to cursor position query
+    "\\u001b\\[6n" {
+        send "\\u001b\\[1;1R"
+        exp_continue
+    }
+    # Handle other terminal control sequences that might need responses
+    "\\u001b\\[>7u" {
+        # Modern keyboard protocol - just acknowledge
+        exp_continue
+    }
+    "\\u001b\\[?2004h" {
+        # Bracketed paste mode - just acknowledge
+        exp_continue
+    }
+    # Wait for process to exit
+    eof
+}
+`;
+
+    try {
+      await fs.writeFile(expectScriptPath, expectScript);
+      await fs.chmod(expectScriptPath, 0o755);
+      logger.info('Created expect wrapper for Codex CLI', { provider, sessionId, expectScriptPath });
+
+      // Use expect script as the command
+      commandParts = ['expect', expectScriptPath];
+    } catch (error) {
+      logger.error('Failed to create expect script, falling back to script wrapper', {
+        provider,
+        sessionId,
+        error: error.message
+      });
+      // Fallback to script wrapper
+      scriptLogPath = `/tmp/${provider}-login-${sessionId}.log`;
+      const joinedArgs = [cliCommand, ...cliArgs].join(' ');
+      commandParts = ['script', '-q', '--return', '-c', joinedArgs, scriptLogPath];
+    }
+  }
+  // Use a pseudo-terminal for Claude CLI so it behaves like an interactive session
+  else if (provider === 'claude_code') {
     scriptLogPath = `/tmp/${provider}-login-${sessionId}.log`;
     const joinedArgs = [cliCommand, ...cliArgs].join(' ');
     commandParts = ['script', '-q', '--return', '-c', joinedArgs, scriptLogPath];
