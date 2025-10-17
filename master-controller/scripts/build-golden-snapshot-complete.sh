@@ -199,12 +199,10 @@ Description=VNC Server for Display %i
 After=syslog.target network.target
 
 [Service]
-Type=forking
+Type=simple
 User=root
-PAMName=login
-PIDFile=/root/.vnc/%H:%i.pid
 ExecStartPre=/bin/sh -c '/usr/bin/vncserver -kill :%i > /dev/null 2>&1 || :'
-ExecStart=/usr/bin/vncserver -localhost no :%i
+ExecStart=/usr/bin/vncserver -fg -localhost no -geometry 1920x1080 -depth 24 :%i
 ExecStop=/usr/bin/vncserver -kill :%i
 Restart=on-failure
 RestartSec=5
@@ -223,7 +221,7 @@ Requires=vncserver@1.service
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/share/novnc/utils/novnc_proxy --vnc localhost:5901 --listen 6080
+ExecStart=/usr/bin/websockify --web=/usr/share/novnc 0.0.0.0:6080 localhost:5901
 Restart=always
 RestartSec=5
 
@@ -238,8 +236,8 @@ EOF
     log_info "VNC installed and configured"
 }
 
-# Install Firefox
-install_firefox() {
+# Install browsers (Firefox + Chromium)
+install_browsers() {
     log_info "Installing Firefox browser from Mozilla PPA..."
 
     # Add Mozilla Team PPA for real Firefox (not snap wrapper)
@@ -264,7 +262,16 @@ EOF
         fonts-liberation \
         fonts-noto-color-emoji
 
-    log_info "Firefox installed from Mozilla PPA"
+    log_info "Installing Chromium browser..."
+    chroot rootfs apt-get update
+    if ! chroot rootfs apt-get install -y chromium-browser; then
+        log_warn "chromium-browser package install failed, attempting snap installation"
+        chroot rootfs apt-get install -y snapd
+        chroot rootfs snap install chromium
+    fi
+    chroot rootfs bash -c 'if [ -x /snap/bin/chromium ] && [ ! -e /usr/bin/chromium-browser ]; then ln -sf /snap/bin/chromium /usr/bin/chromium-browser; fi'
+
+    log_info "Browsers installed"
 }
 
 # Install Browser Agent
@@ -319,8 +326,8 @@ PKG_EOF
     cat > rootfs/etc/systemd/system/vm-browser-agent.service <<EOF
 [Unit]
 Description=VM Browser Agent
-After=network.target vncserver@1.service
-Wants=vncserver@1.service
+After=network-online.target network.target vncserver@1.service
+Wants=network-online.target vncserver@1.service
 
 [Service]
 Type=simple
@@ -403,7 +410,7 @@ main() {
     configure_system
     install_packages
     install_vnc
-    install_firefox
+    install_browsers
     install_browser_agent
     cleanup_rootfs
     get_kernel
