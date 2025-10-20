@@ -2279,15 +2279,15 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             .from('model_usage')
             .insert({
               user_id: user.id,
-              model_name: cleanModel,
-              provider: provider.display_name,
-              input_tokens: actualInputTokens,
-              output_tokens: actualOutputTokens,
-              total_tokens: actualInputTokens + actualOutputTokens,
+              model_id: cleanModel,
+              prompt_tokens: actualInputTokens,
+              completion_tokens: actualOutputTokens,
+              reasoning_tokens: 0,
+              total_cost: actualCost,
               cost_credits: actualCost,
               request_timestamp: new Date().toISOString()
             })
-          
+
           if (legacyResult.error) {
             console.warn('[MCP] Legacy model_usage insert failed:', legacyResult.error)
           }

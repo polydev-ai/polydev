@@ -126,18 +126,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // TEMP: Bypass token verification for testing
-    console.log('[DEBUG] TEMP: Bypassing token verification for testing...');
-    console.log('[DEBUG] User ID:', user_id);
-    console.log('[DEBUG] Token:', mcp_token.substring(0, 20) + '...');
-    
-    // const isValidToken = await verifyMCPToken(mcp_token, user_id)
-    // if (!isValidToken) {
-    //   console.log('[DEBUG] Token verification failed');
-    //   return NextResponse.json({ error: 'Invalid or expired MCP token' }, { status: 401 })
-    // }
-    // console.log('[DEBUG] Token verification successful');
-    console.log('[DEBUG] Token verification bypassed for testing');
+    // Verify MCP token
+    const isValidToken = await verifyMCPToken(mcp_token, user_id)
+    if (!isValidToken) {
+      console.log('[CLI-Status] Token verification failed for user:', user_id);
+      return NextResponse.json({ error: 'Invalid or expired MCP token' }, { status: 401 })
+    }
+    console.log('[CLI-Status] Token verification successful for user:', user_id);
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -183,7 +178,17 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error('CLI config update error:', updateError)
-        console.error('[DEBUG] Update error details:', JSON.stringify(updateError, null, 2));
+
+        // Check if error is due to Pro subscription requirement
+        if (updateError.message?.includes('CLI tools require Pro subscription')) {
+          console.log('[CLI-Status] Free user attempted to enable CLI - blocked by database trigger (expected)');
+          return NextResponse.json({
+            error: 'CLI tools require Pro subscription',
+            reason: 'Free tier users cannot enable CLI tools',
+            subscription_required: 'pro'
+          }, { status: 403 })
+        }
+
         return NextResponse.json({ error: 'Failed to update CLI configuration' }, { status: 500 })
       }
       console.log('[DEBUG] Update successful!');
@@ -206,7 +211,17 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.error('CLI config insert error:', insertError)
-        console.error('[DEBUG] Insert error details:', JSON.stringify(insertError, null, 2));
+
+        // Check if error is due to Pro subscription requirement
+        if (insertError.message?.includes('CLI tools require Pro subscription')) {
+          console.log('[CLI-Status] Free user attempted to enable CLI - blocked by database trigger (expected)');
+          return NextResponse.json({
+            error: 'CLI tools require Pro subscription',
+            reason: 'Free tier users cannot enable CLI tools',
+            subscription_required: 'pro'
+          }, { status: 403 })
+        }
+
         return NextResponse.json({ error: 'Failed to create CLI configuration' }, { status: 500 })
       }
       console.log('[DEBUG] Insert successful!');
