@@ -1171,10 +1171,10 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   }
 
   // Check CLI usage restrictions (detect if request is from CLI)
-  const isCliRequest = request?.headers.get('user-agent')?.includes('cli') || 
+  const isCliRequest = request?.headers.get('user-agent')?.includes('cli') ||
                       request?.headers.get('x-request-source') === 'cli' ||
                       args.source === 'cli'
-  
+
   if (isCliRequest) {
     const cliCheck = await subscriptionManager.canUseCLI(user.id)
     if (!cliCheck.canUse) {
@@ -1185,11 +1185,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   // Use service role client for all database operations since we already validated OAuth
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   console.log(`[MCP] Service role key available:`, !!serviceRoleKey)
-  
+
   if (!serviceRoleKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY not found in environment')
   }
-  
+
   const { createClient: createServiceClient } = await import('@supabase/supabase-js')
   const serviceRoleSupabase = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -1206,6 +1206,16 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       }
     }
   )
+
+  // ✅ EARLY LOAD: Get subscription status early so we can use it for CLI routing decisions
+  console.log(`[MCP] Loading user subscription status for CLI tier enforcement...`)
+  const userSubscription = await subscriptionManager.getUserSubscription(user.id, true, false)
+  console.log(`[MCP] User subscription loaded:`, {
+    user_id: user.id,
+    tier: userSubscription?.tier,
+    status: userSubscription?.status,
+    canUseCLI: userSubscription?.tier === 'pro' && userSubscription?.status === 'active'
+  })
 
   // Initialize smart cache for CLI status
   const smartCache = new SmartCliCache(serviceRoleSupabase);
@@ -1464,18 +1474,35 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             config.enabled === true
           )
 
+          // ✅ CRITICAL FIX: Check subscription tier BEFORE routing to CLI
           if (cliConfig) {
-            skipApiKey = true
-            console.log(`[MCP] ✅ CLI tool ${cliToolName} is available and authenticated - SKIPPING API key for ${providerName}`)
-            return {
-              model,
-              provider: `${providerName} (CLI Available)`,
-              content: `Local CLI tool ${cliToolName} is available and will be used instead of API keys for ${providerName}. This model will be handled by the CLI tool.`,
-              tokens_used: 0,
-              latency_ms: 0,
-              cli_available: true
+            // Only Pro users can use CLI - free users MUST use API keys
+            const canUseCLI = userSubscription?.tier === 'pro' && userSubscription?.status === 'active'
+
+            if (!canUseCLI) {
+              // ⛔ Non-Pro user attempting to use CLI - log this and prevent it
+              console.log(`[MCP] ⛔ SECURITY: User ${user.id} (tier: ${userSubscription?.tier}) attempted to use CLI tool ${cliToolName} - BLOCKED`)
+              console.log(`[MCP] Reason: CLI access requires Pro subscription. Falling back to API keys.`)
+              // Do NOT set skipApiKey = true
+              // Do NOT return CLI response
+              // Continue to API key handling below
+              cliConfig = null  // Clear cliConfig to force API key routing
+            } else {
+              // ✅ Pro user with CLI available - use it
+              skipApiKey = true
+              console.log(`[MCP] ✅ Pro user ${user.id} - CLI tool ${cliToolName} is available and authenticated - SKIPPING API key for ${providerName}`)
+              return {
+                model,
+                provider: `${providerName} (CLI Available)`,
+                content: `Local CLI tool ${cliToolName} is available and will be used instead of API keys for ${providerName}. This model will be handled by the CLI tool.`,
+                tokens_used: 0,
+                latency_ms: 0,
+                cli_available: true
+              }
             }
-          } else {
+          }
+
+          if (!cliConfig) {
             // Check if CLI exists but is not available or authenticated
             const cliExists = cliConfigs.find((config: any) => config.provider === cliToolName)
             if (cliExists) {
