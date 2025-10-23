@@ -681,7 +681,7 @@ export default function AdminPortal() {
                     <AnimatePresence>
                       {vms.map((vm, index) => (
                         <motion.tr
-                          key={vm.vm_id || vm.id || `vm-${index}`}
+                          key={vm.id || `vm-${index}`}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: 20 }}
