@@ -157,6 +157,61 @@ router.get('/session/:sessionId/credentials/status', async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    // CRITICAL FIX: If session is completed, return credentials from database
+    // This allows frontend to retrieve credentials even after Browser VM is destroyed
+    if (session.status === 'completed') {
+      logger.info('Session completed, retrieving credentials from database', {
+        sessionId,
+        provider: session.provider,
+        userId: session.user_id
+      });
+
+      try {
+        const credData = await db.credentials.find(session.user_id, session.provider);
+        if (!credData) {
+          logger.error('Credentials not found in database despite completed status', {
+            sessionId,
+            provider: session.provider,
+            userId: session.user_id
+          });
+          return res.status(404).json({
+            status: 'error',
+            error: 'Credentials not found despite completed session'
+          });
+        }
+
+        // Decrypt credentials using the same method as validateCredentials
+        const credentials = credentialEncryption.decrypt({
+          encrypted: credData.encrypted_credentials,
+          iv: credData.encryption_iv,
+          authTag: credData.encryption_tag,
+          salt: credData.encryption_salt
+        });
+
+        logger.info('Successfully retrieved credentials from database', {
+          sessionId,
+          provider: session.provider
+        });
+
+        // Return credentials in the same format as OAuth agent would return
+        return res.status(200).json({
+          status: 'ready',
+          credentials,
+          source: 'database'  // Debug info to distinguish from VM source
+        });
+      } catch (dbError) {
+        logger.error('Failed to retrieve credentials from database', {
+          sessionId,
+          error: dbError.message
+        });
+        return res.status(500).json({
+          status: 'error',
+          error: 'Failed to decrypt stored credentials'
+        });
+      }
+    }
+
+    // If not completed, proxy to OAuth agent on Browser VM (existing logic)
     const vmIP = sanitizeVMIP(session);
     if (!vmIP) {
       return res.status(409).json({ error: 'Browser VM IP not yet available' });

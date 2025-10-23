@@ -40,9 +40,61 @@ export async function GET(
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    // If session already completed/failed, return that status
+    // If session already completed, retrieve credentials from database
+    // This allows frontend to get credentials even after Browser VM is destroyed
     if (session.status === 'completed') {
-      return NextResponse.json({ authenticated: true, status: 'completed' });
+      console.log('[Credentials Proxy] Session completed, retrieving from master-controller database:', {
+        sessionId
+      });
+
+      try {
+        // Call master-controller endpoint to get credentials from database
+        const masterControllerUrl = `http://135.181.138.102:4000/api/auth/session/${sessionId}/credentials/status`;
+
+        const mcResponse = await fetch(masterControllerUrl, {
+          signal: AbortSignal.timeout(5000),
+          headers: {
+            'x-user-id': user.id
+          }
+        });
+
+        if (!mcResponse.ok) {
+          console.error('[Credentials Proxy] Master controller returned error:', {
+            status: mcResponse.status,
+            sessionId
+          });
+          return NextResponse.json({
+            authenticated: false,
+            status: 'error',
+            error: 'Failed to retrieve stored credentials'
+          }, { status: mcResponse.status });
+        }
+
+        const credentials = await mcResponse.json();
+
+        console.log('[Credentials Proxy] Successfully retrieved credentials from database:', {
+          sessionId,
+          hasCredentials: !!credentials.credentials
+        });
+
+        return NextResponse.json({
+          authenticated: true,
+          status: 'ready',
+          credentials: credentials.credentials,
+          source: 'database'
+        });
+
+      } catch (dbError: any) {
+        console.error('[Credentials Proxy] Failed to retrieve from database:', {
+          error: dbError.message,
+          sessionId
+        });
+        return NextResponse.json({
+          authenticated: false,
+          status: 'error',
+          error: 'Failed to retrieve stored credentials'
+        }, { status: 500 });
+      }
     }
 
     if (session.status === 'failed' || session.status === 'cancelled') {

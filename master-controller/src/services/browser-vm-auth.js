@@ -699,16 +699,17 @@ class BrowserVMAuth {
       }
 
       // Determine credential file path inside VM based on provider
+      // These paths MUST match what's expected by the OAuth agent
       let vmCredentialPath;
       switch (provider) {
         case 'codex':
-          vmCredentialPath = '/root/.codex/credentials.json';
+          vmCredentialPath = '/root/.codex/auth.json';  // ✅ Fixed: was credentials.json
           break;
         case 'claude_code':
-          vmCredentialPath = '/root/.claude/credentials.json';
+          vmCredentialPath = '/root/.config/claude/credentials.json';  // ✅ Fixed: was /root/.claude
           break;
         case 'gemini_cli':
-          vmCredentialPath = '/root/.gemini/credentials.json';
+          vmCredentialPath = '/root/.gemini/oauth_creds.json';  // ✅ Fixed: was credentials.json
           break;
         default:
           throw new Error(`Unknown provider: ${provider}`);
