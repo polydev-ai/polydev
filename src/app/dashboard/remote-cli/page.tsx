@@ -31,29 +31,6 @@ interface Provider {
   logo: string;
   color: string;
   available: boolean;
-  connected?: boolean;
-  lastChecked?: string;
-}
-
-interface CLIStatus {
-  claude_code: {
-    available: boolean;
-    status: string;
-    enabled: boolean;
-    last_checked_at: string | null;
-  } | null;
-  codex_cli: {
-    available: boolean;
-    status: string;
-    enabled: boolean;
-    last_checked_at: string | null;
-  } | null;
-  gemini_cli: {
-    available: boolean;
-    status: string;
-    enabled: boolean;
-    last_checked_at: string | null;
-  } | null;
 }
 
 const providers: Provider[] = [
@@ -66,7 +43,7 @@ const providers: Provider[] = [
     available: true,
   },
   {
-    id: 'codex_cli',
+    id: 'codex',
     name: 'OpenAI Codex',
     description: 'OpenAI\'s powerful code generation model',
     logo: 'https://models.dev/logos/openai.svg',
@@ -89,16 +66,10 @@ export default function RemoteCLIDashboard() {
   const [vmStatus, setVmStatus] = useState<any>(null);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
-  const [cliStatus, setCliStatus] = useState<CLIStatus | null>(null);
-  const [providersWithStatus, setProvidersWithStatus] = useState<Provider[]>(providers);
 
   useEffect(() => {
     loadVMStatus();
-    loadCLIStatus();
-    const interval = setInterval(() => {
-      loadVMStatus();
-      loadCLIStatus();
-    }, 10000); // Poll every 10s
+    const interval = setInterval(loadVMStatus, 10000); // Poll every 10s
     return () => clearInterval(interval);
   }, []);
 
@@ -113,29 +84,6 @@ export default function RemoteCLIDashboard() {
       console.error('Failed to load VM status:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadCLIStatus = async () => {
-    try {
-      const res = await fetch('/api/cli-status');
-      if (res.ok) {
-        const data: CLIStatus = await res.json();
-        setCliStatus(data);
-
-        // Merge CLI status with providers
-        const updatedProviders = providers.map(provider => {
-          const status = data[provider.id as keyof CLIStatus];
-          return {
-            ...provider,
-            connected: status?.enabled && status?.status === 'available',
-            lastChecked: status?.last_checked_at || undefined
-          };
-        });
-        setProvidersWithStatus(updatedProviders);
-      }
-    } catch (error) {
-      console.error('Failed to load CLI status:', error);
     }
   };
 
@@ -335,7 +283,7 @@ export default function RemoteCLIDashboard() {
 
         <div className="grid md:grid-cols-3 gap-6">
           <AnimatePresence>
-            {providersWithStatus.map((provider, index) => (
+            {providers.map((provider, index) => (
               <motion.div
                 key={provider.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -346,7 +294,7 @@ export default function RemoteCLIDashboard() {
               >
                 <Card className={`relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow ${
                   selectedProvider === provider.id ? 'ring-2 ring-primary' : ''
-                } ${provider.connected ? 'border-green-200 bg-green-50/30' : ''}`}>
+                }`}>
                   <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${provider.color}`} />
 
                   <CardHeader>
@@ -365,40 +313,24 @@ export default function RemoteCLIDashboard() {
                           {provider.description}
                         </CardDescription>
                       </div>
-                      {provider.connected ? (
-                        <Badge className="bg-green-500 hover:bg-green-600">
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
-                          Connected
-                        </Badge>
-                      ) : provider.available ? (
+                      {provider.available && (
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                           Available
                         </Badge>
-                      ) : null}
+                      )}
                     </div>
                   </CardHeader>
 
                   <CardContent>
-                    {provider.connected && provider.lastChecked && (
-                      <p className="text-xs text-muted-foreground mb-3">
-                        Last active: {new Date(provider.lastChecked).toLocaleDateString()}
-                      </p>
-                    )}
                     <Button
                       className="w-full"
                       onClick={() => handleConnectProvider(provider.id)}
                       disabled={!provider.available || connecting}
-                      variant={provider.connected ? 'outline' : 'default'}
                     >
                       {connecting && selectedProvider === provider.id ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Connecting...
-                        </>
-                      ) : provider.connected ? (
-                        <>
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                          Reconnect {provider.name}
                         </>
                       ) : (
                         <>
