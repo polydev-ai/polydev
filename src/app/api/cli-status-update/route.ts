@@ -74,17 +74,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract user ID from token if not provided
-    let actualUserId = user_id;
+    let actualUserId: string = user_id || ''; // Initialize with empty string for type safety
     if (!actualUserId) {
       try {
         const supabase = createServerClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
-        
+
         const { createHash } = require('crypto')
         const tokenHash = createHash('sha256').update(mcp_token).digest('hex')
-        
+
         const { data: tokenData, error } = await supabase
           .from('mcp_user_tokens')
           .select('user_id')
@@ -97,14 +97,14 @@ export async function POST(request: NextRequest) {
           console.log(`[CLI Status] Auto-extracted user ID from token: ${actualUserId}`);
         } else {
           console.error('[CLI Status] Could not extract user ID from token:', error);
-          return NextResponse.json({ 
-            error: 'Invalid token or could not determine user ID' 
+          return NextResponse.json({
+            error: 'Invalid token or could not determine user ID'
           }, { status: 401 })
         }
       } catch (lookupError) {
         console.error('[CLI Status] Token lookup error:', lookupError);
-        return NextResponse.json({ 
-          error: 'Failed to validate token' 
+        return NextResponse.json({
+          error: 'Failed to validate token'
         }, { status: 500 })
       }
     }
