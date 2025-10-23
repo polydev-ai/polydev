@@ -16,6 +16,8 @@ export async function GET(
       headers: {
         'User-Agent': request.headers.get('user-agent') || 'Next.js Proxy',
         'Accept': 'text/html',
+        'X-Forwarded-Proto': 'https',
+        'X-Forwarded-Host': request.headers.get('host') || 'polydev-ai.vercel.app',
       },
     });
 
