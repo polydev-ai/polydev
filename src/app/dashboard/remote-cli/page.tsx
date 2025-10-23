@@ -31,9 +31,18 @@ interface Provider {
   logo: string;
   color: string;
   available: boolean;
+  connected?: boolean;
+  completedAt?: string | null;
 }
 
-const providers: Provider[] = [
+interface OAuthStatus {
+  [key: string]: {
+    completed: boolean;
+    completedAt: string | null;
+  };
+}
+
+const baseProviders: Provider[] = [
   {
     id: 'claude_code',
     name: 'Claude Code',
@@ -66,10 +75,15 @@ export default function RemoteCLIDashboard() {
   const [vmStatus, setVmStatus] = useState<any>(null);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [providers, setProviders] = useState<Provider[]>(baseProviders);
 
   useEffect(() => {
     loadVMStatus();
-    const interval = setInterval(loadVMStatus, 10000); // Poll every 10s
+    loadOAuthStatus();
+    const interval = setInterval(() => {
+      loadVMStatus();
+      loadOAuthStatus();
+    }, 10000); // Poll every 10s
     return () => clearInterval(interval);
   }, []);
 
@@ -84,6 +98,26 @@ export default function RemoteCLIDashboard() {
       console.error('Failed to load VM status:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadOAuthStatus = async () => {
+    try {
+      const res = await fetch('/api/vm/oauth-status');
+      if (res.ok) {
+        const oauthStatus: OAuthStatus = await res.json();
+
+        // Merge OAuth status with providers
+        const updatedProviders = baseProviders.map(provider => ({
+          ...provider,
+          connected: oauthStatus[provider.id]?.completed || false,
+          completedAt: oauthStatus[provider.id]?.completedAt || null
+        }));
+
+        setProviders(updatedProviders);
+      }
+    } catch (error) {
+      console.error('Failed to load OAuth status:', error);
     }
   };
 
@@ -294,7 +328,7 @@ export default function RemoteCLIDashboard() {
               >
                 <Card className={`relative overflow-hidden cursor-pointer hover:shadow-lg transition-shadow ${
                   selectedProvider === provider.id ? 'ring-2 ring-primary' : ''
-                }`}>
+                } ${provider.connected ? 'border-green-200 bg-green-50/30 dark:bg-green-950/20' : ''}`}>
                   <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${provider.color}`} />
 
                   <CardHeader>
@@ -313,24 +347,40 @@ export default function RemoteCLIDashboard() {
                           {provider.description}
                         </CardDescription>
                       </div>
-                      {provider.available && (
+                      {provider.connected ? (
+                        <Badge className="bg-green-500 hover:bg-green-600">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          Connected
+                        </Badge>
+                      ) : provider.available ? (
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                           Available
                         </Badge>
-                      )}
+                      ) : null}
                     </div>
                   </CardHeader>
 
                   <CardContent>
+                    {provider.connected && provider.completedAt && (
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Last connected: {new Date(provider.completedAt).toLocaleDateString()}
+                      </p>
+                    )}
                     <Button
                       className="w-full"
                       onClick={() => handleConnectProvider(provider.id)}
                       disabled={!provider.available || connecting}
+                      variant={provider.connected ? 'outline' : 'default'}
                     >
                       {connecting && selectedProvider === provider.id ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Connecting...
+                        </>
+                      ) : provider.connected ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Reconnect {provider.name}
                         </>
                       ) : (
                         <>
