@@ -156,8 +156,8 @@ export default function AdminPortal() {
               mount: mount.mount_point || ''
             })) || [];
             // Ensure root filesystem (/) is first for display
-            const rootMount = allMounts.find(m => m.mount === '/');
-            const otherMounts = allMounts.filter(m => m.mount !== '/');
+            const rootMount = allMounts.find((m: any) => m.mount === '/');
+            const otherMounts = allMounts.filter((m: any) => m.mount !== '/');
             return rootMount ? [rootMount, ...otherMounts] : allMounts;
           })(),
           network: {
