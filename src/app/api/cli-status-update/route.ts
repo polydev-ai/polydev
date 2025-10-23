@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { createClient as createServerClient } from '@supabase/supabase-js'
 
+// Cache buster: Force TypeScript recompilation to bypass stale Vercel build cache
 interface CLIStatusUpdate {
   provider: 'claude_code' | 'codex_cli' | 'gemini_cli'
   status: 'available' | 'unavailable' | 'not_installed' | 'checking'
