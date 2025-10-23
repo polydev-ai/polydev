@@ -127,12 +127,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify MCP token
-    const isValidToken = await verifyMCPToken(mcp_token, user_id)
+    const isValidToken = await verifyMCPToken(mcp_token, actualUserId)
     if (!isValidToken) {
-      console.log('[CLI-Status] Token verification failed for user:', user_id);
+      console.log('[CLI-Status] Token verification failed for user:', actualUserId);
       return NextResponse.json({ error: 'Invalid or expired MCP token' }, { status: 401 })
     }
-    console.log('[CLI-Status] Token verification successful for user:', user_id);
+    console.log('[CLI-Status] Token verification successful for user:', actualUserId);
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
