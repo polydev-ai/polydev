@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/app/utils/supabase/server'
+import { createClient, createAdminClient } from '@/app/utils/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,13 +11,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
+    const adminClient = createAdminClient()
+    const { data: profile } = await adminClient
+      .from('users')
+      .select('tier')
+      .eq('user_id', user.id)
       .single()
 
-    if (!profile?.is_admin) {
+    if (profile?.tier !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

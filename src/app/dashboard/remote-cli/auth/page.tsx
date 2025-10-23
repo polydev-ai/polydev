@@ -44,6 +44,7 @@ function AuthFlowContent() {
   const [error, setError] = useState<string | null>(null);
   const [vmInfo, setVmInfo] = useState<any>(null);
   const [showBrowser, setShowBrowser] = useState(false);
+  const [showNoVNC, setShowNoVNC] = useState(false);
   const [oauthUrl, setOauthUrl] = useState<string | null>(null);
   const [pollingOAuthUrl, setPollingOAuthUrl] = useState(false);
   const [pollingCredentials, setPollingCredentials] = useState(false);
@@ -67,7 +68,9 @@ function AuthFlowContent() {
     const pollOAuthUrl = async () => {
       try {
         setPollingOAuthUrl(true);
-        const res = await fetch(`http://${vmInfo.ip_address}:8080/oauth-url?sessionId=${sessionId}`, {
+        // Use master controller proxy route instead of direct VM IP access
+        const masterControllerUrl = process.env.NEXT_PUBLIC_MASTER_CONTROLLER_URL || 'http://135.181.138.102:4000';
+        const res = await fetch(`${masterControllerUrl}/api/auth/session/${sessionId}/oauth-url`, {
           signal: AbortSignal.timeout(5000)
         });
 
@@ -88,18 +91,30 @@ function AuthFlowContent() {
     return () => clearInterval(interval);
   }, [vmInfo, sessionId, oauthUrl, pollingOAuthUrl]);
 
-  // Poll for credential status when OAuth URL is shown
+  // Poll for credential status when noVNC is shown (with exponential backoff)
   useEffect(() => {
-    if (!vmInfo || !sessionId || !showBrowser || pollingCredentials) return;
+    if (!sessionId || !showNoVNC || pollingCredentials) return;
+
+    let cancelled = false;
+    let delay = 1000; // Start with 1 second
 
     const pollCredentials = async () => {
+      if (cancelled) return;
+
       try {
         setPollingCredentials(true);
-        const res = await fetch(`http://${vmInfo.ip_address}:8080/credentials/status?sessionId=${sessionId}`, {
-          signal: AbortSignal.timeout(5000)
+        // Use proxy endpoint instead of direct VM IP
+        const res = await fetch(`/api/auth/session/${sessionId}/credentials`, {
+          signal: AbortSignal.timeout(5000),
+          credentials: 'include'
         });
 
-        if (!res.ok) return;
+        if (!res.ok) {
+          setPollingCredentials(false);
+          delay = Math.min(delay * 2, 15000); // Exponential backoff, max 15s
+          if (!cancelled) setTimeout(pollCredentials, delay);
+          return;
+        }
 
         const data = await res.json();
         if (data.authenticated) {
@@ -107,16 +122,25 @@ function AuthFlowContent() {
           setStep('authenticating');
           // Trigger session reload to pick up completion
           setTimeout(loadSession, 1000);
+        } else {
+          setPollingCredentials(false);
+          delay = 1000; // Reset delay on success
+          if (!cancelled) setTimeout(pollCredentials, delay);
         }
       } catch (err) {
-        // Silently continue polling
+        // Silently continue polling with backoff
+        setPollingCredentials(false);
+        delay = Math.min(delay * 2, 15000); // Exponential backoff on error
+        if (!cancelled) setTimeout(pollCredentials, delay);
       }
     };
 
-    pollCredentials();
-    const interval = setInterval(pollCredentials, 3000); // Poll every 3s
-    return () => clearInterval(interval);
-  }, [vmInfo, sessionId, showBrowser, pollingCredentials]);
+    const timer = setTimeout(pollCredentials, delay);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [sessionId, showNoVNC, pollingCredentials]);
 
   const loadSession = async () => {
     try {
@@ -246,7 +270,7 @@ function AuthFlowContent() {
             <h1 className="text-3xl font-bold mb-2">Connect {getProviderName(provider!)}</h1>
             <p className="text-muted-foreground">Follow the steps below to authenticate your CLI tool</p>
           </div>
-          {session && (
+          {session && session.session_id && (
             <Badge variant={step === 'completed' ? 'default' : 'secondary'}>
               Session: {session.session_id.slice(0, 8)}
             </Badge>
@@ -324,28 +348,40 @@ function AuthFlowContent() {
                 </div>
                 <CardTitle>Creating Your Secure Environment</CardTitle>
                 <CardDescription>
-                  We're spinning up a dedicated VM for your {getProviderName(provider!)} CLI tool
+                  We're spinning up a dedicated Firecracker VM for your {getProviderName(provider!)} CLI tool
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                    <p className="text-sm">Allocating resources...</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                    <p className="text-sm">Configuring network...</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                    <p className="text-sm">Initializing CLI environment...</p>
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Allocating VM resources</p>
+                        <p className="text-xs text-muted-foreground">1 vCPU, 1.5GB RAM</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Configuring secure network</p>
+                        <p className="text-xs text-muted-foreground">Private TAP interface with unique IP</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Starting VM and services</p>
+                        <p className="text-xs text-muted-foreground">VNC, OAuth agent, CLI tools</p>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="pt-4 border-t">
-                    <p className="text-xs text-muted-foreground text-center">
-                      This usually takes 15-30 seconds
-                    </p>
+                    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      <span>This usually takes 15-30 seconds</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -394,7 +430,7 @@ function AuthFlowContent() {
                     <div>
                       <p className="text-muted-foreground mb-1">VM ID</p>
                       <code className="px-2 py-1 bg-muted rounded font-mono text-xs block">
-                        {vmInfo.vm_id.slice(0, 12)}...
+                        {vmInfo.vm_id ? vmInfo.vm_id.slice(0, 12) : 'N/A'}...
                       </code>
                     </div>
                   </div>
@@ -409,72 +445,61 @@ function AuthFlowContent() {
                         1
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium mb-1">Authenticate with {getProviderName(provider!)}</p>
+                        <p className="font-medium mb-1">Access VM Desktop via noVNC</p>
                         <p className="text-sm text-muted-foreground mb-3">
-                          Complete the OAuth authentication below. The browser will open inside this page.
+                          Open the VM desktop to interact with the {getProviderName(provider!)} CLI tool
                         </p>
-                        {!showBrowser ? (
+                        {!showNoVNC ? (
                           <Button
                             size="sm"
                             variant="default"
-                            onClick={() => setShowBrowser(true)}
-                            disabled={!oauthUrl}
+                            onClick={() => setShowNoVNC(true)}
                           >
-                            {oauthUrl ? (
-                              <>
-                                Start Authentication
-                                <Terminal className="w-3 h-3 ml-2" />
-                              </>
-                            ) : (
-                              <>
-                                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                                Waiting for OAuth URL...
-                              </>
-                            )}
+                            Open VM Desktop
+                            <Server className="w-3 h-3 ml-2" />
                           </Button>
-                        ) : oauthUrl ? (
+                        ) : (
                           <div className="border-2 border-primary rounded-lg overflow-hidden bg-background">
                             <div className="flex items-center justify-between px-3 py-2 bg-muted border-b">
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Shield className="w-3 h-3" />
-                                <span className="font-mono">CLI OAuth Flow</span>
+                                <Server className="w-3 h-3" />
+                                <span className="font-mono">VM Desktop - noVNC</span>
                               </div>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => setShowBrowser(false)}
+                                onClick={() => setShowNoVNC(false)}
                                 className="h-6 px-2"
                               >
-                                Close
+                                Minimize
                               </Button>
                             </div>
                             <iframe
-                              src={oauthUrl}
-                              className="w-full h-[600px] bg-white"
-                              title="Authentication Browser"
-                              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation"
+                              src={`/api/auth/session/${sessionId}/novnc`}
+                              className="w-full h-[700px] bg-black"
+                              title="VM Desktop"
+                              allow="clipboard-read; clipboard-write"
                             />
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Loading OAuth URL from CLI...</span>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    {showBrowser && (
+                    {showNoVNC && (
                       <>
                         <div className="flex gap-3">
                           <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
                             2
                           </div>
                           <div>
-                            <p className="font-medium mb-1">Complete the OAuth flow in the browser above</p>
-                            <p className="text-sm text-muted-foreground">
-                              Log in with your {getProviderName(provider!)} account and authorize access
+                            <p className="font-medium mb-1">Run the authentication command in the terminal</p>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              The CLI tool is already running. Complete the OAuth flow in the terminal above.
                             </p>
+                            <div className="p-3 bg-muted rounded-lg font-mono text-xs">
+                              <p className="text-muted-foreground mb-1"># The CLI should be waiting for authentication</p>
+                              <p className="text-foreground">Follow the OAuth prompts displayed in the terminal</p>
+                            </div>
                           </div>
                         </div>
 
@@ -485,8 +510,12 @@ function AuthFlowContent() {
                           <div>
                             <p className="font-medium mb-1">We'll detect completion automatically</p>
                             <p className="text-sm text-muted-foreground">
-                              Once you authorize, credentials will be securely stored and the page will advance
+                              Once you complete OAuth, credentials will be securely stored and this page will advance
                             </p>
+                            <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span>Monitoring for credential completion...</span>
+                            </div>
                           </div>
                         </div>
                       </>
@@ -517,14 +546,38 @@ function AuthFlowContent() {
                 <div className="mx-auto mb-4 p-4 bg-primary/10 rounded-full w-fit">
                   <Shield className="w-8 h-8 text-primary animate-pulse" />
                 </div>
-                <CardTitle>Authenticating...</CardTitle>
+                <CardTitle>Processing Authentication</CardTitle>
                 <CardDescription>
                   Verifying your credentials and setting up secure access
                 </CardDescription>
               </CardHeader>
-              <CardContent className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-                <p className="text-sm text-muted-foreground">This should only take a few moments</p>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center gap-3">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <div className="text-left">
+                      <p className="text-sm font-medium">Detecting credentials</p>
+                      <p className="text-xs text-muted-foreground">
+                        OAuth agent found credentials in VM
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <div className="space-y-2 text-xs text-muted-foreground text-center">
+                      <p>Encrypting credentials with AES-256-GCM</p>
+                      <p>Storing securely in database</p>
+                      <p>Preparing to inject into CLI VM</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <div className="flex items-center justify-center gap-2 text-xs text-green-600">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>This should only take a few moments</span>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>

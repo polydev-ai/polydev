@@ -12,19 +12,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check admin status
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
+    // Check admin status using admin client to bypass RLS
+    const adminClient = createAdminClient()
+    const { data: profile } = await adminClient
+      .from('users')
+      .select('tier')
+      .eq('user_id', user.id)
       .single()
 
-    if (!profile?.is_admin) {
+    if (profile?.tier !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
-
-    // Get all data using admin client to bypass RLS
-    const adminClient = createAdminClient()
 
     // Get users with their current credits from user_credits table
     const { data: users, error: usersError } = await adminClient
@@ -137,13 +135,14 @@ export async function POST(request: Request) {
     }
 
     // Check admin status
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
+    const adminClient = createAdminClient()
+    const { data: profile } = await adminClient
+      .from('users')
+      .select('tier')
+      .eq('user_id', user.id)
       .single()
 
-    if (!profile?.is_admin) {
+    if (profile?.tier !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
@@ -152,8 +151,6 @@ export async function POST(request: Request) {
     if (!userId || !amount || !reason) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
-
-    const adminClient = createAdminClient()
 
     // Get current user credits
     const { data: currentUserCredits } = await adminClient

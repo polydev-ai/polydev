@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/app/utils/supabase/server';
+import { createClient, createAdminClient } from '@/app/utils/supabase/server';
 
 const MASTER_CONTROLLER_URL = process.env.MASTER_CONTROLLER_URL || 'http://192.168.5.82:4000';
 
@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is admin
-    const { data: userData } = await supabase
+    const adminClient = createAdminClient();
+    const { data: userData } = await adminClient
       .from('users')
       .select('tier')
       .eq('user_id', user.id)

@@ -13,12 +13,12 @@ export async function GET(request: Request) {
 
     // Check admin access
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_admin')
-      .eq('id', user.id)
+      .from('users')
+      .select('tier')
+      .eq('user_id', user.id)
       .single()
 
-    if (!profile?.is_admin) {
+    if (profile?.tier !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

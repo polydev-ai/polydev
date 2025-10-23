@@ -22,12 +22,13 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import Image from 'next/image';
 
 interface Provider {
   id: string;
   name: string;
   description: string;
-  icon: string;
+  logo: string;
   color: string;
   available: boolean;
 }
@@ -37,7 +38,7 @@ const providers: Provider[] = [
     id: 'claude_code',
     name: 'Claude Code',
     description: 'Anthropic\'s Claude AI with code understanding',
-    icon: '🤖',
+    logo: 'https://models.dev/logos/anthropic.svg',
     color: 'from-purple-500 to-pink-500',
     available: true,
   },
@@ -45,7 +46,7 @@ const providers: Provider[] = [
     id: 'codex',
     name: 'OpenAI Codex',
     description: 'OpenAI\'s powerful code generation model',
-    icon: '⚡',
+    logo: 'https://models.dev/logos/openai.svg',
     color: 'from-green-500 to-emerald-500',
     available: true,
   },
@@ -53,7 +54,7 @@ const providers: Provider[] = [
     id: 'gemini_cli',
     name: 'Google Gemini',
     description: 'Google\'s multimodal AI assistant',
-    icon: '✨',
+    logo: 'https://models.dev/logos/google.svg',
     color: 'from-blue-500 to-cyan-500',
     available: true,
   },
@@ -299,7 +300,14 @@ export default function RemoteCLIDashboard() {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div>
-                        <div className="text-4xl mb-2">{provider.icon}</div>
+                        <div className="mb-4 relative w-12 h-12">
+                          <Image
+                            src={provider.logo}
+                            alt={`${provider.name} logo`}
+                            fill
+                            className="object-contain"
+                          />
+                        </div>
                         <CardTitle className="text-xl">{provider.name}</CardTitle>
                         <CardDescription className="mt-2">
                           {provider.description}

@@ -245,21 +245,41 @@ class BrowserVMAuth {
       } finally {
         // Cleanup browser VM unless we're debugging
         if (browserVM?.vmId) {
-          const keepVM = config.debug.keepFailedBrowserVMs && finalStatus !== 'completed';
-          if (keepVM) {
-            logger.warn('[DEBUG] Keeping browser VM alive for debugging', {
+          const keepFailedVM = config.debug.keepFailedBrowserVMs && finalStatus !== 'completed';
+
+          if (keepFailedVM) {
+            logger.warn('[DEBUG] Keeping failed browser VM alive for debugging', {
               sessionId,
               vmId: browserVM.vmId,
-              vmIP: browserVM.ipAddress
+              vmIP: browserVM.ipAddress,
+              finalStatus
             });
           } else {
-            await vmManager.destroyVM(browserVM.vmId).catch(err =>
-              logger.warn('Failed to cleanup browser VM', {
+            // Give frontend time to retrieve credentials before destroying VM
+            // 30s for successful OAuth, 5s for failures
+            const gracePeriodMs = finalStatus === 'completed' ? 30000 : 5000;
+
+            logger.info('Scheduling browser VM cleanup', {
+              sessionId,
+              vmId: browserVM.vmId,
+              finalStatus,
+              gracePeriodMs
+            });
+
+            setTimeout(async () => {
+              await vmManager.destroyVM(browserVM.vmId).catch(err =>
+                logger.warn('Failed to cleanup browser VM', {
+                  sessionId,
+                  vmId: browserVM.vmId,
+                  error: err.message
+                })
+              );
+
+              logger.info('Browser VM cleaned up after grace period', {
                 sessionId,
-                vmId: browserVM.vmId,
-                error: err.message
-              })
-            );
+                vmId: browserVM.vmId
+              });
+            }, gracePeriodMs);
           }
         }
 

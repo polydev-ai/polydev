@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/app/utils/supabase/server';
+import { createClient, createAdminClient } from '@/app/utils/supabase/server';
 
 const MASTER_CONTROLLER_URL = process.env.MASTER_CONTROLLER_URL || 'http://192.168.5.82:4000';
 
@@ -13,15 +13,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if user is admin (you should implement proper admin check)
-    // For now, checking if email matches admin domain or role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
+    // Check if user is admin
+    const adminClient = createAdminClient();
+    const { data: profile } = await adminClient
+      .from('users')
+      .select('tier')
+      .eq('user_id', user.id)
       .single();
 
-    if (profile?.role !== 'admin') {
+    if (profile?.tier !== 'admin') {
       return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
     }
 
