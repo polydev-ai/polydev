@@ -734,11 +734,11 @@ export default function AdminPortal() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDestroyVM(vm.vm_id)}
-                              disabled={destroying === vm.vm_id}
+                              onClick={() => handleDestroyVM(vm.id)}
+                              disabled={destroying === vm.id}
                               className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
-                              {destroying === vm.vm_id ? (
+                              {destroying === vm.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <Trash2 className="w-4 h-4" />
