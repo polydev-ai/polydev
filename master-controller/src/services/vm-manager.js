@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const config = require('../config');
 const { db } = require('../db/supabase');
 const logger = require('../utils/logger').module('vm-manager');
+const proxyPortManager = require('./proxy-port-manager');
 
 class VMManager {
   constructor() {
@@ -189,7 +190,7 @@ class VMManager {
     const vmConfig = {
       'boot-source': {
         kernel_image_path: config.firecracker.goldenKernel,
-        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0::eth0:off`
+        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/sda rw rootfstype=ext4 rootwait net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0::eth0:off`
       },
       'drives': [
         {
@@ -201,7 +202,7 @@ class VMManager {
       ],
       'network-interfaces': [
         {
-          iface_id: 'eth0',
+          iface_id: tapDevice,
           guest_mac: this.generateMAC(vmId),
           host_dev_name: tapDevice
         }
@@ -408,6 +409,18 @@ WantedBy=multi-user.target
     try {
       logger.info('[VM-CREATE] Starting VM creation', { vmId, userId, vmType, startTime: new Date().toISOString() });
 
+      // Get user's dedicated proxy configuration
+      logger.info('[VM-CREATE] Step 0: Getting user proxy configuration', { vmId, userId });
+      const proxyEnv = await this.withTimeout(
+        proxyPortManager.getProxyEnvVars(userId),
+        5000,
+        `[${vmId}] getProxyEnvVars`
+      );
+      logger.info('[VM-CREATE] Step 0: Proxy config retrieved', {
+        vmId,
+        proxyPort: proxyEnv.HTTP_PROXY.match(/:(\d+)$/)?.[1]
+      });
+
       // Allocate resources (waits for IP pool init, then allocates)
       logger.info('[VM-CREATE] Step 1: Allocating IP', { vmId });
       const ipAddress = await this.withTimeout(
@@ -470,7 +483,7 @@ WantedBy=multi-user.target
       logger.info('[VM-CREATE] Step 6: Starting Firecracker', { vmId });
       const socketPath = path.join(config.firecracker.socketsDir, `${vmId}.sock`);
       await this.withTimeout(
-        this.startFirecracker(vmId, configPath, socketPath, decodoPort, decodoIP),
+        this.startFirecracker(vmId, configPath, socketPath, proxyEnv),
         25000,  // 25 seconds - just under the API timeout
         `[${vmId}] startFirecracker`
       );
@@ -511,7 +524,7 @@ WantedBy=multi-user.target
   /**
    * Start Firecracker process
    */
-  async startFirecracker(vmId, configPath, socketPath, decodoPort, decodoIP) {
+  async startFirecracker(vmId, configPath, socketPath, proxyEnv = null) {
     return new Promise((resolve, reject) => {
       const vmDir = path.join(config.firecracker.usersDir, vmId);
       const consolePath = path.join(vmDir, 'console.log');
@@ -532,7 +545,8 @@ WantedBy=multi-user.target
       const args = [
         '--api-sock', socketPath,
         '--log-path', '/dev/null',  // Disable firecracker internal logging
-        '--level', 'Off'            // No internal log output
+        '--level', 'Off',            // No internal log output
+        '--enable-pci'              // Enable PCI support for VirtIO devices (v1.13.0+)
       ];
 
       // Only add config file if NOT loading snapshot (cold boot)
@@ -540,13 +554,15 @@ WantedBy=multi-user.target
         args.push('--config-file', configPath);
       }
 
-      // Build environment with Decodo proxy if provided
+      // Build environment with user's dedicated Decodo proxy
       const env = { ...process.env };
-      if (decodoPort && decodoIP) {
-        const proxyURL = `http://${config.decodo.user}:${config.decodo.password}@${config.decodo.host}:${decodoPort}`;
-        env.HTTP_PROXY = proxyURL;
-        env.HTTPS_PROXY = proxyURL;
-        env.DECODO_FIXED_IP = decodoIP;
+      if (proxyEnv) {
+        // Add all proxy environment variables from proxy-port-manager
+        Object.assign(env, proxyEnv);
+        logger.info('[FIRECRACKER-PROXY] User proxy configured', {
+          vmId,
+          proxyPort: proxyEnv.HTTP_PROXY?.match(/:(\d+)$/)?.[1] || 'unknown'
+        });
       }
 
       // Open console.log file descriptor for writing VM serial console output (ttyS0)
@@ -567,7 +583,7 @@ WantedBy=multi-user.target
         consolePath,
         errorLogPath,
         vmDir,
-        hasProxy: !!(decodoPort && decodoIP)
+        hasProxy: !!proxyEnv
       });
 
       // Check file descriptor validity
