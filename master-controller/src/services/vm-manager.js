@@ -530,9 +530,10 @@ WantedBy=multi-user.target
       const vmDir = path.join(config.firecracker.usersDir, vmId);
       const consolePath = path.join(vmDir, 'console.log');
 
-      // Ensure socket directory exists
+      // Ensure socket directory exists and remove old socket if it exists
       const socketDir = path.dirname(socketPath);
       execSync(`mkdir -p ${socketDir}`, { stdio: 'pipe' });
+      execSync(`rm -f ${socketPath}`, { stdio: 'pipe' });
 
       // Check if snapshot exists (will be loaded via API after Firecracker starts)
       const snapshotPath = path.join(vmDir, 'snapshot.snap');
