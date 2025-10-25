@@ -35,6 +35,16 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+
+    // Log VM details for debugging
+    if (data.vm) {
+      console.log('[VM Status]', {
+        vmId: data.vm.vm_id?.substring(0, 8),
+        internalIP: data.vm.ip_address,
+        status: data.vm.status
+      });
+    }
+
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('VM status error:', error);
