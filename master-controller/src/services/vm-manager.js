@@ -182,7 +182,7 @@ class VMManager {
   /**
    * Create VM configuration file
    */
-  async createVMConfig(vmId, vmType, tapDevice, ipAddress) {
+  async createVMConfig(vmId, vmType, tapDevice, ipAddress, decodoPort = null) {
     const vcpu = vmType === 'browser' ? config.vm.browser.vcpu : config.vm.cli.vcpu;
     const memory = vmType === 'browser' ? config.vm.browser.memoryMB : config.vm.cli.memoryMB;
     const vmDir = path.join(config.firecracker.usersDir, vmId);
@@ -191,7 +191,7 @@ class VMManager {
       'boot-source': {
         kernel_image_path: config.firecracker.goldenKernel,
         initrd_path: '/boot/initrd.img-5.15.0-157-generic',
-        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 rootwait net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0::eth0:off`
+        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 rootwait net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0::eth0:off${decodoPort ? ' decodo_port=' + decodoPort : ''}`
       },
       'drives': [
         {
@@ -451,8 +451,9 @@ WantedBy=multi-user.target
 
       // Create VM config
       logger.info('[VM-CREATE] Step 4: Creating VM config', { vmId });
+      const decodoPort = proxyEnv.HTTP_PROXY?.match(/:(\d+)$/)?.[1];
       const configPath = await this.withTimeout(
-        this.createVMConfig(vmId, vmType, tapDevice, ipAddress),
+        this.createVMConfig(vmId, vmType, tapDevice, ipAddress, decodoPort),
         5000,
         `[${vmId}] createVMConfig`
       );
