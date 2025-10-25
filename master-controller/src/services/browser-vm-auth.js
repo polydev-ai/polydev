@@ -52,30 +52,16 @@ class BrowserVMAuth {
         status: cliVM?.status
       };
 
-      // Refresh user record to get Decodo proxy metadata
-      const userRecord = await db.users.findById(userId);
-      let decodoPort = userRecord?.decodo_proxy_port;
-      let decodoIP = userRecord?.decodo_fixed_ip;
-
-      if (!decodoPort || !decodoIP) {
-        logger.warn('User missing Decodo proxy assignment, allocating now', { userId, decodoPort, decodoIP });
-        decodoPort = await cliStreamingService.allocateDecodoPort(userId);
-        decodoIP = await cliStreamingService.getDecodoFixedIP(decodoPort);
-        await db.users.assignDecodoPort(userId, decodoPort, decodoIP);
-      }
-
-      // STEP 2: Create browser VM for OAuth, forcing outbound traffic through Decodo proxy
+      // STEP 2: Create browser VM for OAuth
+      // Proxy configuration is now handled automatically by vm-manager
       logger.info('Creating browser VM for OAuth', {
         userId,
         provider,
-        sessionId,
-        decodoPort,
-        decodoIP,
-        decodoIPMasked: decodoIP ? `${decodoIP.substring(0, decodoIP.lastIndexOf('.'))}.x` : null
+        sessionId
       });
 
       try {
-        browserVM = await vmManager.createVM(userId, 'browser', decodoPort, decodoIP);
+        browserVM = await vmManager.createVM(userId, 'browser');
         logger.info('Browser VM created successfully', {
           userId,
           provider,
@@ -89,9 +75,7 @@ class BrowserVMAuth {
           provider,
           sessionId,
           error: vmCreateError.message,
-          stack: vmCreateError.stack,
-          decodoPort,
-          decodoIP
+          stack: vmCreateError.stack
         });
 
         // Update session status to failed
@@ -105,13 +89,7 @@ class BrowserVMAuth {
 
       const novncURL = this.buildNoVNCUrl(sessionId, browserVM.ipAddress);
 
-      const proxyConfig = decodoPort && decodoIP ? {
-        httpProxy: `http://${config.decodo.user}:${config.decodo.password}@${config.decodo.host}:${decodoPort}`,
-        httpsProxy: `http://${config.decodo.user}:${config.decodo.password}@${config.decodo.host}:${decodoPort}`,
-        noProxy: '127.0.0.1,localhost,192.168.100.0/24'
-      } : null;
-
-      // Store session data
+      // Store session data (proxy is now handled automatically by vm-manager)
       this.authSessions.set(sessionId, {
         userId,
         provider,
@@ -119,8 +97,7 @@ class BrowserVMAuth {
         browserIP: browserVM.ipAddress,
         novncURL,
         status: 'vm_created',
-        startedAt: new Date(),
-        proxyConfig
+        startedAt: new Date()
       });
 
       // Update session in database with Browser VM details
@@ -152,8 +129,7 @@ class BrowserVMAuth {
         provider,
         userId,
         browserVM,
-        cliVMInfo,
-        proxyConfig
+        cliVMInfo
       });
 
       logger.info('Authentication flow dispatched', {
@@ -204,7 +180,7 @@ class BrowserVMAuth {
   /**
    * Continue OAuth flow asynchronously so HTTP request can return immediately
    */
-  runAsyncOAuthFlow({ sessionId, provider, userId, browserVM, cliVMInfo, proxyConfig }) {
+  runAsyncOAuthFlow({ sessionId, provider, userId, browserVM, cliVMInfo }) {
     (async () => {
       let finalStatus = 'completed';
       try {
@@ -217,7 +193,7 @@ class BrowserVMAuth {
           status: 'ready'
         });
 
-        const credentials = await this.executeOAuthFlow(sessionId, provider, browserVM.ipAddress, proxyConfig);
+        const credentials = await this.executeOAuthFlow(sessionId, provider, browserVM.ipAddress);
         await this.storeCredentials(userId, provider, credentials);
         await this.transferCredentialsToCLIVM(userId, provider, credentials);
 
@@ -374,16 +350,16 @@ class BrowserVMAuth {
   /**
    * Execute OAuth flow based on provider
    */
-  async executeOAuthFlow(sessionId, provider, vmIP, proxyConfig) {
+  async executeOAuthFlow(sessionId, provider, vmIP) {
     logger.info('Executing OAuth flow', { sessionId, provider, vmIP });
 
     switch (provider) {
       case 'codex':
-        return await this.authenticateCodex(sessionId, vmIP, proxyConfig);
+        return await this.authenticateCodex(sessionId, vmIP);
       case 'claude_code':
-        return await this.authenticateClaudeCode(sessionId, vmIP, proxyConfig);
+        return await this.authenticateClaudeCode(sessionId, vmIP);
       case 'gemini_cli':
-        return await this.authenticateGeminiCLI(sessionId, vmIP, proxyConfig);
+        return await this.authenticateGeminiCLI(sessionId, vmIP);
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -393,22 +369,22 @@ class BrowserVMAuth {
    * Authenticate Codex - Starts CLI OAuth flow in VM
    * User completes OAuth in frontend iframe, credentials saved to VM
    */
-  async authenticateCodex(sessionId, vmIP, proxyConfig) {
-    return await this.authenticateCLI(sessionId, vmIP, 'codex', proxyConfig);
+  async authenticateCodex(sessionId, vmIP) {
+    return await this.authenticateCLI(sessionId, vmIP, 'codex');
   }
 
   /**
    * Authenticate Claude Code - Starts CLI OAuth flow in VM
    */
-  async authenticateClaudeCode(sessionId, vmIP, proxyConfig) {
-    return await this.authenticateCLI(sessionId, vmIP, 'claude_code', proxyConfig);
+  async authenticateClaudeCode(sessionId, vmIP) {
+    return await this.authenticateCLI(sessionId, vmIP, 'claude_code');
   }
 
   /**
    * Authenticate Gemini CLI - Starts CLI OAuth flow in VM
    */
-  async authenticateGeminiCLI(sessionId, vmIP, proxyConfig) {
-    return await this.authenticateCLI(sessionId, vmIP, 'gemini_cli', proxyConfig);
+  async authenticateGeminiCLI(sessionId, vmIP) {
+    return await this.authenticateCLI(sessionId, vmIP, 'gemini_cli');
   }
 
   /**
@@ -420,8 +396,8 @@ class BrowserVMAuth {
    * 5. Backend polls /credentials/status until ready
    * 6. Retrieve actual credentials from /credentials/get
    */
-  async authenticateCLI(sessionId, vmIP, provider, proxyConfig) {
-    logger.info('Starting CLI OAuth flow', { sessionId, vmIP, provider, hasProxyConfig: !!proxyConfig });
+  async authenticateCLI(sessionId, vmIP, provider) {
+    logger.info('Starting CLI OAuth flow', { sessionId, vmIP, provider });
 
     const debugPayload = {};
     if (config.debug.enableStrace) {
@@ -432,9 +408,6 @@ class BrowserVMAuth {
     }
 
     const requestPayload = { sessionId };
-    if (proxyConfig) {
-      requestPayload.proxy = proxyConfig;
-    }
     if (Object.keys(debugPayload).length > 0) {
       requestPayload.debug = debugPayload;
     }
