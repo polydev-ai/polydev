@@ -417,13 +417,22 @@ WantedBy=multi-user.target
         5000,
         `[${vmId}] getProxyEnvVars`
       );
+      const proxyPort = proxyEnv.HTTP_PROXY.match(/:(\d+)$/)?.[1];
+
+      // Get the user's Decodo fixed IP from database
+      const proxyInfo = await proxyPortManager.getOrAssignPort(userId);
+
       logger.info('[VM-CREATE] Step 0: Proxy config retrieved', {
         vmId,
-        proxyPort: proxyEnv.HTTP_PROXY.match(/:(\d+)$/)?.[1]
+        userId,
+        proxyPort,
+        decodoExternalIP: proxyInfo.ip,
+        proxyURL: proxyEnv.HTTP_PROXY,
+        willInjectToVM: !!proxyPort
       });
 
       // Allocate resources (waits for IP pool init, then allocates)
-      logger.info('[VM-CREATE] Step 1: Allocating IP', { vmId });
+      logger.info('[VM-CREATE] Step 1: Allocating IP', { vmId, userId });
       const ipAddress = await this.withTimeout(
         this.allocateIP(vmId),  // Already returns a promise
         5000,
