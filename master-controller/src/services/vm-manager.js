@@ -438,7 +438,14 @@ WantedBy=multi-user.target
         5000,
         `[${vmId}] allocateIP`
       );
-      logger.info('[VM-CREATE] Step 1: IP allocated', { vmId, ipAddress, elapsed: Date.now() - startTime });
+      logger.info('[VM-CREATE] Step 1: IP allocated', {
+        vmId,
+        userId,
+        internalIP: ipAddress,
+        decodoPort: proxyInfo.port,
+        decodoExternalIP: proxyInfo.ip,
+        elapsed: Date.now() - startTime
+      });
 
       // Create TAP device
       logger.info('[VM-CREATE] Step 2: Creating TAP device', { vmId });
