@@ -1,6 +1,7 @@
 [Unit]
 Description=VM Browser Agent - OAuth Proxy for CLI Tools
-After=network.target
+After=network.target vncserver@1.service
+Wants=vncserver@1.service
 
 [Service]
 Type=simple
@@ -11,6 +12,7 @@ StandardOutput=append:/tmp/vm-browser-agent.log
 StandardError=append:/tmp/vm-browser-agent-error.log
 Environment=HOME=/root
 Environment=NODE_ENV=production
+Environment=DISPLAY=:1
 
 [Install]
 WantedBy=multi-user.target

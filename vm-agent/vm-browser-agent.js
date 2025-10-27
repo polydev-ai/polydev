@@ -107,9 +107,9 @@ const server = http.createServer(async (req, res) => {
  */
 async function handleStartCLIAuth(req, res, provider) {
   const body = await readBody(req);
-  const { sessionId } = JSON.parse(body);
+  const { sessionId, proxy } = JSON.parse(body);
 
-  logger.info('Starting CLI auth', { provider, sessionId });
+  logger.info('Starting CLI auth', { provider, sessionId, hasProxy: !!proxy });
 
   // Determine CLI command and credential path
   let cliCommand, cliArgs, credPath;
@@ -140,12 +140,35 @@ async function handleStartCLIAuth(req, res, provider) {
       return;
   }
 
+  // Build environment with proxy settings
+  const cliEnv = {
+    ...process.env,
+    HOME: process.env.HOME || '/root'
+  };
+
+  // Add proxy environment variables if provided
+  if (proxy) {
+    if (proxy.httpProxy) {
+      cliEnv.HTTP_PROXY = proxy.httpProxy;
+      cliEnv.http_proxy = proxy.httpProxy;
+    }
+    if (proxy.httpsProxy) {
+      cliEnv.HTTPS_PROXY = proxy.httpsProxy;
+      cliEnv.https_proxy = proxy.httpsProxy;
+    }
+    if (proxy.noProxy) {
+      cliEnv.NO_PROXY = proxy.noProxy;
+      cliEnv.no_proxy = proxy.noProxy;
+    }
+    logger.info('Using proxy configuration', {
+      httpProxy: proxy.httpProxy,
+      httpsProxy: proxy.httpsProxy
+    });
+  }
+
   // Spawn CLI process
   const cliProcess = spawn(cliCommand, cliArgs, {
-    env: {
-      ...process.env,
-      HOME: process.env.HOME || '/root'
-    },
+    env: cliEnv,
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
@@ -178,6 +201,34 @@ async function handleStartCLIAuth(req, res, provider) {
           `redirect_uri=http://${getVMIP()}:8080`
         );
         logger.info('Extracted OAuth URL', { provider, oauthUrl });
+
+        // Automatically open browser with OAuth URL
+        const { spawn: spawnBrowser } = require('child_process');
+        logger.info('Auto-opening browser with OAuth URL', { oauthUrl, display: cliEnv.DISPLAY });
+
+        const browserProcess = spawnBrowser('xdg-open', [oauthUrl], {
+          detached: true,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          env: cliEnv
+        });
+
+        // Capture any errors from xdg-open
+        browserProcess.stderr.on('data', (data) => {
+          logger.error('xdg-open stderr', { error: data.toString() });
+        });
+
+        browserProcess.on('error', (err) => {
+          logger.error('xdg-open spawn error', { error: err.message, display: cliEnv.DISPLAY });
+        });
+
+        browserProcess.on('exit', (code, signal) => {
+          if (code !== 0) {
+            logger.warn('xdg-open exited with non-zero code', { code, signal, display: cliEnv.DISPLAY });
+          }
+        });
+
+        browserProcess.unref();
+
         break;
       }
     }
