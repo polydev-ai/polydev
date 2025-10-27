@@ -143,7 +143,9 @@ async function handleStartCLIAuth(req, res, provider) {
   // Build environment with proxy settings
   const cliEnv = {
     ...process.env,
-    HOME: process.env.HOME || '/root'
+    HOME: process.env.HOME || '/root',
+    DISPLAY: process.env.DISPLAY || ':1',  // Ensure DISPLAY is set for X11 applications (xdg-open needs this)
+    XAUTHORITY: process.env.XAUTHORITY || '/root/.Xauthority'  // Ensure X11 auth is available for browser
   };
 
   // Add proxy environment variables if provided
