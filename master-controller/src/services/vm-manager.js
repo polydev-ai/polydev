@@ -191,7 +191,7 @@ class VMManager {
       'boot-source': {
         kernel_image_path: config.firecracker.goldenKernel,
         initrd_path: '/boot/initrd.img-5.15.0-157-generic',
-        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 rootwait net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0::eth0:off${decodoPort ? ' decodo_port=' + decodoPort : ''}`
+        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 rootwait net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0::eth0:on${decodoPort ? ' decodo_port=' + decodoPort : ''}`
       },
       'drives': [
         {
@@ -675,8 +675,25 @@ WantedBy=multi-user.target
           }
 
           // Load snapshot via API if it exists
+          // CRITICAL: Configure network interface BEFORE loading snapshot
+          // Snapshots don't preserve network configuration - must be set via API
           if (hasSnapshot) {
             try {
+              // Read VM config to get network interface details
+              const vmConfig = JSON.parse(fsSync.readFileSync(configPath, 'utf8'));
+              const networkInterface = vmConfig['network-interfaces']?.[0];
+
+              if (networkInterface) {
+                logger.info('Configuring network interface before snapshot load', {
+                  vmId,
+                  tapDevice: networkInterface.host_dev_name,
+                  guestMAC: networkInterface.guest_mac
+                });
+
+                await this.configureNetworkInterface(socketPath, networkInterface);
+                logger.info('Network interface configured successfully', { vmId });
+              }
+
               logger.info('Loading snapshot via API', { vmId, snapshotPath, memoryPath });
               await this.loadSnapshot(socketPath, snapshotPath, memoryPath);
               logger.info('Snapshot loaded successfully', { vmId });
@@ -933,6 +950,45 @@ WantedBy=multi-user.target
             resolve(data);
           } else {
             reject(new Error(`Firecracker API error: ${res.statusCode} ${data}`));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+  }
+
+  /**
+   * Configure network interface via Firecracker API
+   * CRITICAL: Must be called BEFORE loading snapshot
+   * Snapshots don't preserve network configuration
+   */
+  async configureNetworkInterface(socketPath, networkInterface) {
+    const http = require('http');
+
+    return new Promise((resolve, reject) => {
+      const payload = JSON.stringify(networkInterface);
+
+      const options = {
+        socketPath,
+        path: `/network-interfaces/${networkInterface.iface_id}`,
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(payload)
+        }
+      };
+
+      const req = http.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode === 204 || res.statusCode === 200) {
+            resolve(data);
+          } else {
+            reject(new Error(`Firecracker network config error: ${res.statusCode} ${data}`));
           }
         });
       });
