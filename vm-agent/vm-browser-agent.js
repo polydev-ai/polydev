@@ -206,27 +206,32 @@ async function handleStartCLIAuth(req, res, provider) {
 
         // Automatically open browser with OAuth URL
         const { spawn: spawnBrowser } = require('child_process');
-        logger.info('Auto-opening browser with OAuth URL', { oauthUrl, display: cliEnv.DISPLAY });
+        logger.info('Auto-opening browser with OAuth URL', { oauthUrl, display: cliEnv.DISPLAY, home: cliEnv.HOME });
 
-        const browserProcess = spawnBrowser('sensible-browser', [oauthUrl], {
+        // Try firefox directly first, then fallback to sensible-browser
+        const browserCommand = '/usr/bin/firefox';
+        logger.info('Attempting to spawn browser', { browserCommand, url: oauthUrl, display: cliEnv.DISPLAY });
+
+        const browserProcess = spawnBrowser(browserCommand, [oauthUrl], {
           detached: true,
           stdio: ['ignore', 'pipe', 'pipe'],
           env: cliEnv
         });
 
-        // Capture any errors from sensible-browser
+        // Capture any errors from browser
+        let stderrData = '';
         browserProcess.stderr.on('data', (data) => {
-          logger.error('sensible-browser stderr', { error: data.toString() });
+          const errorText = data.toString();
+          stderrData += errorText;
+          logger.error('browser stderr', { error: errorText, display: cliEnv.DISPLAY });
         });
 
         browserProcess.on('error', (err) => {
-          logger.error('sensible-browser spawn error', { error: err.message, display: cliEnv.DISPLAY });
+          logger.error('browser spawn error', { error: err.message, display: cliEnv.DISPLAY, command: browserCommand, code: err.code });
         });
 
         browserProcess.on('exit', (code, signal) => {
-          if (code !== 0) {
-            logger.warn('sensible-browser exited with non-zero code', { code, signal, display: cliEnv.DISPLAY });
-          }
+          logger.info('browser process exited', { code, signal, display: cliEnv.DISPLAY, stderrData });
         });
 
         browserProcess.unref();
