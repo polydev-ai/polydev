@@ -208,24 +208,24 @@ async function handleStartCLIAuth(req, res, provider) {
         const { spawn: spawnBrowser } = require('child_process');
         logger.info('Auto-opening browser with OAuth URL', { oauthUrl, display: cliEnv.DISPLAY });
 
-        const browserProcess = spawnBrowser('xdg-open', [oauthUrl], {
+        const browserProcess = spawnBrowser('sensible-browser', [oauthUrl], {
           detached: true,
           stdio: ['ignore', 'pipe', 'pipe'],
           env: cliEnv
         });
 
-        // Capture any errors from xdg-open
+        // Capture any errors from sensible-browser
         browserProcess.stderr.on('data', (data) => {
-          logger.error('xdg-open stderr', { error: data.toString() });
+          logger.error('sensible-browser stderr', { error: data.toString() });
         });
 
         browserProcess.on('error', (err) => {
-          logger.error('xdg-open spawn error', { error: err.message, display: cliEnv.DISPLAY });
+          logger.error('sensible-browser spawn error', { error: err.message, display: cliEnv.DISPLAY });
         });
 
         browserProcess.on('exit', (code, signal) => {
           if (code !== 0) {
-            logger.warn('xdg-open exited with non-zero code', { code, signal, display: cliEnv.DISPLAY });
+            logger.warn('sensible-browser exited with non-zero code', { code, signal, display: cliEnv.DISPLAY });
           }
         });
 
