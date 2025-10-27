@@ -106,38 +106,39 @@ export async function GET(
       return NextResponse.json({ authenticated: false, status: 'no_vm' });
     }
 
-    // Poll the OAuth agent in the Browser VM
-    const agentUrl = `http://${session.vm_ip}:8080/credentials/status?sessionId=${sessionId}`;
+    // Poll via master-controller proxy (frontend can't reach private VM IPs directly)
+    const masterControllerUrl = `http://135.181.138.102:4000/api/auth/session/${sessionId}/credentials/status`;
 
-    console.log('[Credentials Proxy] Polling OAuth agent:', {
+    console.log('[Credentials Proxy] Polling OAuth agent via master-controller:', {
       sessionId,
       vmIp: session.vm_ip,
-      agentUrl
+      masterControllerUrl
     });
 
     try {
-      const agentResponse = await fetch(agentUrl, {
+      const agentResponse = await fetch(masterControllerUrl, {
         signal: AbortSignal.timeout(5000), // 5 second timeout
         headers: {
-          'User-Agent': 'Next.js Credentials Proxy'
+          'User-Agent': 'Next.js Credentials Proxy',
+          'x-user-id': user.id
         }
       });
 
       if (!agentResponse.ok) {
-        console.warn('[Credentials Proxy] Agent returned non-OK status:', {
+        console.warn('[Credentials Proxy] Master-controller returned non-OK status:', {
           status: agentResponse.status,
           sessionId
         });
         return NextResponse.json({
           authenticated: false,
           status: 'agent_error',
-          error: `Agent returned ${agentResponse.status}`
+          error: `Master-controller returned ${agentResponse.status}`
         });
       }
 
       const agentData = await agentResponse.json();
 
-      console.log('[Credentials Proxy] Agent response:', {
+      console.log('[Credentials Proxy] Agent response from master-controller:', {
         sessionId,
         authenticated: agentData.authenticated
       });
@@ -146,7 +147,7 @@ export async function GET(
 
     } catch (fetchError: any) {
       // OAuth agent might not be ready yet - this is normal during VM startup
-      console.log('[Credentials Proxy] Agent not reachable (normal during startup):', {
+      console.log('[Credentials Proxy] Agent not reachable via master-controller (normal during startup):', {
         error: fetchError.message,
         sessionId
       });

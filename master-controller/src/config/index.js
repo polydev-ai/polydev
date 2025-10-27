@@ -63,7 +63,9 @@ const config = {
     vmIdleTimeout: parseInt(process.env.VM_IDLE_TIMEOUT, 10) || 1800000,
     vmDestroyTimeout: parseInt(process.env.VM_DESTROY_TIMEOUT, 10) || 1209600000,
     maxConcurrentVMs: parseInt(process.env.MAX_CONCURRENT_VMS, 10) || 180,
-    maxBrowserVMs: parseInt(process.env.MAX_BROWSER_VMS, 10) || 2
+    maxBrowserVMs: parseInt(process.env.MAX_BROWSER_VMS, 10) || 2,
+    browserVmHealthTimeoutMs: parseInt(process.env.BROWSER_VM_HEALTH_TIMEOUT_MS, 10) || 120000, // 2 minutes
+    cliOAuthStartTimeoutMs: parseInt(process.env.CLI_OAUTH_START_TIMEOUT_MS, 10) || 10000 // 10 seconds - timeout for starting OAuth flow in VM
   },
 
   // VM Resources

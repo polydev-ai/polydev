@@ -407,9 +407,30 @@ class BrowserVMAuth {
       debugPayload.skipConnectivityChecks = true;
     }
 
+    // Get user ID from session to fetch proxy config
+    const session = this.authSessions.get(sessionId);
+    const userId = session?.userId;
+
+    // Use local Tinyproxy on VPS host instead of external Decodo proxy
+    // This allows VMs to access internet via the bridge IP (192.168.100.1:3128)
+    // The host's Tinyproxy forwards to Decodo with authentication
+    const proxyConfig = {
+      httpProxy: 'http://192.168.100.1:3128',
+      httpsProxy: 'http://192.168.100.1:3128',
+      noProxy: 'localhost,127.0.0.1'
+    };
+    logger.info('Using local Tinyproxy for VM browser internet access', {
+      sessionId,
+      userId,
+      proxyServer: '192.168.100.1:3128'
+    });
+
     const requestPayload = { sessionId };
     if (Object.keys(debugPayload).length > 0) {
       requestPayload.debug = debugPayload;
+    }
+    if (proxyConfig) {
+      requestPayload.proxy = proxyConfig;
     }
 
     // Start CLI tool - this spawns OAuth server and captures OAuth URL

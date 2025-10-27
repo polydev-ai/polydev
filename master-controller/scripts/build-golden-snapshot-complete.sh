@@ -94,31 +94,130 @@ configure_system() {
     # Hostname
     echo "polydev-browser" > rootfs/etc/hostname
 
-    # Network
-    cat > rootfs/etc/netplan/01-netcfg.yaml <<EOF
-network:
-  version: 2
-  ethernets:
-    eth0:
-      dhcp4: no
-      addresses: [${VM_IP}/24]
-      gateway4: ${BRIDGE_IP}
-      nameservers:
-        addresses: [8.8.8.8, 8.8.4.4]
+    # Create systemd network directory
+    mkdir -p rootfs/etc/systemd/network
+
+    # Use systemd.network directly (more reliable than netplan for Firecracker)
+    # This allows both DHCP and static IP via kernel parameters
+    cat > rootfs/etc/systemd/network/10-eth0.network <<EOF
+[Match]
+Name=eth0
+
+[Network]
+# First try DHCP
+DHCP=ipv4
+
+# Also accept static IP from kernel parameters
+LinkLocalAddressing=ipv6
+
+[DHCPv4]
+RouteMetric=100
+UseDNS=yes
+
+[IPv6AcceptRA]
+IPv6Token=::1
 EOF
 
-    # DNS
+    # Create a fallback network config for static IP if DHCP fails
+    cat > rootfs/etc/systemd/network/20-eth0-fallback.network <<EOF
+[Match]
+Name=eth0
+
+[Network]
+# Fallback static IP (can be overridden by kernel ip= parameter)
+Address=${VM_IP}/24
+Gateway=${BRIDGE_IP}
+DNS=8.8.8.8
+DNS=8.8.4.4
+
+[Route]
+Destination=0.0.0.0/0
+Gateway=${BRIDGE_IP}
+EOF
+
+    # Enable systemd-network-generator to process kernel parameters
+    # This processes the 'ip=' kernel boot parameter
+    mkdir -p rootfs/etc/systemd
+    cat > rootfs/etc/systemd/network-generator.enabled <<EOF
+# This file enables systemd-network-generator
+# It will process kernel command-line parameters like:
+# ip=192.168.100.2::192.168.100.1:255.255.255.0::eth0:on
+EOF
+
+    # Also create a systemd service that explicitly enables eth0 from kernel params
+    cat > rootfs/etc/systemd/system/setup-network-kernel-params.service <<'EOF'
+[Unit]
+Description=Setup Network from Kernel Parameters
+Before=systemd-networkd.service
+Before=network-pre.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/setup-network-kernel-params.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Create the helper script that processes kernel parameters
+    cat > rootfs/usr/local/bin/setup-network-kernel-params.sh <<'EOF'
+#!/bin/bash
+# Parse kernel command line for ip= parameter and apply network config
+# Format: ip=<client-ip>:<server-ip>:<gw-ip>:<netmask>:<hostname>:<device>:<autoconf>
+
+# Check if ip parameter is set in kernel command line
+if grep -q "ip=" /proc/cmdline; then
+    ip_param=$(grep -oP 'ip=\S+' /proc/cmdline | head -1 | cut -d= -f2)
+
+    if [ -n "$ip_param" ]; then
+        echo "Found kernel IP parameter: $ip_param" >> /tmp/network-setup.log
+
+        # Parse components
+        IFS=':' read -r client_ip server_ip gw_ip netmask hostname device autoconf <<< "$ip_param"
+
+        # Only proceed if we have at least client_ip and gateway
+        if [ -n "$client_ip" ] && [ -n "$gw_ip" ] && [ -n "$device" ]; then
+            echo "Setting up $device: $client_ip gw $gw_ip" >> /tmp/network-setup.log
+
+            # Bring up the interface
+            ip link set "$device" up
+
+            # Assign IP address
+            if [ -n "$netmask" ] && [ "$netmask" != "0.0.0.0" ]; then
+                # Convert netmask to CIDR notation if possible
+                ip addr add "$client_ip/$netmask" dev "$device" 2>/dev/null || \
+                ip addr add "$client_ip/24" dev "$device" 2>/dev/null
+            else
+                ip addr add "$client_ip/24" dev "$device"
+            fi
+
+            # Add default route via gateway
+            ip route add default via "$gw_ip" dev "$device" 2>/dev/null || true
+
+            echo "Network setup complete for $device at $(date)" >> /tmp/network-setup.log
+        fi
+    fi
+else
+    echo "No kernel IP parameter found, relying on DHCP" >> /tmp/network-setup.log
+fi
+EOF
+    chmod +x rootfs/usr/local/bin/setup-network-kernel-params.sh
+
+    # DNS resolution - use systemd-resolved
     echo "nameserver 8.8.8.8" > rootfs/etc/resolv.conf
     echo "nameserver 8.8.4.4" >> rootfs/etc/resolv.conf
 
     # Root password
     chroot rootfs /bin/bash -c "echo 'root:polydev' | chpasswd"
 
-    # Enable services
+    # Enable network services
     chroot rootfs systemctl enable systemd-networkd
     chroot rootfs systemctl enable systemd-resolved
+    chroot rootfs systemctl enable setup-network-kernel-params.service 2>/dev/null || true
 
-    log_info "System configured"
+    log_info "System configured with network support"
 }
 
 # Install base packages
@@ -326,8 +425,9 @@ PKG_EOF
     cat > rootfs/etc/systemd/system/vm-browser-agent.service <<EOF
 [Unit]
 Description=VM Browser Agent
-After=network-online.target network.target vncserver@1.service
+After=setup-network-kernel-params.service systemd-networkd.service network-online.target network.target vncserver@1.service
 Wants=network-online.target vncserver@1.service
+RequiresMountsFor=/opt/vm-browser-agent
 
 [Service]
 Type=simple

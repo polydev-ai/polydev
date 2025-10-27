@@ -15,7 +15,7 @@ const { testConnection } = require('./db/supabase');
 // Import routes
 const userRoutes = require('./routes/users');
 const vmRoutes = require('./routes/vms');
-const authRoutes = require('./routes/auth');
+const { router: authRoutes, handleNoVNCUpgrade } = require('./routes/auth');
 const promptRoutes = require('./routes/prompts');
 const adminRoutes = require('./routes/admin');
 const metricsRoutes = require('./routes/metrics');
@@ -26,8 +26,8 @@ const backgroundTasks = require('./tasks/background');
 const app = express();
 const server = http.createServer(app);
 
-// WebSocket server
-const wss = new WebSocket.Server({ server });
+// WebSocket server with noServer: true (manual upgrade handling)
+const wss = new WebSocket.Server({ noServer: true });
 
 // CRITICAL: Log EVERY incoming request at the very entry point (before all middleware)
 app.use((req, res, next) => {
@@ -126,6 +126,51 @@ app.use((req, res) => {
 // WebSocket connection handling
 wss.on('connection', (ws, req) => {
   const clientIP = req.socket.remoteAddress;
+
+  // Check if this is a noVNC WebSocket (has _novncSession attached by auth.js)
+  if (req._novncSession) {
+    const { sessionId, vmIP } = req._novncSession;
+    logger.info('noVNC WebSocket connected', { clientIP, sessionId, vmIP });
+
+    // Connect to x11vnc on port 5900
+    const net = require('net');
+    const vncSocket = net.connect(5900, vmIP);
+
+    vncSocket.on('connect', () => {
+      logger.info('Connected to VNC server', { sessionId, vmIP });
+    });
+
+    vncSocket.on('error', (error) => {
+      logger.error('VNC socket error', { sessionId, vmIP, error: error.message });
+      ws.close();
+    });
+
+    // Forward VNC data to WebSocket (library handles framing automatically)
+    vncSocket.on('data', (data) => {
+      if (ws.readyState === 1) { // OPEN
+        ws.send(data);
+      }
+    });
+
+    // Forward WebSocket data to VNC (library handles unframing automatically)
+    ws.on('message', (message) => {
+      vncSocket.write(message);
+    });
+
+    ws.on('close', () => {
+      logger.info('noVNC WebSocket closed', { sessionId });
+      vncSocket.destroy();
+    });
+
+    vncSocket.on('close', () => {
+      logger.info('VNC socket closed', { sessionId });
+      ws.close();
+    });
+
+    return; // Don't process as regular WebSocket
+  }
+
+  // Regular WebSocket (not noVNC)
   logger.info('WebSocket connected', { clientIP });
 
   ws.isAlive = true;
@@ -221,6 +266,41 @@ const wsHeartbeat = setInterval(() => {
 
 wss.on('close', () => {
   clearInterval(wsHeartbeat);
+});
+
+// HTTP upgrade handler for noVNC WebSocket proxy
+server.on('upgrade', async (req, socket, head) => {
+  logger.info('HTTP upgrade request received', {
+    url: req.url,
+    headers: req.headers
+  });
+
+  try {
+    // Try to handle as noVNC WebSocket upgrade
+    const authResult = await handleNoVNCUpgrade(req, socket, head);
+
+    logger.info('noVNC auth result', { authResult, url: req.url });
+
+    // Only proceed if authentication succeeded
+    // authResult: true = authenticated, false = not noVNC, null = auth failed (socket destroyed)
+    if (authResult === null) {
+      logger.info('Auth failed, socket already destroyed');
+      return;
+    }
+
+    // Complete the upgrade for both noVNC and regular WebSocket
+    logger.info('Calling wss.handleUpgrade');
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      logger.info('WebSocket connection established', { hasNovncSession: !!req._novncSession });
+      wss.emit('connection', ws, req);
+    });
+  } catch (error) {
+    logger.error('Upgrade handler error', {
+      url: req.url,
+      error: error.message
+    });
+    socket.destroy();
+  }
 });
 
 // Graceful shutdown

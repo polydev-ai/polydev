@@ -4,19 +4,11 @@
  */
 
 const express = require('express');
-const httpProxy = require('http-proxy');
+const WebSocket = require('ws');
+const net = require('net');
 const router = express.Router();
 const { browserVMAuth } = require('../services/browser-vm-auth');
 const logger = require('../utils/logger').module('routes:auth');
-
-const novncWsProxy = httpProxy.createProxyServer({ ws: true, secure: false });
-
-novncWsProxy.on('error', (error, req) => {
-  logger.error('noVNC WebSocket proxy error', {
-    error: error.message,
-    url: req?.url
-  });
-});
 
 function sanitizeVMIP(session) {
   return session?.browserIP || session?.vm_ip || session?.vmIp || session?.vm_ip_address;
@@ -103,35 +95,64 @@ router.get('/session/:sessionId/oauth-url', async (req, res) => {
       return res.status(409).json({ error: 'Browser VM IP not yet available' });
     }
 
-    // Use http.get instead of fetch to avoid Node.js fetch() EHOSTUNREACH issues with private IPs
+    // Use http.get with retry logic to handle VM startup race conditions
     const http = require('http');
-    try {
-      const result = await new Promise((resolve, reject) => {
-        const req = http.get({
-          hostname: vmIP,
-          port: 8080,
-          path: `/oauth-url?sessionId=${sessionId}`,
-          timeout: 5000
-        }, (response) => {
-          let text = '';
-          response.on('data', chunk => text += chunk);
-          response.on('end', () => resolve({
-            status: response.statusCode,
-            contentType: response.headers['content-type'] || 'application/json',
-            text
-          }));
-        });
-        req.on('error', reject);
-        req.on('timeout', () => {
-          req.destroy();
-          reject(new Error('Request timeout'));
-        });
-      });
+    const maxRetries = 3;
+    const retryDelays = [500, 1000, 2000]; // ms - exponential backoff
 
-      res.status(result.status).set('Content-Type', result.contentType).send(result.text);
-    } catch (error) {
-      logger.error('OAuth URL proxy HTTP request failed', { sessionId, vmIP, error: error.message });
-      throw error;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const req = http.get({
+            hostname: vmIP,
+            port: 8080,
+            path: `/oauth-url?sessionId=${sessionId}`,
+            timeout: 3000
+          }, (response) => {
+            let text = '';
+            response.on('data', chunk => text += chunk);
+            response.on('end', () => resolve({
+              status: response.statusCode,
+              contentType: response.headers['content-type'] || 'application/json',
+              text
+            }));
+          });
+          req.on('error', reject);
+          req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Request timeout'));
+          });
+        });
+
+        // Success - return immediately
+        return res.status(result.status).set('Content-Type', result.contentType).send(result.text);
+
+      } catch (error) {
+        const isLastAttempt = attempt === maxRetries - 1;
+        const isConnectError = error.code === 'EHOSTUNREACH' || error.code === 'ECONNREFUSED';
+
+        if (isLastAttempt || !isConnectError) {
+          // Don't retry on last attempt or non-connection errors
+          logger.error('OAuth URL proxy HTTP request failed', {
+            sessionId,
+            vmIP,
+            attempt: attempt + 1,
+            error: error.message,
+            code: error.code
+          });
+          throw error;
+        }
+
+        // Retry after delay
+        logger.warn('OAuth URL proxy failed, retrying', {
+          sessionId,
+          vmIP,
+          attempt: attempt + 1,
+          nextRetryMs: retryDelays[attempt],
+          error: error.message
+        });
+        await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
+      }
     }
   } catch (error) {
     logger.error('OAuth URL proxy failed', { sessionId, error: error.message });
@@ -312,7 +333,55 @@ router.get('/session/:sessionId/novnc', async (req, res) => {
       }
     }
 
+    // Wait for VM to be fully ready before connecting
+    async function waitForVMReady() {
+      const maxAttempts = 30; // 30 seconds max
+      const delayMs = 1000; // 1 second between attempts
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        updateStatus(\`Waiting for VM to boot (\${attempt}/\${maxAttempts})...\`);
+
+        try {
+          // Try to establish a test WebSocket connection
+          const testWs = new WebSocket('${wsUrl}');
+
+          const result = await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              testWs.close();
+              reject(new Error('Connection timeout'));
+            }, 3000);
+
+            testWs.onopen = () => {
+              clearTimeout(timeout);
+              testWs.close();
+              resolve(true);
+            };
+
+            testWs.onerror = () => {
+              clearTimeout(timeout);
+              reject(new Error('Connection failed'));
+            };
+          });
+
+          if (result) {
+            updateStatus('VM ready, connecting...');
+            return true;
+          }
+        } catch (error) {
+          // Connection failed, retry after delay
+          if (attempt < maxAttempts) {
+            await new Promise(r => setTimeout(r, delayMs));
+          }
+        }
+      }
+
+      throw new Error('VM failed to become ready after 30 seconds');
+    }
+
     try {
+      // Wait for VM to be ready before connecting
+      await waitForVMReady();
+
       const rfb = new RFB(screenEl, '${wsUrl}', {
         credentials: { password: 'polydev123' }
       });
@@ -512,36 +581,47 @@ async function handleNoVNCUpgrade(req, socket, head) {
   try {
     const match = req.url.match(/^\/api\/auth\/session\/([^/]+)\/novnc\/websock(.*)$/);
     if (!match) {
-      return false;
+      return false; // Not a noVNC request
     }
 
     const sessionId = match[1];
-    const suffix = match[2] || '';
+
+    logger.info('noVNC auth check', { sessionId });
 
     const session = await browserVMAuth.getSessionStatus(sessionId);
     if (!session) {
+      logger.warn('noVNC auth failed - session not found', { sessionId });
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
-      return true;
+      return null; // Auth failed, socket destroyed
     }
 
     const vmIP = sanitizeVMIP(session);
     if (!vmIP) {
+      logger.warn('noVNC auth failed - no VM IP', { sessionId });
+      socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
       socket.destroy();
-      return true;
+      return null; // Auth failed, socket destroyed
     }
 
-    // Fix: websockify listens on root path, not /websockify
-    const target = `ws://${vmIP}:6080/${suffix}`;
-    novncWsProxy.ws(req, socket, head, { target });
-    return true;
+    logger.info('noVNC WebSocket upgrade - authenticated', {
+      sessionId,
+      vmIP
+    });
+
+    // Store the session and VM info for the WebSocket connection handler
+    req._novncSession = { sessionId, vmIP };
+
+    return true; // Authenticated, proceed with upgrade
   } catch (error) {
     logger.error('noVNC upgrade failed', { url: req.url, error: error.message });
     try {
+      socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
       socket.destroy();
     } catch (err) {
       logger.warn('Failed to destroy socket after noVNC upgrade error', { error: err.message });
     }
-    return true;
+    return null; // Error, socket destroyed
   }
 }
 
