@@ -167,6 +167,7 @@ function launchBrowserForSession(sessionId, oauthUrl) {
           '--allow-running-insecure-content',
           '--disable-web-security',
           '--enable-features=OverlayScrollbar',
+          '--no-sandbox',  // Required when running as root
           oauthUrl
         ];
 
@@ -225,6 +226,7 @@ function launchBrowserForSession(sessionId, oauthUrl) {
     const env = {
       ...process.env,
       DISPLAY: BROWSER_DISPLAY,
+      XAUTHORITY: process.env.XAUTHORITY || '/root/.Xauthority',
       PULSE_SERVER: process.env.PULSE_SERVER || 'unix:/run/pulse/native'
     };
 
@@ -243,14 +245,41 @@ function launchBrowserForSession(sessionId, oauthUrl) {
       }
     }
 
+    // Log browser launch attempt with full details for debugging
+    logger.info('Attempting browser launch', {
+      sessionId,
+      executable: browserExecutable,
+      display: env.DISPLAY,
+      xauthority: env.XAUTHORITY,
+      hasXsocket: fsSync.existsSync(`/tmp/.X11-unix/X${BROWSER_DISPLAY.replace(':', '')}`),
+      argsCount: args.length,
+      provider: session.provider
+    });
+
     const browserProcess = spawn(browserExecutable, args, {
       env,
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],  // Capture stdout and stderr for debugging
       detached: true
     });
 
+    // Capture stderr output from browser
+    browserProcess.stderr.on('data', (data) => {
+      logger.warn('Browser stderr', { sessionId, output: data.toString().substring(0, 500) });
+    });
+
+    // Capture stdout output from browser
+    browserProcess.stdout.on('data', (data) => {
+      logger.info('Browser stdout', { sessionId, output: data.toString().substring(0, 500) });
+    });
+
+    // Handle spawn errors
+    browserProcess.on('error', (err) => {
+      logger.error('Browser spawn error', { sessionId, error: err.message, code: err.code });
+      session.browserLaunchInProgress = false;
+    });
+
     browserProcess.on('exit', (code, signal) => {
-      logger.info('Chromium exited', { sessionId, code, signal });
+      logger.info('Browser exited', { sessionId, code, signal, executable: browserExecutable });
       const s = authSessions.get(sessionId);
       if (s) {
         s.browserLaunched = false;
@@ -271,7 +300,11 @@ function launchBrowserForSession(sessionId, oauthUrl) {
     });
   } catch (error) {
     session.browserLaunchInProgress = false;
-    logger.error('Failed to launch Chromium', { sessionId, error: error.message });
+    logger.error('Failed to launch browser', {
+      sessionId,
+      error: error.message,
+      stack: error.stack
+    });
   }
 }
 
