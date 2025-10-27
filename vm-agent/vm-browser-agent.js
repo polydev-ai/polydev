@@ -205,36 +205,102 @@ async function handleStartCLIAuth(req, res, provider) {
         logger.info('Extracted OAuth URL', { provider, oauthUrl });
 
         // Automatically open browser with OAuth URL
-        const { spawn: spawnBrowser } = require('child_process');
+        const { spawn: spawnBrowser, exec } = require('child_process');
         logger.info('Auto-opening browser with OAuth URL', { oauthUrl, display: cliEnv.DISPLAY, home: cliEnv.HOME });
 
-        // Try firefox directly first, then fallback to sensible-browser
+        // Launch Firefox with robust error handling and improved diagnostics
         const browserCommand = '/usr/bin/firefox';
-        logger.info('Attempting to spawn browser', { browserCommand, url: oauthUrl, display: cliEnv.DISPLAY });
-
-        const browserProcess = spawnBrowser(browserCommand, [oauthUrl], {
-          detached: true,
-          stdio: ['ignore', 'pipe', 'pipe'],
-          env: cliEnv
+        logger.info('Attempting to spawn browser', {
+          browserCommand,
+          url: oauthUrl,
+          display: cliEnv.DISPLAY,
+          home: cliEnv.HOME,
+          xauthority: cliEnv.XAUTHORITY
         });
 
-        // Capture any errors from browser
-        let stderrData = '';
-        browserProcess.stderr.on('data', (data) => {
-          const errorText = data.toString();
-          stderrData += errorText;
-          logger.error('browser stderr', { error: errorText, display: cliEnv.DISPLAY });
-        });
+        // Create a wrapper script to ensure Firefox launches properly
+        const wrapperScript = `
+#!/bin/bash
+export DISPLAY=${cliEnv.DISPLAY}
+export HOME=${cliEnv.HOME}
+export XAUTHORITY=${cliEnv.XAUTHORITY}
+export LOGFILE="/tmp/firefox-launch.log"
 
-        browserProcess.on('error', (err) => {
-          logger.error('browser spawn error', { error: err.message, display: cliEnv.DISPLAY, command: browserCommand, code: err.code });
-        });
+echo "Firefox launch starting at \$(date)" >> \$LOGFILE
+echo "DISPLAY=\$DISPLAY" >> \$LOGFILE
+echo "HOME=\$HOME" >> \$LOGFILE
+echo "XAUTHORITY=\$XAUTHORITY" >> \$LOGFILE
 
-        browserProcess.on('exit', (code, signal) => {
-          logger.info('browser process exited', { code, signal, display: cliEnv.DISPLAY, stderrData });
-        });
+# Check if display exists
+if ! DISPLAY=\$DISPLAY xset q &>/dev/null; then
+  echo "X11 display check failed" >> \$LOGFILE
+fi
 
-        browserProcess.unref();
+# Ensure Firefox doesn't have stale profile lock
+rm -rf "\$HOME/.mozilla/firefox"/*.default*/lock 2>/dev/null
+
+# Launch Firefox
+exec /usr/bin/firefox "${oauthUrl}" >> \$LOGFILE 2>&1
+`;
+
+        // Write and execute wrapper script
+        const fs = require('fs');
+        const wrapperPath = '/tmp/firefox-launcher.sh';
+
+        try {
+          fs.writeFileSync(wrapperPath, wrapperScript, { mode: 0o755 });
+
+          const browserProcess = spawnBrowser('/bin/bash', [wrapperPath], {
+            detached: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: cliEnv
+          });
+
+          // Capture any errors from browser
+          let stderrData = '';
+          browserProcess.stderr.on('data', (data) => {
+            const errorText = data.toString();
+            stderrData += errorText;
+            logger.error('browser stderr', { error: errorText, display: cliEnv.DISPLAY });
+          });
+
+          browserProcess.on('error', (err) => {
+            logger.error('browser spawn error', {
+              error: err.message,
+              display: cliEnv.DISPLAY,
+              command: browserCommand,
+              code: err.code
+            });
+          });
+
+          browserProcess.on('exit', (code, signal) => {
+            logger.info('browser process exited', { code, signal, display: cliEnv.DISPLAY, stderrData });
+
+            // Check wrapper log for additional diagnostics
+            try {
+              const wrapperLog = fs.readFileSync('/tmp/firefox-launch.log', 'utf-8');
+              logger.info('Firefox wrapper script log', { wrapperLog });
+            } catch (err) {
+              logger.warn('Could not read firefox wrapper log', { error: err.message });
+            }
+          });
+
+          browserProcess.unref();
+        } catch (err) {
+          logger.error('Failed to launch browser via wrapper', { error: err.message });
+          // Fallback: try direct launch
+          try {
+            const directProcess = spawnBrowser(browserCommand, [oauthUrl], {
+              detached: true,
+              stdio: ['ignore', 'pipe', 'pipe'],
+              env: cliEnv
+            });
+            directProcess.unref();
+            logger.info('Firefox launched directly (wrapper failed)');
+          } catch (directErr) {
+            logger.error('Direct Firefox launch also failed', { error: directErr.message });
+          }
+        }
 
         break;
       }
