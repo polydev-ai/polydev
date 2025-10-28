@@ -37,11 +37,14 @@ export async function POST(request: NextRequest) {
 
     // Start browser auth session via Master Controller
     const authResponse = await fetch(
-      `${MASTER_CONTROLLER_URL}/api/auth/${userData.user_id}/start`,
+      `${MASTER_CONTROLLER_URL}/api/auth/start`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider })
+        body: JSON.stringify({
+          userId: userData.user_id,
+          provider
+        })
       }
     );
 
