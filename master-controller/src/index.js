@@ -79,7 +79,17 @@ app.use('/api/', limiter);
 // Health check
 app.get('/health', (req, res) => {
   res.json({
-    status: 'ok',
+    status: 'healthy',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health check for deployment scripts
+app.get('/api/auth/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'master-controller',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });
