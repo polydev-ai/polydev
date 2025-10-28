@@ -15,6 +15,11 @@ on:
           - all
           - master-controller
           - vm-agent
+      bootstrap:
+        description: 'Bootstrap mode (skip health checks)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   deploy:
@@ -45,7 +50,11 @@ jobs:
           ROLLBACK_ON_FAILURE: true
         run: |
           chmod +x ./scripts/deploy.sh
-          ./scripts/deploy.sh --target ${{ github.event.inputs.target || 'all' }}
+          BOOTSTRAP_FLAG=""
+          if [ "${{ github.event.inputs.bootstrap }}" = "true" ]; then
+            BOOTSTRAP_FLAG="--bootstrap"
+          fi
+          ./scripts/deploy.sh --target ${{ github.event.inputs.target || 'all' }} $BOOTSTRAP_FLAG
 
       - name: Upload deployment logs
         if: always()
