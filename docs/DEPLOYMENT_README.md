@@ -246,19 +246,36 @@ See `docs/AUTO_DEPLOYMENT_DESIGN.md` for comprehensive list, including:
 4. **Performance Testing**: Automated benchmarks before/after
 5. **Deployment Dashboard**: Web UI for deployment history
 
-## Current Deployment Status
+## Current Deployment Status (Updated: October 28, 2025)
 
+✅ **GitHub Secrets Configured**: DEPLOY_SERVER, DEPLOY_USER, DEPLOY_PASSWORD
+✅ **Health Endpoint Added**: `/api/auth/health` for deployment verification
+✅ **Master Controller Deployed**: Running on production with health checks
+✅ **Auto-Deployment System**: Fully operational and tested
 ✅ **VM Agent Deployed**: `/opt/polydev-ai/vm-agent/`
-✅ **Golden Image Rebuilding**: In progress on server
-✅ **Auto-Deployment System**: Ready to use
 ✅ **Database Migration**: `last_heartbeat` column added
 
-### Next Steps
+### What Works Now
 
-1. **Wait for Golden Image**: ~5-10 minutes for rebuild to complete
-2. **Test OAuth Flow**: Create new browser VM auth session
-3. **Enable Auto-Deployment**: Push to `main` branch will auto-deploy
-4. **Monitor First Deployment**: Check GitHub Actions for success
+1. **Automatic Deployment**: Push to `main` branch triggers GitHub Actions
+2. **Health Checks**: Deployment script verifies service health at `/api/auth/health`
+3. **Rollback Mechanism**: Automatic rollback on health check failure (tested and working)
+4. **Manual Deployment**: Use `./scripts/deploy.sh` for manual deployments
+5. **Deployment Logs**: Available in GitHub Actions artifacts
+
+### Known Issues & Solutions
+
+**Issue**: Initial deployments failed with health check timeouts
+**Root Cause**: The `/api/auth/health` endpoint was missing
+**Solution**: Added health endpoint in `master-controller/src/index.js:88-96`
+**Status**: ✅ Fixed and verified working
+
+### Next Steps for Future Deployments
+
+1. **Trigger Deployment**: Simply push to `main` branch
+2. **Monitor Progress**: Check GitHub Actions workflow at https://github.com/backspacevenkat/polydev-ai/actions
+3. **Verify Success**: Health endpoint should return `{"status":"healthy"}`
+4. **Check Logs**: Deployment logs uploaded as artifacts in GitHub Actions
 
 ## Questions?
 

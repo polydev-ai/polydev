@@ -167,7 +167,7 @@ deploy_master_controller() {
         killall -9 node 2>/dev/null || true
         sleep 2
         nohup node src/index.js > /var/log/polydev/master-controller.log 2>&1 &
-        sleep 3
+        sleep 10
     " | tee -a "$LOG_FILE"
 
     log "Master Controller deployed"
