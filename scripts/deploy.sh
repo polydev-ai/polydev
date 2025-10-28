@@ -49,6 +49,7 @@ TARGET="all"
 SKIP_TESTS=false
 SKIP_BACKUP=false
 DRY_RUN=false
+BOOTSTRAP_MODE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -66,6 +67,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        --bootstrap)
+            BOOTSTRAP_MODE=true
+            warn "Bootstrap mode enabled - health checks will be skipped!"
             shift
             ;;
         *)
@@ -293,11 +299,15 @@ main() {
     case "$TARGET" in
         master-controller)
             deploy_master_controller
-            if ! health_check "Master Controller" "http://localhost:4000/api/auth/health" "healthy"; then
-                if [ "$ROLLBACK_ON_FAILURE" = true ]; then
-                    rollback
-                    exit 1
+            if [ "$BOOTSTRAP_MODE" = false ]; then
+                if ! health_check "Master Controller" "http://localhost:4000/api/auth/health" "healthy"; then
+                    if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+                        rollback
+                        exit 1
+                    fi
                 fi
+            else
+                warn "Bootstrap mode: Skipping health check"
             fi
             ;;
         vm-agent)
@@ -307,11 +317,15 @@ main() {
             deploy_master_controller
             deploy_vm_agent
 
-            if ! health_check "Master Controller" "http://localhost:4000/api/auth/health" "healthy"; then
-                if [ "$ROLLBACK_ON_FAILURE" = true ]; then
-                    rollback
-                    exit 1
+            if [ "$BOOTSTRAP_MODE" = false ]; then
+                if ! health_check "Master Controller" "http://localhost:4000/api/auth/health" "healthy"; then
+                    if [ "$ROLLBACK_ON_FAILURE" = true ]; then
+                        rollback
+                        exit 1
+                    fi
                 fi
+            else
+                warn "Bootstrap mode: Skipping health check"
             fi
             ;;
         *)
