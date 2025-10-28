@@ -167,18 +167,25 @@ deploy_master_controller() {
             "cd $MASTER_CONTROLLER_PATH && npm install --production" | tee -a "$LOG_FILE"
     fi
 
-    # Restart service
+    # Restart service via systemd
     log "Restarting master-controller..."
     sshpass -p "$DEPLOY_PASSWORD" ssh -o StrictHostKeyChecking=no "$DEPLOY_USER@$DEPLOY_SERVER" "
-        cd $MASTER_CONTROLLER_PATH
+        # Stop systemd service
+        systemctl stop master-controller.service 2>/dev/null || true
+
+        # Kill any remaining manual node processes to avoid port conflicts
         killall -9 node 2>/dev/null || true
-        sleep 2
-        nohup node src/index.js > /var/log/polydev/master-controller.log 2>&1 &
+
+        # Wait for port to be free
+        sleep 3
+
+        # Start via systemd
+        systemctl start master-controller.service
     " | tee -a "$LOG_FILE"
 
-    # Wait for process to start and service to be ready
+    # Wait for service to be ready
     log "Waiting for service to initialize..."
-    sleep 15
+    sleep 10
 
     log "Master Controller deployed"
 }
@@ -255,11 +262,11 @@ rollback() {
                 cp -r \"\$BACKUP_DIR/vm-agent\" \"$VM_AGENT_PATH\"
             fi
 
-            # Restart services
-            cd $MASTER_CONTROLLER_PATH
+            # Restart services via systemd
+            systemctl stop master-controller.service 2>/dev/null || true
             killall -9 node 2>/dev/null || true
-            sleep 2
-            nohup node src/index.js > /var/log/polydev/master-controller.log 2>&1 &
+            sleep 3
+            systemctl start master-controller.service
 
             echo 'Rollback complete'
         else
