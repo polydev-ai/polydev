@@ -48,6 +48,7 @@ function AuthFlowContent() {
   const [oauthUrl, setOauthUrl] = useState<string | null>(null);
   const [pollingOAuthUrl, setPollingOAuthUrl] = useState(false);
   const [pollingCredentials, setPollingCredentials] = useState(false);
+  const [browserLaunchAttempted, setBrowserLaunchAttempted] = useState(false);
 
   useEffect(() => {
     if (!sessionId || !provider) {
@@ -68,21 +69,29 @@ function AuthFlowContent() {
     const pollOAuthUrl = async () => {
       try {
         setPollingOAuthUrl(true);
-        // Use master controller proxy route instead of direct VM IP access
-        const masterControllerUrl = process.env.NEXT_PUBLIC_MASTER_CONTROLLER_URL || 'http://135.181.138.102:4000';
-        const res = await fetch(`${masterControllerUrl}/api/auth/session/${sessionId}/oauth-url`, {
-          signal: AbortSignal.timeout(5000)
+        const res = await fetch(`/api/vm/auth/session/${sessionId}/oauth-url`, {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(5000),
         });
 
-        if (!res.ok) return;
+        if (res.status === 202) {
+          // Still waiting for CLI to surface the URL
+          return;
+        }
+
+        if (!res.ok) {
+          return;
+        }
 
         const data = await res.json();
         if (data.oauthUrl) {
           setOauthUrl(data.oauthUrl);
-          setPollingOAuthUrl(false);
+          return;
         }
       } catch (err) {
         // Silently continue polling
+      } finally {
+        setPollingOAuthUrl(false);
       }
     };
 
@@ -90,6 +99,45 @@ function AuthFlowContent() {
     const interval = setInterval(pollOAuthUrl, 2000); // Poll every 2s
     return () => clearInterval(interval);
   }, [vmInfo, sessionId, oauthUrl, pollingOAuthUrl]);
+
+  // Trigger automatic browser navigation once the CLI surfaces the OAuth URL
+  useEffect(() => {
+    if (!oauthUrl || !sessionId || browserLaunchAttempted) return;
+
+    let cancelled = false;
+
+    const sendOpenUrlRequest = async () => {
+      try {
+        setBrowserLaunchAttempted(true);
+        const response = await fetch(`/api/vm/auth/session/${sessionId}/open-url`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ url: oauthUrl })
+        });
+
+        if (!response.ok && !cancelled) {
+          const message = await response.text();
+          toast.warning('Unable to auto-open OAuth page inside VM. Use the manual link below.', {
+            description: message || undefined,
+          });
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          toast.warning('Unable to auto-open OAuth page inside VM. Use the manual link below.', {
+            description: error?.message,
+          });
+        }
+      }
+    };
+
+    sendOpenUrlRequest();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [oauthUrl, sessionId, browserLaunchAttempted]);
 
   // Poll for credential status when noVNC is shown (with exponential backoff)
   useEffect(() => {
@@ -141,6 +189,32 @@ function AuthFlowContent() {
       clearTimeout(timer);
     };
   }, [sessionId, showNoVNC, pollingCredentials]);
+
+  // Send periodic heartbeats to keep VM alive
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const sendHeartbeat = async () => {
+      try {
+        await fetch(`/api/auth/session/${sessionId}/heartbeat`, {
+          method: 'POST',
+          credentials: 'include',
+          signal: AbortSignal.timeout(5000)
+        });
+      } catch (err) {
+        // Silently fail - heartbeat is best-effort
+        console.debug('Heartbeat failed:', err);
+      }
+    };
+
+    // Send heartbeat every 10 seconds
+    const interval = setInterval(sendHeartbeat, 10000);
+
+    // Send initial heartbeat immediately
+    sendHeartbeat();
+
+    return () => clearInterval(interval);
+  }, [sessionId]);
 
   const loadSession = async () => {
     try {
@@ -204,6 +278,11 @@ function AuthFlowContent() {
   const handleCopyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
+  };
+
+  const handleOpenOAuthInNewTab = () => {
+    if (!oauthUrl) return;
+    window.open(oauthUrl, '_blank', 'noopener,noreferrer');
   };
 
   const getProviderName = (id: string) => {
@@ -480,6 +559,27 @@ function AuthFlowContent() {
                               title="VM Desktop"
                               allow="clipboard-read; clipboard-write"
                             />
+                          </div>
+                        )}
+
+                        {oauthUrl && (
+                          <div className="mt-4 p-3 border rounded-lg bg-muted/40">
+                            <p className="text-sm font-medium mb-2">
+                              We captured the OAuth link for you. It should open automatically inside the VM—use this fallback if needed:
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <code className="px-2 py-1 bg-background rounded font-mono text-xs break-all flex-1 min-w-[220px]">
+                                {oauthUrl.length > 120 ? `${oauthUrl.slice(0, 120)}…` : oauthUrl}
+                              </code>
+                              <Button size="sm" variant="outline" onClick={() => handleCopyToClipboard(oauthUrl)}>
+                                <Copy className="w-3 h-3 mr-2" />
+                                Copy URL
+                              </Button>
+                              <Button size="sm" onClick={handleOpenOAuthInNewTab}>
+                                Open in New Tab
+                                <ExternalLink className="w-3 h-3 ml-2" />
+                              </Button>
+                            </div>
                           </div>
                         )}
                       </div>
