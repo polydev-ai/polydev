@@ -287,7 +287,18 @@ function scheduleVMHealthCheck() {
           const vmData = vmManager.activeVMs.get(vm.vm_id);
 
           if (!vmData || !vmData.proc || vmData.proc.killed) {
-            // VM crashed, mark as failed
+            // Before marking as failed, check if VM has active sessions
+            const hasActiveSessions = vmManager.hasActiveSession(vm.vm_id);
+
+            if (hasActiveSessions) {
+              logger.warn('VM appears crashed but has active sessions, keeping alive', {
+                vmId: vm.vm_id,
+                userId: vm.user_id
+              });
+              continue;
+            }
+
+            // VM crashed and no active sessions, mark as failed
             await db.vms.updateStatus(vm.vm_id, 'failed');
             vmManager.activeVMs.delete(vm.vm_id);
 
