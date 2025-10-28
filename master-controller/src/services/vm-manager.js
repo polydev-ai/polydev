@@ -1238,7 +1238,7 @@ WantedBy=multi-user.target
   async scheduleVMCleanup(vmId, sessionId, delayMs) {
     const cleanupAt = new Date(Date.now() + delayMs);
 
-    const { error } = await supabase.from('vm_cleanup_tasks').insert({
+    const { error } = await db.supabase.from('vm_cleanup_tasks').insert({
       vm_id: vmId,
       session_id: sessionId,
       cleanup_at: cleanupAt.toISOString(),
@@ -1268,7 +1268,7 @@ WantedBy=multi-user.target
     const now = new Date().toISOString();
 
     // Find all pending cleanup tasks that are due
-    const { data: tasks, error } = await supabase
+    const { data: tasks, error } = await db.supabase
       .from('vm_cleanup_tasks')
       .select('*')
       .eq('status', 'pending')
@@ -1289,7 +1289,7 @@ WantedBy=multi-user.target
     for (const task of tasks) {
       try {
         // Mark as processing
-        await supabase
+        await db.supabase
           .from('vm_cleanup_tasks')
           .update({ status: 'processing' })
           .eq('id', task.id);
@@ -1303,7 +1303,7 @@ WantedBy=multi-user.target
         }
 
         // Mark as completed
-        await supabase
+        await db.supabase
           .from('vm_cleanup_tasks')
           .update({
             status: 'completed',
@@ -1324,7 +1324,7 @@ WantedBy=multi-user.target
         });
 
         // Mark as failed
-        await supabase
+        await db.supabase
           .from('vm_cleanup_tasks')
           .update({
             status: 'failed',
