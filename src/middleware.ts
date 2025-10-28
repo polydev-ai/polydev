@@ -20,6 +20,7 @@ export async function middleware(request: NextRequest) {
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
+    frame-src 'self' https://master.polydev.ai https://*.polydev.ai;
     connect-src 'self' https://us.i.posthog.com https://oxhutuxkthdxvciytwmb.supabase.co wss: ws:;
     upgrade-insecure-requests;
   `.replace(/\s{2,}/g, ' ').trim()
