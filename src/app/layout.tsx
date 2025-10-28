@@ -34,7 +34,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className="antialiased font-sans text-slate-900 bg-white selection:bg-slate-200 selection:text-slate-900">
+      <body className="antialiased font-sans text-slate-900 bg-white selection:bg-slate-200 selection:text-slate-900" suppressHydrationWarning>
         {/* <ProductionSafeRenderer /> */}
         <PostHogProvider>
           <Navigation />

@@ -218,7 +218,7 @@ async function handleStartCLIAuth(req, res, provider) {
           xauthority: cliEnv.XAUTHORITY
         });
 
-        // Create a wrapper script to ensure Firefox launches properly
+        // Create a wrapper script to ensure Firefox and xterm launch properly
         const wrapperScript = `
 #!/bin/bash
 export DISPLAY=${cliEnv.DISPLAY}
@@ -226,7 +226,7 @@ export HOME=${cliEnv.HOME}
 export XAUTHORITY=${cliEnv.XAUTHORITY}
 export LOGFILE="/tmp/firefox-launch.log"
 
-echo "Firefox launch starting at \$(date)" >> \$LOGFILE
+echo "Firefox and xterm launch starting at \$(date)" >> \$LOGFILE
 echo "DISPLAY=\$DISPLAY" >> \$LOGFILE
 echo "HOME=\$HOME" >> \$LOGFILE
 echo "XAUTHORITY=\$XAUTHORITY" >> \$LOGFILE
@@ -238,6 +238,13 @@ fi
 
 # Ensure Firefox doesn't have stale profile lock
 rm -rf "\$HOME/.mozilla/firefox"/*.default*/lock 2>/dev/null
+
+# Launch xterm first (terminal window)
+DISPLAY=\$DISPLAY xterm -geometry 80x24+0+0 &
+echo "xterm launched with PID \$!" >> \$LOGFILE
+
+# Wait a moment for xterm to start
+sleep 0.5
 
 # Launch Firefox
 exec /usr/bin/firefox "${oauthUrl}" >> \$LOGFILE 2>&1

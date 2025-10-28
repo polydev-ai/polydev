@@ -649,7 +649,6 @@ expect {
       HOME: process.env.HOME || '/root',
       BROWSER: captureScriptPath,  // Intercept browser launch URLs
       TERM: 'dumb',  // Disable terminal features like cursor position queries
-      CI: 'true',  // Signal CI environment to disable interactive prompts
       NO_COLOR: '1'  // Disable ANSI color codes
     },
     stdio: ['pipe', 'pipe', 'pipe']

@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    connect-src 'self' https://us.i.posthog.com wss: ws:;
+    connect-src 'self' https://us.i.posthog.com https://oxhutuxkthdxvciytwmb.supabase.co wss: ws:;
     upgrade-insecure-requests;
   `.replace(/\s{2,}/g, ' ').trim()
 

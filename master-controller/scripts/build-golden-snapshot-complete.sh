@@ -104,35 +104,10 @@ configure_system() {
 Name=eth0
 
 [Network]
-# First try DHCP
-DHCP=ipv4
-
-# Also accept static IP from kernel parameters
-LinkLocalAddressing=ipv6
-
-[DHCPv4]
-RouteMetric=100
-UseDNS=yes
-
-[IPv6AcceptRA]
-IPv6Token=::1
-EOF
-
-    # Create a fallback network config for static IP if DHCP fails
-    cat > rootfs/etc/systemd/network/20-eth0-fallback.network <<EOF
-[Match]
-Name=eth0
-
-[Network]
-# Fallback static IP (can be overridden by kernel ip= parameter)
-Address=${VM_IP}/24
-Gateway=${BRIDGE_IP}
-DNS=8.8.8.8
-DNS=8.8.4.4
-
-[Route]
-Destination=0.0.0.0/0
-Gateway=${BRIDGE_IP}
+KeepConfiguration=static
+DHCP=no
+LinkLocalAddressing=no
+IPv6AcceptRA=no
 EOF
 
     # Enable systemd-network-generator to process kernel parameters
@@ -156,6 +131,8 @@ DefaultDependencies=no
 Type=oneshot
 ExecStart=/usr/local/bin/setup-network-kernel-params.sh
 RemainAfterExit=yes
+StandardOutput=journal+console
+StandardError=journal+console
 
 [Install]
 WantedBy=multi-user.target
@@ -167,54 +144,167 @@ EOF
 # Parse kernel command line for ip= parameter and apply network config
 # Format: ip=<client-ip>:<server-ip>:<gw-ip>:<netmask>:<hostname>:<device>:<autoconf>
 
+set -x  # Enable debug output
+
+# Log to both file AND console using tee
+exec > >(tee -a /tmp/network-setup.log) 2>&1
+
+echo "=== Network Setup Script Started at $(date) ==="
+
+# Use absolute paths to network commands
+IP_CMD="/sbin/ip"
+if [ ! -x "$IP_CMD" ]; then
+    IP_CMD="/usr/sbin/ip"
+fi
+
+echo "Using ip command: $IP_CMD"
+
+# Show kernel command line
+echo "Kernel cmdline: $(cat /proc/cmdline)"
+
 # Check if ip parameter is set in kernel command line
 if grep -q "ip=" /proc/cmdline; then
-    ip_param=$(grep -oP 'ip=\S+' /proc/cmdline | head -1 | cut -d= -f2)
+    # Extract ip= parameter more robustly
+    ip_param=$(cat /proc/cmdline | tr ' ' '\n' | grep '^ip=' | head -1 | cut -d= -f2-)
+
+    echo "Found kernel IP parameter: $ip_param"
 
     if [ -n "$ip_param" ]; then
-        echo "Found kernel IP parameter: $ip_param" >> /tmp/network-setup.log
-
-        # Parse components
+        # Parse components using IFS
         IFS=':' read -r client_ip server_ip gw_ip netmask hostname device autoconf <<< "$ip_param"
 
-        # Only proceed if we have at least client_ip and gateway
-        if [ -n "$client_ip" ] && [ -n "$gw_ip" ] && [ -n "$device" ]; then
-            echo "Setting up $device: $client_ip gw $gw_ip" >> /tmp/network-setup.log
+        echo "Parsed values:"
+        echo "  client_ip: $client_ip"
+        echo "  server_ip: $server_ip"
+        echo "  gw_ip: $gw_ip"
+        echo "  netmask: $netmask"
+        echo "  hostname: $hostname"
+        echo "  device: $device"
+        echo "  autoconf: $autoconf"
 
-            # Bring up the interface
-            ip link set "$device" up
-
-            # Assign IP address
-            if [ -n "$netmask" ] && [ "$netmask" != "0.0.0.0" ]; then
-                # Convert netmask to CIDR notation if possible
-                ip addr add "$client_ip/$netmask" dev "$device" 2>/dev/null || \
-                ip addr add "$client_ip/24" dev "$device" 2>/dev/null
-            else
-                ip addr add "$client_ip/24" dev "$device"
-            fi
-
-            # Add default route via gateway
-            ip route add default via "$gw_ip" dev "$device" 2>/dev/null || true
-
-            echo "Network setup complete for $device at $(date)" >> /tmp/network-setup.log
+        # Only proceed if we have required values
+        if [ -z "$client_ip" ] || [ -z "$gw_ip" ] || [ -z "$device" ]; then
+            echo "ERROR: Missing required parameters (client_ip, gw_ip, or device)"
+            exit 1
         fi
+
+        echo "Setting up $device with IP $client_ip"
+
+        # Wait for device to appear (up to 30 seconds)
+        echo "Waiting for device $device to appear..."
+        for i in {1..60}; do
+            if $IP_CMD link show "$device" &>/dev/null; then
+                echo "Device $device found after $i attempts"
+                break
+            fi
+            if [ $i -eq 60 ]; then
+                echo "ERROR: Device $device not found after 30 seconds"
+                echo "Available devices:"
+                $IP_CMD link show
+                exit 1
+            fi
+            sleep 0.5
+        done
+
+        # Bring up the interface
+        echo "Bringing up $device..."
+        if ! $IP_CMD link set "$device" up; then
+            echo "ERROR: Failed to bring up $device"
+            exit 1
+        fi
+        echo "Device $device is UP"
+
+        # Assign IP address with /24 CIDR
+        echo "Assigning IP $client_ip/24 to $device..."
+        if ! $IP_CMD addr add "$client_ip/24" dev "$device"; then
+            echo "ERROR: Failed to assign IP address"
+            # Check if address already exists
+            if $IP_CMD addr show "$device" | grep -q "$client_ip"; then
+                echo "IP address already assigned, continuing..."
+            else
+                exit 1
+            fi
+        fi
+        echo "IP address assigned"
+
+        # Add default route via gateway
+        echo "Adding default route via $gw_ip..."
+        if ! $IP_CMD route add default via "$gw_ip" dev "$device" 2>/dev/null; then
+            echo "WARNING: Failed to add default route (may already exist)"
+            # Check if route exists
+            if $IP_CMD route show | grep -q "default via $gw_ip"; then
+                echo "Default route already exists, continuing..."
+            fi
+        else
+            echo "Default route added"
+        fi
+
+        # Verify configuration
+        echo "=== Final Network Configuration ==="
+        echo "Interface status:"
+        $IP_CMD link show "$device"
+        echo "IP addresses:"
+        $IP_CMD addr show "$device"
+        echo "Routes:"
+        $IP_CMD route show
+
+        echo "Testing connectivity to gateway $gw_ip..."
+        if /bin/ping -c 3 -W 1 "$gw_ip"; then
+            echo "Gateway ping succeeded"
+        else
+            echo "ERROR: Gateway ping failed"
+        fi
+
+        echo "Neighbor table ($device):"
+        $IP_CMD neigh show dev "$device"
+
+        echo "ARP table:"
+        /usr/sbin/arp -an || true
+
+        if [ -x /sbin/sysctl ]; then
+            echo "Kernel ARP / RP filter settings:"
+            /sbin/sysctl net.ipv4.conf.all.arp_ignore net.ipv4.conf.$device.arp_ignore \
+                net.ipv4.conf.all.arp_accept net.ipv4.conf.$device.arp_accept \
+                net.ipv4.conf.all.rp_filter net.ipv4.conf.$device.rp_filter \
+                net.ipv4.conf.all.proxy_arp net.ipv4.conf.$device.proxy_arp 2>/dev/null || true
+        fi
+
+        echo "=== Network setup complete at $(date) ==="
+
+        exit 0
+    else
+        echo "ERROR: Empty ip parameter extracted from cmdline"
+        exit 1
     fi
 else
-    echo "No kernel IP parameter found, relying on DHCP" >> /tmp/network-setup.log
+    echo "No kernel IP parameter found, relying on DHCP/systemd-networkd"
+    echo "This is normal if using DHCP mode"
+    exit 0
 fi
 EOF
     chmod +x rootfs/usr/local/bin/setup-network-kernel-params.sh
 
-    # DNS resolution - use systemd-resolved
-    echo "nameserver 8.8.8.8" > rootfs/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> rootfs/etc/resolv.conf
+    # DNS resolution - use static resolv.conf (disable systemd-resolved for microVMs)
+    # Remove symlink if it exists
+    rm -f rootfs/etc/resolv.conf
+
+    # Create static resolv.conf with Google DNS
+    cat > rootfs/etc/resolv.conf <<'RESOLV_EOF'
+# Static DNS configuration for Firecracker microVM
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+options edns0
+RESOLV_EOF
+
+    # Make it immutable during build (will be writable in running VM)
+    chmod 644 rootfs/etc/resolv.conf
 
     # Root password
     chroot rootfs /bin/bash -c "echo 'root:polydev' | chpasswd"
 
-    # Enable network services
+    # Enable network services (but NOT systemd-resolved - using static DNS)
     chroot rootfs systemctl enable systemd-networkd
-    chroot rootfs systemctl enable systemd-resolved
+    chroot rootfs systemctl disable systemd-resolved 2>/dev/null || true
     chroot rootfs systemctl enable setup-network-kernel-params.service 2>/dev/null || true
 
     log_info "System configured with network support"
@@ -247,6 +337,26 @@ install_packages() {
     log_info "Node.js ${NODE_VERSION} installed"
 
     log_info "Base packages installed"
+}
+
+# Install CLI tools (Claude, Codex, Gemini)
+install_cli_tools() {
+    log_info "Installing CLI tools..."
+
+    # Install Node-based CLIs
+    chroot rootfs npm install -g @anthropic-ai/claude-code
+    chroot rootfs npm install -g @openai/codex
+    chroot rootfs npm install -g @google/gemini-cli
+    chroot rootfs npm install -g puppeteer
+
+    # Dependencies for Chromium/Puppeteer headless usage
+    chroot rootfs apt-get install -y \
+        libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 \
+        libcups2 libdbus-1-3 libdrm2 libgbm1 libgtk-3-0 libnspr4 \
+        libnss3 libwayland-client0 libxcomposite1 libxdamage1 \
+        libxfixes3 libxkbcommon0 libxrandr2 xdg-utils
+
+    log_info "CLI tools installed"
 }
 
 # Install GUI and VNC
@@ -465,6 +575,34 @@ cleanup_rootfs() {
     log_info "Cleanup complete"
 }
 
+# Finalize DNS configuration (MUST run after all packages installed)
+finalize_dns() {
+    log_info "Finalizing DNS configuration..."
+
+    # Remove any existing resolv.conf (could be symlink or file)
+    rm -f rootfs/etc/resolv.conf
+
+    # Create static resolv.conf with Google DNS (NOT a symlink)
+    cat > rootfs/etc/resolv.conf <<'RESOLV_EOF'
+# Static DNS configuration for Firecracker microVM
+# DO NOT SYMLINK - This must be a regular file
+nameserver 8.8.8.8
+nameserver 8.8.4.4
+options edns0
+RESOLV_EOF
+
+    # Make it a regular file with correct permissions
+    chmod 644 rootfs/etc/resolv.conf
+
+    # Verify it's a regular file (not symlink)
+    if [ -L "rootfs/etc/resolv.conf" ]; then
+        log_error "resolv.conf is still a symlink after finalization!"
+        exit 1
+    fi
+
+    log_info "DNS finalized - static Google DNS (8.8.8.8, 8.8.4.4)"
+}
+
 # Get kernel
 get_kernel() {
     log_info "Getting kernel..."
@@ -509,10 +647,12 @@ main() {
     bootstrap_ubuntu
     configure_system
     install_packages
+    install_cli_tools
     install_vnc
     install_browsers
     install_browser_agent
     cleanup_rootfs
+    finalize_dns
     get_kernel
     create_snapshot
 

@@ -23,21 +23,61 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const response = await fetch(`${MASTER_CONTROLLER_URL}/api/auth/session/${sessionId}/oauth-url`, {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': user.id,
-      },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(120000), // 2 minute timeout for polling
-      // @ts-ignore - undici agent not in standard fetch types
-      dispatcher: longLivedAgent
-    });
+    let response: Response | null = null;
+    let rawBody = '';
 
-    const text = await response.text();
-    console.log(`[OAuth URL Proxy] Status: ${response.status}, Response: ${text.substring(0, 200)}`);
+    try {
+      response = await fetch(`${MASTER_CONTROLLER_URL}/api/auth/session/${sessionId}/oauth-url`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(120000), // 2 minute timeout for polling
+        // @ts-ignore - undici agent not in standard fetch types
+        dispatcher: longLivedAgent
+      });
 
-    return new NextResponse(text, {
+      rawBody = await response.text();
+      console.log(`[OAuth URL Proxy] Status: ${response.status}, Response: ${rawBody.substring(0, 200)}`);
+    } catch (fetchError: any) {
+      console.warn('[OAuth URL Proxy] Fetch error, treating as pending', {
+        sessionId,
+        message: fetchError?.message,
+        code: fetchError?.code
+      });
+
+      return NextResponse.json(
+        {
+          waiting: true,
+          message: 'Waiting for CLI to generate OAuth URL...'
+        },
+        { status: 202 }
+      );
+    }
+
+    if (!response) {
+      return NextResponse.json(
+        {
+          waiting: true,
+          message: 'Waiting for CLI to generate OAuth URL...'
+        },
+        { status: 202 }
+      );
+    }
+
+    // Treat 404/500/empty responses from the master controller as "not ready yet"
+    if (!response.ok || !rawBody) {
+      return NextResponse.json(
+        {
+          waiting: true,
+          message: 'Waiting for CLI to generate OAuth URL...'
+        },
+        { status: 202 }
+      );
+    }
+
+    return new NextResponse(rawBody, {
       status: response.status,
       headers: {
         'Content-Type': response.headers.get('content-type') || 'application/json',
