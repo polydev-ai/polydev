@@ -69,6 +69,14 @@ class BrowserVMAuth {
           browserVMId: browserVM.vmId,
           browserVMIP: browserVM.ipAddress
         });
+
+        // Associate session with VM for stability tracking
+        await vmManager.associateSessionWithVM(sessionId, browserVM.vmId, browserVM.ipAddress);
+        logger.info('Session associated with browser VM', {
+          sessionId,
+          browserVMId: browserVM.vmId,
+          browserVMIP: browserVM.ipAddress
+        });
       } catch (vmCreateError) {
         logger.error('BROWSER VM CREATION FAILED', {
           userId,
@@ -164,6 +172,13 @@ class BrowserVMAuth {
           await vmManager.destroyVM(browserVM.vmId).catch(err =>
             logger.warn('Failed to cleanup browser VM', { error: err.message })
           );
+
+          // Remove session mapping after VM is destroyed
+          if (authSession?.session_id) {
+            await vmManager.removeSessionMapping(authSession.session_id).catch(err =>
+              logger.warn('Failed to remove session mapping on error cleanup', { error: err.message })
+            );
+          }
         }
       }
 
@@ -247,6 +262,14 @@ class BrowserVMAuth {
                 logger.warn('Failed to cleanup browser VM', {
                   sessionId,
                   vmId: browserVM.vmId,
+                  error: err.message
+                })
+              );
+
+              // Remove session mapping after VM is destroyed
+              await vmManager.removeSessionMapping(sessionId).catch(err =>
+                logger.warn('Failed to remove session mapping', {
+                  sessionId,
                   error: err.message
                 })
               );
