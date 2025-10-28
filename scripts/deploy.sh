@@ -167,8 +167,11 @@ deploy_master_controller() {
         killall -9 node 2>/dev/null || true
         sleep 2
         nohup node src/index.js > /var/log/polydev/master-controller.log 2>&1 &
-        sleep 10
     " | tee -a "$LOG_FILE"
+
+    # Wait for process to start and service to be ready
+    log "Waiting for service to initialize..."
+    sleep 15
 
     log "Master Controller deployed"
 }
