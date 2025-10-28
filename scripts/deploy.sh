@@ -151,11 +151,12 @@ deploy_master_controller() {
         return
     fi
 
-    # Sync files (excluding node_modules)
+    # Sync files (excluding node_modules and .env to preserve production config)
     rsync -avz --delete \
         --exclude 'node_modules' \
         --exclude '.git' \
         --exclude 'logs' \
+        --exclude '.env' \
         -e "sshpass -p '$DEPLOY_PASSWORD' ssh -o StrictHostKeyChecking=no" \
         ./master-controller/ "$DEPLOY_USER@$DEPLOY_SERVER:$MASTER_CONTROLLER_PATH/" | tee -a "$LOG_FILE"
 
