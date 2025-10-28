@@ -72,6 +72,72 @@ router.get('/session/:sessionId', async (req, res) => {
 });
 
 /**
+ * GET /api/auth/session/:sessionId/vm
+ * Get VM information for a session (session-to-VM mapping)
+ */
+router.get('/session/:sessionId/vm', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { vmManager } = require('../services/vm-manager');
+
+    logger.info('[SESSION-VM-LOOKUP] Looking up VM for session', { sessionId });
+
+    const vmInfo = await vmManager.getVMForSession(sessionId);
+
+    if (!vmInfo) {
+      logger.warn('[SESSION-VM-LOOKUP] Session not found', { sessionId });
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Verify VM still exists
+    const vmData = await vmManager.listVMs({ vm_id: vmInfo.vmId });
+    if (!vmData || vmData.length === 0 || vmData[0].status === 'destroyed') {
+      logger.warn('[SESSION-VM-LOOKUP] VM no longer exists', {
+        sessionId,
+        vmId: vmInfo.vmId
+      });
+      return res.status(410).json({ error: 'VM no longer exists' });
+    }
+
+    logger.info('[SESSION-VM-LOOKUP] Session found', {
+      sessionId,
+      vmId: vmInfo.vmId,
+      vmIP: vmInfo.vmIP
+    });
+
+    res.json(vmInfo);
+  } catch (error) {
+    logger.error('[SESSION-VM-LOOKUP] Failed to lookup VM for session', {
+      sessionId: req.params.sessionId,
+      error: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/auth/session/:sessionId/heartbeat
+ * Update session heartbeat to keep VM alive
+ */
+router.post('/session/:sessionId/heartbeat', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const { vmManager } = require('../services/vm-manager');
+
+    await vmManager.updateSessionHeartbeat(sessionId);
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('[SESSION-HEARTBEAT] Failed to update heartbeat', {
+      sessionId: req.params.sessionId,
+      error: error.message
+    });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /api/auth/session/:sessionId/oauth-url
  * Proxy OAuth URL requests through the master controller
  */

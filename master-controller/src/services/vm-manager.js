@@ -19,6 +19,7 @@ class VMManager {
     this.ipPool = new Set(); // Available IPs from pool
     this.usedIPs = new Map(); // vmId -> IP
     this.tapDevices = new Map(); // vmId -> tap device name
+    this.sessionVMMap = new Map(); // sessionId -> { vmId, vmIP, created, lastHeartbeat }
     this.initPromise = this.initializeIPPool(); // Track initialization promise
   }
 
@@ -1068,6 +1069,167 @@ WantedBy=multi-user.target
    */
   async updateHeartbeat(vmId, cpuUsage, memoryUsage) {
     await db.vms.updateHeartbeat(vmId, cpuUsage, memoryUsage);
+  }
+
+  /**
+   * Associate session with VM
+   */
+  async associateSessionWithVM(sessionId, vmId, vmIP) {
+    const sessionInfo = {
+      vmId,
+      vmIP,
+      created: Date.now(),
+      lastHeartbeat: Date.now()
+    };
+
+    // Store in memory
+    this.sessionVMMap.set(sessionId, sessionInfo);
+
+    // Store in database
+    try {
+      await db.client
+        .from('oauth_sessions')
+        .upsert({
+          session_id: sessionId,
+          vm_id: vmId,
+          vm_ip: vmIP,
+          status: 'active',
+          last_heartbeat: new Date().toISOString()
+        }, {
+          onConflict: 'session_id'
+        });
+
+      logger.info('[SESSION-MAPPING] Session associated with VM', {
+        sessionId,
+        vmId,
+        vmIP
+      });
+    } catch (error) {
+      logger.error('[SESSION-MAPPING] Failed to store session in database', {
+        sessionId,
+        vmId,
+        error: error.message
+      });
+      // Keep in-memory mapping even if DB fails
+    }
+
+    return sessionInfo;
+  }
+
+  /**
+   * Get VM info for session
+   */
+  async getVMForSession(sessionId) {
+    // Try in-memory first
+    let vmInfo = this.sessionVMMap.get(sessionId);
+
+    if (vmInfo) {
+      logger.debug('[SESSION-MAPPING] Session found in memory', { sessionId, vmId: vmInfo.vmId });
+      return vmInfo;
+    }
+
+    // Fallback to database
+    try {
+      const { data, error } = await db.client
+        .from('oauth_sessions')
+        .select('*')
+        .eq('session_id', sessionId)
+        .single();
+
+      if (error) {
+        logger.error('[SESSION-MAPPING] Database query error', {
+          sessionId,
+          error: error.message
+        });
+        return null;
+      }
+
+      if (data) {
+        vmInfo = {
+          vmId: data.vm_id,
+          vmIP: data.vm_ip,
+          created: new Date(data.created_at).getTime(),
+          lastHeartbeat: new Date(data.last_heartbeat || data.updated_at).getTime()
+        };
+
+        // Update in-memory cache
+        this.sessionVMMap.set(sessionId, vmInfo);
+
+        logger.info('[SESSION-MAPPING] Session found in database, cached', {
+          sessionId,
+          vmId: vmInfo.vmId
+        });
+
+        return vmInfo;
+      }
+    } catch (error) {
+      logger.error('[SESSION-MAPPING] Failed to query database for session', {
+        sessionId,
+        error: error.message,
+        stack: error.stack
+      });
+    }
+
+    logger.warn('[SESSION-MAPPING] Session not found', { sessionId });
+    return null;
+  }
+
+  /**
+   * Update session heartbeat
+   */
+  async updateSessionHeartbeat(sessionId) {
+    const vmInfo = this.sessionVMMap.get(sessionId);
+    if (vmInfo) {
+      vmInfo.lastHeartbeat = Date.now();
+
+      // Update database
+      try {
+        await db.client
+          .from('oauth_sessions')
+          .update({ last_heartbeat: new Date().toISOString() })
+          .eq('session_id', sessionId);
+
+        logger.debug('[SESSION-MAPPING] Heartbeat updated', { sessionId });
+      } catch (error) {
+        logger.warn('[SESSION-MAPPING] Failed to update heartbeat in database', {
+          sessionId,
+          error: error.message
+        });
+      }
+    }
+  }
+
+  /**
+   * Remove session mapping
+   */
+  async removeSessionMapping(sessionId) {
+    this.sessionVMMap.delete(sessionId);
+
+    try {
+      await db.client
+        .from('oauth_sessions')
+        .update({ status: 'closed' })
+        .eq('session_id', sessionId);
+
+      logger.info('[SESSION-MAPPING] Session mapping removed', { sessionId });
+    } catch (error) {
+      logger.warn('[SESSION-MAPPING] Failed to update session status in database', {
+        sessionId,
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Check if session has active VM
+   */
+  hasActiveSession(vmId) {
+    for (const [sessionId, vmInfo] of this.sessionVMMap.entries()) {
+      if (vmInfo.vmId === vmId) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 
