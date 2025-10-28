@@ -1231,6 +1231,128 @@ WantedBy=multi-user.target
     }
     return false;
   }
+
+  /**
+   * Schedule VM cleanup in database (survives restarts)
+   */
+  async scheduleVMCleanup(vmId, sessionId, delayMs) {
+    const cleanupAt = new Date(Date.now() + delayMs);
+
+    const { error } = await supabase.from('vm_cleanup_tasks').insert({
+      vm_id: vmId,
+      session_id: sessionId,
+      cleanup_at: cleanupAt.toISOString(),
+      status: 'pending'
+    });
+
+    if (error) {
+      logger.error('Failed to schedule VM cleanup in database', {
+        vmId,
+        sessionId,
+        error: error.message
+      });
+      throw error;
+    }
+
+    logger.info('Scheduled VM cleanup in database', {
+      vmId,
+      sessionId,
+      cleanupAt: cleanupAt.toISOString()
+    });
+  }
+
+  /**
+   * Process pending VM cleanup tasks (called on startup and periodically)
+   */
+  async processCleanupTasks() {
+    const now = new Date().toISOString();
+
+    // Find all pending cleanup tasks that are due
+    const { data: tasks, error } = await supabase
+      .from('vm_cleanup_tasks')
+      .select('*')
+      .eq('status', 'pending')
+      .lte('cleanup_at', now)
+      .order('cleanup_at', { ascending: true });
+
+    if (error) {
+      logger.error('Failed to fetch cleanup tasks', { error: error.message });
+      return;
+    }
+
+    if (!tasks || tasks.length === 0) {
+      return;
+    }
+
+    logger.info(`Processing ${tasks.length} pending VM cleanup tasks`);
+
+    for (const task of tasks) {
+      try {
+        // Mark as processing
+        await supabase
+          .from('vm_cleanup_tasks')
+          .update({ status: 'processing' })
+          .eq('id', task.id);
+
+        // Destroy the VM
+        await this.destroyVM(task.vm_id);
+
+        // Remove session mapping
+        if (task.session_id) {
+          await this.removeSessionMapping(task.session_id);
+        }
+
+        // Mark as completed
+        await supabase
+          .from('vm_cleanup_tasks')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', task.id);
+
+        logger.info('Completed cleanup task', {
+          taskId: task.id,
+          vmId: task.vm_id,
+          sessionId: task.session_id
+        });
+      } catch (err) {
+        logger.error('Failed to process cleanup task', {
+          taskId: task.id,
+          vmId: task.vm_id,
+          error: err.message
+        });
+
+        // Mark as failed
+        await supabase
+          .from('vm_cleanup_tasks')
+          .update({
+            status: 'failed',
+            error_message: err.message
+          })
+          .eq('id', task.id);
+      }
+    }
+  }
+
+  /**
+   * Start periodic cleanup task processor
+   */
+  startCleanupTaskProcessor() {
+    // Process cleanup tasks every 5 seconds
+    setInterval(() => {
+      this.processCleanupTasks().catch(err =>
+        logger.error('Cleanup task processor error', { error: err.message })
+      );
+    }, 5000);
+
+    // Also process on startup to handle tasks from before restart
+    this.processCleanupTasks().catch(err =>
+      logger.error('Startup cleanup task processing failed', { error: err.message })
+    );
+
+    logger.info('Started VM cleanup task processor (5s interval)');
+  }
 }
 
 // Singleton instance

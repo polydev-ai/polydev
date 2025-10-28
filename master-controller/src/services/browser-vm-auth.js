@@ -246,9 +246,9 @@ class BrowserVMAuth {
               finalStatus
             });
           } else {
-            // Give frontend time to retrieve credentials before destroying VM
-            // 30s for successful OAuth, 5s for failures
-            const gracePeriodMs = finalStatus === 'completed' ? 30000 : 5000;
+            // Browser VMs should be destroyed immediately after OAuth completes
+            // Frontend has already retrieved credentials at this point
+            const gracePeriodMs = finalStatus === 'completed' ? 3000 : 1000;
 
             logger.info('Scheduling browser VM cleanup', {
               sessionId,
@@ -257,6 +257,16 @@ class BrowserVMAuth {
               gracePeriodMs
             });
 
+            // Store cleanup task in database to survive restarts
+            await vmManager.scheduleVMCleanup(browserVM.vmId, sessionId, gracePeriodMs).catch(err =>
+              logger.warn('Failed to schedule VM cleanup in database', {
+                sessionId,
+                vmId: browserVM.vmId,
+                error: err.message
+              })
+            );
+
+            // Also use setTimeout as immediate cleanup (but db is backup)
             setTimeout(async () => {
               await vmManager.destroyVM(browserVM.vmId).catch(err =>
                 logger.warn('Failed to cleanup browser VM', {

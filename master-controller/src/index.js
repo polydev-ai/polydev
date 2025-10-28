@@ -23,6 +23,8 @@ const metricsRoutes = require('./routes/metrics');
 // Import background tasks
 const backgroundTasks = require('./tasks/background');
 
+const VNC_PORT = parseInt(process.env.VNC_PORT || '5901', 10);
+
 const app = express();
 const server = http.createServer(app);
 
@@ -132,16 +134,15 @@ wss.on('connection', (ws, req) => {
     const { sessionId, vmIP } = req._novncSession;
     logger.info('noVNC WebSocket connected', { clientIP, sessionId, vmIP });
 
-    // Connect to x11vnc on port 5900
     const net = require('net');
-    const vncSocket = net.connect(5900, vmIP);
+    const vncSocket = net.connect(VNC_PORT, vmIP);
 
     vncSocket.on('connect', () => {
-      logger.info('Connected to VNC server', { sessionId, vmIP });
+      logger.info('Connected to VNC server', { sessionId, vmIP, port: VNC_PORT });
     });
 
     vncSocket.on('error', (error) => {
-      logger.error('VNC socket error', { sessionId, vmIP, error: error.message });
+      logger.error('VNC socket error', { sessionId, vmIP, port: VNC_PORT, error: error.message });
       ws.close();
     });
 
@@ -356,6 +357,10 @@ async function start() {
 
     // Start background tasks
     await backgroundTasks.start();
+
+    // Start VM cleanup task processor
+    const { vmManager } = require('./services/vm-manager');
+    vmManager.startCleanupTaskProcessor();
 
     // Start HTTP server
     server.listen(config.server.port, config.server.host, () => {
