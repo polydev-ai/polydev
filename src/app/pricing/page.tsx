@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -347,7 +348,7 @@ export default function Pricing() {
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {features.map((category, categoryIndex) => (
-                    <>
+                    <React.Fragment key={`category-group-${categoryIndex}`}>
                       <tr key={`category-${categoryIndex}`}>
                         <td
                           colSpan={5}
@@ -375,7 +376,7 @@ export default function Pricing() {
                           </td>
                         </tr>
                       ))}
-                    </>
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
