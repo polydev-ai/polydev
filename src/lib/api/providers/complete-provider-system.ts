@@ -1009,7 +1009,10 @@ export class UniversalProviderHandler {
 
   private prepareHeaders(config: ProviderConfig, options: ApiHandlerOptions): Record<string, string> {
     const headers: Record<string, string> = {}
-    
+
+    // DEBUG: Log the options object to see if apiKey is present
+    console.log(`[prepareHeaders] Provider: ${config.id}, options.apiKey present:`, !!options.apiKey, 'apiKey length:', options.apiKey?.length || 0)
+
     Object.entries(config.headers).forEach(([key, value]) => {
       if (typeof value === 'function') {
         headers[key] = value(options)
@@ -1017,7 +1020,17 @@ export class UniversalProviderHandler {
         headers[key] = value
       }
     })
-    
+
+    // DEBUG: Log the prepared headers (mask the actual key value)
+    const maskedHeaders = { ...headers }
+    if (maskedHeaders['x-api-key']) {
+      maskedHeaders['x-api-key'] = maskedHeaders['x-api-key'] ? `***${maskedHeaders['x-api-key'].slice(-4)}` : '(empty)'
+    }
+    if (maskedHeaders['Authorization']) {
+      maskedHeaders['Authorization'] = maskedHeaders['Authorization'] ? `***${maskedHeaders['Authorization'].slice(-8)}` : '(empty)'
+    }
+    console.log(`[prepareHeaders] Provider: ${config.id}, prepared headers:`, maskedHeaders)
+
     return headers
   }
 

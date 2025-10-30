@@ -47,15 +47,32 @@ export async function POST(request: NextRequest) {
     let planKey: string
 
     if (tier === 'plus') {
+      if (!config.subscription_pricing?.plus_tier) {
+        console.error('[Subscription] Plus tier configuration not found in database')
+        return NextResponse.json({ error: 'Plus tier configuration not found' }, { status: 500 })
+      }
       priceId = interval === 'year'
         ? config.subscription_pricing.plus_tier.stripe_price_id_annual
         : config.subscription_pricing.plus_tier.stripe_price_id_monthly
       planKey = 'plus'
     } else if (tier === 'pro') {
+      if (!config.subscription_pricing?.pro_tier) {
+        console.error('[Subscription] Pro tier configuration not found in database')
+        return NextResponse.json({ error: 'Pro tier configuration not found' }, { status: 500 })
+      }
       priceId = interval === 'year'
         ? config.subscription_pricing.pro_tier.stripe_price_id_annual
         : config.subscription_pricing.pro_tier.stripe_price_id_monthly
       planKey = 'pro'
+    } else if (tier === 'enterprise') {
+      if (!config.subscription_pricing?.enterprise_tier) {
+        console.error('[Subscription] Enterprise tier configuration not found in database')
+        return NextResponse.json({ error: 'Enterprise tier configuration not found. Please contact support.' }, { status: 500 })
+      }
+      priceId = interval === 'year'
+        ? config.subscription_pricing.enterprise_tier.stripe_price_id_annual
+        : config.subscription_pricing.enterprise_tier.stripe_price_id_monthly
+      planKey = 'enterprise'
     } else {
       return NextResponse.json({ error: 'Invalid tier specified' }, { status: 400 })
     }

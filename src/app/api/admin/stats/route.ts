@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
     const externalIP = process.env.VPS_PUBLIC_IP || '135.181.138.102';
 
     return NextResponse.json({
+      success: true,
       stats: {
         // User stats
         total_users: totalUsers || 0,

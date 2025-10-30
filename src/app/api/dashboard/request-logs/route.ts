@@ -292,12 +292,32 @@ export async function GET(request: NextRequest) {
           const rawProviderCost = parseFloat(cost as string)
           const filteredProviderCost = rawProviderCost > 10 ? 0 : rawProviderCost
 
+          // FIXED: Calculate per-provider tokens with multiple fallback strategies
+          let providerTokens = 0
+
+          // Strategy 1: Use explicit tokens from response
+          if (response?.tokens_used || response?.total_tokens) {
+            providerTokens = response.tokens_used || response.total_tokens
+          }
+          // Strategy 2: Calculate proportionally based on cost share
+          else if (log.total_tokens && rawCost > 0) {
+            const totalCost = Object.values(providerCosts).reduce((sum: number, c: any) => sum + parseFloat(c || '0'), 0)
+            if (totalCost > 0) {
+              providerTokens = Math.round(log.total_tokens * (rawProviderCost / totalCost))
+            }
+          }
+          // Strategy 3: Distribute equally if no cost data
+          else if (log.total_tokens) {
+            const providerCount = Object.keys(providerCosts).length
+            providerTokens = Math.round(log.total_tokens / Math.max(providerCount, 1))
+          }
+
           return {
             provider: getProviderDisplayName(correctProvider),
             model: modelName,
             cost: filteredProviderCost,
             latency,
-            tokens: response?.tokens_used || 0,
+            tokens: providerTokens,
             success: !!response,
             response: response?.content || null,
             fullResponse: response || null,

@@ -5,7 +5,8 @@ import { subscriptionManager } from '../../../lib/subscriptionManager'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  let next = searchParams.get('next') ?? '/dashboard'
+  // Check both 'next' and 'redirectTo' parameters for backward compatibility
+  let next = searchParams.get('redirectTo') ?? searchParams.get('next') ?? '/dashboard'
 
   // Ensure next parameter is valid
   if (!next || next === 'undefined' || next === 'null') {
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     next = '/dashboard'
   }
 
-  console.log('[Auth Callback] Redirect parameters:', { code: !!code, next })
+  console.log('[Auth Callback] Redirect parameters:', { code: !!code, next, redirectTo: searchParams.get('redirectTo') })
 
   if (code) {
     const supabase = await createClient()

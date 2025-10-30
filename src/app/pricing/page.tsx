@@ -25,6 +25,12 @@ interface PricingConfig {
       price_display_annual: string
       features: string[]
     }
+    enterprise_tier: {
+      name: string
+      price_display_monthly: string
+      price_display_annual: string
+      features: string[]
+    }
   }
 }
 
@@ -108,15 +114,15 @@ export default function Pricing() {
     },
     {
       name: config?.subscription_pricing.pro_tier.name || 'Pro',
-      price: config?.subscription_pricing.pro_tier.price_display_monthly || '$60',
+      price: config?.subscription_pricing.pro_tier.price_display_monthly || '$35',
       period: '/month',
-      annualPrice: config?.subscription_pricing.pro_tier.price_display_annual || '$50',
+      annualPrice: config?.subscription_pricing.pro_tier.price_display_annual || '$30',
       description: 'For power users and teams',
       features: config?.subscription_pricing.pro_tier.features || [
         'Unlimited messages',
-        '1,200 Premium / 4,800 Normal / 10,000 Eco perspectives',
-        'Priority model access',
-        'Team collaboration features',
+        '600 Premium / 2,500 Normal / 8,000 Eco perspectives',
+        'All AI models access',
+        'Advanced analytics',
         'Priority support'
       ],
       cta: 'Upgrade to Pro',
@@ -128,6 +134,31 @@ export default function Pricing() {
           </svg>
         </div>
       )
+    },
+    {
+      name: config?.subscription_pricing.enterprise_tier?.name || 'Enterprise',
+      price: config?.subscription_pricing.enterprise_tier?.price_display_monthly || '$60',
+      period: '/month',
+      annualPrice: config?.subscription_pricing.enterprise_tier?.price_display_annual || '$50',
+      description: 'For large teams and organizations',
+      features: config?.subscription_pricing.enterprise_tier?.features || [
+        'Unlimited messages',
+        '1,200 Premium / 5,000 Normal / 20,000 Eco perspectives',
+        'All AI models access',
+        'Priority model access',
+        'Team collaboration features',
+        'Dedicated support',
+        'Custom integrations'
+      ],
+      cta: 'Upgrade to Enterprise',
+      highlighted: false,
+      icon: (
+        <div className="w-16 h-16 rounded-lg bg-slate-900 flex items-center justify-center">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+      )
     }
   ]
 
@@ -135,29 +166,39 @@ export default function Pricing() {
     {
       category: 'Usage & Access',
       items: [
-        { name: 'Monthly messages', free: '200 messages', plus: 'Unlimited', pro: 'Unlimited' },
-        { name: 'Premium perspectives', free: '10', plus: '400', pro: '1,200' },
-        { name: 'Normal perspectives', free: '40', plus: '1,600', pro: '4,800' },
-        { name: 'Eco perspectives', free: '150', plus: '4,000', pro: '10,000' },
-        { name: 'Model access', free: 'Top models', plus: 'All 340+ models', pro: 'All 340+ models' },
-        { name: 'Priority model access', free: false, plus: false, pro: true }
+        { name: 'Monthly messages', free: '200 messages', plus: 'Unlimited', pro: 'Unlimited', enterprise: 'Unlimited' },
+        { name: 'Premium perspectives', free: '10', plus: '400', pro: '600', enterprise: '1,200' },
+        { name: 'Normal perspectives', free: '40', plus: '1,600', pro: '2,500', enterprise: '5,000' },
+        { name: 'Eco perspectives', free: '150', plus: '4,000', pro: '8,000', enterprise: '20,000' },
+        { name: 'Model access', free: 'Top models', plus: 'All 340+ models', pro: 'All 340+ models', enterprise: 'All 340+ models' },
+        { name: 'Priority model access', free: false, plus: false, pro: false, enterprise: true }
       ]
     },
     {
       category: 'Integration & Memory',
       items: [
-        { name: 'Editor integration', free: 'Basic', plus: 'Advanced', pro: 'Advanced' },
-        { name: 'Project memory', free: 'Basic', plus: 'Advanced', pro: 'Encrypted + advanced' },
-        { name: 'Cost optimization', free: false, plus: true, pro: true },
-        { name: 'Usage analytics', free: false, plus: true, pro: true }
+        { name: 'Editor integration', free: 'Basic', plus: 'Advanced', pro: 'Advanced', enterprise: 'Advanced' },
+        { name: 'Project memory', free: 'Basic', plus: 'Advanced', pro: 'Encrypted + advanced', enterprise: 'Encrypted + advanced' },
+        { name: 'Cost optimization', free: false, plus: true, pro: true, enterprise: true },
+        { name: 'Usage analytics', free: false, plus: true, pro: true, enterprise: true }
+      ]
+    },
+    {
+      category: 'Privacy & Security',
+      items: [
+        { name: 'BYOK (Use your own API keys)', free: false, plus: true, pro: true, enterprise: true },
+        { name: 'Ephemeral Mode (requires BYOK)', free: false, plus: 'Opt-in', pro: 'Default ON', enterprise: 'Forced ON' },
+        { name: 'At-rest encryption (AES-256-GCM)', free: true, plus: true, pro: true, enterprise: true },
+        { name: 'AI provider data retention transparency', free: true, plus: true, pro: true, enterprise: true },
+        { name: 'Client-side conversation storage option', free: false, plus: true, pro: true, enterprise: true }
       ]
     },
     {
       category: 'Support & Collaboration',
       items: [
-        { name: 'Support level', free: 'Community', plus: 'Standard', pro: 'Priority' },
-        { name: 'Team features', free: false, plus: false, pro: true },
-        { name: 'Custom configurations', free: false, plus: false, pro: true }
+        { name: 'Support level', free: 'Community', plus: 'Standard', pro: 'Priority', enterprise: 'Dedicated' },
+        { name: 'Team features', free: false, plus: false, pro: true, enterprise: true },
+        { name: 'Custom configurations', free: false, plus: false, pro: true, enterprise: true }
       ]
     }
   ]
@@ -186,8 +227,8 @@ export default function Pricing() {
               <span className="text-slate-900">No surprises.</span>
             </h1>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-12 leading-relaxed">
-              Try for free with 200 messages, then upgrade to Plus for $25/month or Pro for $60/month.
-              Get annual pricing at $20/month (Plus) or $50/month (Pro). Access 340+ AI models seamlessly.
+              Try for free with 200 messages, then upgrade to Plus for $25/month, Pro for $35/month, or Enterprise for $60/month.
+              Get annual pricing at $20/month (Plus), $30/month (Pro), or $50/month (Enterprise). Access 340+ AI models seamlessly.
             </p>
           </div>
         </div>
@@ -195,8 +236,8 @@ export default function Pricing() {
 
       {/* Pricing Cards */}
       <section className="py-16 bg-white">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-4 gap-6 mb-16">
             {plans.map((plan, index) => (
               <div
                 key={index}
@@ -299,6 +340,9 @@ export default function Pricing() {
                     <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
                       Pro
                     </th>
+                    <th className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
+                      Enterprise
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -306,7 +350,7 @@ export default function Pricing() {
                     <>
                       <tr key={`category-${categoryIndex}`}>
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="px-6 py-4 bg-slate-50 text-sm font-bold text-slate-900"
                         >
                           {category.category}
@@ -325,6 +369,9 @@ export default function Pricing() {
                           </td>
                           <td className="px-6 py-4 text-sm text-center">
                             <FeatureValue value={item.pro} />
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <FeatureValue value={item.enterprise} />
                           </td>
                         </tr>
                       ))}
@@ -355,7 +402,7 @@ export default function Pricing() {
                 What happens after my 200 free messages?
               </h3>
               <p className="text-slate-600 leading-relaxed">
-                You'll be prompted to upgrade to Plus ($25/month) or Pro ($60/month) for unlimited access.
+                You'll be prompted to upgrade to Plus ($25/month), Pro ($35/month), or Enterprise ($60/month) for unlimited access.
                 No credit card required to start, and you can upgrade anytime to continue getting answers from multiple AI models.
               </p>
             </div>
@@ -365,7 +412,7 @@ export default function Pricing() {
                 Can I cancel anytime?
               </h3>
               <p className="text-slate-600 leading-relaxed">
-                Yes, you can cancel your Plus or Pro subscription at any time. You'll continue to have access
+                Yes, you can cancel your Plus, Pro, or Enterprise subscription at any time. You'll continue to have access
                 until the end of your billing period, then you'll return to the free plan.
               </p>
             </div>
@@ -392,11 +439,81 @@ export default function Pricing() {
 
             <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
               <h3 className="text-xl font-bold text-slate-900 mb-4">
-                Is my code and data secure?
+                What's the difference between BYOK and Ephemeral Mode?
               </h3>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>BYOK (Bring Your Own Keys):</strong> Use your own OpenAI/Anthropic/etc. API keys instead of Polydev's.
+                You pay the AI provider directly and get unlimited usage (no message limits). Available on Plus, Pro, and Enterprise tiers.
+              </p>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>Ephemeral Mode:</strong> When enabled with BYOK, conversations are NOT saved to our database.
+                Only usage metadata (tokens, costs) is tracked. Tier defaults: Plus (opt-in), Pro (default ON), Enterprise (forced ON).
+              </p>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>Client-Side Storage:</strong> Optional feature that saves conversations to your browser's localStorage
+                when using Ephemeral Mode. Data never leaves your machine.
+              </p>
               <p className="text-slate-600 leading-relaxed">
-                Yes. We use zero-knowledge encryption for project memory, and only minimal context
-                is shared when needed. Your code never leaves your machine without explicit permission.
+                <strong>Key point:</strong> Ephemeral Mode REQUIRES BYOK to work. When using Polydev's API keys,
+                conversations are always saved for billing tracking (encrypted at rest with AES-256-GCM).
+              </p>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                What privacy features do you offer?
+              </h3>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>At-Rest Encryption (All tiers):</strong> All data encrypted with AES-256-GCM. Protects against database breaches.
+              </p>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>AI Provider Transparency (All tiers):</strong> Clear information about data retention policies (OpenAI: 30 days, Anthropic: 7 days).
+              </p>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>BYOK (Plus+):</strong> Use your own API keys. You control provider relationships directly.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong>Ephemeral Mode (requires BYOK):</strong> Conversations NOT saved to database. Only usage metadata tracked.
+                Maximum privacy option available today.
+              </p>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                Can the server see my conversations?
+              </h3>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>Yes, we're honest about this.</strong> The server must see plaintext to route requests to AI providers,
+                handle billing, and execute MCP tool calls. This is NOT zero-knowledge encryption.
+              </p>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>What protects your data:</strong> At-rest encryption (AES-256-GCM), legal obligations, business reputation,
+                and audit logs. Trust model similar to Gmail/Outlook/Slack.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong>For maximum privacy:</strong> BYOK + Ephemeral Mode ensures conversations aren't saved to database.
+                For zero server trust, use local solutions like Cline.
+                <a href="/privacy" className="text-slate-900 font-semibold hover:underline ml-1">
+                  See full trust model →
+                </a>
+              </p>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-8 hover:shadow-lg transition-shadow">
+              <h3 className="text-xl font-bold text-slate-900 mb-4">
+                Do you offer zero-knowledge encryption?
+              </h3>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>No, not currently.</strong> Zero-knowledge encryption would mean the server cannot see your data at all,
+                even while routing requests. This isn't possible with our current architecture where we route to multiple AI providers.
+              </p>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                <strong>What we DO offer:</strong> BYOK + Ephemeral Mode is the closest alternative. Your conversations aren't saved,
+                and you control provider relationships directly. Data still passes through our server for routing.
+              </p>
+              <p className="text-slate-600 leading-relaxed">
+                <strong>For true zero-knowledge:</strong> Use local-only tools like Cline where nothing goes through a server.
+                We're exploring zero-knowledge options for future releases.
               </p>
             </div>
 

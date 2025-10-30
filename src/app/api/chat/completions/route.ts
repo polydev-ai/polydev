@@ -8,6 +8,7 @@ import { ResponseValidator } from '@/lib/api/utils/response-validator'
 import { computeCostUSD } from '@/utils/modelUtils'
 import { checkQuotaMiddleware, deductQuotaMiddleware, generateSessionId, extractUsageFromResponse, calculateEstimatedCost } from '@/lib/api/middleware/quota-middleware'
 import { getModelTier } from '@/lib/model-tiers'
+import { getMaxOutputTokens } from '@/lib/max-tokens-resolver'
 import { normalizeProviderName } from '@/lib/provider-utils'
 // OpenRouterManager available if we later switch to per-user keys
 
@@ -128,8 +129,8 @@ Just return the title, nothing else:`
 
 // Parse usage data from different API response formats
 function parseUsageData(response: any): any {
-  console.log(`[parseUsageData] Raw response:`, JSON.stringify(response, null, 2))
-  
+  // Privacy: No logging of raw responses to protect user data
+
   // Handle Google/Gemini streaming array format - get usage from last chunk
   if (Array.isArray(response) && response.length > 0) {
     console.log(`[parseUsageData] Processing Gemini streaming array with ${response.length} chunks`)
@@ -200,10 +201,12 @@ function parseUsageData(response: any): any {
   
   // Gemini format with usageMetadata (camelCase)
   if (response.usageMetadata) {
+    const promptTokens = response.usageMetadata.promptTokenCount || 0
+    const completionTokens = response.usageMetadata.candidatesTokenCount || 0
     const usage = {
-      prompt_tokens: response.usageMetadata.promptTokenCount || 0,
-      completion_tokens: response.usageMetadata.candidatesTokenCount || 0,
-      total_tokens: response.usageMetadata.totalTokenCount || 0
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      total_tokens: promptTokens + completionTokens  // Calculate instead of using totalTokenCount (which can be cached/wrong)
     }
     console.log(`[parseUsageData] Found Gemini usageMetadata format:`, usage)
     return usage
@@ -358,6 +361,18 @@ async function resolveProviderModelId(inputModelId: string, providerId: string):
   } catch (error) {
     console.warn(`Error resolving model ID for ${inputModelId} with provider ${providerId}:`, error)
     return inputModelId
+  }
+}
+
+/**
+ * Apply OpenAI-specific parameter transformations
+ * OpenAI's newer models require max_completion_tokens instead of maxTokens
+ */
+function applyOpenAIParameterTransform(apiOptions: any, provider: string): void {
+  if (provider === 'openai' && apiOptions.maxTokens !== undefined) {
+    apiOptions.max_completion_tokens = apiOptions.maxTokens
+    delete apiOptions.maxTokens
+    console.log('[OpenAI Transform] Using max_completion_tokens instead of maxTokens:', apiOptions.max_completion_tokens)
   }
 }
 
@@ -647,24 +662,7 @@ export async function POST(request: NextRequest) {
     // Build comprehensive provider configuration with separate CLI and API capabilities
     const providerConfigs: Record<string, { cli?: any, api?: any, admin?: any }> = {}
 
-    // Process CLI configurations
-    ;(cliConfigs || []).forEach(cli => {
-      const mappedProvider = cliProviderMappings[cli.provider]
-      if (mappedProvider) {
-        if (!providerConfigs[mappedProvider]) {
-          providerConfigs[mappedProvider] = {}
-        }
-        providerConfigs[mappedProvider].cli = {
-          type: 'cli',
-          priority: 1,
-          cliProvider: cli.provider,
-          customPath: cli.custom_path,
-          sourceType: 'user_cli'
-        }
-      }
-    })
-
-    // Process user API key configurations
+    // Process user API key configurations (HIGHEST PRIORITY - user's own keys)
     ;(apiKeys || []).forEach(key => {
       const providerKey = normalizeProviderName(key.provider)
 
@@ -673,7 +671,7 @@ export async function POST(request: NextRequest) {
       }
       providerConfigs[providerKey].api = {
         type: 'api',
-        priority: 2,
+        priority: 1,  // Changed from 2 to 1 - User keys have HIGHEST priority
         apiKey: atob(key.encrypted_key),
         baseUrl: key.api_base,
         keyId: key.id,
@@ -681,29 +679,53 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Process admin-provided API keys (priority 3 - before credits)
+    // Process admin-provided API keys (SECOND PRIORITY - admin keys before CLI)
     ;(adminKeys || []).forEach(key => {
       const providerKey = normalizeProviderName(key.provider)
+      const decryptedKey = atob(key.encrypted_key)
+
+      console.log(`[Admin Keys] Processing key for provider: ${key.provider} → normalized: ${providerKey}`)
+      console.log(`[Admin Keys]   encrypted_key length: ${key.encrypted_key?.length || 0}`)
+      console.log(`[Admin Keys]   decrypted key length: ${decryptedKey?.length || 0}`)
+      console.log(`[Admin Keys]   decrypted key preview: ${decryptedKey ? `***${decryptedKey.slice(-6)}` : '(empty)'}`)
 
       if (!providerConfigs[providerKey]) {
         providerConfigs[providerKey] = {}
       }
       providerConfigs[providerKey].admin = {
         type: 'admin',
-        priority: 3,
-        apiKey: atob(key.encrypted_key),
+        priority: 2,  // Changed from 3 to 2 - Admin keys have SECOND priority (after user keys, before CLI)
+        apiKey: decryptedKey,
         baseUrl: key.api_base,
         keyId: key.id,
         sourceType: 'admin_key'
       }
-      console.log(`[Admin Keys] Added admin config for provider: ${providerKey}`)
+      console.log(`[Admin Keys] ✓ Stored admin config for ${providerKey}, apiKey length: ${providerConfigs[providerKey].admin.apiKey?.length || 0}`)
+    })
+
+    // Process CLI configurations (THIRD PRIORITY - last resort after user and admin keys)
+    ;(cliConfigs || []).forEach(cli => {
+      const mappedProvider = cliProviderMappings[cli.provider]
+      if (mappedProvider) {
+        if (!providerConfigs[mappedProvider]) {
+          providerConfigs[mappedProvider] = {}
+        }
+        providerConfigs[mappedProvider].cli = {
+          type: 'cli',
+          priority: 3,  // Changed from 1 to 3 - CLI is now LAST RESORT (after user keys and admin keys)
+          cliProvider: cli.provider,
+          customPath: cli.custom_path,
+          sourceType: 'user_cli'
+        }
+      }
     })
 
     console.log('[Provider Configs] Final provider configs:', Object.keys(providerConfigs).map(p => ({
       provider: p,
       hasCli: !!providerConfigs[p].cli,
       hasApi: !!providerConfigs[p].api,
-      hasAdmin: !!providerConfigs[p].admin
+      hasAdmin: !!providerConfigs[p].admin,
+      adminApiKeyLength: providerConfigs[p].admin?.apiKey?.length || 0
     })))
     
     // PRIORITY 3: OpenRouter credits will be handled per-model in the loop below
@@ -725,8 +747,7 @@ export async function POST(request: NextRequest) {
     const getProviderSourceType = async (modelId: string): Promise<'cli' | 'user_key' | 'admin_key' | 'admin_credits' | null> => {
       const requiredProvider = await getProviderFromModel(modelId, supabase, user.id)
 
-      // Check in priority order
-      if (providerConfigs[requiredProvider]?.cli) return 'cli'
+      // Check in priority order: User API keys > Admin keys (CLI disabled)
       if (providerConfigs[requiredProvider]?.api) return 'user_key'
       if (providerConfigs[requiredProvider]?.admin) return 'admin_key'
 
@@ -863,56 +884,53 @@ export async function POST(request: NextRequest) {
     if (stream) {
       const encoder = new TextEncoder()
 
-      // Helper to choose provider + config for a model (CLI > User API > Admin API > OpenRouter credits)
+      // Helper to choose provider + config for a model
+      // Priority order: CLI (FREE, if available) > User API keys > Admin API keys
+      // OpenRouter credits DISABLED - we never fall back to credits
       const selectProviderForModel = async (modelId: string) => {
         const requiredProvider = await getProviderFromModel(modelId, supabase, user.id)
         let selectedProvider: string | null = null
         let selectedConfig: any = null
-        let fallbackMethod: 'cli' | 'api' | 'admin' | 'credits' = 'api'
+        let fallbackMethod: 'cli' | 'api' | 'admin' = 'api'
         let actualModelId = modelId
 
-        // Priority 1: CLI tools
+        // Priority 1: CLI tools (FREE, no API costs - highest priority when available)
+        // Note: CLI will only be selected if it has valid credentials (checked during request)
+        // If CLI fails with 401 or has no credentials, fallback handling will retry with next priority
         if (providerConfigs[requiredProvider]?.cli) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].cli
           fallbackMethod = 'cli'
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+          console.log(`[Selection] Selected CLI for ${requiredProvider} (FREE, will fallback to API/admin if CLI fails)`)
         }
 
-        // Priority 2: User API keys
+        // Priority 2: User API keys (user's own BYOK keys)
         if (!selectedProvider && providerConfigs[requiredProvider]?.api) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].api
           fallbackMethod = 'api'
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+          console.log(`[Selection] Selected user API key for ${requiredProvider}`)
         }
 
-        // Priority 3: Admin system API keys
+        // Priority 3: Admin system API keys (platform-provided Polydev keys)
         if (!selectedProvider && providerConfigs[requiredProvider]?.admin) {
+          console.log(`[Selection Debug] Selecting admin key for ${requiredProvider}:`, {
+            hasAdminConfig: !!providerConfigs[requiredProvider]?.admin,
+            adminConfigKeys: Object.keys(providerConfigs[requiredProvider]?.admin || {}),
+            adminApiKeyLength: providerConfigs[requiredProvider]?.admin?.apiKey?.length || 0,
+            adminApiKeyPreview: providerConfigs[requiredProvider]?.admin?.apiKey ? `***${providerConfigs[requiredProvider].admin.apiKey.slice(-6)}` : '(none)'
+          })
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].admin
           fallbackMethod = 'admin'
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
         }
 
-        // Special handling for OpenRouter
-        if (!selectedProvider && requiredProvider === 'openrouter' && providerConfigs['openrouter']?.api) {
-          selectedProvider = 'openrouter'
-          selectedConfig = providerConfigs['openrouter'].api
-          fallbackMethod = 'api'
-          actualModelId = await resolveProviderModelId(modelId, 'openrouter')
-        }
-
-        // Priority 4: OpenRouter credits (admin-provided fallback)
-        if (!selectedProvider && totalCredits > 0) {
-          const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
-          if (openrouterModelId !== modelId) {
-            selectedProvider = 'openrouter'
-            selectedConfig = { type: 'credits', priority: 4, apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '', baseUrl: 'https://openrouter.ai/api/v1', sourceType: 'admin_credits' }
-            fallbackMethod = 'credits'
-            actualModelId = openrouterModelId
-          }
-        }
+        // NOTE: OpenRouter credits are DISABLED - we never fall back to credits
+        // If no CLI, user API, or admin keys are available, the request will fail
+        // This prevents unexpected credit usage
 
         return { requiredProvider, selectedProvider, selectedConfig, fallbackMethod, actualModelId }
       }
@@ -946,6 +964,15 @@ export async function POST(request: NextRequest) {
                 return
               }
 
+              // DEBUG: Log selectedConfig to see why apiKey might be missing
+              console.log(`[API Options] Building options for ${friendlyModelId}:`, {
+                selectedProvider,
+                fallbackMethod,
+                hasApiKey: !!selectedConfig?.apiKey,
+                apiKeyLength: selectedConfig?.apiKey?.length || 0,
+                selectedConfigKeys: Object.keys(selectedConfig || {})
+              })
+
               // Build API options for streaming (clamp to model limits when available)
               let apiOptions: any = {
                 messages: messages.map((msg: any) => ({ role: msg.role, content: msg.content })),
@@ -965,11 +992,8 @@ export async function POST(request: NextRequest) {
                 }
               } catch {}
 
-              // GPT-5 quirk
-              if (friendlyModelId === 'gpt-5' || friendlyModelId.includes('gpt-5')) {
-                apiOptions.max_completion_tokens = apiOptions.maxTokens || max_tokens
-                delete apiOptions.maxTokens
-              }
+              // Apply OpenAI parameter transformations
+              applyOpenAIParameterTransform(apiOptions, selectedProvider)
 
               // Base URL mapping if present
               try {
@@ -1006,60 +1030,127 @@ export async function POST(request: NextRequest) {
               } catch (err: any) {
                 console.error(`[error] Stream start failed for ${selectedProvider} ${actualModelId}:`, err?.message || err)
 
-                // Check if this is a 401 error and we have credits available for retry
-                const is401Error = err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('No auth credentials')
-                if (is401Error && fallbackMethod !== 'credits' && totalCredits > 0) {
-                  console.log(`[401 Retry] Attempting to retry ${friendlyModelId} with credits after 401 error`)
+                // DISABLED: OpenRouter credits fallback - we never use credits
+                // Instead, when CLI fails with ANY error, fallback to user API or admin keys
+                if (fallbackMethod === 'cli') {
+                  // CLI failed - try to fallback to user API or admin keys
+                  console.log(`[CLI Retry] CLI failed for ${friendlyModelId}, attempting fallback to user API or admin keys`)
 
-                  try {
-                    // Try to get OpenRouter model ID for credits fallback
-                    const openrouterModelId = await resolveProviderModelId(friendlyModelId, 'openrouter')
-                    if (openrouterModelId !== friendlyModelId) {
-                      // Update to use credits
-                      selectedProvider = 'openrouter'
-                      selectedConfig = {
-                        type: 'credits',
-                        priority: 3,
-                        apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '',
-                        baseUrl: 'https://openrouter.ai/api/v1'
+                  let retrySuccess = false
+                  const requiredProvider = await getProviderFromModel(friendlyModelId, supabase, user.id)
+
+                  // Try user API keys first
+                  if (providerConfigs[requiredProvider]?.api) {
+                    try {
+                      console.log(`[401 Retry] Retrying ${friendlyModelId} with user API key`)
+                      selectedProvider = requiredProvider
+                      selectedConfig = providerConfigs[requiredProvider].api
+                      fallbackMethod = 'api'
+                      actualModelId = await resolveProviderModelId(friendlyModelId, requiredProvider)
+
+                      // Fetch model-specific max tokens from model_tiers table (respects admin configuration)
+                      let retryMaxTokens = max_tokens
+                      try {
+                        const maxTokensConfig = await getMaxOutputTokens(user.id, requiredProvider, actualModelId)
+                        retryMaxTokens = maxTokensConfig.maxOutputTokens
+                        console.log(`[401 Retry] Using ${maxTokensConfig.source} limit for ${actualModelId}: ${retryMaxTokens} tokens`)
+                      } catch (err) {
+                        console.error(`[401 Retry] Failed to fetch max tokens, using default: ${retryMaxTokens}`)
                       }
-                      fallbackMethod = 'credits'
-                      actualModelId = openrouterModelId
 
-                      // Update API options for credits retry
+                      // Rebuild API options with user key
                       apiOptions = {
                         messages: messages.map((msg: any) => ({ role: msg.role, content: msg.content })),
                         model: actualModelId,
                         temperature,
-                        maxTokens: max_tokens,
+                        maxTokens: retryMaxTokens,
                         stream: true,
                         apiKey: selectedConfig.apiKey,
                         metadata: { applicationName: 'https://www.polydev.ai', siteUrl: 'Polydev Multi-LLM Platform' }
                       }
 
-                      // Apply OpenAI-compatible streaming options for OpenRouter
-                      ;(apiOptions as any).streamOptions = { include_usage: true }
-                      ;(apiOptions as any).stream_options = { include_usage: true }
+                      // Apply provider-specific base URLs
+                      if (selectedConfig.baseUrl) {
+                        apiOptions.openAiBaseUrl = selectedConfig.baseUrl
+                      }
 
-                      console.log(`[401 Retry] Retrying ${friendlyModelId} -> ${actualModelId} on OpenRouter with credits`)
+                      // Apply OpenAI parameter transformations (must be BEFORE streamMessage call)
+                      applyOpenAIParameterTransform(apiOptions, selectedProvider)
+
+                      // For OpenAI-compatible providers, request usage in the final streamed chunk
+                      if (['openai','openrouter','groq','deepseek','mistral','xai'].includes(selectedProvider)) {
+                        (apiOptions as any).streamOptions = { include_usage: true }
+                        ;(apiOptions as any).stream_options = { include_usage: true }
+                      }
+
                       upstream = await apiManager.streamMessage(selectedProvider, apiOptions)
-
-                      // Update collected info to reflect the credits fallback
-                      collected[friendlyModelId].provider = selectedProvider
-                      collected[friendlyModelId].fallback = fallbackMethod
-                    } else {
-                      // No OpenRouter mapping available
-                      console.error(`[401 Retry] No OpenRouter mapping available for ${friendlyModelId}`)
-                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: `API key failed and no credits mapping available for ${friendlyModelId}`, provider: selectedProvider })}\n\n`))
-                      return
+                      retrySuccess = true
+                      console.log(`[401 Retry] Success! Retried ${friendlyModelId} with user API key`)
+                    } catch (retryErr: any) {
+                      console.error(`[401 Retry] User API key retry failed:`, retryErr?.message || retryErr)
                     }
-                  } catch (retryErr: any) {
-                    console.error(`[401 Retry] Credits retry failed for ${friendlyModelId}:`, retryErr?.message || retryErr)
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: `API key failed and credits retry failed: ${retryErr?.message || 'Unknown error'}`, provider: selectedProvider })}\n\n`))
+                  }
+
+                  // If user API failed or not available, try admin keys
+                  if (!retrySuccess && providerConfigs[requiredProvider]?.admin) {
+                    try {
+                      console.log(`[401 Retry] Retrying ${friendlyModelId} with admin key`)
+                      selectedProvider = requiredProvider
+                      selectedConfig = providerConfigs[requiredProvider].admin
+                      fallbackMethod = 'admin'
+                      actualModelId = await resolveProviderModelId(friendlyModelId, requiredProvider)
+
+                      // Fetch model-specific max tokens from model_tiers table (respects admin configuration)
+                      let retryMaxTokens = max_tokens
+                      try {
+                        const maxTokensConfig = await getMaxOutputTokens(user.id, requiredProvider, actualModelId)
+                        retryMaxTokens = maxTokensConfig.maxOutputTokens
+                        console.log(`[401 Retry] Using ${maxTokensConfig.source} limit for ${actualModelId}: ${retryMaxTokens} tokens`)
+                      } catch (err) {
+                        console.error(`[401 Retry] Failed to fetch max tokens, using default: ${retryMaxTokens}`)
+                      }
+
+                      // Rebuild API options with admin key
+                      apiOptions = {
+                        messages: messages.map((msg: any) => ({ role: msg.role, content: msg.content })),
+                        model: actualModelId,
+                        temperature,
+                        maxTokens: retryMaxTokens,
+                        stream: true,
+                        apiKey: selectedConfig.apiKey,
+                        metadata: { applicationName: 'https://www.polydev.ai', siteUrl: 'Polydev Multi-LLM Platform' }
+                      }
+
+                      // Apply provider-specific base URLs
+                      if (selectedConfig.baseUrl) {
+                        apiOptions.openAiBaseUrl = selectedConfig.baseUrl
+                      }
+
+                      // Apply OpenAI parameter transformations (must be BEFORE streamMessage call)
+                      applyOpenAIParameterTransform(apiOptions, selectedProvider)
+
+                      // For OpenAI-compatible providers, request usage in the final streamed chunk
+                      if (['openai','openrouter','groq','deepseek','mistral','xai'].includes(selectedProvider)) {
+                        (apiOptions as any).streamOptions = { include_usage: true }
+                        ;(apiOptions as any).stream_options = { include_usage: true }
+                      }
+
+                      upstream = await apiManager.streamMessage(selectedProvider, apiOptions)
+                      retrySuccess = true
+                      console.log(`[401 Retry] Success! Retried ${friendlyModelId} with admin key`)
+                    } catch (retryErr: any) {
+                      console.error(`[401 Retry] Admin key retry failed:`, retryErr?.message || retryErr)
+                    }
+                  }
+
+                  // If all retries failed, return error
+                  if (!retrySuccess) {
+                    console.error(`[401 Retry] All fallback attempts failed for ${friendlyModelId}`)
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: `CLI auth failed and all fallback attempts (user API, admin keys) failed`, provider: selectedProvider })}\n\n`))
                     return
                   }
                 } else {
-                  // Not a 401 error or no credits available
+                  // Not a 401 error or not using CLI - return error without retry
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: err?.message || 'Stream error', provider: selectedProvider })}\n\n`))
                   return
                 }
@@ -1517,47 +1608,44 @@ export async function POST(request: NextRequest) {
           adjustedTemperature = 0.7
         }
         
-        // Get model-specific limits and pricing from models.dev
+        // Get model-specific limits from model_tiers table (configured in admin panel)
         let modelSpecificMaxTokens = 65536 // Default fallback
         let modelPricing: { input: number; output: number } | null = null
         let modelData: any = null
         if (selectedProvider) {
           try {
+            // PRIORITY 1: Fetch max tokens from model_tiers table (respects admin configuration)
+            const maxTokensConfig = await getMaxOutputTokens(user.id, selectedProvider, modelId)
+            modelSpecificMaxTokens = maxTokensConfig.maxOutputTokens
+            console.log(`[Max Tokens] Using ${maxTokensConfig.source} limit for ${modelId}: ${modelSpecificMaxTokens} tokens`)
+
+            // Also get pricing and model data from models.dev for reasoning capabilities
             const { modelsDevService } = await import('@/lib/models-dev-integration')
-            // For pricing lookup, use the user's preferred provider (requiredProvider) instead of selectedProvider
-            // This ensures we get correct pricing even when falling back to OpenRouter for API calls
-            // When using credits (OpenRouter), use openrouter for pricing data
             const pricingProvider = selectedConfig?.type === 'credits' ? 'openrouter' : (requiredProvider || selectedProvider)
             const modelLimits = await modelsDevService.getModelLimits(modelId, pricingProvider)
-            
-            // Also get full model data for reasoning capabilities
+
+            // Get model data for reasoning capabilities check
             const providers = await modelsDevService.getProviders()
             const provider = providers.find(p => p.id === pricingProvider)
             if (provider) {
               const models = await modelsDevService.getModels(pricingProvider)
               modelData = models?.find(m => m.id === modelId)
             }
-            
-            if (modelLimits) {
-              modelSpecificMaxTokens = modelLimits.maxTokens
-              modelPricing = modelLimits.pricing || null
-              console.log(`[info] Using model-specific maxTokens for ${modelId} (${selectedProvider}): ${modelSpecificMaxTokens}`)
-              if (modelPricing) {
-                console.log(`[info] Model pricing for ${modelId}: $${modelPricing.input}/million input, $${modelPricing.output}/million output`)
-              }
-            } else {
-              console.log(`[info] No model limits found for ${modelId} (${pricingProvider}), using default: ${modelSpecificMaxTokens}`)
+
+            if (modelLimits?.pricing) {
+              modelPricing = modelLimits.pricing
+              console.log(`[info] Model pricing for ${modelId}: $${modelPricing.input}/million input, $${modelPricing.output}/million output`)
             }
           } catch (error) {
             console.warn(`[warn] Failed to fetch model limits for ${modelId} (${selectedProvider}):`, error)
           }
         }
-        
+
         // Ensure maxTokens is valid and within model limits
         if (!adjustedMaxTokens || adjustedMaxTokens === Infinity || adjustedMaxTokens < 1) {
           adjustedMaxTokens = Math.min(modelSpecificMaxTokens, 65536)
         } else {
-          // Cap at model-specific limit
+          // Cap at model-specific limit from model_tiers
           adjustedMaxTokens = Math.min(adjustedMaxTokens, modelSpecificMaxTokens)
         }
         
@@ -1687,14 +1775,10 @@ export async function POST(request: NextRequest) {
             if (modelData?.supports_reasoning && reasoning_effort) {
               apiOptions.reasoning_effort = reasoning_effort
             }
-            
-            // Handle model-specific parameter requirements
-            if (modelId === 'gpt-5' || modelId.includes('gpt-5')) {
-              // GPT-5 uses max_completion_tokens instead of maxTokens
-              apiOptions.max_completion_tokens = adjustedMaxTokens
-              delete apiOptions.maxTokens
-            }
-            
+
+            // Apply OpenAI parameter transformations
+            applyOpenAIParameterTransform(apiOptions, selectedProvider)
+
             // Use provider configuration for correct baseUrl property name
             const apiProviderConfig = await apiManager.getProviderConfiguration(selectedProvider)
             if (selectedConfig.baseUrl && apiProviderConfig) {
@@ -1979,7 +2063,10 @@ export async function POST(request: NextRequest) {
             if (modelData?.supports_reasoning && reasoning_effort) {
               apiOptions.reasoning_effort = reasoning_effort
             }
-            
+
+            // Apply OpenAI parameter transformations
+            applyOpenAIParameterTransform(apiOptions, selectedProvider)
+
             // Make API call through OpenRouter provider (enhanced handler)
             response = await apiManager.createMessage('openrouter', apiOptions)
             
@@ -2121,107 +2208,163 @@ export async function POST(request: NextRequest) {
         } catch (error: any) {
           console.error(`Error with ${selectedProvider} for model ${modelId}:`, error)
 
-          // Check if this is a 401 error and we have credits available for immediate retry
-          const is401Error = error?.message?.includes('401') || error?.message?.includes('Unauthorized') || error?.message?.includes('No auth credentials')
-          if (is401Error && fallbackMethod !== 'credits' && totalCredits > 0) {
-            console.log(`[401 Retry] Attempting to retry ${modelId} with credits after 401 error`)
+          // DISABLED: OpenRouter credits fallback - we never use credits
+          // Instead, when CLI fails with ANY error, fallback to user API or admin keys
+          if (fallbackMethod === 'cli') {
+            // CLI failed - try to fallback to user API or admin keys
+            console.log(`[CLI Retry Non-Stream] CLI failed for ${modelId}, attempting fallback to user API or admin keys`)
 
-            try {
-              // Try to get OpenRouter model ID for credits fallback
-              const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
-              if (openrouterModelId !== modelId) {
-                const apiOptions: any = {
+            let retrySuccess = false
+
+            // Try user API keys first
+            if (providerConfigs[requiredProvider]?.api) {
+              try {
+                console.log(`[CLI Retry Non-Stream] Retrying ${modelId} with user API key`)
+                selectedProvider = requiredProvider
+                selectedConfig = providerConfigs[requiredProvider].api
+                fallbackMethod = 'api'
+                actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+
+                // Rebuild API options with user key
+                const retryApiOptions: any = {
                   messages: messages.map((msg: any) => ({
                     role: msg.role,
                     content: msg.content
                   })),
-                  model: openrouterModelId,
+                  model: actualModelId,
                   temperature: adjustedTemperature,
                   maxTokens: adjustedMaxTokens,
                   stream,
-                  apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '',
+                  apiKey: selectedConfig.apiKey,
                   metadata: { applicationName: 'https://www.polydev.ai', siteUrl: 'Polydev Multi-LLM Platform' }
                 }
 
                 // Add reasoning effort for reasoning models if supported
                 if (modelData?.supports_reasoning && reasoning_effort) {
-                  apiOptions.reasoning_effort = reasoning_effort
+                  retryApiOptions.reasoning_effort = reasoning_effort
                 }
 
-                console.log(`[401 Retry] Retrying ${modelId} -> ${openrouterModelId} on OpenRouter with credits`)
-                const response = await apiManager.createMessage('openrouter', apiOptions)
-
-                // Handle the response same as normal OpenRouter processing
+                // Retry with user API key
+                const retryResponse = await apiManager.createMessage(selectedProvider, retryApiOptions)
                 let result
-                const contentType = response.headers.get('content-type') || ''
+                const contentType = retryResponse.headers.get('content-type') || ''
 
                 if (contentType.includes('application/json')) {
-                  try {
-                    result = await response.json()
-                  } catch (parseError) {
-                    console.error(`[401 Retry] Failed to parse OpenRouter credits response:`, parseError)
-                    throw new Error(`Invalid JSON response from OpenRouter credits retry`)
-                  }
+                  result = await retryResponse.json()
                 } else {
-                  console.error(`[401 Retry] OpenRouter credits returned non-JSON response with content-type: ${contentType}`)
-                  const textResult = await response.text()
-                  throw new Error(`Expected JSON response from OpenRouter credits retry, got: ${textResult.substring(0, 200)}`)
+                  const textResult = await retryResponse.text()
+                  throw new Error(`Expected JSON response, got: ${textResult.substring(0, 200)}`)
                 }
 
-                if (response.ok) {
-                  console.log(`[401 Retry] Credits retry successful for ${modelId}`)
-
-                  // Calculate and deduct credits cost
+                if (retryResponse.ok) {
                   const usage = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-                  let creditsUsed = 0
                   let cost = null
                   if (modelPricing && usage && (usage.prompt_tokens > 0 || usage.completion_tokens > 0)) {
-                    const totalCostUsd = computeCostUSD(usage.prompt_tokens || 0, usage.completion_tokens || 0, modelPricing.input, modelPricing.output)
                     const inputCost = ((usage.prompt_tokens || 0) / 1000000) * modelPricing.input
                     const outputCost = ((usage.completion_tokens || 0) / 1000000) * modelPricing.output
+                    const totalCostUsd = computeCostUSD(usage.prompt_tokens || 0, usage.completion_tokens || 0, modelPricing.input, modelPricing.output)
                     cost = {
                       input_cost: Number(inputCost.toFixed(6)),
                       output_cost: Number(outputCost.toFixed(6)),
                       total_cost: totalCostUsd
                     }
-                    creditsUsed = totalCostUsd
-
-                    // Deduct credits
-                    try {
-                      const supabase = await createClient()
-                      const { error: creditError } = await supabase.rpc('deduct_user_credits', {
-                        p_user_id: user.id,
-                        p_amount: totalCostUsd
-                      })
-                      if (creditError) {
-                        console.warn('[401 Retry] Failed to deduct user credits:', creditError)
-                      }
-                    } catch (creditErr) {
-                      console.warn('[401 Retry] Failed to deduct user credits:', creditErr)
-                    }
                   }
+
+                  retrySuccess = true
+                  console.log(`[CLI Retry Non-Stream] Success! Retried ${modelId} with user API key`)
 
                   return {
                     model: modelId,
                     content: result.choices?.[0]?.message?.content || '',
                     usage: usage,
                     costInfo: cost,
-                    provider: 'OpenRouter (Credits - 401 Retry)',
-                    fallback_method: 'credits',
-                    credits_used: creditsUsed,
-                    providerSourceId: undefined,
-                    sourceType: 'admin_credits'
+                    provider: selectedProvider,
+                    fallback_method: 'api',
+                    providerSourceId: selectedConfig?.keyId,
+                    sourceType: selectedConfig?.sourceType
                   }
-                } else {
-                  throw new Error(`OpenRouter credits retry failed: ${result?.error?.message || 'Unknown error'}`)
                 }
-              } else {
-                console.error(`[401 Retry] No OpenRouter mapping available for ${modelId}`)
-                // Fall through to normal error handling
+              } catch (retryErr: any) {
+                console.error(`[CLI Retry Non-Stream] User API key retry failed:`, retryErr?.message || retryErr)
               }
-            } catch (retryErr: any) {
-              console.error(`[401 Retry] Credits retry failed for ${modelId}:`, retryErr?.message || retryErr)
-              // Fall through to normal error handling
+            }
+
+            // If user API failed or not available, try admin keys
+            if (!retrySuccess && providerConfigs[requiredProvider]?.admin) {
+              try {
+                console.log(`[CLI Retry Non-Stream] Retrying ${modelId} with admin key`)
+                selectedProvider = requiredProvider
+                selectedConfig = providerConfigs[requiredProvider].admin
+                fallbackMethod = 'admin'
+                actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+
+                // Rebuild API options with admin key
+                const retryApiOptions: any = {
+                  messages: messages.map((msg: any) => ({
+                    role: msg.role,
+                    content: msg.content
+                  })),
+                  model: actualModelId,
+                  temperature: adjustedTemperature,
+                  maxTokens: adjustedMaxTokens,
+                  stream,
+                  apiKey: selectedConfig.apiKey,
+                  metadata: { applicationName: 'https://www.polydev.ai', siteUrl: 'Polydev Multi-LLM Platform' }
+                }
+
+                // Add reasoning effort for reasoning models if supported
+                if (modelData?.supports_reasoning && reasoning_effort) {
+                  retryApiOptions.reasoning_effort = reasoning_effort
+                }
+
+                // Retry with admin key
+                const retryResponse = await apiManager.createMessage(selectedProvider, retryApiOptions)
+                let result
+                const contentType = retryResponse.headers.get('content-type') || ''
+
+                if (contentType.includes('application/json')) {
+                  result = await retryResponse.json()
+                } else {
+                  const textResult = await retryResponse.text()
+                  throw new Error(`Expected JSON response, got: ${textResult.substring(0, 200)}`)
+                }
+
+                if (retryResponse.ok) {
+                  const usage = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+                  let cost = null
+                  if (modelPricing && usage && (usage.prompt_tokens > 0 || usage.completion_tokens > 0)) {
+                    const inputCost = ((usage.prompt_tokens || 0) / 1000000) * modelPricing.input
+                    const outputCost = ((usage.completion_tokens || 0) / 1000000) * modelPricing.output
+                    const totalCostUsd = computeCostUSD(usage.prompt_tokens || 0, usage.completion_tokens || 0, modelPricing.input, modelPricing.output)
+                    cost = {
+                      input_cost: Number(inputCost.toFixed(6)),
+                      output_cost: Number(outputCost.toFixed(6)),
+                      total_cost: totalCostUsd
+                    }
+                  }
+
+                  retrySuccess = true
+                  console.log(`[CLI Retry Non-Stream] Success! Retried ${modelId} with admin key`)
+
+                  return {
+                    model: modelId,
+                    content: result.choices?.[0]?.message?.content || '',
+                    usage: usage,
+                    costInfo: cost,
+                    provider: selectedProvider,
+                    fallback_method: 'admin',
+                    providerSourceId: selectedConfig?.keyId,
+                    sourceType: selectedConfig?.sourceType
+                  }
+                }
+              } catch (retryErr: any) {
+                console.error(`[CLI Retry Non-Stream] Admin key retry failed:`, retryErr?.message || retryErr)
+              }
+            }
+
+            // If all retries failed, log and fall through to normal error handling
+            if (!retrySuccess) {
+              console.error(`[CLI Retry Non-Stream] All fallback attempts failed for ${modelId}`)
             }
           }
 
@@ -2263,13 +2406,10 @@ export async function POST(request: NextRequest) {
                 if (modelData?.supports_reasoning && reasoning_effort) {
                   apiOptions.reasoning_effort = reasoning_effort
                 }
-                
-                // Handle model-specific parameter requirements for fallback
-                if (modelId === 'gpt-5' || modelId.includes('gpt-5')) {
-                  apiOptions.max_completion_tokens = adjustedMaxTokens
-                  delete apiOptions.maxTokens
-                }
-                
+
+                // Apply OpenAI parameter transformations
+                applyOpenAIParameterTransform(apiOptions, requiredProvider)
+
                 const apiResponse = await apiManager.createMessage(apiConfig.provider || requiredProvider, apiOptions)
                 
                 // Safely parse fallback API response
@@ -2352,7 +2492,10 @@ export async function POST(request: NextRequest) {
                   stream,
                   apiKey: providerConfigs['openrouter'].api.apiKey
                 }
-                
+
+                // Apply OpenAI parameter transformations
+                applyOpenAIParameterTransform(apiOptions, 'openrouter')
+
                 const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
                 
                 // Safely parse OpenRouter API fallback response
@@ -2396,10 +2539,11 @@ export async function POST(request: NextRequest) {
               console.log(`❌ No OpenRouter API key configured, will try OpenRouter credits fallback`)
             }
           }
-          
-          console.log(`🔄 All API fallbacks exhausted, attempting OpenRouter credits fallback for ${modelId}...`)
-          // Final fallback: OpenRouter credits
-          if (totalCredits > 0) {
+
+          // DISABLED: OpenRouter credits fallback - we never use credits
+          // All CLI, user API, and admin API fallbacks have been exhausted
+          console.log(`❌ All fallbacks exhausted for ${modelId} (CLI, user API, admin keys). OpenRouter credits DISABLED - will not fallback.`)
+          if (false) { // DISABLED: Credits fallback
               try {
                 const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
                 if (openrouterModelId !== modelId) {
@@ -2414,7 +2558,10 @@ export async function POST(request: NextRequest) {
                     stream,
                     apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || ''
                   }
-                  
+
+                  // Apply OpenAI parameter transformations
+                  applyOpenAIParameterTransform(apiOptions, 'openrouter')
+
                   const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
                   
                   // Safely parse OpenRouter credits fallback response

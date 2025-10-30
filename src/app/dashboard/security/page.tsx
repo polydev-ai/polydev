@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
+import { ShieldCheck, Info, EyeOff } from 'lucide-react'
 
 export default function Security() {
   const { user, loading } = useAuth()
@@ -10,6 +11,13 @@ export default function Security() {
   const [twoFAEnabled, setTwoFAEnabled] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
+
+  // Privacy Mode state (ephemeral conversations)
+  const [ephemeralMode, setEphemeralMode] = useState(false)
+  const [byokEnabled, setByokEnabled] = useState(false)
+  const [subscriptionTier, setSubscriptionTier] = useState('free')
+  const [isTogglingEphemeral, setIsTogglingEphemeral] = useState(false)
+  const [ephemeralMessage, setEphemeralMessage] = useState('')
 
   const supabase = createClient()
 
@@ -21,15 +29,20 @@ export default function Security() {
 
   const loadSecurityData = async () => {
     try {
-      // Load user profile - note: two_factor_enabled column doesn't exist yet
+      // Load user profile with BYOK and ephemeral status
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
+        .select('ephemeral_conversations, byok_enabled, subscription_tier')
         .eq('id', user?.id)
         .single()
 
       // For now, default to false since column doesn't exist
       setTwoFAEnabled(false)
+
+      // Load dual-mode privacy settings
+      setEphemeralMode(profile?.ephemeral_conversations || false)
+      setByokEnabled(profile?.byok_enabled || false)
+      setSubscriptionTier(profile?.subscription_tier?.toLowerCase() || 'free')
 
       // Mock sessions data - in real app, this would come from auth provider
       setSessions([
@@ -52,6 +65,41 @@ export default function Security() {
       ])
     } catch (error) {
       console.error('Error loading security data:', error)
+    }
+  }
+
+  const handleToggleEphemeralMode = async () => {
+    setIsTogglingEphemeral(true)
+    setEphemeralMessage('')
+
+    try {
+      const newEphemeralMode = !ephemeralMode
+
+      // Update ephemeral conversations setting in database
+      await supabase
+        .from('profiles')
+        .update({
+          ephemeral_conversations: newEphemeralMode,
+          ephemeral_enabled_at: newEphemeralMode ? new Date().toISOString() : null
+        })
+        .eq('id', user?.id)
+
+      setEphemeralMode(newEphemeralMode)
+
+      // Tier-specific messaging
+      const tierName = subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)
+      const isProOrEnterprise = subscriptionTier === 'pro' || subscriptionTier === 'enterprise'
+
+      setEphemeralMessage(
+        newEphemeralMode
+          ? `Ephemeral Mode enabled! ${byokEnabled ? 'When using your own API keys (BYOK), conversations will NOT be saved to the database.' : 'Note: You need to add your own API keys (BYOK) for ephemeral mode to take effect.'}`
+          : `Ephemeral Mode disabled. ${byokEnabled ? 'Conversations will now be saved to the database even when using BYOK.' : 'Conversations will be saved normally.'}`
+      )
+    } catch (error: any) {
+      console.error('Error toggling ephemeral mode:', error)
+      setEphemeralMessage(error.message || 'Failed to toggle ephemeral mode')
+    } finally {
+      setIsTogglingEphemeral(false)
     }
   }
 
@@ -171,6 +219,165 @@ export default function Security() {
                   Update Email
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* BYOK & Ephemeral Mode */}
+          <div className="bg-white rounded-lg shadow border border-slate-200">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-medium text-slate-900 flex items-center gap-2">
+                <EyeOff className="h-5 w-5" />
+                Privacy & BYOK Settings
+              </h2>
+              <p className="text-sm text-slate-600">Manage conversation privacy and API key usage</p>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* BYOK Status */}
+              <div className={`p-4 rounded-lg border ${
+                byokEnabled
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className={`h-5 w-5 mt-0.5 ${byokEnabled ? 'text-green-600' : 'text-slate-500'}`} />
+                  <div className="flex-1">
+                    <h3 className={`text-sm font-medium ${byokEnabled ? 'text-green-900' : 'text-slate-900'}`}>
+                      BYOK Status: {byokEnabled ? 'Enabled' : 'Not Enabled'}
+                    </h3>
+                    <p className="text-sm text-slate-600 mt-1">
+                      {byokEnabled
+                        ? 'You have your own API keys configured. You can manage them in Models page.'
+                        : 'Currently using Polydev\'s API keys. Add your own keys in the Models page to enable BYOK.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {ephemeralMessage && (
+                <div className={`p-4 rounded-lg text-sm border ${
+                  ephemeralMessage.includes('enabled')
+                    ? 'bg-blue-50 text-blue-900 border-blue-200'
+                    : 'bg-slate-50 text-slate-900 border-slate-200'
+                }`}>
+                  {ephemeralMessage}
+                </div>
+              )}
+
+              {/* Ephemeral Mode Toggle */}
+              {ephemeralMode ? (
+                <>
+                  {/* Ephemeral Mode is enabled */}
+                  <div className="flex items-start gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <EyeOff className="h-6 w-6 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-blue-900">
+                        Ephemeral Mode Enabled
+                        {subscriptionTier === 'pro' || subscriptionTier === 'enterprise' ? ' (Default for ' + subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1) + ')' : ''}
+                      </h3>
+                      <div className="mt-2 space-y-3 text-sm text-blue-800">
+                        <div>
+                          <p className="font-medium text-blue-900">
+                            {byokEnabled ? '✓ Using BYOK: Conversations NOT saved to database' : '⚠ BYOK not enabled: Ephemeral mode has no effect'}
+                          </p>
+                          <p className="text-xs mt-1">
+                            {byokEnabled
+                              ? 'Only usage metadata (tokens, costs) is tracked. No message content saved.'
+                              : 'Add your own API keys in Models page to enable ephemeral conversations.'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-medium text-blue-900">When using Polydev API keys:</p>
+                          <ul className="text-xs mt-1 space-y-1 ml-4">
+                            <li>• Conversations ARE saved for billing and tracking</li>
+                            <li>• Ephemeral mode only applies to BYOK</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-slate-900">Disable Ephemeral Mode</h3>
+                      <p className="text-sm text-slate-600">
+                        {byokEnabled
+                          ? 'Conversations will be saved even when using BYOK'
+                          : 'Currently has no effect (BYOK not enabled)'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleToggleEphemeralMode}
+                      disabled={isTogglingEphemeral}
+                      className="px-4 py-2 text-sm font-medium text-slate-900 border border-slate-900 rounded-lg hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isTogglingEphemeral ? 'Disabling...' : 'Disable Ephemeral Mode'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Ephemeral Mode is not enabled */}
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                      <EyeOff className="h-6 w-6 text-slate-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-slate-900">
+                          Ephemeral Mode
+                          {subscriptionTier === 'free' || subscriptionTier === 'plus' ? ' (Default OFF for ' + subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1) + ')' : ''}
+                        </h3>
+                        <p className="text-sm text-slate-600 mt-1">
+                          When enabled with BYOK, conversations are NOT saved to the database.
+                          Only usage metadata (tokens, costs) is tracked.
+                        </p>
+                        <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                          <li className="flex items-start gap-2">
+                            <ShieldCheck className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                            <span>Currently: Conversations ARE saved (encrypted at rest)</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Info className="h-4 w-4 text-slate-500 mt-0.5 flex-shrink-0" />
+                            <span>Enable to stop saving conversations when using BYOK</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 text-sm">
+                        <p className="font-medium text-blue-900">How It Works</p>
+                        <div className="mt-2 space-y-2 text-blue-800 text-xs">
+                          <div>
+                            <p className="font-medium">Ephemeral Mode OFF (Current):</p>
+                            <ul className="mt-1 ml-4 space-y-0.5">
+                              <li>• Conversations saved to database</li>
+                              <li>• Full chat history available</li>
+                              <li>• Works with both Polydev keys and BYOK</li>
+                            </ul>
+                          </div>
+                          <div>
+                            <p className="font-medium">Ephemeral Mode ON:</p>
+                            <ul className="mt-1 ml-4 space-y-0.5">
+                              <li>• Requires BYOK (your own API keys)</li>
+                              <li>• Conversations NOT saved</li>
+                              <li>• Only metadata tracked (tokens, costs)</li>
+                              <li>• Maximum privacy</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleToggleEphemeralMode}
+                      disabled={isTogglingEphemeral}
+                      className="w-full px-6 py-3 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isTogglingEphemeral ? 'Enabling...' : 'Enable Ephemeral Mode'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

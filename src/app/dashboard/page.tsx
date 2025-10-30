@@ -12,6 +12,7 @@ import {
 import { motion } from 'framer-motion'
 import AnimatedDashboard, { AnimatedCard } from '@/components/dashboard/AnimatedDashboard'
 import { getModelsByTier } from '@/lib/model-tiers'
+import { EncryptionStatus } from '@/components/EncryptionStatus'
 
 export default function Dashboard() {
   const { user, loading } = useAuth()
@@ -302,10 +303,15 @@ export default function Dashboard() {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-slate-900">
-            Dashboard
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">Monitor usage, costs, and performance</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">
+                Dashboard
+              </h1>
+              <p className="text-sm text-slate-500 mt-1">Monitor usage, costs, and performance</p>
+            </div>
+            <EncryptionStatus variant="badge" />
+          </div>
         </div>
 
         {/* Main Stats */}

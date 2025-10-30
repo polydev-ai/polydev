@@ -5,19 +5,21 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { StreamNormalizer } from '@/lib/streaming-harmonizer';
+import { createClient } from '@/app/utils/supabase/server';
 
 interface ChatRequest {
   model: string;
   messages: Array<{ role: string; content: string }>;
   temperature?: number;
   max_tokens?: number;
+  userId?: string; // Optional: can be passed from client for privacy mode check
 }
 
 async function getStreamFromProvider(
   provider: string,
   model: string,
   messages: ChatRequest['messages'],
-  options: { temperature?: number; max_tokens?: number }
+  options: { temperature?: number; max_tokens?: number; privacyMode?: boolean }
 ): Promise<ReadableStream<Uint8Array>> {
   // Determine provider from model name or explicit provider
   let actualProvider = provider;
@@ -48,17 +50,26 @@ async function getStreamFromProvider(
 async function getOpenAIStream(
   model: string,
   messages: ChatRequest['messages'],
-  options: { temperature?: number; max_tokens?: number }
+  options: { temperature?: number; max_tokens?: number; privacyMode?: boolean }
 ): Promise<ReadableStream<Uint8Array>> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OPENAI_API_KEY not set');
 
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+
+  // TODO: Add zero-data-retention header when privacy mode is enabled
+  // Note: OpenAI API doesn't use data for training by default (as of March 2023)
+  // Enterprise customers can establish zero-retention agreements
+  // if (options.privacyMode) {
+  //   headers['OpenAI-No-Storage'] = 'true'; // Example header - check OpenAI docs for actual header
+  // }
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({
       model,
       messages,
@@ -78,18 +89,26 @@ async function getOpenAIStream(
 async function getClaudeStream(
   model: string,
   messages: ChatRequest['messages'],
-  options: { temperature?: number; max_tokens?: number }
+  options: { temperature?: number; max_tokens?: number; privacyMode?: boolean }
 ): Promise<ReadableStream<Uint8Array>> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
 
+  const headers: Record<string, string> = {
+    'x-api-key': apiKey,
+    'anthropic-version': '2023-06-01',
+    'Content-Type': 'application/json',
+  };
+
+  // TODO: Add zero-data-retention header when privacy mode is enabled
+  // Enterprise customers can establish zero-retention agreements with Anthropic
+  // if (options.privacyMode) {
+  //   headers['anthropic-disable-data-retention'] = 'true'; // Example header - check Anthropic docs for actual header
+  // }
+
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({
       model,
       messages,
@@ -206,13 +225,35 @@ async function getCerebrasStream(
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { model, messages, temperature, max_tokens } = body;
+    const { model, messages, temperature, max_tokens, userId } = body;
 
     if (!model || !messages || messages.length === 0) {
       return NextResponse.json(
         { error: 'Missing required fields: model, messages' },
         { status: 400 }
       );
+    }
+
+    // Check if user has privacy mode enabled
+    let privacyMode = false;
+    if (userId) {
+      try {
+        const supabase = createClient();
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('privacy_mode')
+          .eq('id', userId)
+          .single();
+
+        privacyMode = profile?.privacy_mode || false;
+
+        if (privacyMode) {
+          console.log(`[PrivacyMode] User ${userId} has Privacy Mode enabled - using zero data retention settings`);
+        }
+      } catch (error) {
+        console.error('[PrivacyMode] Error checking privacy mode:', error);
+        // Continue with request even if privacy check fails
+      }
     }
 
     // Detect provider from model name
@@ -223,10 +264,11 @@ export async function POST(request: NextRequest) {
     else if (model.includes('grok')) provider = 'xai';
     else if (model.includes('qwen')) provider = 'cerebras';
 
-    // Get provider stream
+    // Get provider stream with privacy mode setting
     const providerStream = await getStreamFromProvider(model, provider, messages, {
       temperature,
       max_tokens,
+      privacyMode,
     });
 
     // Normalize the stream

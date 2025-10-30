@@ -78,12 +78,44 @@ export async function DELETE(
       .delete()
       .eq('id', id)
       .eq('user_id', user.id)
-    
+
     if (error) {
       console.error('Error deleting API key:', error)
       return NextResponse.json({ error: 'Failed to delete API key' }, { status: 500 })
     }
-    
+
+    // DUAL-MODE LOGIC: Disable BYOK when user removes their last API key
+    // Check if user has any remaining active keys
+    const { data: remainingKeys } = await supabase
+      .from('user_api_keys')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('active', true)
+
+    const hasNoMoreKeys = !remainingKeys || remainingKeys.length === 0
+
+    if (hasNoMoreKeys) {
+      // Check if BYOK is currently enabled
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('byok_enabled, ephemeral_conversations')
+        .eq('id', user.id)
+        .single()
+
+      if (profile && profile.byok_enabled) {
+        // Disable BYOK mode and ephemeral conversations
+        await supabase
+          .from('profiles')
+          .update({
+            byok_enabled: false,
+            ephemeral_conversations: false
+          })
+          .eq('id', user.id)
+
+        console.log(`[BYOK] Disabled BYOK mode for user ${user.id} (last API key removed)`)
+      }
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error in DELETE /api/api-keys/[id]:', error)

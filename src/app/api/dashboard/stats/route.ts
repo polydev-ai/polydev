@@ -90,7 +90,9 @@ export async function GET(request: NextRequest) {
       chatLogsResult,
       allTimeRequestLogsResult,
       allTimeChatLogsResult,
-      providersRegistryResult
+      providersRegistryResult,
+      ephemeralUsageResult,
+      allTimeEphemeralUsageResult
     ] = await Promise.allSettled([
       // 0. User credits
       supabase
@@ -169,7 +171,23 @@ export async function GET(request: NextRequest) {
       supabase
         .from('providers_registry')
         .select('*')
-        .eq('is_active', true)
+        .eq('is_active', true),
+
+      // 12. Ephemeral usage (BYOK mode) - this month only
+      supabase
+        .from('ephemeral_usage')
+        .select('total_tokens, estimated_cost_usd, provider, model, created_at, prompt_tokens, completion_tokens, session_id')
+        .eq('user_id', user.id)
+        .eq('used_byok', true)
+        .gte('created_at', monthStart.toISOString())
+        .limit(500),
+
+      // 13. All-time ephemeral usage for all-time metrics
+      supabase
+        .from('ephemeral_usage')
+        .select('total_tokens, estimated_cost_usd, provider, model, created_at, session_id')
+        .eq('user_id', user.id)
+        .eq('used_byok', true)
     ])
 
     // Extract data from parallel results
@@ -185,6 +203,8 @@ export async function GET(request: NextRequest) {
     const allTimeRequestLogs = allTimeRequestLogsResult.status === 'fulfilled' ? allTimeRequestLogsResult.value.data : []
     const allTimeChatLogs = allTimeChatLogsResult.status === 'fulfilled' ? allTimeChatLogsResult.value.data : []
     const modelsDevProviders = providersRegistryResult.status === 'fulfilled' ? providersRegistryResult.value.data : []
+    const ephemeralUsage = ephemeralUsageResult.status === 'fulfilled' ? ephemeralUsageResult.value.data : []
+    const allTimeEphemeralUsage = allTimeEphemeralUsageResult.status === 'fulfilled' ? allTimeEphemeralUsageResult.value.data : []
 
     // Log any errors from the queries
     if (chatLogsResult.status === 'rejected' || (chatLogsResult.status === 'fulfilled' && chatLogsResult.value.error)) {
@@ -253,16 +273,44 @@ export async function GET(request: NextRequest) {
     const totalTokens = (allTokens?.length || 0) + (userTokens?.length || 0)
     const activeConnections = activeTokens.length
 
-    // Calculate TOTAL messages from BOTH MCP calls AND web chat sessions THIS MONTH
+    // Calculate EPHEMERAL (BYOK) mode stats FIRST - THIS MONTH
+    const ephemeralRequests = (ephemeralUsage || []).length
+    const ephemeralSessions = new Set((ephemeralUsage || []).filter(u => u.session_id).map(u => u.session_id)).size
+    const ephemeralTokens = (ephemeralUsage || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    const ephemeralCost = (ephemeralUsage || []).reduce((sum, log) => sum + (parseFloat(log.estimated_cost_usd) || 0), 0) || 0
+
+    // Calculate ALL-TIME ephemeral stats
+    const allTimeEphemeralRequests = (allTimeEphemeralUsage || []).length
+    const allTimeEphemeralSessions = new Set((allTimeEphemeralUsage || []).filter(u => u.session_id).map(u => u.session_id)).size
+    const allTimeEphemeralTokens = (allTimeEphemeralUsage || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
+    const allTimeEphemeralCost = (allTimeEphemeralUsage || []).reduce((sum, log) => sum + (parseFloat(log.estimated_cost_usd) || 0), 0) || 0
+
+    // Calculate TOTAL messages from ALL sources THIS MONTH (Standard + BYOK modes)
     // Use monthly-filtered logs to match subscription and profile pages
     const mcpMessages = (requestLogs || []).length
     const chatMessages_count = (chatLogs || []).length
-    const totalMessages = mcpMessages + chatMessages_count // Total user interactions (MCP + Chat, this month)
+    const standardModeMessages = mcpMessages + chatMessages_count // Standard mode (Polydev API keys)
+    const totalMessages = standardModeMessages + ephemeralRequests // Total user interactions (Standard + BYOK modes)
 
-    // Calculate ALL-TIME message counts for display
+    // Calculate ALL-TIME message counts for display (Standard + BYOK modes)
     const allTimeMcpMessages = (allTimeRequestLogs || []).length
     const allTimeChatMessages = (allTimeChatLogs || []).length
-    const allTimeTotalMessages = allTimeMcpMessages + allTimeChatMessages
+    const allTimeStandardMessages = allTimeMcpMessages + allTimeChatMessages
+    const allTimeTotalMessages = allTimeStandardMessages + allTimeEphemeralRequests
+
+    console.log('[Dashboard Stats] Ephemeral usage (BYOK mode) THIS MONTH:', {
+      ephemeralRequests,
+      ephemeralSessions,
+      ephemeralTokens,
+      ephemeralCost: `$${ephemeralCost.toFixed(4)}`
+    })
+
+    console.log('[Dashboard Stats] Ephemeral usage (BYOK mode) ALL-TIME:', {
+      allTimeEphemeralRequests,
+      allTimeEphemeralSessions,
+      allTimeEphemeralTokens,
+      allTimeEphemeralCost: `$${allTimeEphemeralCost.toFixed(4)}`
+    })
 
     // Calculate ACTUAL API calls (sum of all model/provider calls THIS MONTH)
     // Use monthly-filtered logs for API calls count
@@ -363,15 +411,17 @@ export async function GET(request: NextRequest) {
     // Count MCP token usage for reference (not the same as client calls)
     const mcpTokenUsage = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
 
-    // Calculate total tokens from both sources (THIS MONTH)
+    // Calculate total tokens from ALL sources (THIS MONTH) - Standard + BYOK modes
     const mcpTokenCount = (requestLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
     const chatTokens = (chatLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
-    const totalUsageTokens = mcpTokenCount + chatTokens
+    const standardModeTokens = mcpTokenCount + chatTokens
+    const totalUsageTokens = standardModeTokens + ephemeralTokens
 
-    // Calculate ALL-TIME tokens from both sources
+    // Calculate ALL-TIME tokens from ALL sources - Standard + BYOK modes
     const allTimeMcpTokenCount = (allTimeRequestLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
     const allTimeChatTokens = (allTimeChatLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
-    const allTimeTotalTokens = allTimeMcpTokenCount + allTimeChatTokens
+    const allTimeStandardTokens = allTimeMcpTokenCount + allTimeChatTokens
+    const allTimeTotalTokens = allTimeStandardTokens + allTimeEphemeralTokens
 
     // Calculate costs - ONLY from user API keys and CLI (NOT admin credits)
     // Query perspective_usage to get source_type information
@@ -775,7 +825,40 @@ export async function GET(request: NextRequest) {
         })
 
         return Array.from(providerMap.values())
-      })()
+      })(),
+
+      // DUAL-MODE BREAKDOWN: Shows statistics separated by mode
+      modeBreakdown: {
+        // Standard Mode: Using Polydev's API keys
+        standard: {
+          messages: standardModeMessages,
+          tokens: standardModeTokens,
+          mode: 'Polydev API Keys (conversations saved)',
+          description: 'Tracked for billing and tier limits'
+        },
+        // BYOK Mode: Using user's own API keys
+        byok: {
+          sessions: ephemeralSessions,
+          requests: ephemeralRequests,
+          tokens: ephemeralTokens,
+          estimatedCost: parseFloat(ephemeralCost.toFixed(4)),
+          mode: 'Your API Keys (ephemeral, not saved)',
+          description: 'No conversation content saved, metadata only'
+        },
+        // All-time breakdown
+        allTime: {
+          standard: {
+            messages: allTimeStandardMessages,
+            tokens: allTimeStandardTokens
+          },
+          byok: {
+            sessions: allTimeEphemeralSessions,
+            requests: allTimeEphemeralRequests,
+            tokens: allTimeEphemeralTokens,
+            estimatedCost: parseFloat(allTimeEphemeralCost.toFixed(4))
+          }
+        }
+      }
     }
 
     // Use already fetched providers registry data (from parallel queries)

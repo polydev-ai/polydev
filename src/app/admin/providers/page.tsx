@@ -704,9 +704,16 @@ export default function ProvidersAdminPage() {
       ) : (
       <Tabs value={selectedProvider} onValueChange={setSelectedProvider}>
         <TabsList className="flex flex-wrap w-full gap-1">
-          {providersRegistry
-            .filter(provider => stats[provider.id] && stats[provider.id].count > 0)
-            .map(provider => (
+          {Object.keys(stats)
+            .filter(providerId => stats[providerId] && stats[providerId].count > 0)
+            .map(providerId => {
+              const provider = providersRegistry.find(p => p.id === providerId) || {
+                id: providerId,
+                name: providerId,
+                logo: 'https://models.dev/logos/default.svg',
+                display_name: providerId
+              }
+              return (
             <TabsTrigger key={provider.id} value={provider.id} className="flex items-center gap-2 flex-1 min-w-[120px]">
               <img
                 src={provider.logo}
@@ -720,12 +727,20 @@ export default function ProvidersAdminPage() {
                 </Badge>
               )}
             </TabsTrigger>
-          ))}
+          )
+            })}
         </TabsList>
 
-        {providersRegistry
-          .filter(provider => stats[provider.id] && stats[provider.id].count > 0)
-          .map(provider => (
+        {Object.keys(stats)
+          .filter(providerId => stats[providerId] && stats[providerId].count > 0)
+          .map(providerId => {
+            const provider = providersRegistry.find(p => p.id === providerId) || {
+              id: providerId,
+              name: providerId,
+              logo: 'https://models.dev/logos/default.svg',
+              display_name: providerId
+            }
+            return (
           <TabsContent key={provider.id} value={provider.id} className="space-y-4">
             <Card>
               <CardHeader>
@@ -848,7 +863,8 @@ export default function ProvidersAdminPage() {
               </CardContent>
             </Card>
           </TabsContent>
-        ))}
+            )
+          })}
       </Tabs>
       )}
     </div>

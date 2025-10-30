@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 
 interface Subscription {
-  tier: 'free' | 'plus' | 'pro'
+  tier: 'free' | 'plus' | 'pro' | 'enterprise'
   status: 'active' | 'past_due' | 'canceled' | 'trialing'
   current_period_end: string | null
   cancel_at_period_end: boolean
@@ -160,7 +160,7 @@ export default function SubscriptionPage() {
   }, [fetchSubscriptionData])
 
   // Memoized handlers to prevent unnecessary re-renders
-  const handleUpgrade = useCallback(async (tier: 'plus' | 'pro' = 'plus', interval: 'month' | 'year' = 'month') => {
+  const handleUpgrade = useCallback(async (tier: 'plus' | 'pro' | 'enterprise' = 'plus', interval: 'month' | 'year' = 'month') => {
     setIsUpgrading(true)
     try {
       const response = await fetch('/api/subscription/upgrade', {
@@ -222,7 +222,8 @@ export default function SubscriptionPage() {
       : 0
     const isPro = subscription?.tier === 'pro'
     const isPlus = subscription?.tier === 'plus'
-    const isFree = !isPro && !isPlus
+    const isEnterprise = subscription?.tier === 'enterprise'
+    const isFree = !isPro && !isPlus && !isEnterprise
     const isActive = subscription?.status === 'active'
     const currentPeriodEndDate = subscription?.current_period_end
       ? new Date(subscription.current_period_end).toLocaleDateString()
@@ -233,6 +234,7 @@ export default function SubscriptionPage() {
       messageUsagePercentage,
       isPro,
       isPlus,
+      isEnterprise,
       isFree,
       isActive,
       currentPeriodEndDate
@@ -259,6 +261,7 @@ export default function SubscriptionPage() {
     messageUsagePercentage,
     isPro,
     isPlus,
+    isEnterprise,
     isFree,
     isActive,
     currentPeriodEndDate
@@ -276,13 +279,14 @@ export default function SubscriptionPage() {
           <h1 className="text-3xl font-bold flex items-center gap-2">
             Subscription
             {isPro && <Badge variant="default" className="ml-2 bg-slate-900 text-white">Pro</Badge>}
+            {isEnterprise && <Badge variant="default" className="ml-2 bg-slate-900 text-white">Enterprise</Badge>}
           </h1>
           <p className="text-muted-foreground mt-1">
             Manage your Polydev subscription and usage
           </p>
         </div>
-        <Badge variant={(isPro || isPlus) ? "default" : "secondary"} className="text-sm">
-          {isPro ? 'Pro Plan' : isPlus ? 'Plus Plan' : 'Free Plan'}
+        <Badge variant={(isPro || isPlus || isEnterprise) ? "default" : "secondary"} className="text-sm">
+          {isEnterprise ? 'Enterprise Plan' : isPro ? 'Pro Plan' : isPlus ? 'Plus Plan' : 'Free Plan'}
         </Badge>
       </div>
 
@@ -312,7 +316,12 @@ export default function SubscriptionPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                {isPro ? (
+                {isEnterprise ? (
+                  <>
+                    <Badge variant="default" className="bg-slate-900 text-white">Enterprise</Badge>
+                    Polydev Enterprise
+                  </>
+                ) : isPro ? (
                   <>
                     <Badge variant="default" className="bg-slate-900 text-white">Pro</Badge>
                     Polydev Pro
@@ -327,8 +336,10 @@ export default function SubscriptionPage() {
                 )}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {isPro
+                {isEnterprise
                   ? `$60/month • ${isActive ? 'Active' : subscription?.status}`
+                  : isPro
+                  ? `$35/month • ${isActive ? 'Active' : subscription?.status}`
                   : isPlus
                   ? `$25/month • ${isActive ? 'Active' : subscription?.status}`
                   : 'Limited features'
@@ -412,7 +423,7 @@ export default function SubscriptionPage() {
       </div>
 
       {/* Plan Comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Free Plan */}
         <Card className={isFree ? 'border-slate-300 bg-slate-50/30' : ''}>
           <CardHeader>
@@ -515,10 +526,71 @@ export default function SubscriptionPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                
+
                 Pro Plan
               </div>
               {isPro && <Badge className="bg-slate-900 text-white">Current</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <div className="text-2xl font-bold">$35/month</div>
+              <div className="text-sm text-slate-600 font-medium">or $30/month annually</div>
+            </div>
+            <ul className="space-y-2">
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-slate-900" />
+                Unlimited messages
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-slate-900" />
+                600/2,500/8,000 perspectives
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-slate-900" />
+                All 340+ models access
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-slate-900" />
+                Advanced analytics
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-slate-900" />
+                Priority support
+              </li>
+            </ul>
+            {!isPro && (
+              <div className="space-y-2">
+                <Button
+                  className="w-full bg-slate-900 text-white hover:bg-slate-700"
+                  onClick={() => handleUpgrade('pro', 'month')}
+                  disabled={isUpgrading}
+                >
+
+                  {isUpgrading ? 'Processing...' : 'Monthly - $35/mo'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full border-slate-900 text-slate-900 hover:bg-slate-100"
+                  onClick={() => handleUpgrade('pro', 'year')}
+                  disabled={isUpgrading}
+                >
+
+                  {isUpgrading ? 'Processing...' : 'Annual - $360/yr ($30/mo)'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Enterprise Plan */}
+        <Card className={isEnterprise ? 'border-2 border-slate-900 bg-white' : 'border-2 border-slate-900'}>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                Enterprise Plan
+              </div>
+              {isEnterprise && <Badge className="bg-slate-900 text-white">Current</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -533,7 +605,11 @@ export default function SubscriptionPage() {
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                1,200/4,800/10,000 perspectives
+                1,200/5,000/20,000 perspectives
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-slate-900" />
+                All 340+ models access
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
@@ -541,30 +617,28 @@ export default function SubscriptionPage() {
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                Team collaboration
+                Team collaboration features
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                Priority support
+                Dedicated support
               </li>
             </ul>
-            {!isPro && (
+            {!isEnterprise && (
               <div className="space-y-2">
                 <Button
                   className="w-full bg-slate-900 text-white hover:bg-slate-700"
-                  onClick={() => handleUpgrade('pro', 'month')}
+                  onClick={() => handleUpgrade('enterprise', 'month')}
                   disabled={isUpgrading}
                 >
-                  
                   {isUpgrading ? 'Processing...' : 'Monthly - $60/mo'}
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full border-slate-900 text-slate-900 hover:bg-slate-100"
-                  onClick={() => handleUpgrade('pro', 'year')}
+                  onClick={() => handleUpgrade('enterprise', 'year')}
                   disabled={isUpgrading}
                 >
-                  
                   {isUpgrading ? 'Processing...' : 'Annual - $600/yr ($50/mo)'}
                 </Button>
               </div>

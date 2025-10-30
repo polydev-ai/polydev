@@ -108,10 +108,51 @@ export async function POST(request: NextRequest) {
       .insert(keyData)
       .select()
       .single()
-    
+
     if (error) {
       console.error('Error creating API key:', error)
       return NextResponse.json({ error: 'Failed to create API key' }, { status: 500 })
+    }
+
+    // DUAL-MODE LOGIC: Enable BYOK when user adds their first API key
+    // Check if this is the user's first active API key
+    const { data: existingKeys } = await supabase
+      .from('user_api_keys')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('active', true)
+
+    const isFirstKey = existingKeys && existingKeys.length === 1 // Only the one we just added
+
+    if (isFirstKey) {
+      // Get user's subscription tier to determine ephemeral mode default
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('subscription_tier, byok_enabled')
+        .eq('id', user.id)
+        .single()
+
+      if (profile && !profile.byok_enabled) {
+        // Enable BYOK mode
+        const updates: any = {
+          byok_enabled: true
+        }
+
+        // Auto-enable ephemeral mode for Pro/Enterprise
+        const tier = profile.subscription_tier?.toLowerCase()
+        if (tier === 'pro' || tier === 'enterprise') {
+          updates.ephemeral_conversations = true
+          updates.ephemeral_enabled_at = new Date().toISOString()
+          console.log(`[BYOK] Auto-enabled ephemeral mode for ${tier} user ${user.id}`)
+        }
+
+        await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', user.id)
+
+        console.log(`[BYOK] Enabled BYOK mode for user ${user.id} (first API key added)`)
+      }
     }
     
     // If this is a preferred provider, update user preferences

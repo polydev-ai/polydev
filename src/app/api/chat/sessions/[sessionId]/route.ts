@@ -61,7 +61,7 @@ export async function GET(
     const supabase = await createClient()
     const { sessionId } = await params
 
-    // Fetch session with messages
+    // Fetch session with messages (including encrypted content)
     const { data: session, error: sessionError } = await supabase
       .from('chat_sessions')
       .select(`
@@ -74,6 +74,8 @@ export async function GET(
           id,
           role,
           content,
+          encrypted_content,
+          encryption_metadata,
           model_id,
           provider_info,
           usage_info,

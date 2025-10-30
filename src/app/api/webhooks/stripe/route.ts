@@ -12,6 +12,7 @@ import {
 } from '@/lib/resendService'
 import OpenRouterClient from '@/lib/openrouter'
 import CreditManager from '@/lib/creditManager'
+import { quotaManager } from '@/lib/quota-manager'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-08-27.basil'
@@ -19,6 +20,57 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 const creditManager = new CreditManager()
+
+/**
+ * Helper function to determine subscription tier from Stripe price ID
+ */
+async function determineTierFromPriceId(priceId: string, supabase: any): Promise<'plus' | 'pro' | 'enterprise'> {
+  try {
+    // Fetch pricing config from database
+    const { data: pricingData, error } = await supabase
+      .from('admin_pricing_config')
+      .select('config_value')
+      .eq('config_key', 'subscription_pricing')
+      .single()
+
+    if (error || !pricingData) {
+      console.error('[Stripe Webhook] Failed to fetch pricing config:', error)
+      // Default to 'plus' if config not found
+      return 'plus'
+    }
+
+    const config = pricingData.config_value
+
+    // Check each tier for matching price ID
+    if (config.plus_tier) {
+      if (priceId === config.plus_tier.stripe_price_id_monthly ||
+          priceId === config.plus_tier.stripe_price_id_annual) {
+        return 'plus'
+      }
+    }
+
+    if (config.pro_tier) {
+      if (priceId === config.pro_tier.stripe_price_id_monthly ||
+          priceId === config.pro_tier.stripe_price_id_annual) {
+        return 'pro'
+      }
+    }
+
+    if (config.enterprise_tier) {
+      if (priceId === config.enterprise_tier.stripe_price_id_monthly ||
+          priceId === config.enterprise_tier.stripe_price_id_annual) {
+        return 'enterprise'
+      }
+    }
+
+    // Default to 'plus' if no match found
+    console.warn(`[Stripe Webhook] No tier found for price ID ${priceId}, defaulting to 'plus'`)
+    return 'plus'
+  } catch (error) {
+    console.error('[Stripe Webhook] Error determining tier from price ID:', error)
+    return 'plus'
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -268,12 +320,27 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
 
     const userId = user.id
 
+    // Extract price ID from subscription to determine tier
+    const subscriptionItem = subscription.items?.data?.[0]
+    const priceId = subscriptionItem?.price?.id
+
+    if (!priceId) {
+      console.error('[Stripe Webhook] No price ID found in subscription')
+      return
+    }
+
+    console.log(`[Stripe Webhook] Subscription price ID: ${priceId}`)
+
+    // Determine tier from price ID
+    const tier = await determineTierFromPriceId(priceId, supabase)
+    console.log(`[Stripe Webhook] Determined tier: ${tier}`)
+
     // Create subscription record
     const subscriptionData = {
       user_id: userId,
       stripe_customer_id: subscription.customer as string,
       stripe_subscription_id: subscription.id,
-      tier: 'pro' as const,
+      tier: tier,
       status: subscription.status as any,
       current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
       current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
@@ -291,7 +358,16 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
       return
     }
 
-    // Update user message usage for Pro users
+    // Update user quota using QuotaManager (dynamically fetches tier limits from database)
+    try {
+      await quotaManager.updateUserPlan(userId, tier)
+      console.log(`[Stripe Webhook] Updated user ${userId} to ${tier} tier with correct quotas`)
+    } catch (quotaError) {
+      console.error('[Stripe Webhook] Failed to update user quotas:', quotaError)
+      // Don't return - subscription was created, we can retry quota update later
+    }
+
+    // Update user message usage for paid users (Plus, Pro, Enterprise)
     const currentMonth = new Date().toISOString().substring(0, 7)
     await supabase
       .from('user_message_usage')
@@ -303,27 +379,31 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
         cli_usage_allowed: true
       }, { onConflict: 'user_id,month_year' })
 
-    // Initialize credits for Pro users
+    // Initialize credits for paid users
     if (subscription.status === 'active') {
+      // Different credit allocations by tier
+      const creditAllocation = tier === 'enterprise' ? 15.0 : tier === 'pro' ? 10.0 : 5.0
+
       await supabase
         .from('user_credits')
         .upsert({
           user_id: userId,
-          balance: 5.0,
+          balance: creditAllocation,
           promotional_balance: 0.0,
-          monthly_allocation: 5.0,
+          monthly_allocation: creditAllocation,
           total_purchased: 0.0,
           total_spent: 0.0,
           last_monthly_reset: new Date().toISOString()
-        }, { 
+        }, {
           onConflict: 'user_id',
-          ignoreDuplicates: false 
+          ignoreDuplicates: false
         })
     }
 
     // Send welcome email using Resend MCP
     try {
-      const template = emailTemplates.subscriptionCreated(customerEmail, 'Pro')
+      const tierDisplayName = tier.charAt(0).toUpperCase() + tier.slice(1)
+      const template = emailTemplates.subscriptionCreated(customerEmail, tierDisplayName)
 
       // Call MCP function directly (available in API route context)
       const emailResult = await fetch('/api/internal/send-email', {

@@ -295,19 +295,12 @@ export class EnhancedGoogleHandler extends BaseEnhancedHandler {
       ? `${this.baseUrl}/models/${options.model}:streamGenerateContent`
       : `${this.baseUrl}/models/${options.model}:generateContent`
 
-    console.log('[DEBUG] Gemini request endpoint:', endpoint)
-    console.log('[DEBUG] Gemini request body:', JSON.stringify(requestBody, null, 2))
-
+    // Privacy: No logging of request/response content to protect user data
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody)
     })
-
-    console.log('[DEBUG] Gemini response status:', response.status, response.statusText)
-    const responseClone = response.clone()
-    const responseText = await responseClone.text()
-    console.log('[DEBUG] Gemini raw response:', responseText)
 
     return response
   }

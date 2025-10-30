@@ -1457,7 +1457,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Map provider names to CLI tool names
         const providerToCliMap: Record<string, string> = {
           'openai': 'codex_cli',
-          'anthropic': 'claude_code', 
+          'anthropic': 'claude_code',
           'google': 'gemini_cli',
           'gemini': 'gemini_cli'
         }
@@ -1466,7 +1466,12 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         let skipApiKey = false
         let cliConfig = null
 
-        if (cliToolName) {
+        // ✅ CRITICAL FIX: Only check CLI availability for Pro users
+        // Free users should NEVER attempt CLI - go straight to API keys
+        const canUseCLI = userSubscription?.tier === 'pro' && userSubscription?.status === 'active'
+
+        if (cliToolName && canUseCLI) {
+          // Only Pro users reach this code path
           // Check if CLI tool is available and authenticated from the database
           cliConfig = cliConfigs.find((config: any) =>
             config.provider === cliToolName &&
@@ -1474,31 +1479,17 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             config.enabled === true
           )
 
-          // ✅ CRITICAL FIX: Check subscription tier BEFORE routing to CLI
           if (cliConfig) {
-            // Only Pro users can use CLI - free users MUST use API keys
-            const canUseCLI = userSubscription?.tier === 'pro' && userSubscription?.status === 'active'
-
-            if (!canUseCLI) {
-              // ⛔ Non-Pro user attempting to use CLI - log this and prevent it
-              console.log(`[MCP] ⛔ SECURITY: User ${user.id} (tier: ${userSubscription?.tier}) attempted to use CLI tool ${cliToolName} - BLOCKED`)
-              console.log(`[MCP] Reason: CLI access requires Pro subscription. Falling back to API keys.`)
-              // Do NOT set skipApiKey = true
-              // Do NOT return CLI response
-              // Continue to API key handling below
-              cliConfig = null  // Clear cliConfig to force API key routing
-            } else {
-              // ✅ Pro user with CLI available - use it
-              skipApiKey = true
-              console.log(`[MCP] ✅ Pro user ${user.id} - CLI tool ${cliToolName} is available and authenticated - SKIPPING API key for ${providerName}`)
-              return {
-                model,
-                provider: `${providerName} (CLI Available)`,
-                content: `Local CLI tool ${cliToolName} is available and will be used instead of API keys for ${providerName}. This model will be handled by the CLI tool.`,
-                tokens_used: 0,
-                latency_ms: 0,
-                cli_available: true
-              }
+            // ✅ Pro user with CLI available - use it
+            skipApiKey = true
+            console.log(`[MCP] ✅ Pro user ${user.id} - CLI tool ${cliToolName} is available and authenticated - SKIPPING API key for ${providerName}`)
+            return {
+              model,
+              provider: `${providerName} (CLI Available)`,
+              content: `Local CLI tool ${cliToolName} is available and will be used instead of API keys for ${providerName}. This model will be handled by the CLI tool.`,
+              tokens_used: 0,
+              latency_ms: 0,
+              cli_available: true
             }
           }
 
@@ -1512,6 +1503,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               console.log(`[MCP] ❌ CLI tool ${cliToolName} not found in database - using API keys`)
             }
           }
+        } else if (cliToolName && !canUseCLI) {
+          // Free user - skip CLI check entirely
+          console.log(`[MCP] Free user ${user.id} (tier: ${userSubscription?.tier}) - SKIPPING CLI check for ${providerName}, using API keys`)
         } else {
           console.log(`[MCP] ❓ No CLI tool mapping for provider ${providerName} - using API keys`)
         }

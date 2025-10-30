@@ -83,19 +83,14 @@ export async function GET(request: NextRequest) {
 
     const url = new URL(request.url)
     const provider = url.searchParams.get('provider')
-    const showAllAdmins = url.searchParams.get('showAll') === 'true'
 
-    // By default, show current admin's keys. If showAll=true, show all admin keys
-    // IMPORTANT: Only show admin-managed keys (is_admin_key = true), not personal user keys
+    // ADMIN KEYS: Show ALL admin keys (platform-wide resources)
+    // Admin keys are managed by the platform and should be visible to all admins
     let query = supabase
       .from('user_api_keys')
       .select('*')
-      .eq('is_admin_key', true) // Only fetch admin-managed keys
+      .eq('is_admin_key', true) // Only fetch admin-managed keys (no user_id filter)
       .order('created_at', { ascending: false })
-
-    if (!showAllAdmins) {
-      query = query.eq('user_id', user.id)
-    }
 
     if (provider) {
       query = query.eq('provider', provider)
@@ -111,17 +106,11 @@ export async function GET(request: NextRequest) {
     // No transformation needed for admin keys
     const transformedKeys = apiKeys || []
 
-    // Get provider statistics for admin-managed keys only
-    const statsQuery = supabase
+    // Get provider statistics for ALL admin-managed keys (platform-wide)
+    const { data: providerStats } = await supabase
       .from('user_api_keys')
       .select('provider, current_usage, monthly_budget')
-      .eq('is_admin_key', true) // Only include admin-managed keys in stats
-
-    if (!showAllAdmins) {
-      statsQuery.eq('user_id', user.id)
-    }
-
-    const { data: providerStats } = await statsQuery
+      .eq('is_admin_key', true) // Only include admin-managed keys in stats (no user_id filter)
 
     const stats = providerStats?.reduce((acc: any, key) => {
       if (!acc[key.provider]) {

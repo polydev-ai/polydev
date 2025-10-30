@@ -18,7 +18,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface TierLimits {
-  tier: 'free' | 'plus' | 'pro'
+  tier: 'free' | 'plus' | 'pro' | 'enterprise'
   messages_per_month: number | null
   premium_perspectives_limit: number
   normal_perspectives_limit: number
@@ -110,7 +110,7 @@ export default function AdminTierLimits() {
     }
   }
 
-  const updateTierLimit = async (tier: 'free' | 'plus' | 'pro', field: string, value: any) => {
+  const updateTierLimit = async (tier: 'free' | 'plus' | 'pro' | 'enterprise', field: string, value: any) => {
     setSaving(true)
     try {
       const { error } = await supabase
@@ -138,7 +138,7 @@ export default function AdminTierLimits() {
     }
   }
 
-  const getTierConfig = (tier: 'free' | 'plus' | 'pro') => {
+  const getTierConfig = (tier: 'free' | 'plus' | 'pro' | 'enterprise') => {
     return tierLimits.find(t => t.tier === tier)
   }
 
@@ -157,6 +157,7 @@ export default function AdminTierLimits() {
   const freeTier = getTierConfig('free')
   const plusTier = getTierConfig('plus')
   const proTier = getTierConfig('pro')
+  const enterpriseTier = getTierConfig('enterprise')
 
   return (
     <div className="min-h-screen bg-white py-8">
@@ -200,7 +201,7 @@ export default function AdminTierLimits() {
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Free Tier */}
           {freeTier && (
             <Card>
@@ -309,7 +310,7 @@ export default function AdminTierLimits() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Pro Plan
-                  <Badge className="bg-slate-100 text-slate-900 border border-slate-200">$60/month</Badge>
+                  <Badge className="bg-slate-100 text-slate-900 border border-slate-200">$35/month</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -349,6 +350,58 @@ export default function AdminTierLimits() {
                     type="number"
                     value={proTier.eco_perspectives_limit}
                     onChange={(e) => updateTierLimit('pro', 'eco_perspectives_limit', parseInt(e.target.value))}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Enterprise Tier */}
+          {enterpriseTier && (
+            <Card className="border-2 border-slate-900">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Enterprise Plan
+                  <Badge className="bg-slate-900 text-white">$60/month</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="enterprise-messages">Messages per Month</Label>
+                  <Input
+                    id="enterprise-messages"
+                    type="text"
+                    value={enterpriseTier.messages_per_month === null ? 'Unlimited' : enterpriseTier.messages_per_month}
+                    disabled
+                    className="bg-slate-50"
+                  />
+                  <p className="text-xs text-slate-600 mt-1">Enterprise tier has unlimited messages</p>
+                </div>
+                <div>
+                  <Label htmlFor="enterprise-premium">Premium Perspectives</Label>
+                  <Input
+                    id="enterprise-premium"
+                    type="number"
+                    value={enterpriseTier.premium_perspectives_limit}
+                    onChange={(e) => updateTierLimit('enterprise', 'premium_perspectives_limit', parseInt(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="enterprise-normal">Normal Perspectives</Label>
+                  <Input
+                    id="enterprise-normal"
+                    type="number"
+                    value={enterpriseTier.normal_perspectives_limit}
+                    onChange={(e) => updateTierLimit('enterprise', 'normal_perspectives_limit', parseInt(e.target.value))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="enterprise-eco">Eco Perspectives</Label>
+                  <Input
+                    id="enterprise-eco"
+                    type="number"
+                    value={enterpriseTier.eco_perspectives_limit}
+                    onChange={(e) => updateTierLimit('enterprise', 'eco_perspectives_limit', parseInt(e.target.value))}
                   />
                 </div>
               </CardContent>

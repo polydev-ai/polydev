@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '../hooks/useAuth'
 import { createClient } from '../app/utils/supabase/client'
 import PolydevLogo from './PolydevLogo'
+import { EncryptionStatus } from './EncryptionStatus'
 
 interface UserProfile {
   id: string
@@ -150,6 +151,7 @@ export default function Navigation() {
               <div className="w-16 h-8 bg-slate-200 rounded animate-pulse"></div>
             ) : isAuthenticated ? (
               <>
+                <EncryptionStatus variant="icon" />
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
