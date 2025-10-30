@@ -1,0 +1,37 @@
+[Unit]
+Description=Nomad - Container Orchestrator for Polydev AI
+Documentation=https://www.nomadproject.io/docs/
+Wants=network-online.target
+After=network-online.target
+Requires=docker.service
+After=docker.service
+
+# Restart on failure
+StartLimitIntervalSec=10
+StartLimitBurst=3
+
+[Service]
+Type=notify
+User=root
+Group=root
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/usr/local/bin/nomad agent -config=/etc/nomad.d/nomad.hcl
+KillMode=process
+KillSignal=SIGINT
+LimitNOFILE=65536
+LimitNPROC=infinity
+Restart=on-failure
+RestartSec=2
+
+# Security hardening
+ProtectSystem=full
+ProtectHome=yes
+NoNewPrivileges=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nomad
+
+[Install]
+WantedBy=multi-user.target
