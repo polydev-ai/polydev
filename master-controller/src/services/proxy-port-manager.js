@@ -218,6 +218,148 @@ class ProxyPortManager {
       curlExample: `curl -U "${config.username}:${config.password}" -x "${config.host}:${config.port}" "https://ip.decodo.com/json"`
     };
   }
+
+  /**
+   * Health check for a specific proxy port
+   * @param {number} port - Proxy port to check
+   * @returns {Promise<{healthy: boolean, ip: string, latency: number}>}
+   */
+  async healthCheckPort(port) {
+    const startTime = Date.now();
+
+    try {
+      const ip = await this._verifyPort(port);
+      const latency = Date.now() - startTime;
+
+      console.log('[Proxy Health] Port check passed:', {
+        port,
+        ip,
+        latency: `${latency}ms`
+      });
+
+      return {
+        healthy: true,
+        ip,
+        latency
+      };
+    } catch (error) {
+      const latency = Date.now() - startTime;
+
+      console.error('[Proxy Health] Port check failed:', {
+        port,
+        error: error.message,
+        latency: `${latency}ms`
+      });
+
+      return {
+        healthy: false,
+        ip: null,
+        latency,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Health check all assigned ports
+   * @returns {Promise<{total: number, healthy: number, unhealthy: number, results: Array}>}
+   */
+  async healthCheckAll() {
+    try {
+      // Get all assigned ports from database
+      const { data: assignments, error } = await this.supabase
+        .from('user_proxy_ports')
+        .select('user_id, proxy_port, proxy_ip');
+
+      if (error) throw error;
+
+      console.log(`[Proxy Health] Checking ${assignments.length} assigned ports...`);
+
+      const results = [];
+      let healthy = 0;
+      let unhealthy = 0;
+
+      // Check each port (limit concurrency to avoid overwhelming Decodo)
+      for (const assignment of assignments) {
+        const result = await this.healthCheckPort(assignment.proxy_port);
+
+        results.push({
+          userId: assignment.user_id,
+          port: assignment.proxy_port,
+          expectedIP: assignment.proxy_ip,
+          actualIP: result.ip,
+          healthy: result.healthy,
+          latency: result.latency
+        });
+
+        if (result.healthy) {
+          healthy++;
+
+          // Update last_verified_at in database
+          await this.supabase
+            .from('user_proxy_ports')
+            .update({ last_verified_at: new Date().toISOString() })
+            .eq('proxy_port', assignment.proxy_port);
+        } else {
+          unhealthy++;
+        }
+
+        // Rate limit (avoid overwhelming Decodo)
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      console.log(`[Proxy Health] Check complete:`, {
+        total: assignments.length,
+        healthy,
+        unhealthy
+      });
+
+      return {
+        total: assignments.length,
+        healthy,
+        unhealthy,
+        results
+      };
+    } catch (error) {
+      console.error('[Proxy Health] Health check failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Start periodic health monitoring
+   * @param {number} intervalMs - Check interval in milliseconds (default: 5 minutes)
+   */
+  startHealthMonitoring(intervalMs = 300000) {
+    console.log('[Proxy Health] Starting health monitoring', {
+      interval: `${intervalMs / 1000}s`
+    });
+
+    // Run initial check after 30 seconds
+    setTimeout(() => {
+      this.healthCheckAll().catch(error => {
+        console.error('[Proxy Health] Initial check failed:', error.message);
+      });
+    }, 30000);
+
+    // Then run periodically
+    this.healthMonitorInterval = setInterval(() => {
+      this.healthCheckAll().catch(error => {
+        console.error('[Proxy Health] Periodic check failed:', error.message);
+      });
+    }, intervalMs);
+  }
+
+  /**
+   * Stop health monitoring
+   */
+  stopHealthMonitoring() {
+    if (this.healthMonitorInterval) {
+      clearInterval(this.healthMonitorInterval);
+      this.healthMonitorInterval = null;
+      console.log('[Proxy Health] Health monitoring stopped');
+    }
+  }
 }
 
 module.exports = new ProxyPortManager();
