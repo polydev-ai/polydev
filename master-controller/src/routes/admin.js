@@ -293,4 +293,87 @@ router.get('/vms/recent', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/health/system
+ * Comprehensive system health check (Nomad, Prometheus, Grafana, coturn, etc.)
+ */
+router.get('/health/system', async (req, res) => {
+  try {
+    const http = require('http');
+    const https = require('https');
+
+    const health = {
+      timestamp: new Date().toISOString(),
+      overall: 'healthy',
+      services: {},
+      monitoring: {}
+    };
+
+    // Check Nomad
+    try {
+      const nomadResponse = await fetch('http://localhost:4646/v1/status/leader', { signal: AbortSignal.timeout(3000) });
+      health.services.nomad = {
+        status: nomadResponse.ok ? 'up' : 'down',
+        url: 'http://135.181.138.102:4646',
+        leader: nomadResponse.ok ? await nomadResponse.text() : null
+      };
+    } catch (error) {
+      health.services.nomad = { status: 'down', error: error.message };
+      health.overall = 'degraded';
+    }
+
+    // Check Prometheus
+    try {
+      const promResponse = await fetch('http://localhost:9090/-/healthy', { signal: AbortSignal.timeout(3000) });
+      health.monitoring.prometheus = {
+        status: promResponse.ok ? 'up' : 'down',
+        url: 'http://135.181.138.102:9090',
+        ui: 'http://135.181.138.102:9090/graph'
+      };
+    } catch (error) {
+      health.monitoring.prometheus = { status: 'down', error: error.message };
+    }
+
+    // Check Grafana
+    try {
+      const grafanaResponse = await fetch('http://localhost:3000/api/health', { signal: AbortSignal.timeout(3000) });
+      const grafanaData = await grafanaResponse.json();
+      health.monitoring.grafana = {
+        status: grafanaData.database === 'ok' ? 'up' : 'down',
+        url: 'http://135.181.138.102:3000',
+        version: grafanaData.version
+      };
+    } catch (error) {
+      health.monitoring.grafana = { status: 'down', error: error.message };
+    }
+
+    // Check coturn
+    health.services.coturn = {
+      status: 'unknown',  // coturn doesn't have HTTP health endpoint
+      info: 'STUN/TURN server for WebRTC',
+      ports: '3478, 5349',
+      note: 'Check with: systemctl status coturn'
+    };
+
+    // Check Docker
+    try {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execPromise = util.promisify(exec);
+      const { stdout } = await execPromise('docker info --format "{{.Containers}}"');
+      health.services.docker = {
+        status: 'up',
+        containers: parseInt(stdout.trim())
+      };
+    } catch (error) {
+      health.services.docker = { status: 'down', error: error.message };
+    }
+
+    res.json(health);
+  } catch (error) {
+    logger.error('System health check failed', { error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
