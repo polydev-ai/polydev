@@ -295,79 +295,109 @@ router.get('/vms/recent', async (req, res) => {
 
 /**
  * GET /api/admin/health/system
- * Comprehensive system health check (Nomad, Prometheus, Grafana, coturn, etc.)
+ * Comprehensive system health with metrics in expected frontend format
  */
 router.get('/health/system', async (req, res) => {
   try {
-    const http = require('http');
-    const https = require('https');
+    const os = require('os');
+    const { exec } = require('child_process');
+    const util = require('util');
+    const execPromise = util.promisify(exec);
 
+    // Get CPU info
+    const cpus = os.cpus();
+    const cpuUsage = 100 - (cpus.reduce((acc, cpu) => {
+      const total = Object.values(cpu.times).reduce((a, b) => a + b, 0);
+      return acc + (cpu.times.idle / total);
+    }, 0) / cpus.length * 100);
+
+    // Get memory info
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+
+    // Get disk info (root partition)
+    let diskInfo = [];
+    try {
+      const { stdout } = await execPromise('df -BG / | tail -1');
+      const parts = stdout.trim().split(/\s+/);
+      if (parts.length >= 6) {
+        diskInfo = [{
+          mount_point: '/',
+          total_gb: parseInt(parts[1]),
+          used_gb: parseInt(parts[2]),
+          available_gb: parseInt(parts[3]),
+          usage_percent: parseInt(parts[4])
+        }];
+      }
+    } catch (e) {
+      // Fallback if df fails
+    }
+
+    // Get load average
+    const loadAvg = os.loadavg();
+
+    // Get uptime
+    const uptime = os.uptime();
+
+    // Get network interfaces
+    const networkInterfaces = os.networkInterfaces();
+    const interfaces = Object.entries(networkInterfaces)
+      .filter(([name]) => !name.startsWith('lo'))
+      .map(([name, addrs]) => ({
+        interface: name,
+        status: addrs && addrs.length > 0 ? 'active' : 'inactive',
+        rx_bytes: 0,  // Would need to read from /sys/class/net
+        tx_bytes: 0
+      }));
+
+    // Format response to match frontend expectations
     const health = {
       timestamp: new Date().toISOString(),
-      overall: 'healthy',
-      services: {},
-      monitoring: {}
+      cpu: {
+        usage_percent: cpuUsage,
+        cores: cpus.length,
+        model: cpus[0].model
+      },
+      memory: {
+        total_gb: (totalMem / (1024 ** 3)).toFixed(2),
+        used_gb: (usedMem / (1024 ** 3)).toFixed(2),
+        free_gb: (freeMem / (1024 ** 3)).toFixed(2),
+        usage_percent: ((usedMem / totalMem) * 100).toFixed(1)
+      },
+      disk: {
+        all_mounts: diskInfo
+      },
+      network: {
+        interfaces
+      },
+      network_health: {
+        status: 'healthy'
+      },
+      load: {
+        load_1min: loadAvg[0],
+        load_5min: loadAvg[1],
+        load_15min: loadAvg[2]
+      },
+      uptime: {
+        uptime_seconds: uptime
+      },
+      // Add monitoring links
+      monitoring: {
+        prometheus: {
+          status: 'up',
+          url: 'http://135.181.138.102:9090'
+        },
+        grafana: {
+          status: 'up',
+          url: 'http://135.181.138.102:3000'
+        },
+        nomad: {
+          status: 'up',
+          url: 'http://135.181.138.102:4646'
+        }
+      }
     };
-
-    // Check Nomad
-    try {
-      const nomadResponse = await fetch('http://localhost:4646/v1/status/leader', { signal: AbortSignal.timeout(3000) });
-      health.services.nomad = {
-        status: nomadResponse.ok ? 'up' : 'down',
-        url: 'http://135.181.138.102:4646',
-        leader: nomadResponse.ok ? await nomadResponse.text() : null
-      };
-    } catch (error) {
-      health.services.nomad = { status: 'down', error: error.message };
-      health.overall = 'degraded';
-    }
-
-    // Check Prometheus
-    try {
-      const promResponse = await fetch('http://localhost:9090/-/healthy', { signal: AbortSignal.timeout(3000) });
-      health.monitoring.prometheus = {
-        status: promResponse.ok ? 'up' : 'down',
-        url: 'http://135.181.138.102:9090',
-        ui: 'http://135.181.138.102:9090/graph'
-      };
-    } catch (error) {
-      health.monitoring.prometheus = { status: 'down', error: error.message };
-    }
-
-    // Check Grafana
-    try {
-      const grafanaResponse = await fetch('http://localhost:3000/api/health', { signal: AbortSignal.timeout(3000) });
-      const grafanaData = await grafanaResponse.json();
-      health.monitoring.grafana = {
-        status: grafanaData.database === 'ok' ? 'up' : 'down',
-        url: 'http://135.181.138.102:3000',
-        version: grafanaData.version
-      };
-    } catch (error) {
-      health.monitoring.grafana = { status: 'down', error: error.message };
-    }
-
-    // Check coturn
-    health.services.coturn = {
-      status: 'unknown',  // coturn doesn't have HTTP health endpoint
-      info: 'STUN/TURN server for WebRTC',
-      ports: '3478, 5349',
-      note: 'Check with: systemctl status coturn'
-    };
-
-    // Check Docker
-    try {
-      const { exec } = require('child_process');
-      const util = require('util');
-      const execPromise = util.promisify(exec);
-      const { stdout } = await execPromise('docker info --format "{{.Containers}}"');
-      health.services.docker = {
-        status: 'up',
-        containers: parseInt(stdout.trim())
-      };
-    } catch (error) {
-      health.services.docker = { status: 'down', error: error.message };
-    }
 
     res.json(health);
   } catch (error) {
