@@ -96,9 +96,9 @@ export function EncryptionStatus({
     return (
       <div className={`inline-flex items-center ${className}`}>
         {isUnlocked ? (
-          <ShieldCheck className="h-5 w-5 text-green-600" title="Encryption Active" />
+          <ShieldCheck className="h-5 w-5 text-green-600" aria-label="Encryption Active" />
         ) : (
-          <ShieldOff className="h-5 w-5 text-amber-600" title="Encryption Locked" />
+          <ShieldOff className="h-5 w-5 text-amber-600" aria-label="Encryption Locked" />
         )}
       </div>
     )

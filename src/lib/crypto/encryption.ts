@@ -222,7 +222,7 @@ export class EncryptionEngine {
     return crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: salt,
+        salt: salt as BufferSource,
         iterations: CRYPTO_CONFIG.PBKDF2_ITERATIONS,
         hash: CRYPTO_CONFIG.PBKDF2_HASH,
       },
@@ -268,7 +268,7 @@ export class EncryptionEngine {
     // Create key bundle
     const bundle: MasterKeyBundle = {
       encryptedKey: this.arrayBufferToBase64(encryptedMasterKey),
-      salt: this.arrayBufferToBase64(salt),
+      salt: this.arrayBufferToBase64(salt.buffer),
       keyId,
       version: CRYPTO_CONFIG.ENCRYPTION_VERSION,
       createdAt: Date.now(),
@@ -385,7 +385,7 @@ export class EncryptionEngine {
     return {
       ciphertext: this.arrayBufferToBase64(ciphertext),
       metadata: {
-        iv: this.arrayBufferToBase64(iv),
+        iv: this.arrayBufferToBase64(iv.buffer),
         algorithm: 'AES-GCM',
         keyId: this.activeKeyId,
         version: CRYPTO_CONFIG.ENCRYPTION_VERSION,

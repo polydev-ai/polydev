@@ -1019,7 +1019,7 @@ export async function POST(request: NextRequest) {
               }
 
               // Start provider stream
-              let upstream: ReadableStream
+              let upstream: ReadableStream | undefined
               try {
                 // For OpenAI-compatible providers, request usage in the final streamed chunk
                 if (['openai','openrouter','groq','deepseek','mistral','xai'].includes(selectedProvider)) {
@@ -1164,6 +1164,12 @@ export async function POST(request: NextRequest) {
               // Metrics for latency
               const modelStart = Date.now()
               let firstTokenAt: number | null = null
+
+              // Safety check: ensure upstream was assigned (TypeScript cannot prove this statically)
+              if (!upstream) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: 'Stream initialization failed', provider: selectedProvider })}\n\n`))
+                return
+              }
 
               const reader = upstream.getReader()
               const textDecoder = new TextDecoder()
@@ -1515,7 +1521,7 @@ export async function POST(request: NextRequest) {
         
         let selectedProvider: string | null = null
         let selectedConfig: any = null
-        let fallbackMethod: 'cli' | 'api' | 'credits' = 'api'
+        let fallbackMethod: 'cli' | 'api' | 'credits' | 'admin' = 'api'
         let actualModelId = modelId
         
         // STEP 1: PRIORITY 1 - CLI Tools (highest priority, ignore preferences)
@@ -2587,9 +2593,11 @@ export async function POST(request: NextRequest) {
                     const parsedUsage = apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                     let costInfo = null
                     if (modelPricing && parsedUsage.prompt_tokens && parsedUsage.completion_tokens) {
-                      const totalCost = computeCostUSD(parsedUsage.prompt_tokens, parsedUsage.completion_tokens, modelPricing.input, modelPricing.output)
-                      const inputCost = (parsedUsage.prompt_tokens / 1000000) * modelPricing.input
-                      const outputCost = (parsedUsage.completion_tokens / 1000000) * modelPricing.output
+                      // Type assertion: we know modelPricing is not null after the check above
+                      const pricing = modelPricing!
+                      const totalCost = computeCostUSD(parsedUsage.prompt_tokens, parsedUsage.completion_tokens, pricing.input, pricing.output)
+                      const inputCost = (parsedUsage.prompt_tokens / 1000000) * pricing.input
+                      const outputCost = (parsedUsage.completion_tokens / 1000000) * pricing.output
                       costInfo = {
                         input_cost: inputCost,
                         output_cost: outputCost,

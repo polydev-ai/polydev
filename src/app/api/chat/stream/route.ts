@@ -238,7 +238,7 @@ export async function POST(request: NextRequest) {
     let privacyMode = false;
     if (userId) {
       try {
-        const supabase = createClient();
+        const supabase = await createClient();
         const { data: profile } = await supabase
           .from('profiles')
           .select('privacy_mode')

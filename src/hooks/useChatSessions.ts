@@ -3,7 +3,8 @@ import {
   encryptMessageContent,
   decryptMessageContent,
   dbRowToEncryptedData,
-  isEncryptionUnlocked
+  isEncryptionUnlocked,
+  type EncryptionMetadata
 } from '@/lib/crypto'
 
 export interface ChatSession {
@@ -13,13 +14,6 @@ export interface ChatSession {
   updated_at: string
   archived: boolean
   message_count?: number
-}
-
-export interface EncryptionMetadata {
-  iv: string
-  algorithm: 'AES-GCM'
-  keyId: string
-  version: number
 }
 
 export interface ChatMessage {
