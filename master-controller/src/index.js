@@ -19,6 +19,7 @@ const { router: authRoutes, handleNoVNCUpgrade } = require('./routes/auth');
 const promptRoutes = require('./routes/prompts');
 const adminRoutes = require('./routes/admin');
 const metricsRoutes = require('./routes/metrics');
+const webrtcRoutes = require('./routes/webrtc');
 
 // Import background tasks
 const backgroundTasks = require('./tasks/background');
@@ -112,6 +113,7 @@ app.use('/api/vms', vmRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/prompts', promptRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/webrtc', webrtcRoutes);
 
 // Metrics (no rate limit)
 app.use('/metrics', metricsRoutes);
