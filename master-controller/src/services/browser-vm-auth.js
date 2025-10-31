@@ -444,27 +444,20 @@ class BrowserVMAuth {
     const session = this.authSessions.get(sessionId);
     const userId = session?.userId;
 
-    // Use local Tinyproxy on VPS host instead of external Decodo proxy
-    // This allows VMs to access internet via the bridge IP (192.168.100.1:3128)
-    // The host's Tinyproxy forwards to Decodo with authentication
-    const proxyConfig = {
-      httpProxy: 'http://192.168.100.1:3128',
-      httpsProxy: 'http://192.168.100.1:3128',
-      noProxy: 'localhost,127.0.0.1'
-    };
-    logger.info('Using local Tinyproxy for VM browser internet access', {
+    // Note: Decodo proxy is now injected directly into the Browser VM's /etc/environment
+    // by vm-manager.injectOAuthAgent(). All processes (including Chromium) will
+    // automatically use the user's dedicated proxy without needing explicit configuration.
+    logger.info('Browser VM proxy config injected at boot time via /etc/environment', {
       sessionId,
       userId,
-      proxyServer: '192.168.100.1:3128'
+      note: 'Using per-user Decodo proxy from environment'
     });
 
     const requestPayload = { sessionId };
     if (Object.keys(debugPayload).length > 0) {
       requestPayload.debug = debugPayload;
     }
-    if (proxyConfig) {
-      requestPayload.proxy = proxyConfig;
-    }
+    // No need to send proxy in payload - it's in VM environment
 
     // Start CLI tool - this spawns OAuth server and captures OAuth URL
     // Use http.request instead of fetch to avoid Node.js fetch() EHOSTUNREACH issues

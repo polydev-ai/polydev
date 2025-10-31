@@ -233,7 +233,7 @@ class VMManager {
   /**
    * Clone golden snapshot for new VM
    */
-  async cloneGoldenSnapshot(vmId, vmType = 'cli') {
+  async cloneGoldenSnapshot(vmId, vmType = 'cli', userId = null) {
     const vmDir = path.join(config.firecracker.usersDir, vmId);
     await fs.mkdir(vmDir, { recursive: true });
 
@@ -263,7 +263,7 @@ class VMManager {
       // For Browser VMs, inject OAuth agent
       if (vmType === 'browser') {
         logger.info('[CLONE-SNAPSHOT] vmType is "browser", proceeding with OAuth agent injection', { vmId });
-        await this.injectOAuthAgent(vmId, rootfsDst);
+        await this.injectOAuthAgent(vmId, rootfsDst, userId);
       } else {
         logger.info('[CLONE-SNAPSHOT] vmType is NOT "browser", skipping OAuth agent injection', { vmId, vmType });
       }
@@ -278,8 +278,9 @@ class VMManager {
   /**
    * Inject OAuth agent into Browser VM rootfs
    * Mounts the ext4 image, copies agent files, and sets up systemd service
+   * Also injects Decodo proxy configuration into /etc/environment
    */
-  async injectOAuthAgent(vmId, rootfsPath) {
+  async injectOAuthAgent(vmId, rootfsPath, userId = null) {
     const mountPoint = `/tmp/vm-inject-${vmId}`;
 
     try {
@@ -291,6 +292,44 @@ class VMManager {
       // Mount rootfs
       execSync(`mount -o loop ${rootfsPath} ${mountPoint}`, { stdio: 'pipe' });
       logger.info('[INJECT-AGENT] Rootfs mounted', { vmId, mountPoint });
+
+      // Inject Decodo proxy configuration for Browser VM
+      if (userId) {
+        try {
+          logger.info('[INJECT-AGENT] Injecting Decodo proxy configuration', { vmId, userId });
+          const proxyEnv = await proxyPortManager.getProxyEnvVars(userId);
+
+          // Create /etc/environment content with proxy settings
+          const envContent = `# Polydev Decodo Proxy Configuration
+# User-specific proxy for external internet access
+HTTP_PROXY=${proxyEnv.HTTP_PROXY}
+HTTPS_PROXY=${proxyEnv.HTTPS_PROXY}
+NO_PROXY=${proxyEnv.NO_PROXY}
+http_proxy=${proxyEnv.HTTP_PROXY}
+https_proxy=${proxyEnv.HTTPS_PROXY}
+no_proxy=${proxyEnv.NO_PROXY}
+`;
+
+          const envPath = path.join(mountPoint, 'etc/environment');
+          await fs.writeFile(envPath, envContent);
+
+          logger.info('[INJECT-AGENT] Decodo proxy injected successfully', {
+            vmId,
+            userId,
+            proxyPort: proxyEnv.HTTP_PROXY.match(/:(\d+)$/)?.[1],
+            envPath
+          });
+        } catch (proxyError) {
+          logger.error('[INJECT-AGENT] Failed to inject proxy configuration', {
+            vmId,
+            userId,
+            error: proxyError.message
+          });
+          // Don't fail the whole injection if proxy fails - VM can still work with local proxy
+        }
+      } else {
+        logger.warn('[INJECT-AGENT] No userId provided, skipping Decodo proxy injection', { vmId });
+      }
 
       // Remove old agent directories if they exist (golden snapshot may have old paths)
       const oldAgentDir = path.join(mountPoint, 'opt/vm-agent');
@@ -344,6 +383,7 @@ Type=simple
 User=root
 WorkingDirectory=/opt/vm-browser-agent
 Environment=NODE_ENV=production
+EnvironmentFile=/etc/environment
 ExecStart=/opt/vm-browser-agent/node /opt/vm-browser-agent/server.js
 Restart=always
 RestartSec=5
@@ -460,7 +500,7 @@ WantedBy=multi-user.target
       // Clone golden snapshot
       logger.info('[VM-CREATE] Step 3: Cloning golden snapshot', { vmId, vmType });
       await this.withTimeout(
-        this.cloneGoldenSnapshot(vmId, vmType),
+        this.cloneGoldenSnapshot(vmId, vmType, userId),
         15000,
         `[${vmId}] cloneGoldenSnapshot`
       );
@@ -1088,16 +1128,13 @@ WantedBy=multi-user.target
     // Store in database
     try {
       await db.client
-        .from('oauth_sessions')
-        .upsert({
-          session_id: sessionId,
-          vm_id: vmId,
+        .from('auth_sessions')
+        .update({
+          browser_vm_id: vmId,
           vm_ip: vmIP,
-          status: 'active',
           last_heartbeat: new Date().toISOString()
-        }, {
-          onConflict: 'session_id'
-        });
+        })
+        .eq('session_id', sessionId);
 
       logger.info('[SESSION-MAPPING] Session associated with VM', {
         sessionId,
@@ -1131,7 +1168,7 @@ WantedBy=multi-user.target
     // Fallback to database
     try {
       const { data, error } = await db.client
-        .from('oauth_sessions')
+        .from('auth_sessions')
         .select('*')
         .eq('session_id', sessionId)
         .single();
@@ -1146,10 +1183,10 @@ WantedBy=multi-user.target
 
       if (data) {
         vmInfo = {
-          vmId: data.vm_id,
+          vmId: data.browser_vm_id || data.vm_id,
           vmIP: data.vm_ip,
-          created: new Date(data.created_at).getTime(),
-          lastHeartbeat: new Date(data.last_heartbeat || data.updated_at).getTime()
+          created: new Date(data.created_at || data.started_at).getTime(),
+          lastHeartbeat: new Date(data.last_heartbeat || data.started_at).getTime()
         };
 
         // Update in-memory cache
@@ -1185,7 +1222,7 @@ WantedBy=multi-user.target
       // Update database
       try {
         await db.client
-          .from('oauth_sessions')
+          .from('auth_sessions')
           .update({ last_heartbeat: new Date().toISOString() })
           .eq('session_id', sessionId);
 
@@ -1207,8 +1244,8 @@ WantedBy=multi-user.target
 
     try {
       await db.client
-        .from('oauth_sessions')
-        .update({ status: 'closed' })
+        .from('auth_sessions')
+        .update({ status: 'cancelled' })
         .eq('session_id', sessionId);
 
       logger.info('[SESSION-MAPPING] Session mapping removed', { sessionId });
