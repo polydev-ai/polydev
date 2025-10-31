@@ -37,7 +37,7 @@ export async function POST(
 
     // Call Master Controller API to complete authentication
     // This will extract credentials, store them, transfer to CLI VM, and cleanup
-    const masterControllerUrl = process.env.MASTER_CONTROLLER_URL || 'http://192.168.5.82:3001';
+    const masterControllerUrl = process.env.MASTER_CONTROLLER_URL || 'http://135.181.138.102:4000';
 
     const response = await fetch(`${masterControllerUrl}/api/auth/complete`, {
       method: 'POST',

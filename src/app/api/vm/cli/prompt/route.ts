@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send prompt to Master Controller for streaming response
-    const masterControllerUrl = process.env.MASTER_CONTROLLER_URL || 'http://192.168.5.82:4000';
+    const masterControllerUrl = process.env.MASTER_CONTROLLER_URL || 'http://135.181.138.102:4000';
 
     const response = await fetch(`${masterControllerUrl}/api/vm/${vm.id}/cli/prompt`, {
       method: 'POST',

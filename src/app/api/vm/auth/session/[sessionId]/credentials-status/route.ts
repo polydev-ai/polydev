@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Agent } from 'undici';
 import { createClient } from '@/app/utils/supabase/server';
 
-const MASTER_CONTROLLER_URL = process.env.MASTER_CONTROLLER_URL || 'http://127.0.0.1:4000';
+const MASTER_CONTROLLER_URL = process.env.MASTER_CONTROLLER_URL || 'http://135.181.138.102:4000';
 
 // Disable Undici's default 30s headers timeout so long-running requests can complete
 const longLivedAgent = new Agent({ headersTimeout: 0, bodyTimeout: 0 });

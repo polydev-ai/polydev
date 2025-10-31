@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const MASTER_CONTROLLER_URL = process.env.MASTER_CONTROLLER_URL || 'http://127.0.0.1:4000';
+const MASTER_CONTROLLER_URL = process.env.MASTER_CONTROLLER_URL || 'http://135.181.138.102:4000';
 
 export async function POST(
   request: NextRequest,

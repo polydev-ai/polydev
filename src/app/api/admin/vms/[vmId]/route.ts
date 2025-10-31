@@ -65,7 +65,7 @@ export async function DELETE(
       console.log('[DELETE VM] VM already destroyed or failed, skipping master controller call');
     } else {
       // Call Master Controller to destroy VM
-      const masterControllerUrl = process.env.MASTER_CONTROLLER_URL || 'http://192.168.5.82:4000';
+      const masterControllerUrl = process.env.MASTER_CONTROLLER_URL || 'http://135.181.138.102:4000';
 
       const destroyRes = await fetch(`${masterControllerUrl}/api/vm/${vmId}/destroy`, {
         method: 'POST',
