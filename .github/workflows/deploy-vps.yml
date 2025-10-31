@@ -18,6 +18,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache sshpass
+        uses: actions/cache@v3
+        with:
+          path: ~/.sshpass-installed
+          key: sshpass-installed
+
       - name: Deploy to VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -26,24 +32,28 @@ jobs:
         run: |
           echo "🚀 Deploying to VPS..."
 
-          # Install sshpass
-          sudo apt-get update -qq
-          sudo apt-get install -y sshpass
+          # Install sshpass (only if not cached)
+          if [ ! -f ~/.sshpass-installed ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y sshpass
+            touch ~/.sshpass-installed
+          fi
 
-          # Deploy master-controller
+          # Deploy master-controller (FAST: only changed files, keep node_modules)
           echo "📦 Syncing master-controller..."
-          sshpass -p "$VPS_PASSWORD" rsync -avz \
-            -e "ssh -o StrictHostKeyChecking=no" \
+          sshpass -p "$VPS_PASSWORD" rsync -az \
+            -e "ssh -o StrictHostKeyChecking=no -o Compression=no" \
             --exclude 'node_modules' \
             --exclude '.git' \
             --exclude 'logs' \
+            --exclude '*.md' \
             ./master-controller/ \
             $VPS_USER@$VPS_HOST:/opt/master-controller/
 
-          # Install dependencies on VPS
-          echo "📦 Installing dependencies..."
+          # Install dependencies ONLY if package.json changed
+          echo "📦 Checking dependencies..."
           sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no \
-            $VPS_USER@$VPS_HOST "cd /opt/master-controller && npm install --production"
+            $VPS_USER@$VPS_HOST "cd /opt/master-controller && [ ! -f node_modules/.package-lock.json ] || ! diff -q package.json node_modules/.package-lock.json >/dev/null 2>&1 && npm install --production && cp package.json node_modules/.package-lock.json || echo 'Dependencies up to date'"
 
           # Deploy .env file separately (not in git)
           echo "📦 Deploying .env configuration..."
