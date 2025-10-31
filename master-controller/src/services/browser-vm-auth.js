@@ -61,8 +61,8 @@ class BrowserVMAuth {
       });
 
       try {
-        browserVM = await vmManager.createVM(userId, 'browser');
-        logger.info('Browser VM created successfully', {
+        browserVM = await vmManager.createVM(userId, 'browser', null, null, sessionId);
+        logger.info('Browser VM created successfully with WebRTC', {
           userId,
           provider,
           sessionId,

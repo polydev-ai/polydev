@@ -233,7 +233,7 @@ class VMManager {
   /**
    * Clone golden snapshot for new VM
    */
-  async cloneGoldenSnapshot(vmId, vmType = 'cli', userId = null) {
+  async cloneGoldenSnapshot(vmId, vmType = 'cli', userId = null, sessionId = null) {
     const vmDir = path.join(config.firecracker.usersDir, vmId);
     await fs.mkdir(vmDir, { recursive: true });
 
@@ -260,10 +260,10 @@ class VMManager {
       // DIAGNOSTIC: Log vmType before injection check
       logger.info('[CLONE-SNAPSHOT] Checking vmType for OAuth agent injection', { vmId, vmType, vmTypeType: typeof vmType });
 
-      // For Browser VMs, inject OAuth agent
+      // For Browser VMs, inject OAuth agent and WebRTC server
       if (vmType === 'browser') {
-        logger.info('[CLONE-SNAPSHOT] vmType is "browser", proceeding with OAuth agent injection', { vmId });
-        await this.injectOAuthAgent(vmId, rootfsDst, userId);
+        logger.info('[CLONE-SNAPSHOT] vmType is "browser", proceeding with OAuth agent + WebRTC injection', { vmId });
+        await this.injectOAuthAgent(vmId, rootfsDst, userId, sessionId);
       } else {
         logger.info('[CLONE-SNAPSHOT] vmType is NOT "browser", skipping OAuth agent injection', { vmId, vmType });
       }
@@ -276,11 +276,11 @@ class VMManager {
   }
 
   /**
-   * Inject OAuth agent into Browser VM rootfs
+   * Inject OAuth agent and WebRTC server into Browser VM rootfs
    * Mounts the ext4 image, copies agent files, and sets up systemd service
-   * Also injects Decodo proxy configuration into /etc/environment
+   * Also injects Decodo proxy configuration and SESSION_ID for WebRTC
    */
-  async injectOAuthAgent(vmId, rootfsPath, userId = null) {
+  async injectOAuthAgent(vmId, rootfsPath, userId = null, sessionId = null) {
     const mountPoint = `/tmp/vm-inject-${vmId}`;
 
     try {
@@ -299,7 +299,7 @@ class VMManager {
           logger.info('[INJECT-AGENT] Injecting Decodo proxy configuration', { vmId, userId });
           const proxyEnv = await proxyPortManager.getProxyEnvVars(userId);
 
-          // Create /etc/environment content with proxy settings
+          // Create /etc/environment content with proxy settings + SESSION_ID
           const envContent = `# Polydev Decodo Proxy Configuration
 # User-specific proxy for external internet access
 HTTP_PROXY=${proxyEnv.HTTP_PROXY}
@@ -308,14 +308,18 @@ NO_PROXY=${proxyEnv.NO_PROXY}
 http_proxy=${proxyEnv.HTTP_PROXY}
 https_proxy=${proxyEnv.HTTPS_PROXY}
 no_proxy=${proxyEnv.NO_PROXY}
+${sessionId ? `SESSION_ID=${sessionId}` : ''}
+MASTER_CONTROLLER_URL=http://192.168.100.1:4000
+DISPLAY=:1
 `;
 
           const envPath = path.join(mountPoint, 'etc/environment');
           await fs.writeFile(envPath, envContent);
 
-          logger.info('[INJECT-AGENT] Decodo proxy injected successfully', {
+          logger.info('[INJECT-AGENT] Decodo proxy + SESSION_ID injected successfully', {
             vmId,
             userId,
+            sessionId,
             proxyPort: proxyEnv.HTTP_PROXY.match(/:(\d+)$/)?.[1],
             envPath
           });
@@ -357,10 +361,63 @@ no_proxy=${proxyEnv.NO_PROXY}
       }
 
       execSync(`cp ${srcAgentDir}/server.js ${agentDir}/`, { stdio: 'pipe' });
+      execSync(`cp ${srcAgentDir}/webrtc-server.js ${agentDir}/`, { stdio: 'pipe' });
       execSync(`cp ${srcAgentDir}/package.json ${agentDir}/`, { stdio: 'pipe' });
       execSync(`cp ${srcAgentDir}/node ${agentDir}/`, { stdio: 'pipe' });
       execSync(`chmod +x ${agentDir}/node`, { stdio: 'pipe' });
-      logger.info('[INJECT-AGENT] Agent files copied (including bundled Node.js)', { vmId });
+      logger.info('[INJECT-AGENT] Agent files copied (OAuth agent + WebRTC server + bundled Node.js)', { vmId });
+
+      // Create supervisor script to run both OAuth agent AND WebRTC server
+      const supervisorContent = `#!/bin/bash
+# Supervisor script to run both OAuth agent and WebRTC server
+# This enables both noVNC (OAuth) and WebRTC (stable streaming) functionality
+
+set -e
+
+# Source environment variables (includes proxy + SESSION_ID)
+if [ -f /etc/environment ]; then
+  export \$(cat /etc/environment | xargs)
+fi
+
+cd /opt/vm-browser-agent
+
+echo "[SUPERVISOR] Starting OAuth agent and WebRTC server..."
+echo "[SUPERVISOR] SESSION_ID: $SESSION_ID"
+echo "[SUPERVISOR] DISPLAY: $DISPLAY"
+
+# Start OAuth agent in background
+/opt/vm-browser-agent/node /opt/vm-browser-agent/server.js &
+OAUTH_PID=$!
+echo "[SUPERVISOR] OAuth agent started (PID: $OAUTH_PID)"
+
+# Start WebRTC server in background
+/opt/vm-browser-agent/node /opt/vm-browser-agent/webrtc-server.js &
+WEBRTC_PID=$!
+echo "[SUPERVISOR] WebRTC server started (PID: $WEBRTC_PID)"
+
+# Cleanup handler
+cleanup() {
+  echo "[SUPERVISOR] Shutting down services..."
+  kill $OAUTH_PID $WEBRTC_PID 2>/dev/null || true
+  wait $OAUTH_PID $WEBRTC_PID 2>/dev/null || true
+  echo "[SUPERVISOR] Services stopped"
+  exit 0
+}
+
+trap cleanup SIGTERM SIGINT
+
+# Wait for either process to exit
+wait -n
+
+# If one exits, stop the other
+echo "[SUPERVISOR] One service exited, stopping all..."
+cleanup
+`;
+
+      const supervisorPath = path.join(agentDir, 'start-all.sh');
+      await fs.writeFile(supervisorPath, supervisorContent);
+      execSync(`chmod +x ${supervisorPath}`, { stdio: 'pipe' });
+      logger.info('[INJECT-AGENT] Supervisor script created', { vmId });
 
       // Remove old systemd service if it exists (golden snapshot may have stale version)
       const oldServicePath = path.join(mountPoint, 'etc/systemd/system/vm-browser-agent.service');
@@ -373,9 +430,9 @@ no_proxy=${proxyEnv.NO_PROXY}
         logger.debug('[INJECT-AGENT] No old service to remove', { vmId });
       }
 
-      // Create systemd service file
+      // Create systemd service file (runs supervisor that manages both OAuth + WebRTC)
       const serviceContent = `[Unit]
-Description=VM Browser OAuth Agent
+Description=VM Browser Services (OAuth Agent + WebRTC Server)
 After=network.target
 
 [Service]
@@ -384,7 +441,7 @@ User=root
 WorkingDirectory=/opt/vm-browser-agent
 Environment=NODE_ENV=production
 EnvironmentFile=/etc/environment
-ExecStart=/opt/vm-browser-agent/node /opt/vm-browser-agent/server.js
+ExecStart=/opt/vm-browser-agent/start-all.sh
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -444,7 +501,7 @@ WantedBy=multi-user.target
   /**
    * Create and start a new VM
    */
-  async createVM(userId, vmType, decodoPort = null, decodoIP = null) {
+  async createVM(userId, vmType, decodoPort = null, decodoIP = null, sessionId = null) {
     const vmId = `vm-${crypto.randomUUID()}`;
     const startTime = Date.now();
 
@@ -500,7 +557,7 @@ WantedBy=multi-user.target
       // Clone golden snapshot
       logger.info('[VM-CREATE] Step 3: Cloning golden snapshot', { vmId, vmType });
       await this.withTimeout(
-        this.cloneGoldenSnapshot(vmId, vmType, userId),
+        this.cloneGoldenSnapshot(vmId, vmType, userId, sessionId),
         15000,
         `[${vmId}] cloneGoldenSnapshot`
       );

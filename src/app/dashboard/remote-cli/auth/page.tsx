@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { WebRTCViewer } from '@/components/WebRTCViewer';
 
 type AuthStep = 'creating_vm' | 'vm_ready' | 'authenticating' | 'completed' | 'failed' | 'cancelled';
 
@@ -44,7 +45,9 @@ function AuthFlowContent() {
   const [error, setError] = useState<string | null>(null);
   const [vmInfo, setVmInfo] = useState<any>(null);
   const [showBrowser, setShowBrowser] = useState(false);
+  const [showWebRTC, setShowWebRTC] = useState(false);
   const [showNoVNC, setShowNoVNC] = useState(false);
+  const [useNoVNCFallback, setUseNoVNCFallback] = useState(false);
   const [oauthUrl, setOauthUrl] = useState<string | null>(null);
   const [pollingOAuthUrl, setPollingOAuthUrl] = useState(false);
   const [pollingCredentials, setPollingCredentials] = useState(false);
@@ -139,9 +142,9 @@ function AuthFlowContent() {
     };
   }, [oauthUrl, sessionId, browserLaunchAttempted]);
 
-  // Poll for credential status when noVNC is shown (with exponential backoff)
+  // Poll for credential status when desktop is shown (with exponential backoff)
   useEffect(() => {
-    if (!sessionId || !showNoVNC || pollingCredentials) return;
+    if (!sessionId || (!showWebRTC && !showNoVNC) || pollingCredentials) return;
 
     let cancelled = false;
     let delay = 1000; // Start with 1 second
@@ -188,7 +191,7 @@ function AuthFlowContent() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [sessionId, showNoVNC, pollingCredentials]);
+  }, [sessionId, showWebRTC, showNoVNC, pollingCredentials]);
 
   // Send periodic heartbeats to keep VM alive
   useEffect(() => {
@@ -524,17 +527,17 @@ function AuthFlowContent() {
                         1
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium mb-1">Access VM Desktop via noVNC</p>
+                        <p className="font-medium mb-1">Access VM Desktop</p>
                         <p className="text-sm text-muted-foreground mb-3">
-                          Open the VM desktop to interact with the {getProviderName(provider!)} CLI tool
+                          Open the VM desktop to interact with the {getProviderName(provider!)} CLI tool via WebRTC (ultra-low latency)
                         </p>
-                        {!showNoVNC ? (
+                        {!showWebRTC && !showNoVNC ? (
                           <Button
                             size="sm"
                             variant="default"
-                            onClick={() => setShowNoVNC(true)}
+                            onClick={() => setShowWebRTC(true)}
                           >
-                            Open VM Desktop
+                            Open VM Desktop (WebRTC)
                             <Server className="w-3 h-3 ml-2" />
                           </Button>
                         ) : (
@@ -542,23 +545,59 @@ function AuthFlowContent() {
                             <div className="flex items-center justify-between px-3 py-2 bg-muted border-b">
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Server className="w-3 h-3" />
-                                <span className="font-mono">VM Desktop - noVNC</span>
+                                <span className="font-mono">VM Desktop - {useNoVNCFallback ? 'noVNC (Fallback)' : 'WebRTC'}</span>
                               </div>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setShowNoVNC(false)}
-                                className="h-6 px-2"
-                              >
-                                Minimize
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                {!useNoVNCFallback && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setUseNoVNCFallback(true)}
+                                    className="h-6 px-2 text-xs"
+                                  >
+                                    Use noVNC
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setShowWebRTC(false);
+                                    setShowNoVNC(false);
+                                    setUseNoVNCFallback(false);
+                                  }}
+                                  className="h-6 px-2"
+                                >
+                                  Minimize
+                                </Button>
+                              </div>
                             </div>
-                            <iframe
-                              src={`/api/auth/session/${sessionId}/novnc`}
-                              className="w-full h-[700px] bg-black"
-                              title="VM Desktop"
-                              allow="clipboard-read; clipboard-write"
-                            />
+                            {useNoVNCFallback ? (
+                              <iframe
+                                src={`/api/auth/session/${sessionId}/novnc`}
+                                className="w-full h-[700px] bg-black"
+                                title="VM Desktop"
+                                allow="clipboard-read; clipboard-write"
+                              />
+                            ) : (
+                              <div className="w-full h-[700px] bg-black">
+                                <WebRTCViewer
+                                  sessionId={sessionId!}
+                                  onConnectionStateChange={(state) => {
+                                    console.log('[WebRTC] Connection state:', state);
+                                    if (state === 'failed') {
+                                      toast.error('WebRTC connection failed, switching to noVNC fallback');
+                                      setUseNoVNCFallback(true);
+                                    }
+                                  }}
+                                  onError={(error) => {
+                                    console.error('[WebRTC] Error:', error);
+                                    toast.error('WebRTC error: ' + error.message);
+                                  }}
+                                  fallbackToNoVNC={true}
+                                />
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -585,7 +624,7 @@ function AuthFlowContent() {
                       </div>
                     </div>
 
-                    {showNoVNC && (
+                    {(showWebRTC || showNoVNC) && (
                       <>
                         <div className="flex gap-3">
                           <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
