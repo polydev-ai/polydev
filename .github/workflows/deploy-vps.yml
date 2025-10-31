@@ -34,8 +34,16 @@ jobs:
           echo "📦 Syncing master-controller..."
           sshpass -p "$VPS_PASSWORD" rsync -avz --delete \
             -e "ssh -o StrictHostKeyChecking=no" \
+            --exclude 'node_modules' \
             ./master-controller/ \
             $VPS_USER@$VPS_HOST:/opt/master-controller/
+
+          # Deploy .env file separately (not in git)
+          echo "📦 Deploying .env configuration..."
+          sshpass -p "$VPS_PASSWORD" rsync -avz \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./master-controller/.env \
+            $VPS_USER@$VPS_HOST:/opt/master-controller/.env
 
           # Deploy vm-browser-agent
           echo "📦 Syncing vm-browser-agent..."
