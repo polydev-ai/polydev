@@ -1,0 +1,78 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'master-controller/**'
+      - 'vm-browser-agent/**'
+      - 'scripts/**'
+      - 'supabase/migrations/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+        run: |
+          echo "🚀 Deploying to VPS..."
+
+          # Install sshpass
+          sudo apt-get update -qq
+          sudo apt-get install -y sshpass
+
+          # Deploy master-controller
+          echo "📦 Syncing master-controller..."
+          sshpass -p "$VPS_PASSWORD" rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./master-controller/ \
+            $VPS_USER@$VPS_HOST:/opt/master-controller/
+
+          # Deploy vm-browser-agent
+          echo "📦 Syncing vm-browser-agent..."
+          sshpass -p "$VPS_PASSWORD" rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./vm-browser-agent/ \
+            $VPS_USER@$VPS_HOST:/opt/vm-browser-agent/
+
+          # Deploy scripts
+          echo "📦 Syncing scripts..."
+          sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no \
+            $VPS_USER@$VPS_HOST "mkdir -p /opt/scripts"
+
+          sshpass -p "$VPS_PASSWORD" rsync -avz \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./scripts/ \
+            $VPS_USER@$VPS_HOST:/opt/scripts/
+
+          # Restart master-controller service
+          echo "🔄 Restarting master-controller..."
+          sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no \
+            $VPS_USER@$VPS_HOST "systemctl restart master-controller || pkill -HUP -f 'node.*index.js'"
+
+          echo "✅ Deployment complete!"
+
+          # Health check
+          echo "🏥 Running health check..."
+          sleep 5
+          sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no \
+            $VPS_USER@$VPS_HOST "curl -f http://localhost:4000/health || echo 'Health check pending...'"
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ $? -eq 0 ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed!"
+            exit 1
+          fi

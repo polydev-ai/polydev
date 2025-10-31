@@ -14,7 +14,7 @@
 
 set -e
 
-GOLDEN_IMAGE="/opt/firecracker/golden-browser-rootfs.ext4"
+GOLDEN_IMAGE="/var/lib/firecracker/snapshots/base/golden-browser-rootfs.ext4"
 MOUNT_POINT="/tmp/golden-mount-$(date +%s)"
 
 echo "========================================="
