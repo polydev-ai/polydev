@@ -32,11 +32,18 @@ jobs:
 
           # Deploy master-controller
           echo "📦 Syncing master-controller..."
-          sshpass -p "$VPS_PASSWORD" rsync -avz --delete \
+          sshpass -p "$VPS_PASSWORD" rsync -avz \
             -e "ssh -o StrictHostKeyChecking=no" \
             --exclude 'node_modules' \
+            --exclude '.git' \
+            --exclude 'logs' \
             ./master-controller/ \
             $VPS_USER@$VPS_HOST:/opt/master-controller/
+
+          # Install dependencies on VPS
+          echo "📦 Installing dependencies..."
+          sshpass -p "$VPS_PASSWORD" ssh -o StrictHostKeyChecking=no \
+            $VPS_USER@$VPS_HOST "cd /opt/master-controller && npm install --production"
 
           # Deploy .env file separately (not in git)
           echo "📦 Deploying .env configuration..."
@@ -47,8 +54,9 @@ jobs:
 
           # Deploy vm-browser-agent
           echo "📦 Syncing vm-browser-agent..."
-          sshpass -p "$VPS_PASSWORD" rsync -avz --delete \
+          sshpass -p "$VPS_PASSWORD" rsync -avz \
             -e "ssh -o StrictHostKeyChecking=no" \
+            --exclude 'node_modules' \
             ./vm-browser-agent/ \
             $VPS_USER@$VPS_HOST:/opt/vm-browser-agent/
 
