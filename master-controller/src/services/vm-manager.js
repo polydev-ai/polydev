@@ -376,49 +376,45 @@ DISPLAY=:1
       logger.info('[INJECT-AGENT] Agent files copied (OAuth agent + WebRTC server + bundled Node.js)', { vmId });
 
       // Create supervisor script to run both OAuth agent AND WebRTC server
+      // FIXED: Don't manually parse /etc/environment (causes crash with comments)
+      // systemd already loads it via EnvironmentFile
       const supervisorContent = `#!/bin/bash
-# Supervisor script to run both OAuth agent and WebRTC server
-# This enables both noVNC (OAuth) and WebRTC (stable streaming) functionality
-
-set -e
-
-# Source environment variables (includes proxy + SESSION_ID)
-if [ -f /etc/environment ]; then
-  export \$(cat /etc/environment | xargs)
-fi
+set -Eeuo pipefail
 
 cd /opt/vm-browser-agent
 
-echo "[SUPERVISOR] Starting OAuth agent and WebRTC server..."
-echo "[SUPERVISOR] SESSION_ID: $SESSION_ID"
-echo "[SUPERVISOR] DISPLAY: $DISPLAY"
+LOG_DIR=/var/log/vm-browser-agent
+mkdir -p "$LOG_DIR"
 
-# Start OAuth agent in background
-/opt/vm-browser-agent/node /opt/vm-browser-agent/server.js &
+echo "[SUPERVISOR] \\\$(date -Is) Starting OAuth agent and WebRTC server..." | tee -a "$LOG_DIR/supervisor.log"
+echo "[SUPERVISOR] SESSION_ID=\\\${SESSION_ID:-<unset>} DISPLAY=\\\${DISPLAY:-<unset>} PORT=\\\${PORT:-8080} HOST=\\\${HOST:-0.0.0.0}" | tee -a "$LOG_DIR/supervisor.log"
+
+# Ensure sane defaults
+export PORT="\\\${PORT:-8080}"
+export HOST="\\\${HOST:-0.0.0.0}"
+
+# Start OAuth agent with logging
+/opt/vm-browser-agent/node /opt/vm-browser-agent/server.js >> "$LOG_DIR/oauth.log" 2>&1 &
 OAUTH_PID=$!
-echo "[SUPERVISOR] OAuth agent started (PID: $OAUTH_PID)"
+echo "[SUPERVISOR] OAuth agent PID: $OAUTH_PID" | tee -a "$LOG_DIR/supervisor.log"
 
-# Start WebRTC server in background
-/opt/vm-browser-agent/node /opt/vm-browser-agent/webrtc-server.js &
+# Start WebRTC server with logging
+/opt/vm-browser-agent/node /opt/vm-browser-agent/webrtc-server.js >> "$LOG_DIR/webrtc.log" 2>&1 &
 WEBRTC_PID=$!
-echo "[SUPERVISOR] WebRTC server started (PID: $WEBRTC_PID)"
+echo "[SUPERVISOR] WebRTC server PID: $WEBRTC_PID" | tee -a "$LOG_DIR/supervisor.log"
 
-# Cleanup handler
 cleanup() {
-  echo "[SUPERVISOR] Shutting down services..."
-  kill $OAUTH_PID $WEBRTC_PID 2>/dev/null || true
-  wait $OAUTH_PID $WEBRTC_PID 2>/dev/null || true
-  echo "[SUPERVISOR] Services stopped"
-  exit 0
+  echo "[SUPERVISOR] \\\$(date -Is) Shutting down..." | tee -a "$LOG_DIR/supervisor.log"
+  kill "$OAUTH_PID" "$WEBRTC_PID" 2>/dev/null || true
+  wait "$OAUTH_PID" "$WEBRTC_PID" 2>/dev/null || true
+  echo "[SUPERVISOR] Stopped" | tee -a "$LOG_DIR/supervisor.log"
 }
 
-trap cleanup SIGTERM SIGINT
+trap cleanup TERM INT
 
 # Wait for either process to exit
-wait -n
-
-# If one exits, stop the other
-echo "[SUPERVISOR] One service exited, stopping all..."
+wait -n "$OAUTH_PID" "$WEBRTC_PID"
+echo "[SUPERVISOR] One child exited; stopping all..." | tee -a "$LOG_DIR/supervisor.log"
 cleanup
 `;
 
@@ -439,21 +435,24 @@ cleanup
       }
 
       // Create systemd service file (runs supervisor that manages both OAuth + WebRTC)
+      // FIXED: Output to console so we can see errors, prefix EnvironmentFile with - to ignore if missing
       const serviceContent = `[Unit]
 Description=VM Browser Services (OAuth Agent + WebRTC Server)
-After=network.target
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=/opt/vm-browser-agent
-Environment=NODE_ENV=production
-EnvironmentFile=/etc/environment
+Environment=HOST=0.0.0.0
+Environment=PORT=8080
+EnvironmentFile=-/etc/environment
 ExecStart=/opt/vm-browser-agent/start-all.sh
 Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
+RestartSec=3
+StandardOutput=journal+console
+StandardError=journal+console
 
 [Install]
 WantedBy=multi-user.target
