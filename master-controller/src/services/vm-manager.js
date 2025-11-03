@@ -385,12 +385,12 @@ cd /opt/vm-browser-agent
 LOG_DIR=/var/log/vm-browser-agent
 mkdir -p "$LOG_DIR"
 
-echo "[SUPERVISOR] \\\$(date -Is) Starting OAuth agent and WebRTC server..." | tee -a "$LOG_DIR/supervisor.log"
-echo "[SUPERVISOR] SESSION_ID=\\\${SESSION_ID:-<unset>} DISPLAY=\\\${DISPLAY:-<unset>} PORT=\\\${PORT:-8080} HOST=\\\${HOST:-0.0.0.0}" | tee -a "$LOG_DIR/supervisor.log"
+echo "[SUPERVISOR] \$(date -Is) Starting OAuth agent and WebRTC server..." | tee -a "$LOG_DIR/supervisor.log"
+echo "[SUPERVISOR] SESSION_ID=\${SESSION_ID:-<unset>} DISPLAY=\${DISPLAY:-<unset>} PORT=\${PORT:-8080} HOST=\${HOST:-0.0.0.0}" | tee -a "$LOG_DIR/supervisor.log"
 
 # Ensure sane defaults
-export PORT="\\\${PORT:-8080}"
-export HOST="\\\${HOST:-0.0.0.0}"
+export PORT="\${PORT:-8080}"
+export HOST="\${HOST:-0.0.0.0}"
 
 # Start OAuth agent with logging
 /opt/vm-browser-agent/node /opt/vm-browser-agent/server.js >> "$LOG_DIR/oauth.log" 2>&1 &
@@ -403,18 +403,38 @@ WEBRTC_PID=$!
 echo "[SUPERVISOR] WebRTC server PID: $WEBRTC_PID" | tee -a "$LOG_DIR/supervisor.log"
 
 cleanup() {
-  echo "[SUPERVISOR] \\\$(date -Is) Shutting down..." | tee -a "$LOG_DIR/supervisor.log"
+  echo "[SUPERVISOR] \$(date -Is) Shutting down..." | tee -a "$LOG_DIR/supervisor.log"
   kill "$OAUTH_PID" "$WEBRTC_PID" 2>/dev/null || true
   wait "$OAUTH_PID" "$WEBRTC_PID" 2>/dev/null || true
   echo "[SUPERVISOR] Stopped" | tee -a "$LOG_DIR/supervisor.log"
 }
 
-trap cleanup TERM INT
+# Flag to track if we're shutting down
+SHUTTING_DOWN=0
 
-# Wait for either process to exit
-wait -n "$OAUTH_PID" "$WEBRTC_PID"
-echo "[SUPERVISOR] One child exited; stopping all..." | tee -a "$LOG_DIR/supervisor.log"
-cleanup
+trap 'SHUTTING_DOWN=1; cleanup' TERM INT
+
+# Monitor both processes independently
+# Don't exit if one dies - keep supervisor alive for both
+while [ "$SHUTTING_DOWN" -eq 0 ]; do
+  # Check if OAuth agent is still running
+  if ! kill -0 "$OAUTH_PID" 2>/dev/null; then
+    echo "[SUPERVISOR] \$(date -Is) OAuth agent died (PID $OAUTH_PID), restarting..." | tee -a "$LOG_DIR/supervisor.log"
+    /opt/vm-browser-agent/node /opt/vm-browser-agent/server.js >> "$LOG_DIR/oauth.log" 2>&1 &
+    OAUTH_PID=$!
+    echo "[SUPERVISOR] OAuth agent restarted (PID: $OAUTH_PID)" | tee -a "$LOG_DIR/supervisor.log"
+  fi
+
+  # Check if WebRTC server is still running
+  if ! kill -0 "$WEBRTC_PID" 2>/dev/null; then
+    echo "[SUPERVISOR] \$(date -Is) WebRTC server died (PID $WEBRTC_PID), restarting..." | tee -a "$LOG_DIR/supervisor.log"
+    /opt/vm-browser-agent/node /opt/vm-browser-agent/webrtc-server.js >> "$LOG_DIR/webrtc.log" 2>&1 &
+    WEBRTC_PID=$!
+    echo "[SUPERVISOR] WebRTC server restarted (PID: $WEBRTC_PID)" | tee -a "$LOG_DIR/supervisor.log"
+  fi
+
+  sleep 5
+done
 `;
 
       const supervisorPath = path.join(agentDir, 'start-all.sh');
