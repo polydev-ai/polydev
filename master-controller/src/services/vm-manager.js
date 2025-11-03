@@ -154,8 +154,20 @@ class VMManager {
       // Bring up
       execSync(`ip link set ${tapName} up`, { stdio: 'pipe' });
 
+      // CRITICAL FIX: Enable vnet_hdr for Firecracker virtio-net offloads
+      // This fixes "ARP works but ICMP/TCP fails" issue
+      try {
+        execSync(`ip link set dev ${tapName} type tap vnet_hdr on`, { stdio: 'pipe' });
+        logger.info('vnet_hdr enabled on TAP', { tapName });
+      } catch (vnetErr) {
+        logger.warn('Could not enable vnet_hdr (older iproute2?), disabling guest offloads recommended', { tapName, error: vnetErr.message });
+      }
+
+      // Disable rp_filter on this TAP (new TAPs inherit default which is often strict)
+      execSync(`sysctl -w net.ipv4.conf.${tapName}.rp_filter=0`, { stdio: 'pipe' });
+
       this.tapDevices.set(vmId, tapName);
-      logger.info('TAP device created', { vmId, tapName, ipAddress });
+      logger.info('TAP device created with vnet_hdr', { vmId, tapName, ipAddress });
 
       return tapName;
     } catch (error) {
