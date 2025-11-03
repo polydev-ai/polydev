@@ -308,9 +308,8 @@ class VMManager {
           const proxyEnv = await proxyPortManager.getProxyEnvVars(userId);
 
           // Create /etc/environment content with proxy settings + SESSION_ID
-          const envContent = `# Polydev Decodo Proxy Configuration
-# User-specific proxy for external internet access
-HTTP_PROXY=${proxyEnv.HTTP_PROXY}
+          // NO COMMENTS! systemd EnvironmentFile doesn't support them
+          const envContent = `HTTP_PROXY=${proxyEnv.HTTP_PROXY}
 HTTPS_PROXY=${proxyEnv.HTTPS_PROXY}
 NO_PROXY=${proxyEnv.NO_PROXY}
 http_proxy=${proxyEnv.HTTP_PROXY}
