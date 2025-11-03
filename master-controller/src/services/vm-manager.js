@@ -148,20 +148,16 @@ class VMManager {
       // Create TAP device
       execSync(`ip tuntap add ${tapName} mode tap`, { stdio: 'pipe' });
 
+      // CRITICAL FIX: Enable vnet_hdr using helper (fixes "ARP works but IP fails")
+      // This sets IFF_VNET_HDR via ioctl, required for Firecracker virtio-net offloads
+      execSync(`/usr/local/bin/set-tap-vnet-hdr ${tapName} on`, { stdio: 'pipe' });
+      logger.info('vnet_hdr enabled on TAP via helper', { tapName });
+
       // Add to bridge
       execSync(`ip link set ${tapName} master ${config.network.bridgeDevice}`, { stdio: 'pipe' });
 
       // Bring up
       execSync(`ip link set ${tapName} up`, { stdio: 'pipe' });
-
-      // CRITICAL FIX: Enable vnet_hdr for Firecracker virtio-net offloads
-      // This fixes "ARP works but ICMP/TCP fails" issue
-      try {
-        execSync(`ip link set dev ${tapName} type tap vnet_hdr on`, { stdio: 'pipe' });
-        logger.info('vnet_hdr enabled on TAP', { tapName });
-      } catch (vnetErr) {
-        logger.warn('Could not enable vnet_hdr (older iproute2?), disabling guest offloads recommended', { tapName, error: vnetErr.message });
-      }
 
       // Disable rp_filter on this TAP (new TAPs inherit default which is often strict)
       execSync(`sysctl -w net.ipv4.conf.${tapName}.rp_filter=0`, { stdio: 'pipe' });
