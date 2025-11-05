@@ -192,15 +192,24 @@ class VMManager {
    * Create VM configuration file
    */
   async createVMConfig(vmId, vmType, tapDevice, ipAddress, decodoPort = null) {
+    console.log('=== VM CONFIG DEBUG START ===');
+    console.log('vmType received:', vmType, 'type:', typeof vmType);
+    console.log('Expected: "browser", Match:', vmType === 'browser');
+    console.log('config.vm.browser:', JSON.stringify(config.vm.browser, null, 2));
+    console.log('=== VM CONFIG DEBUG END ===');
+
     const vcpu = vmType === 'browser' ? config.vm.browser.vcpu : config.vm.cli.vcpu;
     const memory = vmType === 'browser' ? config.vm.browser.memoryMB : config.vm.cli.memoryMB;
+
+    console.log('Final vcpu:', vcpu, 'memory:', memory);
+
     const vmDir = path.join(config.firecracker.usersDir, vmId);
 
     const vmConfig = {
       'boot-source': {
         kernel_image_path: config.firecracker.goldenKernel,
-        initrd_path: '/boot/initrd.img-5.15.0-157-generic',
-        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 rootwait net.ifnames=0 biosdevname=0 random.trust_cpu=on ip=${ipAddress}::${config.network.bridgeIP}:255.255.255.0::eth0:on${decodoPort ? ' decodo_port=' + decodoPort : ''}`
+        initrd_path: '/boot/initrd.img-5.15.0-161-generic',
+        boot_args: `console=ttyS0 reboot=k panic=1 root=/dev/vda rw rootfstype=ext4 rootwait net.ifnames=0 biosdevname=0 random.trust_cpu=on gso_max_size=0${decodoPort ? ' decodo_port=' + decodoPort : ''}`
       },
       'drives': [
         {
@@ -292,14 +301,34 @@ class VMManager {
     const mountPoint = `/tmp/vm-inject-${vmId}`;
 
     try {
-      logger.info('[INJECT-AGENT] Starting OAuth agent injection', { vmId });
+      logger.info('[INJECT-AGENT] Starting OAuth agent injection', { vmId, rootfsPath, mountPoint });
 
       // Create mount point
-      execSync(`mkdir -p ${mountPoint}`, { stdio: 'pipe' });
+      try {
+        execSync(`mkdir -p "${mountPoint}"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] Mount point created', { mountPoint });
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to create mount point', { mountPoint, error: err.message });
+        throw err;
+      }
 
       // Mount rootfs
-      execSync(`mount -o loop ${rootfsPath} ${mountPoint}`, { stdio: 'pipe' });
-      logger.info('[INJECT-AGENT] Rootfs mounted', { vmId, mountPoint });
+      try {
+        logger.info('[INJECT-AGENT] Mounting rootfs...', { rootfsPath, mountPoint });
+        execSync(`mount -o loop,rw "${rootfsPath}" "${mountPoint}"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] Rootfs mounted successfully', { vmId, mountPoint });
+
+        // CRITICAL: Verify mount actually happened before proceeding
+        try {
+          execSync(`mountpoint -q "${mountPoint}"`, { stdio: 'pipe' });
+          logger.info('[INJECT-AGENT] Mount verification passed (mountpoint confirmed)', { mountPoint });
+        } catch (verifyErr) {
+          throw new Error(`Mount verification failed: ${mountPoint} is not a mountpoint`);
+        }
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to mount rootfs', { rootfsPath, mountPoint, error: err.message });
+        throw err;
+      }
 
       // Inject Decodo proxy configuration for Browser VM
       if (userId) {
@@ -321,7 +350,7 @@ DISPLAY=:1
 `;
 
           const envPath = path.join(mountPoint, 'etc/environment');
-          await fs.writeFile(envPath, envContent);
+          fsSync.writeFileSync(envPath, envContent);
 
           logger.info('[INJECT-AGENT] Decodo proxy + SESSION_ID injected successfully', {
             vmId,
@@ -357,21 +386,73 @@ DISPLAY=:1
 
       // Copy agent files from master-controller repo
       const srcAgentDir = path.join(__dirname, '../../vm-browser-agent');
+      logger.info('[INJECT-AGENT] Source agent directory', { srcAgentDir });
 
       // Check if agent files exist
-      if (!fsSync.existsSync(path.join(srcAgentDir, 'server.js'))) {
-        throw new Error('vm-browser-agent/server.js not found in repository');
+      const serverSrcPath = path.join(srcAgentDir, 'server.js');
+      const nodeSrcPath = path.join(srcAgentDir, 'node');
+
+      if (!fsSync.existsSync(serverSrcPath)) {
+        throw new Error(`vm-browser-agent/server.js not found at ${serverSrcPath}`);
       }
 
-      if (!fsSync.existsSync(path.join(srcAgentDir, 'node'))) {
-        throw new Error('vm-browser-agent/node binary not found in repository');
+      if (!fsSync.existsSync(nodeSrcPath)) {
+        throw new Error(`vm-browser-agent/node binary not found at ${nodeSrcPath}`);
       }
 
-      execSync(`cp ${srcAgentDir}/server.js ${agentDir}/`, { stdio: 'pipe' });
-      execSync(`cp ${srcAgentDir}/webrtc-server.js ${agentDir}/`, { stdio: 'pipe' });
-      execSync(`cp ${srcAgentDir}/package.json ${agentDir}/`, { stdio: 'pipe' });
-      execSync(`cp ${srcAgentDir}/node ${agentDir}/`, { stdio: 'pipe' });
-      execSync(`chmod +x ${agentDir}/node`, { stdio: 'pipe' });
+      logger.info('[INJECT-AGENT] Source files verified to exist', {
+        serverSrcPath: fsSync.existsSync(serverSrcPath),
+        nodeSrcPath: fsSync.existsSync(nodeSrcPath),
+        webrtcSrcPath: fsSync.existsSync(path.join(srcAgentDir, 'webrtc-server.js')),
+        packageSrcPath: fsSync.existsSync(path.join(srcAgentDir, 'package.json'))
+      });
+
+      // Copy with explicit error handling (no stdio: 'pipe' to expose errors)
+      try {
+        logger.info('[INJECT-AGENT] Copying server.js...', { from: serverSrcPath, to: agentDir });
+        execSync(`cp "${serverSrcPath}" "${agentDir}/"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] server.js copied successfully');
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to copy server.js', { error: err.message });
+        throw err;
+      }
+
+      try {
+        logger.info('[INJECT-AGENT] Copying webrtc-server.js...');
+        execSync(`cp "${path.join(srcAgentDir, 'webrtc-server.js')}" "${agentDir}/"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] webrtc-server.js copied successfully');
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to copy webrtc-server.js', { error: err.message });
+        throw err;
+      }
+
+      try {
+        logger.info('[INJECT-AGENT] Copying package.json...');
+        execSync(`cp "${path.join(srcAgentDir, 'package.json')}" "${agentDir}/"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] package.json copied successfully');
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to copy package.json', { error: err.message });
+        throw err;
+      }
+
+      try {
+        logger.info('[INJECT-AGENT] Copying node binary (large file, may take a moment)...');
+        execSync(`cp "${nodeSrcPath}" "${agentDir}/"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] node binary copied successfully');
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to copy node binary', { error: err.message });
+        throw err;
+      }
+
+      try {
+        logger.info('[INJECT-AGENT] Making node executable...');
+        execSync(`chmod +x "${agentDir}/node"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] node made executable');
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to chmod node', { error: err.message });
+        throw err;
+      }
+
       logger.info('[INJECT-AGENT] Agent files copied (OAuth agent + WebRTC server + bundled Node.js)', { vmId });
 
       // Create supervisor script to run both OAuth agent AND WebRTC server
@@ -393,12 +474,12 @@ export PORT="\${PORT:-8080}"
 export HOST="\${HOST:-0.0.0.0}"
 
 # Start OAuth agent with logging
-/opt/vm-browser-agent/node /opt/vm-browser-agent/server.js >> "$LOG_DIR/oauth.log" 2>&1 &
+/usr/bin/node /opt/vm-browser-agent/server.js >> "$LOG_DIR/oauth.log" 2>&1 &
 OAUTH_PID=$!
 echo "[SUPERVISOR] OAuth agent PID: $OAUTH_PID" | tee -a "$LOG_DIR/supervisor.log"
 
 # Start WebRTC server with logging
-/opt/vm-browser-agent/node /opt/vm-browser-agent/webrtc-server.js >> "$LOG_DIR/webrtc.log" 2>&1 &
+/usr/bin/node /opt/vm-browser-agent/webrtc-server.js >> "$LOG_DIR/webrtc.log" 2>&1 &
 WEBRTC_PID=$!
 echo "[SUPERVISOR] WebRTC server PID: $WEBRTC_PID" | tee -a "$LOG_DIR/supervisor.log"
 
@@ -420,7 +501,7 @@ while [ "$SHUTTING_DOWN" -eq 0 ]; do
   # Check if OAuth agent is still running
   if ! kill -0 "$OAUTH_PID" 2>/dev/null; then
     echo "[SUPERVISOR] \$(date -Is) OAuth agent died (PID $OAUTH_PID), restarting..." | tee -a "$LOG_DIR/supervisor.log"
-    /opt/vm-browser-agent/node /opt/vm-browser-agent/server.js >> "$LOG_DIR/oauth.log" 2>&1 &
+    /usr/bin/node /opt/vm-browser-agent/server.js >> "$LOG_DIR/oauth.log" 2>&1 &
     OAUTH_PID=$!
     echo "[SUPERVISOR] OAuth agent restarted (PID: $OAUTH_PID)" | tee -a "$LOG_DIR/supervisor.log"
   fi
@@ -428,7 +509,7 @@ while [ "$SHUTTING_DOWN" -eq 0 ]; do
   # Check if WebRTC server is still running
   if ! kill -0 "$WEBRTC_PID" 2>/dev/null; then
     echo "[SUPERVISOR] \$(date -Is) WebRTC server died (PID $WEBRTC_PID), restarting..." | tee -a "$LOG_DIR/supervisor.log"
-    /opt/vm-browser-agent/node /opt/vm-browser-agent/webrtc-server.js >> "$LOG_DIR/webrtc.log" 2>&1 &
+    /usr/bin/node /opt/vm-browser-agent/webrtc-server.js >> "$LOG_DIR/webrtc.log" 2>&1 &
     WEBRTC_PID=$!
     echo "[SUPERVISOR] WebRTC server restarted (PID: $WEBRTC_PID)" | tee -a "$LOG_DIR/supervisor.log"
   fi
@@ -438,15 +519,23 @@ done
 `;
 
       const supervisorPath = path.join(agentDir, 'start-all.sh');
-      await fs.writeFile(supervisorPath, supervisorContent);
-      execSync(`chmod +x ${supervisorPath}`, { stdio: 'pipe' });
-      logger.info('[INJECT-AGENT] Supervisor script created', { vmId });
+      try {
+        logger.info('[INJECT-AGENT] Creating supervisor script...', { supervisorPath });
+        fsSync.writeFileSync(supervisorPath, supervisorContent);
+        logger.info('[INJECT-AGENT] Supervisor script written to disk');
+
+        execSync(`chmod +x "${supervisorPath}"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] Supervisor script made executable', { supervisorPath });
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to create supervisor script', { supervisorPath, error: err.message });
+        throw err;
+      }
 
       // Remove old systemd service if it exists (golden snapshot may have stale version)
       const oldServicePath = path.join(mountPoint, 'etc/systemd/system/vm-browser-agent.service');
       const oldSymlinkPath = path.join(mountPoint, 'etc/systemd/system/multi-user.target.wants/vm-browser-agent.service');
       try {
-        execSync(`rm -f ${oldServicePath} ${oldSymlinkPath}`, { stdio: 'pipe' });
+        execSync(`rm -f "${oldServicePath}" "${oldSymlinkPath}"`, { stdio: 'inherit' });
         logger.info('[INJECT-AGENT] Removed old service files', { vmId });
       } catch (err) {
         // Files may not exist, ignore
@@ -478,15 +567,29 @@ WantedBy=multi-user.target
 `;
 
       const servicePath = path.join(mountPoint, 'etc/systemd/system/vm-browser-agent.service');
-      await fs.writeFile(servicePath, serviceContent);
-      logger.info('[INJECT-AGENT] Systemd service created', { vmId });
+      try {
+        logger.info('[INJECT-AGENT] Creating systemd service file...', { servicePath });
+        fsSync.writeFileSync(servicePath, serviceContent);
+        logger.info('[INJECT-AGENT] Systemd service file created', { servicePath });
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to create systemd service', { servicePath, error: err.message });
+        throw err;
+      }
 
       // Enable service (create symlink)
       const symlinkTarget = '/etc/systemd/system/vm-browser-agent.service';
       const symlinkPath = path.join(mountPoint, 'etc/systemd/system/multi-user.target.wants/vm-browser-agent.service');
-      execSync(`mkdir -p ${path.dirname(symlinkPath)}`, { stdio: 'pipe' });
-      execSync(`ln -sf ${symlinkTarget} ${symlinkPath}`, { stdio: 'pipe' });
-      logger.info('[INJECT-AGENT] Service enabled', { vmId });
+      try {
+        logger.info('[INJECT-AGENT] Creating symlink for service enablement...', { symlinkPath, symlinkTarget });
+        execSync(`mkdir -p "${path.dirname(symlinkPath)}"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] Service directory created', { dir: path.dirname(symlinkPath) });
+
+        execSync(`ln -sf "${symlinkTarget}" "${symlinkPath}"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] Service enabled (symlink created)', { symlinkPath });
+      } catch (err) {
+        logger.error('[INJECT-AGENT] Failed to enable service', { symlinkPath, error: err.message });
+        throw err;
+      }
 
       logger.info('[INJECT-AGENT] OAuth agent injection complete', { vmId });
 
@@ -500,14 +603,40 @@ WantedBy=multi-user.target
     } finally {
       // Always unmount
       try {
-        execSync(`umount ${mountPoint}`, { stdio: 'pipe' });
-        execSync(`rmdir ${mountPoint}`, { stdio: 'pipe' });
-        logger.info('[INJECT-AGENT] Rootfs unmounted', { vmId });
+        logger.info('[INJECT-AGENT] Syncing filesystem before unmount...', { mountPoint });
+        execSync(`sync`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] Sync completed');
+
+        logger.info('[INJECT-AGENT] Unmounting rootfs...', { mountPoint });
+        execSync(`umount "${mountPoint}"`, { stdio: 'inherit' });
+        logger.info('[INJECT-AGENT] Rootfs unmounted successfully', { vmId });
+
+        try {
+          execSync(`rmdir "${mountPoint}"`, { stdio: 'inherit' });
+          logger.info('[INJECT-AGENT] Mount point directory removed', { mountPoint });
+        } catch (rmErr) {
+          logger.warn('[INJECT-AGENT] Failed to remove mount point directory', {
+            mountPoint,
+            error: rmErr.message
+          });
+        }
       } catch (unmountErr) {
-        logger.warn('[INJECT-AGENT] Failed to unmount rootfs', {
+        logger.error('[INJECT-AGENT] Failed to unmount rootfs', {
           vmId,
+          mountPoint,
           error: unmountErr.message
         });
+        // Try a force unmount
+        try {
+          logger.warn('[INJECT-AGENT] Attempting force unmount with -l flag...', { mountPoint });
+          execSync(`umount -l "${mountPoint}"`, { stdio: 'inherit' });
+          logger.info('[INJECT-AGENT] Force unmount succeeded', { mountPoint });
+        } catch (forceErr) {
+          logger.error('[INJECT-AGENT] Force unmount also failed', {
+            mountPoint,
+            error: forceErr.message
+          });
+        }
       }
     }
   }
@@ -528,6 +657,10 @@ WantedBy=multi-user.target
    * Create and start a new VM
    */
   async createVM(userId, vmType, decodoPort = null, decodoIP = null, sessionId = null) {
+    console.log('=== CREATE VM DEBUG START ===');
+    console.log('vmType parameter:', vmType, 'type:', typeof vmType);
+    console.log('=== CREATE VM DEBUG END ===');
+
     const vmId = `vm-${crypto.randomUUID()}`;
     const startTime = Date.now();
 
@@ -1210,7 +1343,7 @@ WantedBy=multi-user.target
 
     // Store in database
     try {
-      await db.client
+      await db.supabase
         .from('auth_sessions')
         .update({
           browser_vm_id: vmId,
@@ -1250,7 +1383,7 @@ WantedBy=multi-user.target
 
     // Fallback to database
     try {
-      const { data, error } = await db.client
+      const { data, error } = await db.supabase
         .from('auth_sessions')
         .select('*')
         .eq('session_id', sessionId)
@@ -1304,7 +1437,7 @@ WantedBy=multi-user.target
 
       // Update database
       try {
-        await db.client
+        await db.supabase
           .from('auth_sessions')
           .update({ last_heartbeat: new Date().toISOString() })
           .eq('session_id', sessionId);
@@ -1326,7 +1459,7 @@ WantedBy=multi-user.target
     this.sessionVMMap.delete(sessionId);
 
     try {
-      await db.client
+      await db.supabase
         .from('auth_sessions')
         .update({ status: 'cancelled' })
         .eq('session_id', sessionId);
