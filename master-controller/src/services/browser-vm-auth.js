@@ -169,7 +169,7 @@ class BrowserVMAuth {
             debugFlag: 'DEBUG_KEEP_FAILED_BROWSER_VMS=true'
           });
         } else {
-          await vmManager.destroyVM(browserVM.vmId).catch(err =>
+          await vmManager.destroyVM(browserVM.vmId, true, true).catch(err =>
             logger.warn('Failed to cleanup browser VM', { error: err.message })
           );
 
@@ -183,7 +183,7 @@ class BrowserVMAuth {
       }
 
       if (cliVMInfo?.vmId) {
-        await vmManager.destroyVM(cliVMInfo.vmId).catch(err =>
+        await vmManager.destroyVM(cliVMInfo.vmId, true, true).catch(err =>
           logger.warn('Failed to cleanup CLI VM', { error: err.message })
         );
       }
@@ -268,7 +268,7 @@ class BrowserVMAuth {
 
             // Also use setTimeout as immediate cleanup (but db is backup)
             setTimeout(async () => {
-              await vmManager.destroyVM(browserVM.vmId).catch(err =>
+              await vmManager.destroyVM(browserVM.vmId, true, true).catch(err =>
                 logger.warn('Failed to cleanup browser VM', {
                   sessionId,
                   vmId: browserVM.vmId,
@@ -310,8 +310,16 @@ class BrowserVMAuth {
     const http = require('http');
     const startTime = Date.now();
     const checkInterval = 2000; // 2 seconds
+    const initialDelayMs = 15000; // 15 seconds - wait for guest OS services to start
 
-    logger.info('[WAIT-VM-READY] Starting health check', { vmIP, maxWaitMs });
+    logger.info('[WAIT-VM-READY] Starting health check', { vmIP, maxWaitMs, initialDelayMs });
+
+    // Wait for guest OS to boot and start services (network config, OAuth agent, etc.)
+    logger.info('[WAIT-VM-READY] Waiting for guest OS services to start', {
+      vmIP,
+      waitMs: initialDelayMs
+    });
+    await new Promise(resolve => setTimeout(resolve, initialDelayMs));
 
     while (Date.now() - startTime < maxWaitMs) {
       try {
