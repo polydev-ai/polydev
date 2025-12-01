@@ -1,0 +1,12 @@
+[Unit]
+Description=IPv4-only DNS proxy (filters AAAA records)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/dnsmasq -k --conf-file=/etc/dnsmasq.conf
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

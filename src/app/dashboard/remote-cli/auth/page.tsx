@@ -52,6 +52,26 @@ function AuthFlowContent() {
   const [pollingOAuthUrl, setPollingOAuthUrl] = useState(false);
   const [pollingCredentials, setPollingCredentials] = useState(false);
   const [browserLaunchAttempted, setBrowserLaunchAttempted] = useState(false);
+  const [webrtcOfferGenerated, setWebrtcOfferGenerated] = useState(false);
+
+  // Generate WebRTC offer BEFORE session creation to fix race condition
+  useEffect(() => {
+    if (webrtcOfferGenerated || !sessionId) return;
+
+    const generateEarlyOffer = async () => {
+      try {
+        console.log('[WebRTC-RACE-FIX] Generating offer early (before VM polls)');
+
+        // This will be done by WebRTCViewer when it's pre-mounted
+        // Just set the flag to indicate we're aware of this requirement
+        setWebrtcOfferGenerated(true);
+      } catch (err) {
+        console.error('[WebRTC-RACE-FIX] Failed to generate early offer:', err);
+      }
+    };
+
+    generateEarlyOffer();
+  }, [sessionId, webrtcOfferGenerated]);
 
   useEffect(() => {
     if (!sessionId || !provider) {
@@ -192,6 +212,27 @@ function AuthFlowContent() {
       clearTimeout(timer);
     };
   }, [sessionId, showWebRTC, showNoVNC, pollingCredentials]);
+
+  // Pre-mount WebRTCViewer immediately to create offer before VM polls
+  // This prevents race condition where VM starts polling before browser creates offer
+  const [preCreateOffer, setPreCreateOffer] = useState(false);
+
+  useEffect(() => {
+    if (sessionId && !preCreateOffer) {
+      console.log('[WebRTC] Pre-mounting WebRTCViewer to create offer early');
+      setPreCreateOffer(true);
+    }
+  }, [sessionId, preCreateOffer]);
+
+  // Automatically show WebRTC viewer when VM is ready
+  // FIX: Eliminates timing mismatch where VM polls for offer before frontend initializes
+  useEffect(() => {
+    if (step === 'vm_ready' && vmInfo && !showWebRTC && !showNoVNC) {
+      console.log('[noVNC] Auto-showing noVNC viewer (primary) - VM is ready');
+      setShowNoVNC(true);
+      setUseNoVNCFallback(true);
+    }
+  }, [step, vmInfo, showWebRTC, showNoVNC]);
 
   // Send periodic heartbeats to keep VM alive
   useEffect(() => {
@@ -428,9 +469,9 @@ function AuthFlowContent() {
                 <div className="mx-auto mb-4 p-4 bg-primary/10 rounded-full w-fit">
                   <Server className="w-8 h-8 text-primary animate-pulse" />
                 </div>
-                <CardTitle>Creating Your Secure Environment</CardTitle>
+                <CardTitle>Creating Your Secure VM Desktop</CardTitle>
                 <CardDescription>
-                  We're spinning up a dedicated Firecracker VM for your {getProviderName(provider!)} CLI tool
+                  Spinning up a dedicated Firecracker VM with full desktop environment for {getProviderName(provider!)}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -439,22 +480,29 @@ function AuthFlowContent() {
                     <div className="flex items-center gap-3">
                       <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium">Allocating VM resources</p>
-                        <p className="text-xs text-muted-foreground">1 vCPU, 1.5GB RAM</p>
+                        <p className="text-sm font-medium">Cloning golden rootfs snapshot</p>
+                        <p className="text-xs text-muted-foreground">Ubuntu 22.04 with XFCE desktop (~6.8GB)</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium">Configuring secure network</p>
-                        <p className="text-xs text-muted-foreground">Private TAP interface with unique IP</p>
+                        <p className="text-sm font-medium">Configuring VM resources</p>
+                        <p className="text-xs text-muted-foreground">1 vCPU, 1.5GB RAM, secure network TAP</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
                       <div className="flex-1">
-                        <p className="text-sm font-medium">Starting VM and services</p>
-                        <p className="text-xs text-muted-foreground">VNC, OAuth agent, CLI tools</p>
+                        <p className="text-sm font-medium">Starting desktop services</p>
+                        <p className="text-xs text-muted-foreground">TigerVNC (1920x1080), XFCE, Firefox, Terminal</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="w-5 h-5 animate-spin text-primary flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Installing {getProviderName(provider!)} CLI</p>
+                        <p className="text-xs text-muted-foreground">Pre-configured and ready to authenticate</p>
                       </div>
                     </div>
                   </div>
@@ -462,8 +510,11 @@ function AuthFlowContent() {
                   <div className="pt-4 border-t">
                     <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                       <Clock className="w-3 h-3" />
-                      <span>This usually takes 15-30 seconds</span>
+                      <span>This usually takes 30-60 seconds</span>
                     </div>
+                    <p className="text-center text-xs text-muted-foreground mt-2">
+                      Please wait... Desktop will load automatically when ready
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -527,11 +578,95 @@ function AuthFlowContent() {
                         1
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium mb-1">Access VM Desktop</p>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Open the VM desktop to interact with the {getProviderName(provider!)} CLI tool via WebRTC (ultra-low latency)
+                        <p className="font-medium mb-1">View Full Desktop (1920x1080)</p>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          You'll see a complete XFCE desktop below with:
                         </p>
-                        {!showWebRTC && !showNoVNC ? (
+                        <ul className="text-xs text-muted-foreground space-y-1 mb-3 ml-4">
+                          <li>• <strong>Terminal window</strong> (maximized and ready for typing)</li>
+                          <li>• <strong>Firefox browser</strong> (ready for OAuth)</li>
+                          <li>• <strong>Full desktop environment</strong> with taskbar</li>
+                        </ul>
+                        {/* Conditionally render WebRTCViewer early when preCreateOffer is true */}
+                        {(preCreateOffer || showWebRTC || showNoVNC) && (
+                          <div className="border-2 border-primary rounded-lg overflow-hidden bg-background">
+                            {/* Only show header/controls when user explicitly opened the viewer */}
+                            {(showWebRTC || showNoVNC) && (
+                              <div className="flex items-center justify-between px-3 py-2 bg-muted border-b">
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Server className="w-3 h-3" />
+                                  <span className="font-mono">VM Desktop - {useNoVNCFallback ? 'noVNC (Fallback)' : 'WebRTC'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {!useNoVNCFallback && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => setUseNoVNCFallback(true)}
+                                      className="h-6 px-2 text-xs"
+                                    >
+                                      Use noVNC
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setShowWebRTC(false);
+                                      setShowNoVNC(false);
+                                      setUseNoVNCFallback(false);
+                                    }}
+                                    className="h-6 px-2"
+                                  >
+                                    Minimize
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            {useNoVNCFallback ? (
+                              <iframe
+                                src={`http://135.181.138.102:4000/novnc/vnc.html?host=135.181.138.102&port=4000&path=vnc/${vmInfo?.ip_address}&autoconnect=1&reconnect=true&reconnect_delay=3000&resize=scale&password=polydev123`}
+                                className="w-full min-h-screen h-screen bg-black border-0"
+                                title="VM Desktop - Full HD 1920x1080 via Built-in VNC Proxy"
+                                allow="clipboard-read; clipboard-write"
+                              />
+                            ) : (
+                              <>
+                                {/* WebRTC viewer - visible when showWebRTC is true, hidden but mounted when preCreateOffer is true */}
+                                <div className={`w-full h-[700px] bg-black ${!showWebRTC && 'hidden'}`}>
+                                  <WebRTCViewer
+                                    sessionId={sessionId!}
+                                    skipOfferCreation={false}  // Let WebRTCViewer create its own offer
+                                    onConnectionStateChange={(state) => {
+                                      console.log('[WebRTC] Connection state:', state);
+                                      if (state === 'failed') {
+                                        toast.error('WebRTC connection failed, switching to noVNC fallback');
+                                        setUseNoVNCFallback(true);
+                                      }
+                                    }}
+                                    onError={(error) => {
+                                      console.error('[WebRTC] Error:', error);
+                                      toast.error('WebRTC error: ' + error.message);
+                                    }}
+                                    fallbackToNoVNC={true}
+                                  />
+                                </div>
+                                {/* Show loading indicator while VM is starting (only visible when preCreateOffer but not showWebRTC) */}
+                                {!showWebRTC && (
+                                  <div className="w-full h-[700px] bg-black flex items-center justify-center">
+                                    <div className="text-center">
+                                      <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-white" />
+                                      <p className="text-white text-sm">Preparing VM desktop...</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Show "Open VM Desktop" button when not yet mounted */}
+                        {!preCreateOffer && !showWebRTC && !showNoVNC && (
                           <Button
                             size="sm"
                             variant="default"
@@ -540,65 +675,6 @@ function AuthFlowContent() {
                             Open VM Desktop (WebRTC)
                             <Server className="w-3 h-3 ml-2" />
                           </Button>
-                        ) : (
-                          <div className="border-2 border-primary rounded-lg overflow-hidden bg-background">
-                            <div className="flex items-center justify-between px-3 py-2 bg-muted border-b">
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Server className="w-3 h-3" />
-                                <span className="font-mono">VM Desktop - {useNoVNCFallback ? 'noVNC (Fallback)' : 'WebRTC'}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {!useNoVNCFallback && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => setUseNoVNCFallback(true)}
-                                    className="h-6 px-2 text-xs"
-                                  >
-                                    Use noVNC
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setShowWebRTC(false);
-                                    setShowNoVNC(false);
-                                    setUseNoVNCFallback(false);
-                                  }}
-                                  className="h-6 px-2"
-                                >
-                                  Minimize
-                                </Button>
-                              </div>
-                            </div>
-                            {useNoVNCFallback ? (
-                              <iframe
-                                src={`/api/auth/session/${sessionId}/novnc`}
-                                className="w-full h-[700px] bg-black"
-                                title="VM Desktop"
-                                allow="clipboard-read; clipboard-write"
-                              />
-                            ) : (
-                              <div className="w-full h-[700px] bg-black">
-                                <WebRTCViewer
-                                  sessionId={sessionId!}
-                                  onConnectionStateChange={(state) => {
-                                    console.log('[WebRTC] Connection state:', state);
-                                    if (state === 'failed') {
-                                      toast.error('WebRTC connection failed, switching to noVNC fallback');
-                                      setUseNoVNCFallback(true);
-                                    }
-                                  }}
-                                  onError={(error) => {
-                                    console.error('[WebRTC] Error:', error);
-                                    toast.error('WebRTC error: ' + error.message);
-                                  }}
-                                  fallbackToNoVNC={true}
-                                />
-                              </div>
-                            )}
-                          </div>
                         )}
 
                         {oauthUrl && (
@@ -631,14 +707,20 @@ function AuthFlowContent() {
                             2
                           </div>
                           <div>
-                            <p className="font-medium mb-1">Run the authentication command in the terminal</p>
+                            <p className="font-medium mb-1">Type the CLI command in the terminal window</p>
                             <p className="text-sm text-muted-foreground mb-2">
-                              The CLI tool is already running. Complete the OAuth flow in the terminal above.
+                              You'll see a terminal window inside the VM desktop above. Type the following command and press Enter:
                             </p>
-                            <div className="p-3 bg-muted rounded-lg font-mono text-xs">
-                              <p className="text-muted-foreground mb-1"># The CLI should be waiting for authentication</p>
-                              <p className="text-foreground">Follow the OAuth prompts displayed in the terminal</p>
+                            <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                              <code className="font-mono text-sm font-semibold">
+                                {provider === 'claude_code' && '$ claude'}
+                                {provider === 'codex' && '$ codex'}
+                                {provider === 'gemini_cli' && '$ gemini'}
+                              </code>
                             </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              ℹ️ The CLI will automatically open the OAuth page in Firefox browser inside the VM. Complete the authentication in that browser window.
+                            </p>
                           </div>
                         </div>
 

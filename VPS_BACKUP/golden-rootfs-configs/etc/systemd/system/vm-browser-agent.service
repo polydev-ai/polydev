@@ -1,0 +1,20 @@
+[Unit]
+Description=VM Browser Supervisor (OAuth Agent + WebRTC Server)
+After=network-online.target tigervnc.service
+Wants=network-online.target
+Requires=tigervnc.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/vm-browser-agent
+# Wait for VNC to fully initialize
+ExecStartPre=/bin/sleep 5
+ExecStart=/bin/bash /opt/vm-browser-agent/supervisor.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

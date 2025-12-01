@@ -1,0 +1,7 @@
+127.0.0.1   localhost
+
+# Claude Code API - Force IPv4 (bypass DNS entirely for Firecracker VM NAT)
+160.79.104.10   api.anthropic.com
+160.79.104.10   console.anthropic.com
+160.79.104.10   auth.anthropic.com
+160.79.104.10   api-external.anthropic.com

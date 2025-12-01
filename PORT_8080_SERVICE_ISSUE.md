@@ -22,10 +22,8 @@
 
 **OAuth agent (Node.js server) not listening on port 8080 inside Browser VM**
 
-**Error from host trying to reach VM:**
-```
-connect ECONNREFUSED 192.168.100.2:8080
-```
+**Error from host trying to reach VM:** ``` connect ECONNREFUSED
+  192.168.100.2:8080 ```
 
 **NOT "EHOSTUNREACH"** - this proves network works, just nothing listening!
 
@@ -52,27 +50,15 @@ connect ECONNREFUSED 192.168.100.2:8080
 
 **File**: `/etc/systemd/system/vm-browser-agent.service`
 
-**Content** (what SHOULD be injected):
-```ini
-[Unit]
-Description=VM Browser Services (OAuth Agent + WebRTC Server)
-After=network.target
+**Content** (what SHOULD be injected): ```ini[Unit] Description=VM Browser
+  Services (OAuth Agent + WebRTC Server) After=network.target
 
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/vm-browser-agent
-Environment=NODE_ENV=production
-EnvironmentFile=/etc/environment
-ExecStart=/opt/vm-browser-agent/start-all.sh
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
+[Service] Type=simple User=root WorkingDirectory=/opt/vm-browser-agent
+Environment=NODE_ENV=production EnvironmentFile=/etc/environment
+ExecStart=/opt/vm-browser-agent/start-all.sh Restart=always RestartSec=5
+StandardOutput=journal StandardError=journal
 
-[Install]
-WantedBy=multi-user.target
-```
+[Install] WantedBy=multi-user.target ```
 
 **Service is ENABLED** (symlink created in multi-user.target.wants)
 
@@ -80,40 +66,30 @@ WantedBy=multi-user.target
 
 **File**: `/opt/vm-browser-agent/start-all.sh` (executable, 1214 bytes)
 
-**Content**:
-```bash
+**Content**: ```bash
 #!/bin/bash
 set -e
 
 # Source environment variables (includes proxy + SESSION_ID)
-if [ -f /etc/environment ]; then
-  export $(cat /etc/environment | xargs)
-fi
+if [ -f /etc/environment ]; then export $(cat /etc/environment | xargs) fi
 
 cd /opt/vm-browser-agent
 
-echo "[SUPERVISOR] Starting OAuth agent and WebRTC server..."
-echo "[SUPERVISOR] SESSION_ID: $SESSION_ID"
-echo "[SUPERVISOR] DISPLAY: $DISPLAY"
+echo "[SUPERVISOR] Starting OAuth agent and WebRTC server..." echo "
+[SUPERVISOR] SESSION_ID: $SESSION_ID" echo "[SUPERVISOR] DISPLAY: $DISPLAY"
 
 # Start OAuth agent in background
-/opt/vm-browser-agent/node /opt/vm-browser-agent/server.js &
-OAUTH_PID=$!
-echo "[SUPERVISOR] OAuth agent started (PID: $OAUTH_PID)"
+/opt/vm-browser-agent/node /opt/vm-browser-agent/server.js & OAUTH_PID=$!
+ echo "[SUPERVISOR] OAuth agent started (PID: $OAUTH_PID)"
 
 # Start WebRTC server in background
 /opt/vm-browser-agent/node /opt/vm-browser-agent/webrtc-server.js &
-WEBRTC_PID=$!
-echo "[SUPERVISOR] WebRTC server started (PID: $WEBRTC_PID)"
+ WEBRTC_PID=$! echo "[SUPERVISOR] WebRTC server started (PID: $WEBRTC_PID)"
 
 # Cleanup handler
-cleanup() {
-  echo "[SUPERVISOR] Shutting down services..."
-  kill $OAUTH_PID $WEBRTC_PID 2>/dev/null || true
-  wait $OAUTH_PID $WEBRTC_PID 2>/dev/null || true
-  echo "[SUPERVISOR] Services stopped"
-  exit 0
-}
+cleanup() { echo "[SUPERVISOR] Shutting down services..." kill $OAUTH_PID
+$WEBRTC_PID 2>/dev/null || true wait $OAUTH_PID $WEBRTC_PID 2>/dev/null ||
+true echo "[SUPERVISOR] Services stopped" exit 0 }
 
 trap cleanup SIGTERM SIGINT
 
@@ -121,41 +97,29 @@ trap cleanup SIGTERM SIGINT
 wait -n
 
 # If one exits, stop the other
-echo "[SUPERVISOR] One service exited, stopping all..."
-cleanup
-```
+echo "[SUPERVISOR] One service exited, stopping all..." cleanup ```
 
-### **/etc/environment (SHOULD contain):**
-```
-HTTP_PROXY=http://sp9dso1iga:...@dc.decodo.com:10001
-HTTPS_PROXY=http://sp9dso1iga:...@dc.decodo.com:10001
-NO_PROXY=localhost,127.0.0.1,192.168.0.0/16
-SESSION_ID=<uuid>
-MASTER_CONTROLLER_URL=http://192.168.100.1:4000
-DISPLAY=:1
-```
+### **/etc/environment (SHOULD contain):** ```
+       HTTP_PROXY=http://sp9dso1iga:...@dc.decodo.com:10001
+       HTTPS_PROXY=http://sp9dso1iga:...@dc.decodo.com:10001
+       NO_PROXY=localhost,127.0.0.1,192.168.0.0/16 SESSION_ID=<uuid>
+       MASTER_CONTROLLER_URL=http://192.168.100.1:4000 DISPLAY=:1 ```
 
 ---
 
 ## 🔍 **What We SEE in VM Console:**
 
-**During boot (from console.log):**
-```
-Started VM Browser Services (OAuth Agent + WebRTC Server)  ← systemd says it started!
-Started VNC Server for Display 1
-Started noVNC Web VNC Client
-Started Serial Getty on ttyS0
-polydev-browser login:  ← Reached login prompt
-```
+**During boot (from console.log):** ``` Started VM Browser Services
+  (OAuth Agent + WebRTC Server)  ← systemd says it started! Started VNC
+  Server for Display 1 Started noVNC Web VNC Client Started Serial Getty on
+  ttyS0 polydev-browser login:  ← Reached login prompt ```
 
-**Systemd shows service "Started"** but we get NO output from supervisor script!
+**Systemd shows service "Started"** but we get NO output from supervisor
+  script!
 
-**Expected (not seen)**:
-```
-[SUPERVISOR] Starting OAuth agent and WebRTC server...
-[SUPERVISOR] OAuth agent started (PID: ...)
-[SUPERVISOR] WebRTC server started (PID: ...)
-```
+**Expected (not seen)**: ```[SUPERVISOR] Starting OAuth agent and WebRTC
+  server...[SUPERVISOR] OAuth agent started (PID: ...)[SUPERVISOR] WebRTC
+  server started (PID: ...) ```
 
 The supervisor script echo statements don't appear in console!
 
@@ -170,25 +134,24 @@ The supervisor script echo statements don't appear in console!
 
 **Possible Issues:**
 
-### **1. Old Service from Golden Image:**
-Golden image has a pre-existing vm-browser-agent service:
-```ini
-ExecStart=/usr/bin/node /opt/vm-browser-agent/server.js  ← Uses /usr/bin/node (doesn't exist!)
-```
+### **1. Old Service from Golden Image:** Golden image has a pre-existing
+      vm-browser-agent service: ```ini
+      ExecStart=/usr/bin/node /opt/vm-browser-agent/server.js  ←
+      Uses /usr/bin/node (doesn't exist!) ```
 
 Our injection SHOULD replace this, but maybe:
 - Symlink isn't being replaced
 - Service is cached
 - Both services conflict
 
-### **2. /etc/environment Not Created:**
-If our injection doesn't create /etc/environment, then:
+### **2. /etc/environment Not Created:** If our injection doesn't
+      create /etc/environment, then:
 - `EnvironmentFile=/etc/environment` fails
 - systemd might still show "Started" but service has no env vars
 - SESSION_ID missing → scripts fail
 
-### **3. StandardOutput=journal:**
-We can't see service output in console because it goes to systemd journal.
+### **3. StandardOutput=journal:** We can't see service output in console
+      because it goes to systemd journal.
 
 Can't SSH to check journalctl because SSH also refuses.
 
@@ -202,31 +165,22 @@ Can't SSH to check journalctl because SSH also refuses.
 
 ## 📊 **Diagnostic Data**
 
-### **From Injection Logs** (master-controller):
-```
-[INJECT-AGENT] Supervisor script created
-[INJECT-AGENT] Systemd service created
-[INJECT-AGENT] Service enabled
-[INJECT-AGENT] OAuth agent injection complete ✅
-[INJECT-AGENT] Rootfs unmounted
-Browser VM created successfully with WebRTC ✅
-```
+### **From Injection Logs** (master-controller): ```[INJECT-AGENT] Supervisor
+      script created[INJECT-AGENT] Systemd service created
+      [INJECT-AGENT] Service enabled[INJECT-AGENT] OAuth agent injection
+      complete ✅[INJECT-AGENT] Rootfs unmounted Browser VM created
+      successfully with WebRTC ✅ ```
 
 Injection reports success!
 
-### **From VM Console:**
-```
-Started VM Browser Services (OAuth Agent + WebRTC Server)  ← systemd
-```
+### **From VM Console:** ``` Started VM Browser Services (OAuth Agent + WebRTC
+      Server)  ← systemd ```
 
 But NO supervisor script output (no [SUPERVISOR] lines).
 
-### **Network Tests:**
-```
-Ping: 64 bytes from 192.168.100.2, 0% loss ✅
-Port 8080: Connection refused (after 2 min timeout, VM destroyed)
-SSH: Connection refused
-```
+### **Network Tests:** ``` Ping: 64 bytes from 192.168.100.2, 0% loss ✅ Port
+      8080: Connection refused (after 2 min timeout, VM destroyed) SSH:
+      Connection refused ```
 
 ---
 
@@ -271,8 +225,8 @@ SSH: Connection refused
 
 ## 💡 **Hypotheses:**
 
-### **Hypothesis A: /etc/environment Not Created**
-If injection isn't creating /etc/environment:
+### **Hypothesis A: /etc/environment Not Created** If injection isn't
+      creating /etc/environment:
 - EnvironmentFile line in systemd fails
 - systemd might ignore it and still start
 - But scripts have no env vars
@@ -280,16 +234,15 @@ If injection isn't creating /etc/environment:
 
 **Test**: Mount a Browser VM rootfs and check if /etc/environment exists
 
-### **Hypothesis B: Old Service Still Running**
-Despite our removal from golden image:
+### **Hypothesis B: Old Service Still Running** Despite our removal from
+      golden image:
 - Systemd cache might have old service
 - Or injection happens AFTER systemd scans services
 - Old service tries `/usr/bin/node` (now symlink), might fail differently
 
 **Test**: Check which service is actually running (old vs new ExecStart)
 
-### **Hypothesis C: Script Fails Immediately**
-start-all.sh might fail on:
+### **Hypothesis C: Script Fails Immediately** start-all.sh might fail on:
 - Parsing /etc/environment (invalid format?)
 - Node binary not found (path issue?)
 - Missing dependencies
@@ -300,33 +253,23 @@ start-all.sh might fail on:
 
 ## 🎯 **Next Debugging Steps:**
 
-1. **Verify what's actually in a Browser VM:**
-   ```bash
+1. **Verify what's actually in a Browser VM:** ```bash
    # Mount rootfs of vm-b4f3536f or any 2GB VM
    mount -o loop /var/lib/firecracker/users/vm-XXX/rootfs.ext4 /tmp/check
 
    # Check EXACTLY what was injected:
    cat /tmp/check/etc/systemd/system/vm-browser-agent.service
-   cat /tmp/check/etc/environment
-   ls -la /tmp/check/opt/vm-browser-agent/
+   cat /tmp/check/etc/environment ls -la /tmp/check/opt/vm-browser-agent/
 
-   umount /tmp/check
-   ```
+   umount /tmp/check ```
 
-2. **Change service output to console temporarily:**
-   Update injection to use:
-   ```ini
-   StandardOutput=tty
-   StandardError=tty
-   ```
-   Then we'd see supervisor script output in console.log!
+2. **Change service output to console temporarily:** Update injection to use:
+```ini StandardOutput=tty StandardError=tty ``` Then we'd see supervisor
+script output in console.log!
 
-3. **Test script manually:**
-   If we could SSH, we'd run:
-   ```bash
-   cd /opt/vm-browser-agent
-   bash -x start-all.sh  # See exactly where it fails
-   ```
+3. **Test script manually:** If we could SSH, we'd run: ```bash
+cd /opt/vm-browser-agent bash -x start-all.sh  # See exactly where it fails
+```
 
 ---
 
@@ -337,20 +280,15 @@ start-all.sh might fail on:
 - Lines 359-420: systemd service creation
 - Lines 370-415: start-all.sh creation
 
-**Environment injection** (lines 303-314):
-```javascript
-const envContent = `# Polydev Decodo Proxy Configuration
-HTTP_PROXY=${proxyEnv.HTTP_PROXY}
-HTTPS_PROXY=${proxyEnv.HTTPS_PROXY}
-NO_PROXY=${proxyEnv.NO_PROXY}
-${sessionId ? `SESSION_ID=${sessionId}` : ''}
-MASTER_CONTROLLER_URL=http://192.168.100.1:4000
-DISPLAY=:1
-`;
+**Environment injection** (lines 303-314): ```javascript const envContent = `#
+  Polydev Decodo Proxy Configuration HTTP_PROXY=$
+  {proxyEnv.HTTP_PROXY} HTTPS_PROXY=${proxyEnv.HTTPS_PROXY} NO_PROXY=$
+  {proxyEnv.NO_PROXY} ${sessionId ? `SESSION_ID=$
+  {sessionId}` : ''} MASTER_CONTROLLER_URL=http://192.168.100.1:4000
+  DISPLAY=:1 `;
 
-const envPath = path.join(mountPoint, 'etc/environment');
-await fs.writeFile(envPath, envContent);
-```
+const envPath = path.join(mountPoint, 'etc/environment'); await fs.writeFile
+(envPath, envContent); ```
 
 ---
 
@@ -373,16 +311,15 @@ await fs.writeFile(envPath, envContent);
    - Different approach?
 
 5. **Could EnvironmentFile fail silently?**
-   - If /etc/environment doesn't exist, does systemd:
-     a) Fail to start service?
-     b) Start service without env vars?
-     c) Log an error somewhere?
+   - If /etc/environment doesn't exist, does systemd: a) Fail to start
+     service? b) Start service without env vars? c) Log an error somewhere?
 
 ---
 
 ## 🎯 **What We Need:**
 
-**Help debugging why OAuth agent (server.js) doesn't serve on port 8080 when:**
+**Help debugging why OAuth agent (server.js) doesn't serve on port 8080
+  when:**
 - ✅ Network works (ping successful)
 - ✅ VM boots (login prompt reached)
 - ✅ systemd says service "Started"
@@ -413,4 +350,5 @@ await fs.writeFile(envPath, envContent);
 
 ---
 
-**THIS IS THE LAST PIECE!** Networking breakthrough means we're 95% there. Just need the service to actually listen on port 8080! 🚀
+**THIS IS THE LAST PIECE!** Networking breakthrough means we're 95% there.
+  Just need the service to actually listen on port 8080! 🚀

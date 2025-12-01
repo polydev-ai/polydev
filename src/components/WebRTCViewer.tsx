@@ -20,16 +20,21 @@ interface WebRTCViewerProps {
   onConnectionStateChange?: (state: RTCPeerConnectionState) => void;
   onError?: (error: Error) => void;
   fallbackToNoVNC?: boolean;
+  skipOfferCreation?: boolean;  // If true, assumes offer was already created and sent
 }
 
 export function WebRTCViewer({
   sessionId,
   onConnectionStateChange,
   onError,
-  fallbackToNoVNC = true
+  fallbackToNoVNC = true,
+  skipOfferCreation = false  // Default to false - let WebRTCViewer create its own offer
 }: WebRTCViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const isConnectingRef = useRef<boolean>(false);  // Track connection state
+  const abortControllerRef = useRef<AbortController | null>(null);  // For cleanup
+  const iceCandidatePollIntervalRef = useRef<NodeJS.Timeout | null>(null);  // ICE candidate polling
 
   const [connectionState, setConnectionState] = useState<RTCPeerConnectionState>('new');
   const [latency, setLatency] = useState<number>(0);
@@ -40,6 +45,17 @@ export function WebRTCViewer({
    * Initialize WebRTC connection
    */
   const initWebRTC = useCallback(async () => {
+    // Prevent re-initialization if already connecting/connected
+    if (isConnectingRef.current || peerConnectionRef.current) {
+      console.log('[WebRTC] Already connecting/connected, skipping initialization');
+      return;
+    }
+
+    isConnectingRef.current = true;
+
+    // Create abort controller for cleanup
+    abortControllerRef.current = new AbortController();
+
     try {
       console.log('[WebRTC] Initializing connection for session:', sessionId);
 
@@ -76,13 +92,24 @@ export function WebRTCViewer({
         console.log('[WebRTC] ICE gathering state:', pc.iceGatheringState);
       };
 
-      // Collect ICE candidates
-      const iceCandidates: RTCIceCandidate[] = [];
-
-      pc.onicecandidate = (event) => {
+      // Send ICE candidates individually as they're generated
+      pc.onicecandidate = async (event) => {
         if (event.candidate) {
-          console.log('[WebRTC] ICE candidate:', event.candidate.candidate.substring(0, 50));
-          iceCandidates.push(event.candidate);
+          console.log('[WebRTC] Sending ICE candidate to server:', event.candidate.candidate.substring(0, 50));
+
+          try {
+            await fetch(`/api/webrtc/session/${sessionId}/candidate`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                candidate: event.candidate.candidate,
+                sdpMLineIndex: event.candidate.sdpMLineIndex,
+                from: 'browser'
+              })
+            });
+          } catch (err) {
+            console.error('[WebRTC] Failed to send ICE candidate:', err);
+          }
         } else {
           console.log('[WebRTC] ICE gathering complete');
         }
@@ -98,6 +125,9 @@ export function WebRTCViewer({
         }
       };
 
+      // RACE CONDITION FIX: Always create offer locally, but skip POSTing if already done
+      console.log('[WebRTC] Creating local offer for this peer connection...');
+
       // Create offer with video receive
       const offer = await pc.createOffer({
         offerToReceiveVideo: true,
@@ -106,22 +136,30 @@ export function WebRTCViewer({
 
       await pc.setLocalDescription(offer);
 
-      console.log('[WebRTC] Created offer, sending to server...');
+      if (!skipOfferCreation) {
+        console.log('[WebRTC] Sending offer to server (skipOfferCreation=false)...');
 
-      // Send offer to signaling server
-      await fetch(`/api/webrtc/session/${sessionId}/offer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          offer: pc.localDescription,
-          candidates: iceCandidates
-        })
-      });
+        // Send offer to signaling server
+        await fetch(`/api/webrtc/session/${sessionId}/offer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            offer: pc.localDescription,
+            candidates: []  // Candidates sent individually via trickle ICE
+          })
+        });
 
-      console.log('[WebRTC] Offer sent, waiting for answer...');
+        console.log('[WebRTC] Offer sent, waiting for answer...');
+      } else {
+        console.log('[WebRTC] Skipping offer POST - offer already sent before VM creation (RACE FIX)');
+        console.log('[WebRTC] Waiting for VM to process pre-stored offer and generate answer...');
+      }
 
       // Poll for answer
       await pollForAnswer(pc);
+
+      // Start polling for VM ICE candidates (trickle ICE)
+      startVMICECandidatePolling(pc);
 
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
@@ -134,21 +172,46 @@ export function WebRTCViewer({
         console.log('[WebRTC] Falling back to noVNC');
         setUseFallback(true);
       }
+    } finally {
+      isConnectingRef.current = false;
     }
-  }, [sessionId, onConnectionStateChange, onError, fallbackToNoVNC]);
+  }, [sessionId, skipOfferCreation]);
 
   /**
    * Poll for VM's SDP answer
    */
-  const pollForAnswer = async (pc: RTCPeerConnection, maxAttempts = 30) => {
+  const pollForAnswer = async (pc: RTCPeerConnection, maxAttempts = 60) => {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const response = await fetch(`/api/webrtc/session/${sessionId}/answer`);
 
         if (response.ok) {
-          const { answer, candidates } = await response.json();
+          const responseData = await response.json();
 
-          console.log('[WebRTC] Received answer from VM');
+          console.log('[WebRTC] Answer response data:', {
+            keys: Object.keys(responseData),
+            hasAnswer: 'answer' in responseData,
+            hasRetry: 'retry' in responseData,
+            answer: responseData.answer,
+            answerType: responseData.answer?.type,
+            answerSdpLength: responseData.answer?.sdp?.length
+          });
+
+          // Check if answer is not ready yet (retry flag)
+          if (responseData.retry === true && !responseData.answer) {
+            console.log('[WebRTC] Answer not ready yet, retrying...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            continue;
+          }
+
+          const { answer, candidates } = responseData;
+
+          if (!answer || !answer.type || !answer.sdp) {
+            console.error('[WebRTC] Invalid answer format:', { answer, responseData });
+            throw new Error('Invalid answer format from server');
+          }
+
+          console.log('[WebRTC] Received valid answer from VM');
 
           // Set remote description
           await pc.setRemoteDescription(new RTCSessionDescription(answer));
@@ -171,6 +234,49 @@ export function WebRTCViewer({
     }
 
     throw new Error('Timeout waiting for VM answer');
+  };
+
+  /**
+   * Start polling for VM's ICE candidates (trickle ICE)
+   */
+  const startVMICECandidatePolling = (pc: RTCPeerConnection) => {
+    let lastPollTimestamp = Date.now();
+
+    iceCandidatePollIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(
+          `/api/webrtc/session/${sessionId}/candidates/vm?since=${lastPollTimestamp}`
+        );
+
+        if (!response.ok) {
+          // Ignore 404 errors (expected when no new candidates)
+          if (response.status === 404) return;
+          console.error('[WebRTC] Failed to poll VM candidates:', response.status);
+          return;
+        }
+
+        const { candidates } = await response.json();
+
+        if (candidates && candidates.length > 0) {
+          console.log(`[WebRTC] Received ${candidates.length} VM ICE candidate(s)`);
+
+          for (const candidateData of candidates) {
+            const candidate = new RTCIceCandidate({
+              candidate: candidateData.candidate,
+              sdpMLineIndex: candidateData.sdpMLineIndex
+            });
+            await pc.addIceCandidate(candidate);
+            console.log('[WebRTC] Added VM ICE candidate');
+          }
+
+          lastPollTimestamp = Date.now();
+        }
+      } catch (error) {
+        console.error('[WebRTC] Failed to poll VM ICE candidates:', error);
+      }
+    }, 500);  // Poll every 500ms
+
+    console.log('[WebRTC] Started polling for VM ICE candidates');
   };
 
   /**
@@ -201,6 +307,12 @@ export function WebRTCViewer({
     // Cleanup on unmount
     return () => {
       clearInterval(latencyInterval);
+
+      // Stop polling for VM ICE candidates
+      if (iceCandidatePollIntervalRef.current) {
+        clearInterval(iceCandidatePollIntervalRef.current);
+        iceCandidatePollIntervalRef.current = null;
+      }
 
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();

@@ -20,9 +20,8 @@ export async function middleware(request: NextRequest) {
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    frame-src 'self' https://master.polydev.ai https://*.polydev.ai;
+    frame-src 'self' https://master.polydev.ai https://*.polydev.ai http://135.181.138.102:6080 http://135.181.138.102 http://135.181.138.102:4000;
     connect-src 'self' https://us.i.posthog.com https://oxhutuxkthdxvciytwmb.supabase.co wss: ws:;
-    upgrade-insecure-requests;
   `.replace(/\s{2,}/g, ' ').trim()
 
   response.headers.set('Content-Security-Policy', cspHeader)

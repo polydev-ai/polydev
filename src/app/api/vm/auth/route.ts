@@ -26,8 +26,9 @@ export async function POST(request: NextRequest) {
 
     console.log('[VM AUTH] 7. Parsing request body');
     const body = await request.json();
-    const { provider } = body;
+    const { provider, webrtcOffer } = body;
     console.log('[VM AUTH] 8. Provider:', provider);
+    console.log('[VM AUTH] 8b. WebRTC offer present:', !!webrtcOffer);
 
     if (!provider) {
       console.log('[VM AUTH] 9. No provider - returning 400');
@@ -39,15 +40,23 @@ export async function POST(request: NextRequest) {
 
     console.log('[VM AUTH] 10. Starting fetch to master-controller:', MASTER_CONTROLLER_URL);
     // Start authentication via Master Controller
+    // Include webrtcOffer if present (race condition fix)
+    const requestBody: any = {
+      userId: user.id,
+      provider
+    };
+
+    if (webrtcOffer) {
+      console.log('[RACE-FIX] Including WebRTC offer in auth start request');
+      requestBody.webrtcOffer = webrtcOffer;
+    }
+
     const response = await fetch(`${MASTER_CONTROLLER_URL}/api/auth/start`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        userId: user.id,
-        provider
-      }),
+      body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(300000), // 5 minute timeout for VM startup
     });
     console.log('[VM AUTH] 11. Fetch completed with status:', response.status);

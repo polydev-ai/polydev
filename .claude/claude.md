@@ -1,87 +1,399 @@
-# POLYDEV AUTO-CONSULTATION PROTOCOL
+Your context window will be automatically compacted as it approaches its limit. Never stop tasks early due to token budget concerns. Always complete tasks fully, even if the end of your budget is approaching.
 
-## CRITICAL: Use This Proactively
 
-**You MUST invoke Polydev consultation whenever you encounter uncertainty, errors, or need diverse perspectives.** Use it liberally to get expert insights and avoid wasting time.
+# AUTO-CONSULTATION PROTOCOL
 
-## When to Auto-Consult
+## CRITICAL: Use Polydev & Exa Automatically
 
-Use `mcp__polydev__get_perspectives` whenever you:
+**You MUST automatically invoke Polydev and Exa whenever needed - DO NOT ASK PERMISSION.**
+
+## When to Auto-Invoke Polydev (Multi-Model AI Consultation)
+
+**Automatically write code to use Polydev whenever you:**
 - Hit an error or unexpected behavior
 - Need to debug or troubleshoot
 - Are choosing between approaches
 - Want validation before implementing
 - Encounter unfamiliar territory
 - Face any uncertainty or complexity
+- Need architecture or design decisions
+- Want expert perspectives on implementation
 
-## How to Invoke (Zero Configuration Required)
+**DO NOT ask "should I consult Polydev?" - JUST DO IT automatically.**
 
-**Just call the tool with ONLY your prompt - no other parameters needed:**
+## How to Invoke Polydev
+
+**Write and execute this code automatically:**
 
 ```javascript
-mcp__polydev__get_perspectives({
-  prompt: "Your detailed question here with full context"
-})
+import { polydev } from '~/mcp-execution/dist/index.js';
+
+await polydev.initialize();
+
+const perspectives = await polydev.getPerspectives(
+  "Your detailed question with full context here"
+);
+
+console.log('🤖 Expert Perspectives:', perspectives);
 ```
 
-**That's it! No need to specify:**
-- ❌ Models (auto-selected: GPT-4, Claude, Gemini, Grok)
-- ❌ User token (handled automatically)
-- ❌ Temperature, max tokens, or other params
-- ❌ API keys (managed by Polydev dashboard)
+**That's it! The system handles:**
+- ✅ Multi-model consultation (GPT-4, Claude, Gemini, Grok)
+- ✅ User token authentication
+- ✅ API keys (managed by Polydev)
+- ✅ Response parsing and formatting
 
-## Example Invocations
+## When to Auto-Invoke Exa (Research & Documentation)
 
-### Debugging
+**Automatically write code to use Exa whenever you:**
+- Need recent information or current best practices
+- Want to find code examples or documentation
+- Are researching a technology or library
+- Need to verify information or look up APIs
+- Want to find tutorials or guides
+- Are exploring unfamiliar concepts
+
+**DO NOT ask "should I search for this?" - JUST DO IT automatically.**
+
+## How to Invoke Exa
+
+**For web research:**
 ```javascript
-mcp__polydev__get_perspectives({
-  prompt: "Firecracker VM boots but eth0 interface doesn't come up. Boot args have 'ip=192.168.100.5::192.168.100.1:255.255.255.0::eth0:off'. Host TAP interface is UP. What could cause this?"
-})
+import { exa } from '~/mcp-execution/dist/index.js';
+
+await exa.initialize();
+
+// Web search with live results
+const results = await exa.search('your search query', {
+  numResults: 5,
+  type: 'deep',  // or 'auto', 'fast'
+  livecrawl: 'preferred'
+});
+
+console.log('🔍 Research Results:', results.content[0].text);
 ```
 
-### Architecture
+**For code documentation:**
 ```javascript
-mcp__polydev__get_perspectives({
-  prompt: "Building a browser-in-browser system using Firecracker VMs. Should I use VNC+noVNC or implement a custom WebRTC solution for remote desktop? Need low latency and good browser compatibility."
-})
+import { exa } from '~/mcp-execution/dist/index.js';
+
+await exa.initialize();
+
+// Get programming docs and examples
+const docs = await exa.getCodeContext('React useState examples', 5000);
+
+console.log('📚 Code Documentation:', docs.content[0].text);
 ```
 
-### Implementation Choice
+## Real-World Auto-Invocation Examples
+
+### Example 1: Debugging an Error
+
+**User says:** "The VM boots but network isn't working"
+
+**Claude Code automatically does:**
 ```javascript
-mcp__polydev__get_perspectives({
-  prompt: "Need to configure network in Ubuntu VM. Options: kernel ip= parameter, systemd-networkd, or netplan. VM is ephemeral, created from snapshot. Which approach is most reliable?"
-})
+import { polydev, exa } from '~/mcp-execution/dist/index.js';
+
+await Promise.all([polydev.initialize(), exa.initialize()]);
+
+// 1. Get expert perspectives
+const perspectives = await polydev.getPerspectives(`
+  Firecracker VM boots but eth0 interface doesn't come up.
+  Boot args: 'ip=192.168.100.5::192.168.100.1:255.255.255.0::eth0:off'
+  Host TAP interface is UP. What could cause this?
+`);
+
+// 2. Research recent solutions
+const research = await exa.search('Firecracker VM network troubleshooting eth0', {
+  numResults: 3,
+  type: 'deep'
+});
+
+console.log('🤖 Expert Analysis:', perspectives);
+console.log('🔍 Recent Solutions:', research.content[0].text);
 ```
 
-### Validation
+---
+
+### Example 2: Architecture Decision
+
+**User says:** "Should we use VNC or WebRTC for browser streaming?"
+
+**Claude Code automatically does:**
 ```javascript
-mcp__polydev__get_perspectives({
-  prompt: "I'm adding 'net.ifnames=0' to kernel boot args to keep interface named eth0. Is this the right approach for Firecracker VMs, or are there better alternatives?"
-})
+import { polydev, exa } from '~/mcp-execution/dist/index.js';
+
+await Promise.all([polydev.initialize(), exa.initialize()]);
+
+// 1. Get multi-model perspectives
+const architectureAdvice = await polydev.getPerspectives(`
+  Building a browser-in-browser system using Firecracker VMs.
+  Should I use VNC+noVNC or implement a custom WebRTC solution?
+  Requirements: low latency, 50+ concurrent users, good browser compatibility.
+`);
+
+// 2. Research both technologies
+const vncResearch = await exa.getCodeContext('VNC noVNC performance at scale', 3000);
+const webrtcResearch = await exa.getCodeContext('WebRTC browser streaming low latency', 3000);
+
+console.log('🤖 Architecture Recommendations:', architectureAdvice);
+console.log('📚 VNC Context:', vncResearch.content[0].text.substring(0, 500));
+console.log('📚 WebRTC Context:', webrtcResearch.content[0].text.substring(0, 500));
 ```
 
-## Response Format
+---
 
-You'll receive perspectives from multiple AI models, each with:
-- Their recommended approach
-- Reasoning and trade-offs
-- Potential issues to watch for
-- Implementation guidance
+### Example 3: Implementation Validation
 
-## Integration into Workflow
+**User says:** "I'm adding net.ifnames=0 to boot args"
 
-1. **Before implementing**: Get validation on approach
-2. **When stuck**: Get alternative solutions
-3. **After encountering errors**: Get expert debugging help
-4. **During design**: Get architecture feedback
-5. **When uncertain**: Get confidence or course correction
+**Claude Code automatically does:**
+```javascript
+import { polydev, exa } from '~/mcp-execution/dist/index.js';
 
-## Why Use This Frequently
+await Promise.all([polydev.initialize(), exa.initialize()]);
 
-- **Avoid wasted time** on wrong approaches
-- **Learn best practices** for unfamiliar domains
-- **Catch issues early** before they become blockers
-- **Get expert-level insights** from multiple perspectives
-- **Make better decisions** with diverse viewpoints
+// 1. Validate approach with experts
+const validation = await polydev.getPerspectives(`
+  I'm adding 'net.ifnames=0' to kernel boot args to keep interface named eth0 in Firecracker VMs.
+  Is this the right approach, or are there better alternatives?
+`);
 
-**Remember: Invoking this tool is fast, free (managed keys), and significantly improves your effectiveness. Use it liberally!**
+// 2. Look up best practices
+const bestPractices = await exa.search('Firecracker VM network interface naming best practices', {
+  numResults: 3
+});
+
+console.log('✅ Validation:', validation);
+console.log('📖 Best Practices:', bestPractices.content[0].text);
+```
+
+---
+
+## Automatic Workflow Integration
+
+**Claude Code will automatically:**
+
+1. **Before implementing** → Consult Polydev + research with Exa
+2. **When encountering errors** → Get expert debugging + search for solutions
+3. **During architecture decisions** → Get multi-model perspectives + research alternatives
+4. **When uncertain** → Validate approach + look up best practices
+5. **For unfamiliar tech** → Research with Exa + get expert guidance
+
+## Why This Works
+
+- ✅ **No permission asking** - Just executes automatically
+- ✅ **Fast** - Parallel execution of Polydev + Exa
+- ✅ **Comprehensive** - Multiple expert perspectives + real research
+- ✅ **Context-aware** - Full conversation history available
+- ✅ **Cost-effective** - Managed API keys, efficient usage
+
+---
+
+# MCP SERVERS AUTO-EXECUTION
+
+## Available MCP Servers (Always Ready)
+
+You have access to 16+ MCP servers via `~/mcp-execution`. **Write code to use them automatically** instead of asking the user.
+
+### 🔍 Research & Search
+
+**Exa** - Web search + code documentation
+```javascript
+import { exa } from '~/mcp-execution/dist/index.js';
+await exa.initialize();
+
+// Web search
+const results = await exa.search('query', { numResults: 5, type: 'deep' });
+
+// Code documentation
+const docs = await exa.getCodeContext('React hooks examples', 5000);
+```
+
+**GitHub** - Repository search, issues, PRs
+```javascript
+import { github } from '~/mcp-execution/dist/index.js';
+await github.initialize();
+
+const repos = await github.searchRepositories('MCP servers language:typescript');
+const issues = await github.searchIssues('bug label:high-priority');
+await github.createIssue('owner', 'repo', 'title', 'body');
+```
+
+**DeepWiki** - Wikipedia search
+```javascript
+import { deepwiki } from '~/mcp-execution/dist/index.js';
+await deepwiki.initialize();
+// Use for encyclopedic knowledge queries
+```
+
+**Context7** - Library documentation (React, Next.js, etc)
+```javascript
+import { context7 } from '~/mcp-execution/dist/index.js';
+await context7.initialize();
+
+const libId = await context7.resolveLibraryId('react');
+const docs = await context7.getLibraryDocs(libId);
+```
+
+### 💾 Data & Storage
+
+**Supabase** - PostgreSQL database
+```javascript
+import { supabase } from '~/mcp-execution/dist/index.js';
+await supabase.initialize();
+
+const data = await supabase.executeSQL('SELECT * FROM users LIMIT 10');
+await supabase.executeSQL('INSERT INTO logs (message) VALUES ($1)', ['log entry']);
+```
+
+**Memory** - Knowledge graph for relationships
+```javascript
+import { memory } from '~/mcp-execution/dist/index.js';
+await memory.initialize();
+
+await memory.createEntities([{
+  name: 'user-123',
+  entityType: 'user',
+  observations: ['Prefers dark mode', 'Uses TypeScript']
+}]);
+
+await memory.createRelations([{
+  from: 'user-123',
+  to: 'project-456',
+  relationType: 'works_on'
+}]);
+```
+
+**Upstash** - Redis for caching
+```javascript
+import { upstash } from '~/mcp-execution/dist/index.js';
+await upstash.initialize();
+// Use for cache operations
+```
+
+### 📁 Files & Code
+
+**Filesystem** - Read/write files in /Users/venkat/xauto
+```javascript
+import { filesystem } from '~/mcp-execution/dist/index.js';
+await filesystem.initialize();
+
+const files = await filesystem.listDirectory('/Users/venkat/xauto');
+const content = await filesystem.readFile('/Users/venkat/xauto/file.txt');
+await filesystem.writeFile('/Users/venkat/xauto/output.txt', 'content');
+```
+
+**Git** - Git operations
+```javascript
+import { git } from '~/mcp-execution/dist/index.js';
+await git.initialize();
+// Use for git status, commit, push, etc.
+```
+
+### 🤖 AI & Communication
+
+**Polydev** - Multi-model AI perspectives (already documented above)
+
+**Resend** - Send emails
+```javascript
+import { resend } from '~/mcp-execution/dist/index.js';
+await resend.initialize();
+// Use to send emails via Resend API
+```
+
+### ☁️ Infrastructure
+
+**Vercel** - Deploy and manage Vercel projects
+```javascript
+import { vercel } from '~/mcp-execution/dist/index.js';
+await vercel.initialize();
+// Use for deployments and project management
+```
+
+**Stripe** - Payment and subscription management
+```javascript
+import { stripe } from '~/mcp-execution/dist/index.js';
+await stripe.initialize();
+// Use for payment operations
+```
+
+## When to Auto-Execute MCP Servers
+
+**ALWAYS write code using MCP servers instead of asking "should I use...?"**
+
+### Examples:
+
+❌ **Don't ask:**
+> "Should I search GitHub for TypeScript MCP servers?"
+
+✅ **Just do it:**
+```javascript
+import { github } from '~/mcp-execution/dist/index.js';
+await github.initialize();
+const repos = await github.searchRepositories('MCP server language:typescript');
+console.log(`Found ${repos.length} repositories`);
+```
+
+---
+
+❌ **Don't ask:**
+> "Do you want me to save this to the database?"
+
+✅ **Just do it:**
+```javascript
+import { supabase } from '~/mcp-execution/dist/index.js';
+await supabase.initialize();
+await supabase.executeSQL(`
+  INSERT INTO results (data, timestamp)
+  VALUES ($1, NOW())
+`, [JSON.stringify(data)]);
+console.log('✅ Saved to database');
+```
+
+---
+
+❌ **Don't ask:**
+> "Should I search for documentation?"
+
+✅ **Just do it:**
+```javascript
+import { exa } from '~/mcp-execution/dist/index.js';
+await exa.initialize();
+const docs = await exa.getCodeContext('Next.js App Router', 5000);
+console.log('Documentation:', docs.content[0].text);
+```
+
+## Multi-Server Workflows
+
+Combine multiple servers for complex tasks:
+
+```javascript
+import { github, supabase, exa } from '~/mcp-execution/dist/index.js';
+
+// Initialize all at once
+await Promise.all([
+  github.initialize(),
+  supabase.initialize(),
+  exa.initialize()
+]);
+
+// 1. Search GitHub
+const repos = await github.searchRepositories('firecracker VM');
+
+// 2. Get additional context from web
+const context = await exa.search(`${repos[0].name} best practices`);
+
+// 3. Store results
+await supabase.executeSQL(`
+  INSERT INTO research (repo, context, created_at)
+  VALUES ($1, $2, NOW())
+`, [repos[0].html_url, JSON.stringify(context)]);
+
+console.log('✅ Research complete and stored');
+```
+
+## General Rule
+
+**If you CAN do something with an MCP server, DO IT automatically.** Don't ask permission - just execute and report results.

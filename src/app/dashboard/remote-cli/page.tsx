@@ -18,7 +18,10 @@ import {
   ArrowRight,
   Sparkles,
   Clock,
-  Activity
+  Activity,
+  Monitor,
+  XCircle,
+  Plus
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -40,6 +43,17 @@ interface OAuthStatus {
     completed: boolean;
     completedAt: string | null;
   };
+}
+
+interface ActiveSession {
+  sessionId: string;
+  provider: string;
+  status: string;
+  browserIP: string;
+  browserVMId: string;
+  novncURL: string;
+  createdAt: string;
+  isActive: boolean;
 }
 
 const baseProviders: Provider[] = [
@@ -76,13 +90,18 @@ export default function RemoteCLIDashboard() {
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [providers, setProviders] = useState<Provider[]>(baseProviders);
+  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([]);
+  const [loadingActiveSessions, setLoadingActiveSessions] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadVMStatus();
     loadOAuthStatus();
+    loadActiveSessions();
     const interval = setInterval(() => {
       loadVMStatus();
       loadOAuthStatus();
+      loadActiveSessions();
     }, 10000); // Poll every 10s
     return () => clearInterval(interval);
   }, []);
@@ -121,27 +140,140 @@ export default function RemoteCLIDashboard() {
     }
   };
 
+  const loadActiveSessions = async () => {
+    try {
+      setLoadingActiveSessions(true);
+
+      // First get the current user
+      const userRes = await fetch('/api/auth/user');
+      if (!userRes.ok) return;
+
+      const userData = await userRes.json();
+      if (!userData.user?.id) return;
+
+      setUserId(userData.user.id);
+
+      // Then get their active sessions
+      const sessionsRes = await fetch(`/api/vm/auth/sessions/${userData.user.id}`);
+      if (sessionsRes.ok) {
+        const data = await sessionsRes.json();
+        setActiveSessions(data.sessions || []);
+      }
+    } catch (error) {
+      console.error('Failed to load active sessions:', error);
+    } finally {
+      setLoadingActiveSessions(false);
+    }
+  };
+
+  const cancelSession = async (sessionId: string) => {
+    try {
+      const res = await fetch(`/api/vm/auth/session/${sessionId}/cancel`, {
+        method: 'POST',
+      });
+
+      if (res.ok) {
+        toast.success('Session cancelled');
+        loadActiveSessions();
+      } else {
+        toast.error('Failed to cancel session');
+      }
+    } catch (error) {
+      console.error('Failed to cancel session:', error);
+      toast.error('Failed to cancel session');
+    }
+  };
+
+  const resumeSession = (session: ActiveSession) => {
+    router.push(`/dashboard/remote-cli/auth?session=${session.sessionId}&provider=${session.provider}`);
+  };
+
   const handleConnectProvider = async (providerId: string) => {
     setSelectedProvider(providerId);
     setConnecting(true);
 
     try {
-      // Start auth session
+      console.log('[RACE-FIX] Creating WebRTC offer BEFORE auth session starts');
+
+      // CRITICAL FIX: Create WebRTC offer BEFORE starting auth session
+      // This prevents race condition where VM boots and polls for offer before browser creates it
+
+      // Fetch ICE servers
+      const iceServersResponse = await fetch('/api/webrtc/ice-servers');
+      if (!iceServersResponse.ok) {
+        throw new Error('Failed to fetch ICE servers');
+      }
+      const { iceServers } = await iceServersResponse.json();
+      console.log('[RACE-FIX] ICE servers fetched:', iceServers.length);
+
+      // Create RTCPeerConnection
+      const pc = new RTCPeerConnection({ iceServers });
+
+      // Create offer
+      const offer = await pc.createOffer({
+        offerToReceiveVideo: true,
+        offerToReceiveAudio: false
+      });
+
+      await pc.setLocalDescription(offer);
+      console.log('[RACE-FIX] Offer created successfully, SDP type:', offer.type);
+
+      // Collect ICE candidates (wait up to 2 seconds)
+      const candidates: RTCIceCandidate[] = [];
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, 2000); // Max 2 seconds for ICE gathering
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            candidates.push(event.candidate);
+            console.log('[RACE-FIX] ICE candidate collected:', candidates.length);
+          } else {
+            clearTimeout(timeout);
+            resolve();
+          }
+        };
+      });
+
+      console.log('[RACE-FIX] Total ICE candidates collected:', candidates.length);
+
+      // Start auth session WITH the pre-created offer
       const res = await fetch('/api/vm/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: providerId }),
+        body: JSON.stringify({
+          provider: providerId,
+          // Include offer and candidates in the auth start request
+          webrtcOffer: {
+            offer: pc.localDescription,
+            candidates: candidates.map(c => ({
+              candidate: c.candidate,
+              sdpMLineIndex: c.sdpMLineIndex
+            }))
+          }
+        }),
       });
 
       if (!res.ok) {
+        // Clean up peer connection
+        pc.close();
         throw new Error('Failed to start authentication');
       }
 
       const { sessionId } = await res.json();
+      console.log('[RACE-FIX] Auth session started with sessionId:', sessionId);
+
+      // Store peer connection for later use (will be picked up by WebRTCViewer)
+      // We'll pass it via URL state or sessionStorage
+      sessionStorage.setItem(`webrtc-pc-${sessionId}`, 'created');
+
+      // Clean up this temporary peer connection
+      // The actual connection will be managed by WebRTCViewer component
+      pc.close();
 
       // Redirect to auth flow page
       router.push(`/dashboard/remote-cli/auth?session=${sessionId}&provider=${providerId}`);
     } catch (error: any) {
+      console.error('[RACE-FIX] Error during provider connection:', error);
       toast.error(error.message || 'Failed to connect provider');
       setConnecting(false);
       setSelectedProvider(null);
@@ -253,6 +385,96 @@ export default function RemoteCLIDashboard() {
                 Your remote CLI environment will be created automatically when you connect your first provider
               </CardDescription>
             </CardHeader>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Active Sessions Section */}
+      {activeSessions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500 rounded-lg">
+                    <Monitor className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle>Active Sessions ({activeSessions.length})</CardTitle>
+                    <CardDescription>Your currently running authentication sessions</CardDescription>
+                  </div>
+                </div>
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  <Activity className="w-3 h-3 mr-1" />
+                  Multi-VM
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {activeSessions.map((session) => (
+                  <div
+                    key={session.sessionId}
+                    className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+                        <Terminal className="w-4 h-4 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium">
+                          {session.provider === 'claude_code' ? 'Claude Code' :
+                           session.provider === 'codex' ? 'OpenAI Codex' :
+                           session.provider === 'gemini_cli' ? 'Google Gemini' :
+                           session.provider}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {session.browserIP ? `IP: ${session.browserIP}` : 'Starting...'}
+                          {session.createdAt && (
+                            <span className="ml-2">
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              {new Date(session.createdAt).toLocaleTimeString()}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className={
+                          session.status === 'ready' ? 'bg-green-500 hover:bg-green-600' :
+                          session.status === 'authenticating' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                          'bg-blue-500 hover:bg-blue-600'
+                        }
+                      >
+                        {session.status}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => resumeSession(session)}
+                        className="gap-1"
+                      >
+                        <Monitor className="w-3 h-3" />
+                        View
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => cancelSession(session.sessionId)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
           </Card>
         </motion.div>
       )}
