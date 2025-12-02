@@ -3,7 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Get distinct provider names from model_tiers table
+// Get ALL active providers from providers_registry table
+// This enables the admin providers page to add keys for any registered provider
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient(
@@ -11,25 +12,23 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Get distinct provider names from model_tiers
+    // Get all active providers from providers_registry (the canonical source)
     const { data: providers, error } = await supabase
-      .from('model_tiers')
-      .select('provider')
-      .order('provider')
+      .from('providers_registry')
+      .select('id, name, display_name, logo_url')
+      .eq('is_active', true)
+      .order('display_name')
 
     if (error) {
-      console.error('Error fetching providers from model_tiers:', error)
+      console.error('Error fetching providers from providers_registry:', error)
       return NextResponse.json({ error: 'Failed to fetch providers' }, { status: 500 })
     }
 
-    // Get unique provider names
-    const uniqueProviders = [...new Set(providers?.map(p => p.provider) || [])]
-      .filter(p => p) // Remove null/undefined
-      .sort()
-
+    // Return full provider objects with canonical names
+    // This ensures consistent naming when saving admin API keys
     return NextResponse.json({
       success: true,
-      providers: uniqueProviders
+      providers: providers || []
     })
   } catch (error) {
     console.error('Error in available-providers API:', error)

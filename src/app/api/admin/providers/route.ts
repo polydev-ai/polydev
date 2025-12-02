@@ -197,18 +197,23 @@ async function addProviderKey(supabase: any, data: any) {
     return NextResponse.json({ error: 'Invalid provider name' }, { status: 400 })
   }
 
-  // Validate provider exists in model_tiers
-  const { data: providerExists } = await supabase
-    .from('model_tiers')
-    .select('provider')
-    .eq('provider', provider)
-    .limit(1)
+  // Validate provider exists in providers_registry (the canonical source for provider names)
+  // This ensures we use the correct casing (e.g., "OpenAI" not "openai", "xAI" not "x-ai")
+  const { data: providerRecord, error: providerError } = await supabase
+    .from('providers_registry')
+    .select('id, name, display_name')
+    .eq('name', provider)
+    .eq('is_active', true)
+    .single()
 
-  if (!providerExists || providerExists.length === 0) {
+  if (providerError || !providerRecord) {
     return NextResponse.json({
-      error: `Invalid provider: "${provider}". Provider must match exactly with a provider in model_tiers.`
+      error: `Invalid provider: "${provider}". Provider must match exactly with a provider in providers_registry.`
     }, { status: 400 })
   }
+
+  // Use the canonical provider name from providers_registry
+  const canonicalProvider = providerRecord.name
 
   // Use authenticated admin's user ID - this allows tracking which admin added the key
   const user_id = authenticated_user_id
@@ -219,7 +224,7 @@ async function addProviderKey(supabase: any, data: any) {
     const { data: existingKeys } = await supabase
       .from('user_api_keys')
       .select('priority_order')
-      .eq('provider', provider)
+      .eq('provider', canonicalProvider)
       .eq('user_id', user_id)
       .order('priority_order', { ascending: false })
       .limit(1)
@@ -238,8 +243,8 @@ async function addProviderKey(supabase: any, data: any) {
 
   const keyData = {
     user_id,
-    provider: provider, // Use exact provider name, no toLowerCase()
-    key_name: key_name || `${provider} Admin Key #${finalPriorityOrder}`,
+    provider: canonicalProvider, // Use canonical provider name from providers_registry
+    key_name: key_name || `${providerRecord.display_name} Admin Key #${finalPriorityOrder}`,
     encrypted_key: encrypted_key || '',
     key_preview: keyPreview,
     monthly_budget: monthly_budget || null,

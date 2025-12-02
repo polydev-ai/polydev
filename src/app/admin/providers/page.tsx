@@ -78,20 +78,21 @@ export default function ProvidersAdminPage() {
 
   const loadProvidersRegistry = async () => {
     try {
-      // Load exact provider names from model_tiers table
+      // Load ALL active providers from providers_registry (canonical source)
       const response = await fetch('/api/admin/available-providers')
       if (!response.ok) {
         throw new Error('Failed to fetch providers')
       }
       const data = await response.json()
       if (data.success && Array.isArray(data.providers)) {
-        // Map provider names to registry format
-        const normalizedProviders = data.providers.map((p: string) => ({
-          id: p,
-          name: p,
-          display_name: p,
-          logo: 'https://models.dev/logos/default.svg',
-          description: `${p} provider`
+        // Use provider objects directly from providers_registry
+        // This ensures canonical naming (e.g., "OpenAI" not "openai")
+        const normalizedProviders = data.providers.map((p: { id: string; name: string; display_name: string; logo_url: string }) => ({
+          id: p.id,
+          name: p.name,  // Canonical name from providers_registry
+          display_name: p.display_name,
+          logo: p.logo_url || 'https://models.dev/logos/default.svg',
+          description: `${p.display_name} provider`
         }))
         setProvidersRegistry(normalizedProviders)
       }

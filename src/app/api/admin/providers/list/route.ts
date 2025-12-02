@@ -55,26 +55,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch admin key providers' }, { status: 500 })
     }
 
-    // Extract unique provider names that have admin keys
-    const providersWithAdminKeys = [...new Set(adminKeyProviders?.map(k => k.provider) || [])]
+    // Extract unique provider names that have admin keys (normalized to lowercase for comparison)
+    const providersWithAdminKeys = [...new Set(adminKeyProviders?.map(k => k.provider.toLowerCase()) || [])]
 
     if (providersWithAdminKeys.length === 0) {
       // No admin keys configured - return empty list
       return NextResponse.json({ providers: [] })
     }
 
-    // Fetch provider details (logos, display names) only for providers with admin keys
-    const { data: providers, error } = await adminClient
+    // Fetch ALL active provider details first
+    const { data: allProviders, error } = await adminClient
       .from('providers_registry')
       .select('id, name, display_name, logo_url')
       .eq('is_active', true)
-      .in('name', providersWithAdminKeys)
       .order('display_name')
 
     if (error) {
       console.error('Error fetching providers:', error)
       return NextResponse.json({ error: 'Failed to fetch providers' }, { status: 500 })
     }
+
+    // Filter case-insensitively: match if provider name (lowercase) matches any admin key provider
+    // This handles mismatches like "openai" vs "OpenAI", "x-ai" vs "xAI", etc.
+    const providers = (allProviders || []).filter(p => {
+      const normalizedName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+      return providersWithAdminKeys.some(adminKey => {
+        const normalizedAdminKey = adminKey.replace(/[^a-z0-9]/g, '')
+        return normalizedName === normalizedAdminKey ||
+               normalizedName.includes(normalizedAdminKey) ||
+               normalizedAdminKey.includes(normalizedName)
+      })
+    })
 
     return NextResponse.json({ providers })
   } catch (error) {
