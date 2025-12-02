@@ -48,6 +48,7 @@ export default function ModelTiersPage() {
 
   // Database-driven dropdowns for Add dialog
   const [providers, setProviders] = useState<Provider[]>([])
+  const [providersLoading, setProvidersLoading] = useState(true)
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([])
   const [selectedProvider, setSelectedProvider] = useState<string>('')
   const [selectedModel, setSelectedModel] = useState<string>('')
@@ -113,11 +114,19 @@ export default function ModelTiersPage() {
   }
 
   const fetchProviders = async () => {
+    setProvidersLoading(true)
     try {
       const response = await fetch('/api/admin/providers/list')
       const data = await response.json()
       if (data.providers) {
         setProviders(data.providers)
+      } else if (data.error) {
+        console.error('API error:', data.error)
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to load providers',
+          variant: 'destructive'
+        })
       }
     } catch (error) {
       console.error('Error fetching providers:', error)
@@ -126,6 +135,8 @@ export default function ModelTiersPage() {
         description: 'Failed to load providers',
         variant: 'destructive'
       })
+    } finally {
+      setProvidersLoading(false)
     }
   }
 
@@ -549,9 +560,29 @@ export default function ModelTiersPage() {
                         size="sm"
                         onClick={async () => {
                           setEditingModel(model)
+
+                          // Ensure providers are loaded before opening edit dialog
+                          let currentProviders = providers
+                          if (providers.length === 0) {
+                            // Refetch providers if array is empty
+                            setProvidersLoading(true)
+                            try {
+                              const response = await fetch('/api/admin/providers/list')
+                              const data = await response.json()
+                              if (data.providers && data.providers.length > 0) {
+                                setProviders(data.providers)
+                                currentProviders = data.providers
+                              }
+                            } catch (error) {
+                              console.error('Error fetching providers:', error)
+                            } finally {
+                              setProvidersLoading(false)
+                            }
+                          }
+
                           // Find provider ID from provider name (case-insensitive match on name or display_name)
                           const providerNameLower = model.provider.toLowerCase()
-                          const provider = providers.find(p =>
+                          const provider = currentProviders.find(p =>
                             p.name.toLowerCase() === providerNameLower ||
                             p.display_name.toLowerCase() === providerNameLower ||
                             p.id.toLowerCase() === providerNameLower
@@ -562,7 +593,7 @@ export default function ModelTiersPage() {
                             await fetchModelsForEditProvider(provider.id)
                           } else {
                             // If provider not found, still open dialog but show warning
-                            console.warn(`Provider not found for "${model.provider}" - available providers:`, providers.map(p => p.name))
+                            console.warn(`Provider not found for "${model.provider}" - available providers:`, currentProviders.map(p => p.name))
                             setEditSelectedProvider('')
                             setEditAvailableModels([])
                           }
@@ -625,21 +656,28 @@ export default function ModelTiersPage() {
                       setEditingModel({ ...editingModel, provider: provider.name })
                     }
                   }}
+                  disabled={providersLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a provider" />
+                    <SelectValue placeholder={providersLoading ? "Loading providers..." : providers.length === 0 ? "No providers available" : "Select a provider"} />
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" align="start" className="max-h-[200px] overflow-y-auto min-w-[300px] z-[9999] bg-white border shadow-lg" sideOffset={8}>
-                    {providers.map(provider => (
-                      <SelectItem key={provider.id} value={provider.id}>
-                        <div className="flex items-center gap-2">
-                          {provider.logo_url && (
-                            <img src={provider.logo_url} alt={provider.display_name} className="w-5 h-5" />
-                          )}
-                          <span>{provider.display_name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {providersLoading ? (
+                      <div className="p-2 text-center text-muted-foreground">Loading providers...</div>
+                    ) : providers.length === 0 ? (
+                      <div className="p-2 text-center text-muted-foreground">No providers found</div>
+                    ) : (
+                      providers.map(provider => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          <div className="flex items-center gap-2">
+                            {provider.logo_url && (
+                              <img src={provider.logo_url} alt={provider.display_name} className="w-5 h-5" />
+                            )}
+                            <span>{provider.display_name}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
