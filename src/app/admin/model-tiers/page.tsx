@@ -55,6 +55,7 @@ export default function ModelTiersPage() {
 
   // Database-driven dropdowns for Edit dialog
   const [editAvailableModels, setEditAvailableModels] = useState<ModelOption[]>([])
+  const [editModelsLoading, setEditModelsLoading] = useState(false)
   const [editSelectedProvider, setEditSelectedProvider] = useState<string>('')
   const [editSelectedModel, setEditSelectedModel] = useState<string>('')
 
@@ -142,35 +143,81 @@ export default function ModelTiersPage() {
 
   const fetchModelsForProvider = async (providerId: string) => {
     try {
+      console.log('[Add Dialog] Fetching models for provider_id:', providerId)
       const response = await fetch(`/api/admin/models/list?provider_id=${providerId}`)
       const data = await response.json()
-      if (data.models) {
+      console.log('[Add Dialog] Models API response:', { status: response.status, modelCount: data.models?.length, error: data.error })
+
+      if (data.error) {
+        console.error('[Add Dialog] API returned error:', data.error)
+        toast({
+          title: 'Error',
+          description: data.error,
+          variant: 'destructive'
+        })
+        setAvailableModels([])
+        return
+      }
+
+      if (data.models && data.models.length > 0) {
+        console.log('[Add Dialog] Setting', data.models.length, 'models for dropdown')
         setAvailableModels(data.models)
+      } else {
+        console.warn('[Add Dialog] No models returned for provider:', providerId)
+        setAvailableModels([])
       }
     } catch (error) {
-      console.error('Error fetching models:', error)
+      console.error('[Add Dialog] Error fetching models:', error)
       toast({
         title: 'Error',
         description: 'Failed to load models for provider',
         variant: 'destructive'
       })
+      setAvailableModels([])
     }
   }
 
   const fetchModelsForEditProvider = async (providerId: string) => {
+    setEditModelsLoading(true)
     try {
+      console.log('[DEBUG] Fetching models for provider_id:', providerId)
       const response = await fetch(`/api/admin/models/list?provider_id=${providerId}`)
       const data = await response.json()
-      if (data.models) {
+      console.log('[DEBUG] Models API response:', data)
+
+      if (data.error) {
+        console.error('[DEBUG] API returned error:', data.error)
+        toast({
+          title: 'Error',
+          description: data.error,
+          variant: 'destructive'
+        })
+        setEditAvailableModels([])
+        return
+      }
+
+      if (data.models && data.models.length > 0) {
+        console.log('[DEBUG] Setting', data.models.length, 'models for dropdown')
         setEditAvailableModels(data.models)
+      } else {
+        console.warn('[DEBUG] No models returned for provider:', providerId)
+        setEditAvailableModels([])
+        toast({
+          title: 'No models found',
+          description: `No models available for this provider (${providerId})`,
+          variant: 'default'
+        })
       }
     } catch (error) {
-      console.error('Error fetching models for edit:', error)
+      console.error('[DEBUG] Error fetching models for edit:', error)
       toast({
         title: 'Error',
         description: 'Failed to load models for provider',
         variant: 'destructive'
       })
+      setEditAvailableModels([])
+    } finally {
+      setEditModelsLoading(false)
     }
   }
 
@@ -710,16 +757,26 @@ export default function ModelTiersPage() {
                     <SelectValue placeholder={editSelectedProvider ? "Select a model" : "Select a provider first"} />
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" align="start" className="max-h-[200px] overflow-y-auto min-w-[300px] z-[9999] bg-white border shadow-lg" sideOffset={8}>
-                    {editAvailableModels.map(model => (
-                      <SelectItem key={model.id} value={model.id}>
-                        <div className="flex items-center gap-2">
-                          {model.provider_logo_url && (
-                            <img src={model.provider_logo_url} alt={model.provider_name} className="w-5 h-5" />
-                          )}
-                          <span>{model.display_name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {editModelsLoading ? (
+                      <div className="p-3 text-center text-muted-foreground text-sm">
+                        Loading models...
+                      </div>
+                    ) : editAvailableModels.length === 0 ? (
+                      <div className="p-3 text-center text-muted-foreground text-sm">
+                        {editSelectedProvider ? 'No models found for this provider' : 'Select a provider first'}
+                      </div>
+                    ) : (
+                      editAvailableModels.map(model => (
+                        <SelectItem key={model.id} value={model.id}>
+                          <div className="flex items-center gap-2">
+                            {model.provider_logo_url && (
+                              <img src={model.provider_logo_url} alt={model.provider_name} className="w-5 h-5" />
+                            )}
+                            <span>{model.display_name}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
