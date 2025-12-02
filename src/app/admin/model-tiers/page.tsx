@@ -425,21 +425,28 @@ export default function ModelTiersPage() {
                       setNewModel({ ...newModel, provider: provider.name, model_name: '', display_name: '' })
                     }
                   }}
+                  disabled={providersLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a provider" />
+                    <SelectValue placeholder={providersLoading ? "Loading providers..." : providers.length === 0 ? "No providers available" : "Select a provider"} />
                   </SelectTrigger>
                   <SelectContent position="popper" side="bottom" align="start" className="max-h-[200px] overflow-y-auto min-w-[300px] z-[9999] bg-white border shadow-lg" sideOffset={8}>
-                    {providers.map(provider => (
-                      <SelectItem key={provider.id} value={provider.id}>
-                        <div className="flex items-center gap-2">
-                          {provider.logo_url && (
-                            <img src={provider.logo_url} alt={provider.display_name} className="w-5 h-5" />
-                          )}
-                          <span>{provider.display_name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {providersLoading ? (
+                      <div className="p-2 text-center text-muted-foreground">Loading providers...</div>
+                    ) : providers.length === 0 ? (
+                      <div className="p-2 text-center text-muted-foreground">No providers found</div>
+                    ) : (
+                      providers.map(provider => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          <div className="flex items-center gap-2">
+                            {provider.logo_url && (
+                              <img src={provider.logo_url} alt={provider.display_name} className="w-5 h-5" />
+                            )}
+                            <span>{provider.display_name}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
