@@ -1304,7 +1304,16 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   //   console.log(`[MCP] Added client context from bridge (${clientContext.length} chars)`)
   // }
   
-  // No user_preferences dependency - MCP uses simple defaults
+  // Fetch user preferences to get perspectives_per_message setting
+  const { data: userPrefs } = await serviceRoleSupabase
+    .from('user_preferences')
+    .select('mcp_settings')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  // Get perspectives_per_message from user settings (default 2, range 1-10)
+  const perspectivesPerMessage = (userPrefs?.mcp_settings as any)?.perspectives_per_message || 2
+  console.log(`[MCP] User preferences: perspectives_per_message = ${perspectivesPerMessage}`)
 
   // Get user API keys from database - SAME AS CHAT API
   console.log(`[MCP] Authenticated user: ${user.id}`)
@@ -1337,8 +1346,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.log(`[MCP] Using explicitly specified models:`, models)
   } else if (apiKeys && apiKeys.length > 0) {
     // Use models from API keys directly, respecting display_order
-    // Take up to 3 models for performance (configurable)
-    const maxModels = 3
+    // Use user's perspectives_per_message setting (from dashboard)
+    const maxModels = perspectivesPerMessage
 
     // Sort by display_order to ensure proper priority
     console.log(`[MCP DEBUG] Before filtering - all keys:`, apiKeys?.map(k => ({

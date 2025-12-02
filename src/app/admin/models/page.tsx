@@ -621,6 +621,48 @@ export default function ModelsManagement() {
   )
 }
 
+// Validation helpers
+function generateFriendlyId(displayName: string): string {
+  return displayName
+    .toLowerCase()
+    .replace(/\s+/g, '-')           // Replace spaces with dashes
+    .replace(/[^a-z0-9-]/g, '')     // Remove non-alphanumeric except dashes
+    .replace(/-+/g, '-')            // Replace multiple dashes with single
+    .replace(/^-|-$/g, '')          // Remove leading/trailing dashes
+}
+
+function validateFriendlyId(friendlyId: string): { valid: boolean; error?: string } {
+  if (!friendlyId) {
+    return { valid: false, error: 'Friendly ID is required' }
+  }
+  if (friendlyId !== friendlyId.toLowerCase()) {
+    return { valid: false, error: 'Friendly ID must be lowercase' }
+  }
+  if (/\s/.test(friendlyId)) {
+    return { valid: false, error: 'Friendly ID cannot contain spaces' }
+  }
+  if (!/^[a-z0-9-]+$/.test(friendlyId)) {
+    return { valid: false, error: 'Friendly ID can only contain lowercase letters, numbers, and dashes' }
+  }
+  if (friendlyId.startsWith('-') || friendlyId.endsWith('-')) {
+    return { valid: false, error: 'Friendly ID cannot start or end with a dash' }
+  }
+  return { valid: true }
+}
+
+function validateDisplayName(displayName: string, friendlyId: string): { valid: boolean; error?: string } {
+  if (!displayName) {
+    return { valid: false, error: 'Display Name is required' }
+  }
+  if (displayName === friendlyId) {
+    return { valid: false, error: 'Display Name should be different from Friendly ID (use proper capitalization like "Claude Sonnet 4.5")' }
+  }
+  if (displayName === displayName.toLowerCase()) {
+    return { valid: false, error: 'Display Name should have proper capitalization (e.g., "Claude Sonnet 4.5" not "claude sonnet 4.5")' }
+  }
+  return { valid: true }
+}
+
 // Model Edit Form Component
 function ModelEditForm({ model, onSave, onCancel, onDelete }: {
   model: ModelRegistryEntry
@@ -628,6 +670,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
   onCancel: () => void
   onDelete?: (modelId: string) => void
 }) {
+  const [formErrors, setFormErrors] = useState<{ friendlyId?: string; displayName?: string }>({})
   const [formData, setFormData] = useState({
     name: model.name || '',
     display_name: model.display_name || '',
@@ -657,6 +700,25 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate friendly_id
+    const friendlyIdValidation = validateFriendlyId(formData.friendly_id)
+    const displayNameValidation = validateDisplayName(formData.display_name, formData.friendly_id)
+
+    const errors: { friendlyId?: string; displayName?: string } = {}
+    if (!friendlyIdValidation.valid) {
+      errors.friendlyId = friendlyIdValidation.error
+    }
+    if (!displayNameValidation.valid) {
+      errors.displayName = displayNameValidation.error
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
+
+    setFormErrors({})
     onSave(formData)
   }
 
@@ -702,23 +764,55 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                   <input
                     type="text"
                     value={formData.display_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, display_name: e.target.value }))
+                      if (formErrors.displayName) setFormErrors(prev => ({ ...prev, displayName: undefined }))
+                    }}
+                    className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
+                      formErrors.displayName ? 'border-red-500 bg-red-50' : 'border-slate-300'
+                    }`}
                     placeholder="GPT-4o, Claude 3.5 Sonnet"
                     required
                   />
+                  {formErrors.displayName && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.displayName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-900 mb-2">
-                    Friendly ID
+                    Friendly ID *
                   </label>
-                  <input
-                    type="text"
-                    value={formData.friendly_id}
-                    onChange={(e) => setFormData(prev => ({ ...prev, friendly_id: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    placeholder="gpt4o, claude3-5-sonnet"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.friendly_id}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, friendly_id: e.target.value }))
+                        if (formErrors.friendlyId) setFormErrors(prev => ({ ...prev, friendlyId: undefined }))
+                      }}
+                      className={`flex-1 border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
+                        formErrors.friendlyId ? 'border-red-500 bg-red-50' : 'border-slate-300'
+                      }`}
+                      placeholder="gpt-4o, claude-3-5-sonnet"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formData.display_name) {
+                          setFormData(prev => ({ ...prev, friendly_id: generateFriendlyId(formData.display_name) }))
+                          setFormErrors(prev => ({ ...prev, friendlyId: undefined }))
+                        }
+                      }}
+                      className="px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 whitespace-nowrap"
+                      title="Auto-generate from Display Name"
+                    >
+                      ⚡ Auto
+                    </button>
+                  </div>
+                  {formErrors.friendlyId && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.friendlyId}</p>
+                  )}
+                  <p className="mt-1 text-xs text-slate-500">Lowercase letters, numbers, and dashes only (e.g., claude-sonnet-4-5)</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-900 mb-2">
@@ -971,6 +1065,7 @@ function ModelCreateForm({ onSave, onCancel }: {
   onSave: (model: Omit<ModelRegistryEntry, 'id' | 'created_at' | 'updated_at'>) => void
   onCancel: () => void
 }) {
+  const [formErrors, setFormErrors] = useState<{ friendlyId?: string; displayName?: string }>({})
   const [formData, setFormData] = useState({
     provider_id: '',
     name: '',
@@ -1000,6 +1095,25 @@ function ModelCreateForm({ onSave, onCancel }: {
       alert('Please fill in required fields: Provider ID, Name, and Display Name')
       return
     }
+
+    // Validate friendly_id and display_name
+    const friendlyIdValidation = validateFriendlyId(formData.friendly_id)
+    const displayNameValidation = validateDisplayName(formData.display_name, formData.friendly_id)
+
+    const errors: { friendlyId?: string; displayName?: string } = {}
+    if (!friendlyIdValidation.valid) {
+      errors.friendlyId = friendlyIdValidation.error
+    }
+    if (!displayNameValidation.valid) {
+      errors.displayName = displayNameValidation.error
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
+
+    setFormErrors({})
     onSave(formData)
   }
 
@@ -1086,23 +1200,55 @@ function ModelCreateForm({ onSave, onCancel }: {
                   <input
                     type="text"
                     value={formData.display_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, display_name: e.target.value }))
+                      if (formErrors.displayName) setFormErrors(prev => ({ ...prev, displayName: undefined }))
+                    }}
+                    className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
+                      formErrors.displayName ? 'border-red-500 bg-red-50' : 'border-slate-300'
+                    }`}
                     placeholder="GPT-4, Claude 3 Opus, etc."
                     required
                   />
+                  {formErrors.displayName && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.displayName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-900 mb-2">
-                    Friendly ID
+                    Friendly ID *
                   </label>
-                  <input
-                    type="text"
-                    value={formData.friendly_id}
-                    onChange={(e) => setFormData(prev => ({ ...prev, friendly_id: e.target.value }))}
-                    className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    placeholder="gpt4, claude3opus, etc."
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.friendly_id}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, friendly_id: e.target.value }))
+                        if (formErrors.friendlyId) setFormErrors(prev => ({ ...prev, friendlyId: undefined }))
+                      }}
+                      className={`flex-1 border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
+                        formErrors.friendlyId ? 'border-red-500 bg-red-50' : 'border-slate-300'
+                      }`}
+                      placeholder="gpt-4, claude-3-opus"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formData.display_name) {
+                          setFormData(prev => ({ ...prev, friendly_id: generateFriendlyId(formData.display_name) }))
+                          setFormErrors(prev => ({ ...prev, friendlyId: undefined }))
+                        }
+                      }}
+                      className="px-3 py-2 text-sm bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200 whitespace-nowrap"
+                      title="Auto-generate from Display Name"
+                    >
+                      ⚡ Auto
+                    </button>
+                  </div>
+                  {formErrors.friendlyId && (
+                    <p className="mt-1 text-sm text-red-600">{formErrors.friendlyId}</p>
+                  )}
+                  <p className="mt-1 text-xs text-slate-500">Lowercase letters, numbers, and dashes only (e.g., claude-sonnet-4-5)</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-900 mb-2">

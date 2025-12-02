@@ -549,12 +549,22 @@ export default function ModelTiersPage() {
                         size="sm"
                         onClick={async () => {
                           setEditingModel(model)
-                          // Find provider ID from provider name
-                          const provider = providers.find(p => p.name === model.provider)
+                          // Find provider ID from provider name (case-insensitive match on name or display_name)
+                          const providerNameLower = model.provider.toLowerCase()
+                          const provider = providers.find(p =>
+                            p.name.toLowerCase() === providerNameLower ||
+                            p.display_name.toLowerCase() === providerNameLower ||
+                            p.id.toLowerCase() === providerNameLower
+                          )
                           if (provider) {
                             setEditSelectedProvider(provider.id)
                             // Fetch models for this provider
                             await fetchModelsForEditProvider(provider.id)
+                          } else {
+                            // If provider not found, still open dialog but show warning
+                            console.warn(`Provider not found for "${model.provider}" - available providers:`, providers.map(p => p.name))
+                            setEditSelectedProvider('')
+                            setEditAvailableModels([])
                           }
                           setIsEditDialogOpen(true)
                         }}
