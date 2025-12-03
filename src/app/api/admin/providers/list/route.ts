@@ -59,15 +59,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 4: Filter to only providers that match admin keys
+    // Use EXACT matching only - no substring matching to prevent false positives
+    // e.g., "google-vertex-anthropic" should NOT match admin key "anthropic"
     const providers = (allProviders || []).filter(p => {
       const normalizedId = p.id.toLowerCase().replace(/[^a-z0-9]/g, '')
       const normalizedName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
       return adminProviderNames.some(adminKey => {
         const normalizedAdminKey = adminKey.replace(/[^a-z0-9]/g, '')
+        // Only exact matches - no includes() to prevent partial matching
         return normalizedId === normalizedAdminKey ||
-               normalizedName === normalizedAdminKey ||
-               normalizedId.includes(normalizedAdminKey) ||
-               normalizedAdminKey.includes(normalizedId)
+               normalizedName === normalizedAdminKey
       })
     })
 
