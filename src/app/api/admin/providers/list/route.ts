@@ -1,36 +1,21 @@
-'use server'
-
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { createServerClient } from '@supabase/ssr'
+import { createClient, createAdminClient } from '../../../../utils/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
-    // Use SSR client to authenticate user via cookies
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-        },
-      }
-    )
+    console.log('[Providers API] Starting request...')
+
+    // Use shared SSR client to authenticate user via cookies
+    const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
+    console.log('[Providers API] User authenticated:', user?.id ? 'yes' : 'no')
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Use admin client for data queries (bypasses RLS)
-    const adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const adminClient = createAdminClient()
 
     // Check admin access
     const { data: profile } = await adminClient
@@ -57,8 +42,10 @@ export async function GET(request: NextRequest) {
 
     // Extract unique provider names that have admin keys (normalized to lowercase for comparison)
     const providersWithAdminKeys = [...new Set(adminKeyProviders?.map(k => k.provider.toLowerCase()) || [])]
+    console.log('[Providers API] Admin key providers:', providersWithAdminKeys)
 
     if (providersWithAdminKeys.length === 0) {
+      console.log('[Providers API] No admin keys configured, returning empty list')
       // No admin keys configured - return empty list
       return NextResponse.json({ providers: [] })
     }
@@ -87,6 +74,8 @@ export async function GET(request: NextRequest) {
       })
     })
 
+    console.log('[Providers API] Matched providers:', providers.map(p => ({ id: p.id, name: p.name })))
+    console.log('[Providers API] Returning', providers.length, 'providers')
     return NextResponse.json({ providers })
   } catch (error) {
     console.error('Error in providers list API:', error)
