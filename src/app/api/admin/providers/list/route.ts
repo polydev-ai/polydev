@@ -28,14 +28,50 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // FIX: Return ALL active providers from providers_registry
-    // Previously we filtered by admin keys, but this caused "No models found"
-    // when editing model_tiers that reference providers without admin keys (e.g., Google, Cerebras)
-    const { data: providers, error } = await adminClient
+    // CORRECT: Only return providers that have admin API keys configured
+    // Step 1: Get all active admin API keys
+    const { data: adminKeys, error: adminKeysError } = await adminClient
+      .from('user_api_keys')
+      .select('provider')
+      .eq('is_admin_key', true)
+      .eq('active', true)
+
+    if (adminKeysError) {
+      console.error('Error fetching admin keys:', adminKeysError)
+      return NextResponse.json({ error: 'Failed to fetch admin keys' }, { status: 500 })
+    }
+
+    // Step 2: Get unique provider names from admin keys
+    const adminProviderNames = [...new Set(adminKeys?.map(k => k.provider.toLowerCase()) || [])]
+    console.log('[Providers API] Admin key providers:', adminProviderNames)
+
+    // Step 3: Fetch matching providers from registry
+    // Match by id OR name (case-insensitive) to handle naming variations
+    const { data: allProviders, error: providersError } = await adminClient
       .from('providers_registry')
       .select('id, name, display_name, logo_url')
       .eq('is_active', true)
       .order('display_name')
+
+    if (providersError) {
+      console.error('Error fetching providers:', providersError)
+      return NextResponse.json({ error: 'Failed to fetch providers' }, { status: 500 })
+    }
+
+    // Step 4: Filter to only providers that match admin keys
+    const providers = (allProviders || []).filter(p => {
+      const normalizedId = p.id.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const normalizedName = p.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+      return adminProviderNames.some(adminKey => {
+        const normalizedAdminKey = adminKey.replace(/[^a-z0-9]/g, '')
+        return normalizedId === normalizedAdminKey ||
+               normalizedName === normalizedAdminKey ||
+               normalizedId.includes(normalizedAdminKey) ||
+               normalizedAdminKey.includes(normalizedId)
+      })
+    })
+
+    const error = null // For compatibility with existing code below
 
     if (error) {
       console.error('Error fetching providers:', error)
