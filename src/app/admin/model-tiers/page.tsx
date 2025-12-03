@@ -702,6 +702,8 @@ export default function ModelTiersPage() {
                   onValueChange={(value) => {
                     setEditSelectedProvider(value)
                     setEditSelectedModel('')
+                    // FIX: Set loading state BEFORE clearing models to prevent "No models found" flash
+                    setEditModelsLoading(true)
                     setEditAvailableModels([])
                     fetchModelsForEditProvider(value)
                     // Find provider name from ID
