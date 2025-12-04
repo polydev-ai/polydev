@@ -198,17 +198,23 @@ async function addProviderKey(supabase: any, data: any) {
   }
 
   // Validate provider exists in providers_registry (the canonical source for provider names)
-  // This ensures we use the correct casing (e.g., "OpenAI" not "openai", "xAI" not "x-ai")
-  const { data: providerRecord, error: providerError } = await supabase
+  // Match by EITHER id (exact) OR name (case-insensitive) to handle variations
+  // e.g., user might send "google" which matches id="google" but name="Google"
+  const { data: providerRecords, error: providerError } = await supabase
     .from('providers_registry')
     .select('id, name, display_name')
-    .eq('name', provider)
     .eq('is_active', true)
-    .single()
+
+  // Find matching provider (case-insensitive on both id and name)
+  const providerLower = provider.toLowerCase()
+  const providerRecord = providerRecords?.find(p =>
+    p.id.toLowerCase() === providerLower ||
+    p.name.toLowerCase() === providerLower
+  )
 
   if (providerError || !providerRecord) {
     return NextResponse.json({
-      error: `Invalid provider: "${provider}". Provider must match exactly with a provider in providers_registry.`
+      error: `Invalid provider: "${provider}". Provider must exist in providers_registry (matching by id or name, case-insensitive).`
     }, { status: 400 })
   }
 

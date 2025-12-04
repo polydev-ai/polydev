@@ -99,7 +99,12 @@ async function updateModelTier(supabase: any, data: any) {
 
   if (error) {
     console.error('Error updating model tier:', error)
-    return NextResponse.json({ error: 'Failed to update model tier' }, { status: 500 })
+    return NextResponse.json({
+      error: 'Failed to update model tier',
+      details: error.message,
+      code: error.code,
+      hint: error.hint
+    }, { status: 500 })
   }
 
   return NextResponse.json({ success: true, model: updated })

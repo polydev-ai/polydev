@@ -14,8 +14,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check admin access
-    const { data: profile } = await supabase
+    // Use admin client for data queries (bypasses RLS)
+    const adminClient = createAdminClient()
+
+    // Check admin access using adminClient (regular client blocked by RLS)
+    const { data: profile } = await adminClient
       .from('users')
       .select('tier')
       .eq('user_id', user.id)
@@ -24,9 +27,6 @@ export async function GET(request: Request) {
     if (profile?.tier !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-
-    // Use admin client to fetch data (bypasses RLS)
-    const adminClient = createAdminClient()
 
     // Get provider_id from query params for filtering
     const { searchParams } = new URL(request.url)
