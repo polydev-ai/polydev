@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
-import { Pencil, Plus, Trash2, Settings } from 'lucide-react'
+import { Pencil, Plus, Trash2, Settings, ChevronUp, ChevronDown, GripVertical } from 'lucide-react'
 
 interface ModelTier {
   id: string
@@ -18,6 +18,7 @@ interface ModelTier {
   tier: 'premium' | 'normal' | 'eco'
   max_output_tokens: number
   active: boolean
+  display_order?: number
 }
 
 interface Provider {
@@ -66,6 +67,7 @@ export default function ModelTiersPage() {
     tier: 'normal' as 'premium' | 'normal' | 'eco',
     max_output_tokens: 8000
   })
+  const [reordering, setReordering] = useState(false)
 
   useEffect(() => {
     fetchModels()
@@ -364,6 +366,49 @@ export default function ModelTiersPage() {
     }
   }
 
+  const moveModel = async (tier: 'premium' | 'normal' | 'eco', modelId: string, direction: 'up' | 'down') => {
+    const tierModels = groupedModels[tier]
+    const currentIndex = tierModels.findIndex(m => m.id === modelId)
+
+    if (direction === 'up' && currentIndex === 0) return
+    if (direction === 'down' && currentIndex === tierModels.length - 1) return
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    const reordered = [...tierModels]
+    const [moved] = reordered.splice(currentIndex, 1)
+    reordered.splice(newIndex, 0, moved)
+
+    const modelIds = reordered.map(m => m.id)
+
+    try {
+      setReordering(true)
+      const response = await fetch('/api/admin/model-tiers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reorder',
+          tier,
+          modelIds
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        await fetchModels()
+      } else {
+        throw new Error(data.error)
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reorder models',
+        variant: 'destructive'
+      })
+    } finally {
+      setReordering(false)
+    }
+  }
+
   const getTierColor = (tier: string) => {
     return 'bg-slate-100 text-slate-900 border border-slate-200'
   }
@@ -589,19 +634,49 @@ export default function ModelTiersPage() {
                 </span>
               </CardTitle>
               <CardDescription>
-                {tier === 'premium' && 'Highest quality, highest cost models'}
-                {tier === 'normal' && 'Balanced quality and cost models'}
-                {tier === 'eco' && 'Budget-friendly, faster models'}
+                {tier === 'premium' && 'Highest quality, highest cost models. '}
+                {tier === 'normal' && 'Balanced quality and cost models. '}
+                {tier === 'eco' && 'Budget-friendly, faster models. '}
+                <span className="text-slate-500">Use arrows to set default priority order.</span>
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {groupedModels[tier].map((model) => (
-                  <div key={model.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="font-medium">{model.display_name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {model.provider} / {model.model_name}
+                {groupedModels[tier].map((model, index) => (
+                  <div key={model.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {/* Reorder buttons */}
+                      <div className="flex flex-col gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0"
+                          onClick={() => moveModel(tier, model.id, 'up')}
+                          disabled={index === 0 || reordering}
+                          title="Move up"
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0"
+                          onClick={() => moveModel(tier, model.id, 'down')}
+                          disabled={index === groupedModels[tier].length - 1 || reordering}
+                          title="Move down"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      {/* Order number badge */}
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-200 text-xs font-semibold text-slate-600">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1">
+                        <div className="font-medium">{model.display_name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {model.provider} / {model.model_name}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">

@@ -37,9 +37,11 @@ interface PerspectiveQuota {
 interface ModelTier {
   id: string
   provider: string
+  model_name: string
   display_name: string
   tier: string
   active: boolean
+  display_order?: number
 }
 
 interface CLIStatus {
@@ -72,6 +74,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
   const perspectivesPerMessage = (preferences?.mcp_settings as any)?.perspectives_per_message || 2
   const tierPriority = (preferences?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
   const providerPriority = (preferences?.mcp_settings as any)?.provider_priority || []
+  const modelOrder = (preferences?.mcp_settings as any)?.model_order || {} as { [tier: string]: string[] }
 
   // Debounced perspective slider update
   const debouncedUpdatePerspectives = useDebouncedCallback(async (value: number) => {
@@ -139,6 +142,61 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       setSaving(false)
     }
   }, [tierPriority, preferences, updatePreferences])
+
+  // Helper to get sorted models for a tier (respects user order preference, then admin display_order)
+  const getSortedModelsForTier = useCallback((tier: string): ModelTier[] => {
+    const tierModels = (modelTiers || []).filter(m => m.tier === tier)
+    const userOrder = modelOrder[tier] || []
+
+    // Sort by user preference first, then by admin display_order for new models
+    return [...tierModels].sort((a, b) => {
+      const aUserIdx = userOrder.indexOf(a.id)
+      const bUserIdx = userOrder.indexOf(b.id)
+
+      // If both have user order, use that
+      if (aUserIdx !== -1 && bUserIdx !== -1) {
+        return aUserIdx - bUserIdx
+      }
+      // If only a has user order, a comes first
+      if (aUserIdx !== -1) return -1
+      // If only b has user order, b comes first
+      if (bUserIdx !== -1) return 1
+      // Neither has user order, use admin display_order
+      return (a.display_order || 0) - (b.display_order || 0)
+    })
+  }, [modelTiers, modelOrder])
+
+  // Model reordering within a tier
+  const moveModelInTier = useCallback(async (tier: string, modelId: string, direction: 'up' | 'down') => {
+    const tierModels = getSortedModelsForTier(tier)
+    const currentIndex = tierModels.findIndex(m => m.id === modelId)
+
+    if (direction === 'up' && currentIndex === 0) return
+    if (direction === 'down' && currentIndex === tierModels.length - 1) return
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    const reordered = [...tierModels]
+    const [moved] = reordered.splice(currentIndex, 1)
+    reordered.splice(newIndex, 0, moved)
+
+    // Save the new order to preferences
+    const newModelOrder = {
+      ...modelOrder,
+      [tier]: reordered.map(m => m.id)
+    }
+
+    try {
+      setSaving(true)
+      await updatePreferences({
+        mcp_settings: {
+          ...(preferences?.mcp_settings as any),
+          model_order: newModelOrder
+        }
+      })
+    } finally {
+      setSaving(false)
+    }
+  }, [getSortedModelsForTier, modelOrder, preferences, updatePreferences])
 
   // Get unique providers from active tiers (these are ALL admin-provided models)
   const activeProviders = [...new Set((modelTiers || []).map(t => t.provider))]
@@ -217,13 +275,6 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     return provider?.display_name || provider?.name || providerId
   }
 
-  // Helper to get models for a tier
-  const getModelsForTier = (tier: string) => {
-    return (modelTiers || [])
-      .filter(m => m.tier === tier)
-      .map(m => m.display_name || m.provider)
-  }
-
   // Helper to get unique providers for a tier
   const getProvidersForTier = (tier: string) => {
     const providers = [...new Set((modelTiers || [])
@@ -297,7 +348,6 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
               const { total, used } = getTierQuota(tier)
               const percentage = total > 0 ? (used / total) * 100 : 0
               const remaining = total - used
-              const tierModels = getModelsForTier(tier)
               const tierProviders = getProvidersForTier(tier)
               return (
                 <div key={tier} className="bg-white border border-purple-200/60 rounded-lg p-3 shadow-sm hover:shadow-md transition-all">
@@ -357,9 +407,45 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                       })}
                     </div>
                   )}
-                  {tierModels.length > 0 && (
-                    <div className="ml-9 text-xs text-slate-600 bg-slate-50 px-2 py-1 rounded">
-                      <span className="font-medium">Models:</span> {tierModels.join(', ')}
+                  {/* Reorderable Models */}
+                  {getSortedModelsForTier(tier).length > 0 && (
+                    <div className="ml-9 space-y-1">
+                      <div className="text-xs font-medium text-slate-500 mb-1">Models (drag to reorder):</div>
+                      {getSortedModelsForTier(tier).map((model, modelIdx) => {
+                        const sortedModels = getSortedModelsForTier(tier)
+                        const logo = getProviderLogo(model.provider)
+                        return (
+                          <div key={model.id} className="flex items-center gap-2 bg-slate-50 px-2 py-1.5 rounded border border-slate-200 hover:border-purple-300 transition-colors group">
+                            <span className="text-[10px] font-bold text-slate-400 w-4 text-center">{modelIdx + 1}</span>
+                            {logo ? (
+                              <img src={logo} alt={model.provider} className="w-3.5 h-3.5 object-contain" />
+                            ) : (
+                              <div className="w-3.5 h-3.5 bg-slate-200 rounded flex items-center justify-center text-[7px] font-bold text-slate-500">
+                                {model.provider.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="text-xs text-slate-700 flex-1">{model.display_name}</span>
+                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => moveModelInTier(tier, model.id, 'up')}
+                                disabled={modelIdx === 0 || saving}
+                                className="p-1 hover:bg-purple-100 rounded disabled:opacity-30 transition-colors"
+                                title="Move up"
+                              >
+                                <ChevronUp className="w-3 h-3 text-slate-500" />
+                              </button>
+                              <button
+                                onClick={() => moveModelInTier(tier, model.id, 'down')}
+                                disabled={modelIdx === sortedModels.length - 1 || saving}
+                                className="p-1 hover:bg-purple-100 rounded disabled:opacity-30 transition-colors"
+                                title="Move down"
+                              >
+                                <ChevronDown className="w-3 h-3 text-slate-500" />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

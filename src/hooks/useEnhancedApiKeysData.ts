@@ -80,9 +80,11 @@ interface PerspectiveQuota {
 interface ModelTier {
   id: string
   provider: string
+  model_name: string
   display_name: string
   tier: string
   active: boolean
+  display_order?: number
 }
 
 // Global cache for enhanced API keys data to prevent duplicate fetching
@@ -296,8 +298,9 @@ export function useEnhancedApiKeysData() {
         fetchWithCache('modelTiers', async () => {
           const result = await supabase
             .from('model_tiers')
-            .select('id, provider, display_name, tier, active')
+            .select('id, provider, model_name, display_name, tier, active, display_order')
             .eq('active', true)
+            .order('display_order', { ascending: true })
 
           if (result.error) throw result.error
           return result.data || []

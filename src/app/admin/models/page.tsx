@@ -234,21 +234,62 @@ export default function ModelsManagement() {
 
   async function duplicateModel(model: ModelRegistryEntry) {
     try {
-      // Generate a unique name for the duplicate
-      let copyNumber = 1
-      let newName = `${model.name}-copy`
-      let newDisplayName = `${model.display_name} (Copy)`
+      // Generate a unique name and ID for the duplicate
+      // Check existing copies by both name pattern AND id pattern (id is provider/name)
+      const baseIdPattern = `${model.provider_id}/${model.name}-copy`
 
-      // Check if a model with this name already exists
-      const { data: existingModels } = await supabase
+      const { data: existingByName } = await supabase
         .from('models_registry')
         .select('name')
-        .like('name', `${model.name}-copy%`)
+        .or(`name.eq.${model.name}-copy,name.like.${model.name}-copy-%`)
 
-      if (existingModels && existingModels.length > 0) {
-        copyNumber = existingModels.length + 1
-        newName = `${model.name}-copy-${copyNumber}`
-        newDisplayName = `${model.display_name} (Copy ${copyNumber})`
+      const { data: existingById } = await supabase
+        .from('models_registry')
+        .select('id')
+        .or(`id.eq.${baseIdPattern},id.like.${baseIdPattern}-%`)
+
+      let newName: string
+      let newDisplayName: string
+
+      // Combine both checks to find the highest number used
+      const existingNames = new Set((existingByName || []).map(e => e.name))
+      const existingIds = new Set((existingById || []).map(e => e.id))
+
+      if (existingNames.size === 0 && existingIds.size === 0) {
+        // No copies exist, create first one
+        newName = `${model.name}-copy`
+        newDisplayName = `${model.display_name} (Copy)`
+      } else {
+        // Find the highest copy number from both names and IDs
+        let maxNumber = 0
+
+        // Check from names
+        for (const name of existingNames) {
+          if (name === `${model.name}-copy`) {
+            maxNumber = Math.max(maxNumber, 1)
+          } else {
+            const match = name.match(/-copy-(\d+)$/)
+            if (match) {
+              maxNumber = Math.max(maxNumber, parseInt(match[1], 10))
+            }
+          }
+        }
+
+        // Check from IDs (in case name was changed but ID still exists)
+        for (const id of existingIds) {
+          if (id === baseIdPattern) {
+            maxNumber = Math.max(maxNumber, 1)
+          } else {
+            const match = id.match(/-copy-(\d+)$/)
+            if (match) {
+              maxNumber = Math.max(maxNumber, parseInt(match[1], 10))
+            }
+          }
+        }
+
+        const nextNumber = maxNumber + 1
+        newName = `${model.name}-copy-${nextNumber}`
+        newDisplayName = `${model.display_name} (Copy ${nextNumber})`
       }
 
       const newId = `${model.provider_id}/${newName}`

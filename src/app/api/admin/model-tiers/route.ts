@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
       .from('model_tiers')
       .select('*')
       .order('tier', { ascending: true })
+      .order('display_order', { ascending: true })
       .order('provider', { ascending: true })
-      .order('model_name', { ascending: true })
 
     if (tier) {
       query = query.eq('tier', tier)
@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
         return await createModelTier(supabase, data)
       case 'delete':
         return await deleteModelTier(supabase, data)
+      case 'reorder':
+        return await reorderModels(supabase, data)
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
@@ -159,6 +161,44 @@ async function deleteModelTier(supabase: any, data: any) {
   if (error) {
     console.error('Error deleting model tier:', error)
     return NextResponse.json({ error: 'Failed to delete model tier' }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
+}
+
+async function reorderModels(supabase: any, data: any) {
+  const { tier, modelIds } = data
+
+  if (!tier || !modelIds || !Array.isArray(modelIds)) {
+    return NextResponse.json({
+      error: 'Tier and modelIds array are required'
+    }, { status: 400 })
+  }
+
+  // Update display_order for each model based on position in array
+  const updates = modelIds.map((id: string, index: number) => ({
+    id,
+    display_order: index + 1
+  }))
+
+  // Use a transaction-like approach: update each model
+  for (const update of updates) {
+    const { error } = await supabase
+      .from('model_tiers')
+      .update({
+        display_order: update.display_order,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', update.id)
+      .eq('tier', tier) // Safety: ensure model belongs to this tier
+
+    if (error) {
+      console.error('Error reordering model:', error)
+      return NextResponse.json({
+        error: 'Failed to reorder models',
+        details: error.message
+      }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ success: true })

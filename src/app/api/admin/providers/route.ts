@@ -207,7 +207,7 @@ async function addProviderKey(supabase: any, data: any) {
 
   // Find matching provider (case-insensitive on both id and name)
   const providerLower = provider.toLowerCase()
-  const providerRecord = providerRecords?.find(p =>
+  const providerRecord = providerRecords?.find((p: { id: string; name: string }) =>
     p.id.toLowerCase() === providerLower ||
     p.name.toLowerCase() === providerLower
   )
