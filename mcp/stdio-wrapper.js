@@ -6,6 +6,69 @@ const path = require('path');
 const os = require('os');
 const { CLIManager } = require('./cliManager');
 
+// Simple .env file loader (no external dependencies)
+function loadEnvFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return false;
+
+    const content = fs.readFileSync(filePath, 'utf8');
+    const lines = content.split('\n');
+    let loaded = 0;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      // Skip comments and empty lines
+      if (!trimmed || trimmed.startsWith('#')) continue;
+
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex === -1) continue;
+
+      const key = trimmed.substring(0, eqIndex).trim();
+      let value = trimmed.substring(eqIndex + 1).trim();
+
+      // Remove surrounding quotes if present
+      if ((value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+
+      // Only set if not already defined (don't override existing env vars)
+      if (!process.env[key]) {
+        process.env[key] = value;
+        loaded++;
+      }
+    }
+
+    return loaded > 0;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Load .env files from multiple locations (in priority order)
+function loadEnvironment() {
+  const envPaths = [
+    path.join(process.cwd(), '.env'),           // Current working directory
+    path.join(process.cwd(), '.env.local'),     // Local overrides
+    path.join(os.homedir(), '.polydev.env'),    // User home directory
+    path.join(os.homedir(), '.env'),            // Home directory fallback
+  ];
+
+  const loaded = [];
+  for (const envPath of envPaths) {
+    if (loadEnvFile(envPath)) {
+      loaded.push(envPath);
+    }
+  }
+
+  if (loaded.length > 0) {
+    console.error(`[Stdio Wrapper] Loaded env from: ${loaded.join(', ')}`);
+  }
+}
+
+// Load environment variables FIRST, before any checks
+loadEnvironment();
+
 function ensureWritableTmpDir() {
   const candidates = [
     process.env.POLYDEV_TMPDIR,
