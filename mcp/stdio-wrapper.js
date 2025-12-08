@@ -201,34 +201,46 @@ class StdioMCPWrapper {
 
   async forwardToRemoteServer(request) {
     console.error(`[Stdio Wrapper] Forwarding request to remote server`);
-    
-    const response = await fetch('https://www.polydev.ai/api/mcp', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.userToken}`,
-        'User-Agent': 'polydev-stdio-wrapper/1.0.0'
-      },
-      body: JSON.stringify(request)
-    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Stdio Wrapper] Remote server error: ${response.status} - ${errorText}`);
-      
+    try {
+      const response = await fetch('https://www.polydev.ai/api/mcp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.userToken}`,
+          'User-Agent': 'polydev-stdio-wrapper/1.0.0'
+        },
+        body: JSON.stringify(request)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[Stdio Wrapper] Remote server error: ${response.status} - ${errorText}`);
+
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          error: {
+            code: -32603,
+            message: `Remote server error: ${response.status} - ${errorText}`
+          }
+        };
+      }
+
+      const result = await response.json();
+      console.error(`[Stdio Wrapper] Got response from remote server`);
+      return result;
+    } catch (error) {
+      console.error(`[Stdio Wrapper] Network error:`, error.message);
       return {
         jsonrpc: '2.0',
         id: request.id,
         error: {
           code: -32603,
-          message: `Remote server error: ${response.status} - ${errorText}`
+          message: `Network error: ${error.message}`
         }
       };
     }
-
-    const result = await response.json();
-    console.error(`[Stdio Wrapper] Got response from remote server`);
-    return result;
   }
 
   /**
@@ -556,7 +568,16 @@ class StdioMCPWrapper {
       };
 
       const remoteResponse = await this.forwardToRemoteServer(perspectivesRequest);
-      
+
+      // Guard against undefined/null response
+      if (!remoteResponse) {
+        return {
+          success: false,
+          error: 'No response from remote server',
+          timestamp: new Date().toISOString()
+        };
+      }
+
       if (remoteResponse.result && remoteResponse.result.content && remoteResponse.result.content[0]) {
         // The remote response already contains formatted "Multiple AI Perspectives" content
         // Return it as-is without additional formatting to avoid duplication
