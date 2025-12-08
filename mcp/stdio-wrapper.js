@@ -505,9 +505,13 @@ class StdioMCPWrapper {
           raw: true // Flag to indicate this is pre-formatted content
         };
       } else if (remoteResponse.error) {
+        // Normalize error - handle both string and object formats
+        const errorMessage = typeof remoteResponse.error === 'string'
+          ? remoteResponse.error
+          : (remoteResponse.error?.message || JSON.stringify(remoteResponse.error) || 'Remote perspectives failed');
         return {
           success: false,
-          error: remoteResponse.error.message || 'Remote perspectives failed',
+          error: errorMessage,
           timestamp: new Date().toISOString()
         };
       } else {
@@ -564,8 +568,9 @@ class StdioMCPWrapper {
     } else {
       // Both failed
       combinedResult.success = false;
-      const cliErrors = localResults.map(cli => `${cli.provider_id}: ${cli.error}`).join('; ');
-      combinedResult.error = `All local CLIs failed: ${cliErrors}; Perspectives also failed: ${perspectivesResult.error}`;
+      const cliErrors = localResults.map(cli => `${cli.provider_id}: ${cli.error || 'Unknown error'}`).join('; ');
+      const perspectivesError = perspectivesResult?.error || 'Unknown remote error';
+      combinedResult.error = `All local CLIs failed: ${cliErrors}; Perspectives also failed: ${perspectivesError}`;
     }
 
     return combinedResult;
