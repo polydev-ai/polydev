@@ -598,6 +598,9 @@ class StdioMCPWrapper {
    * Combine multiple CLI results and remote perspectives
    */
   combineAllCliAndPerspectives(localResults, perspectivesResult, args) {
+    // Ensure perspectivesResult is always an object to prevent undefined errors
+    const safePersp = perspectivesResult || { success: false, error: 'No response from perspectives server' };
+
     const combinedResult = {
       success: true,
       timestamp: new Date().toISOString(),
@@ -605,7 +608,7 @@ class StdioMCPWrapper {
       local_cli_count: localResults.length,
       sections: {
         local: localResults,
-        remote: perspectivesResult
+        remote: safePersp
       }
     };
 
@@ -614,25 +617,25 @@ class StdioMCPWrapper {
     const hasSomeLocalSuccess = successfulClis.length > 0;
 
     // Determine overall success and content
-    if (hasSomeLocalSuccess && perspectivesResult.success) {
-      combinedResult.content = this.formatMultipleCliResponse(localResults, perspectivesResult, false);
+    if (hasSomeLocalSuccess && safePersp.success) {
+      combinedResult.content = this.formatMultipleCliResponse(localResults, safePersp, false);
       combinedResult.tokens_used = successfulClis.reduce((total, cli) => total + (cli.tokens_used || 0), 0);
       combinedResult.latency_ms = Math.max(...successfulClis.map(cli => cli.latency_ms || 0));
-    } else if (!hasSomeLocalSuccess && perspectivesResult.success) {
+    } else if (!hasSomeLocalSuccess && safePersp.success) {
       // Complete fallback case - no local CLIs worked
-      combinedResult.content = this.formatMultipleCliResponse(localResults, perspectivesResult, true);
+      combinedResult.content = this.formatMultipleCliResponse(localResults, safePersp, true);
       combinedResult.fallback_used = true;
       combinedResult.tokens_used = 0; // No local tokens used
-    } else if (hasSomeLocalSuccess && !perspectivesResult.success) {
+    } else if (hasSomeLocalSuccess && !safePersp.success) {
       // Local CLIs succeeded, remote failed
-      combinedResult.content = this.formatMultipleCliResponse(localResults, perspectivesResult, false);
+      combinedResult.content = this.formatMultipleCliResponse(localResults, safePersp, false);
       combinedResult.tokens_used = successfulClis.reduce((total, cli) => total + (cli.tokens_used || 0), 0);
       combinedResult.latency_ms = Math.max(...successfulClis.map(cli => cli.latency_ms || 0));
     } else {
       // Both failed
       combinedResult.success = false;
       const cliErrors = localResults.map(cli => `${cli.provider_id}: ${cli.error || 'Unknown error'}`).join('; ');
-      const perspectivesError = perspectivesResult?.error || 'Unknown remote error';
+      const perspectivesError = safePersp.error || 'Unknown remote error';
       combinedResult.error = `All local CLIs failed: ${cliErrors}; Perspectives also failed: ${perspectivesError}`;
     }
 
@@ -643,6 +646,8 @@ class StdioMCPWrapper {
    * Format multiple CLI responses with remote perspectives
    */
   formatMultipleCliResponse(localResults, perspectivesResult, isFallback) {
+    // Safety check - ensure perspectivesResult is always an object
+    const safePersp = perspectivesResult || { success: false, error: 'No perspectives data' };
     let formatted = '';
 
     // Show all local CLI responses
@@ -677,19 +682,19 @@ class StdioMCPWrapper {
     }
 
     // Add remote perspectives
-    if (perspectivesResult.success) {
-      if (perspectivesResult.raw) {
+    if (safePersp.success) {
+      if (safePersp.raw) {
         // Raw content is already formatted - use as-is
-        formatted += `${perspectivesResult.content}\n\n`;
+        formatted += `${safePersp.content}\n\n`;
       } else {
         // Legacy formatting
         const title = (successfulClis.length === 0) ? '🧠 **Perspectives Fallback**' : '🧠 **Supplemental Multi-Model Perspectives**';
         formatted += `${title}\n\n`;
-        formatted += `${perspectivesResult.content}\n\n`;
+        formatted += `${safePersp.content}\n\n`;
       }
     } else if (successfulClis.length > 0) {
       // Show remote error only if we have local success
-      formatted += `❌ **Perspectives request failed**: ${perspectivesResult.error}\n\n`;
+      formatted += `❌ **Perspectives request failed**: ${safePersp.error || 'Unknown error'}\n\n`;
     }
 
     return formatted.trim();
