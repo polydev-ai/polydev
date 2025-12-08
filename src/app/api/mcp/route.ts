@@ -2741,12 +2741,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   formatted += `Got ${successCount}/${responses.length} perspectives in ${totalLatency}ms using ${totalTokens} tokens.${statusDisplay}\n`
 
   responses.forEach((response, index) => {
-    const modelName = response.model.toUpperCase()
+    const modelName = response.model?.toUpperCase() || 'UNKNOWN'
     const providerName = response.provider ? ` (${response.provider})` : ''
+    const responseAny = response as any
 
-    if (response.content.error) {
+    // Check for error in response - handle both response.error and response.content.error
+    if (responseAny.error || responseAny.content?.error) {
       formatted += `## ${modelName}${providerName} - ERROR\n`
-      formatted += `❌ ${response.content.error}\n\n`
+      formatted += `❌ ${responseAny.error || responseAny.content?.error}\n\n`
     } else {
       formatted += `## ${modelName}${providerName}\n`
 
