@@ -2395,7 +2395,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
   const totalTokens = responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0)
   const totalLatency = Math.max(...responses.map(r => r.latency_ms || 0))
-  const successCount = responses.filter(r => !r.content.error).length
+  const successCount = responses.filter(r => !r.content?.error).length
 
   // Log MCP tool call to mcp_usage_logs for dashboard statistics
   // Get the access token for this request from the auth header
@@ -2535,7 +2535,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         models_requested: models,
         provider_requests: providerRequests,
         total_completion_tokens: responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0),
-        total_prompt_tokens: Math.floor(args.prompt.length / 4) * responses.filter(r => !r.content.error).length,
+        total_prompt_tokens: Math.floor(args.prompt.length / 4) * responses.filter(r => !r.content?.error).length,
         total_tokens: totalTokens,
         provider_costs: providerCosts,
         total_cost: totalAccurateCost,
