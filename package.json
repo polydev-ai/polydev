@@ -66,7 +66,7 @@
     "framer-motion": "^12.23.22",
     "lucide-react": "^0.542.0",
     "marked": "^16.2.1",
-    "next": "15.0.0",
+    "next": "^15.5.7",
     "polydev-ai": "^1.2.0",
     "posthog-js": "^1.157.2",
     "prismjs": "^1.30.0",
