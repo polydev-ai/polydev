@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { CLIManager } = require('../lib/cliManager');
+const { CLIManager } = require('./cliManager');
 
 function ensureWritableTmpDir() {
   const candidates = [

@@ -1,6 +1,6 @@
 {
   "name": "polydev-ai",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Get diverse AI perspectives from multiple LLMs via MCP - supports Cline, Claude Code, and other MCP clients",
   "main": "stdio-wrapper.js",
   "bin": {
@@ -31,6 +31,7 @@
   },
   "files": [
     "stdio-wrapper.js",
+    "cliManager.js",
     "manifest.json",
     "README.md"
   ],
