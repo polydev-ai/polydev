@@ -1,5 +1,33 @@
 Your context window will be automatically compacted as it approaches its limit. Never stop tasks early due to token budget concerns. Always complete tasks fully, even if the end of your budget is approaching.
 
+---
+
+# TEMPORARY SCRIPTS POLICY
+
+**IMPORTANT: When creating temporary/one-off scripts for debugging, testing, or data fixes:**
+
+1. **ALWAYS use the temp folder:** `/Users/venkat/temp-scripts/`
+2. **NEVER create temp scripts in project directories** - this clutters git and causes confusion
+3. **Name scripts descriptively:** `check-db-users.js`, `fix-api-keys.js`, `debug-mcp.js`
+4. **Delete scripts when done** or leave them in temp folder for future reference
+
+**Example:**
+```bash
+# Create temp script in the right place
+cat > /Users/venkat/temp-scripts/check-something.js << 'EOF'
+// Your script here
+EOF
+
+# Run it
+node /Users/venkat/temp-scripts/check-something.js
+
+# Clean up when done (optional)
+rm /Users/venkat/temp-scripts/check-something.js
+```
+
+This keeps all project directories clean and git status uncluttered.
+
+---
 
 # AUTO-CONSULTATION PROTOCOL
 
