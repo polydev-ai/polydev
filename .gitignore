@@ -12,13 +12,3 @@ yarn-error.log*
 *.tsbuildinfo
 logs/
 # Deployment trigger - Tue Oct 28 14:25:36 PDT 2025
-
-# Temporary/one-off scripts (often created during debugging)
-check-*.js
-fix-*.js
-cleanup-*.js
-temp-*.js
-test-*.js
-debug-*.js
-scratch-*.js
-scripts/temp/
