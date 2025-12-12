@@ -218,17 +218,20 @@ export async function GET(request: NextRequest) {
     }
     
     cliConfigs?.forEach(config => {
-      const isAvailable = config.enabled && 
-                         config.status === 'available' && 
-                         config.last_checked_at && 
+      const isAvailable = config.enabled &&
+                         config.status === 'available' &&
+                         config.last_checked_at &&
                          new Date(config.last_checked_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
-      
+
       cliStatus[config.provider as keyof typeof cliStatus] = {
         available: isAvailable,
         status: config.status,
         last_checked_at: config.last_checked_at,
         enabled: config.enabled,
-        custom_path: config.custom_path
+        custom_path: config.custom_path,
+        authenticated: config.authenticated ?? false,  // Include auth status from NPM package reports
+        cli_version: config.cli_version || null,       // Include version from NPM package reports
+        status_message: config.status_message || null  // Include status message
       }
     })
     
