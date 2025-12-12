@@ -1,14 +1,40 @@
-.next/
+# Dependencies
 node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# Environment files
 .env.local
+.env.*.local
+
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-.vercel
-**/*.tgz
-**/*.tar.gz
-# Deployment trigger - Mon Sep 15 12:16:25 PDT 2025
-*.tsbuildinfo
 logs/
-# Deployment trigger - Tue Oct 28 14:25:36 PDT 2025
+*.log
+
+# IDE and OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Vercel
+.vercel
+
+# Archive (VM/WebRTC/development files)
+_archive/
+
+# Temporary files
+*.tgz
+*.tar.gz
+.deploy-trigger
