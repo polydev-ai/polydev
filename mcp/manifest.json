@@ -1,0 +1,780 @@
+{
+  "name": "polydev-perspectives",
+  "version": "1.2.0",
+  "description": "Agentic workflow assistant - get diverse perspectives from multiple LLMs when stuck or need enhanced reasoning",
+  "author": "Polydev AI",
+  "license": "MIT",
+  "main": "server.js",
+  "mcpVersion": "1.0",
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false
+  },
+  "tools": [
+    {
+      "name": "get_perspectives",
+      "description": "When stuck in agentic workflows, get diverse perspectives from multiple LLMs to overcome roadblocks. All models use Polydev-managed API keys - just configure once in dashboard.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "The prompt to get perspectives on",
+            "minLength": 1
+          },
+          "models": {
+            "type": "array",
+            "description": "Array of model names to query (optional, defaults to [gpt-4, claude-3-sonnet, gemini-pro])",
+            "items": {
+              "type": "string",
+              "enum": [
+                "gpt-4",
+                "gpt-3.5-turbo",
+                "claude-3-sonnet", 
+                "claude-3-haiku",
+                "gemini-pro",
+                "gemini-1.5-pro"
+              ]
+            },
+            "default": ["gpt-4", "claude-3-sonnet", "gemini-pro"]
+          },
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token (get from dashboard)",
+            "minLength": 1
+          },
+          "project_memory": {
+            "type": "string", 
+            "description": "Project context level - 'none', 'light' (recent files), or 'full' (TF-IDF similarity)",
+            "enum": ["none", "light", "full"],
+            "default": "none"
+          },
+          "max_messages": {
+            "type": "integer",
+            "description": "Maximum number of messages to process for tool calls",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10
+          },
+          "temperature": {
+            "type": "number",
+            "description": "Temperature for model responses",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 0.7
+          },
+          "max_tokens": {
+            "type": "integer",
+            "description": "Maximum tokens per response",
+            "minimum": 100,
+            "maximum": 8000,
+            "default": 2000
+          },
+          "project_context": {
+            "type": "object",
+            "description": "Project context for memory retrieval",
+            "properties": {
+              "root_path": {
+                "type": "string",
+                "description": "Root directory path for project"
+              },
+              "includes": {
+                "type": "array",
+                "description": "File patterns to include",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "excludes": {
+                "type": "array",
+                "description": "File patterns to exclude",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "required": ["prompt"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "responses": {
+            "type": "array",
+            "description": "Array of responses from different models",
+            "items": {
+              "type": "object",
+              "properties": {
+                "model": {
+                  "type": "string",
+                  "description": "Model name"
+                },
+                "content": {
+                  "type": "string",
+                  "description": "Response content"
+                },
+                "tokens_used": {
+                  "type": "integer",
+                  "description": "Number of tokens used"
+                },
+                "latency_ms": {
+                  "type": "integer",
+                  "description": "Response latency in milliseconds"
+                },
+                "error": {
+                  "type": "string",
+                  "description": "Error message if the request failed"
+                }
+              },
+              "required": ["model", "content"]
+            }
+          },
+          "total_tokens": {
+            "type": "integer",
+            "description": "Total tokens used across all models"
+          },
+          "total_latency_ms": {
+            "type": "integer",
+            "description": "Total latency in milliseconds"
+          },
+          "cached": {
+            "type": "boolean",
+            "description": "Whether the response was cached"
+          }
+        },
+        "required": ["responses"]
+      },
+      "examples": [
+        {
+          "description": "Agent stuck on TypeScript decision",
+          "input": {
+            "prompt": "I'm building a new API and considering TypeScript vs JavaScript. I need multiple perspectives to make the right choice.",
+            "user_token": "poly_abc123..."
+          },
+          "output": {
+            "responses": [
+              {
+                "model": "gpt-4",
+                "content": "TypeScript offers several key advantages over JavaScript: 1) Static type checking catches errors at compile time...",
+                "tokens_used": 150,
+                "latency_ms": 1200
+              },
+              {
+                "model": "claude-3-sonnet", 
+                "content": "TypeScript provides enhanced developer experience through: Type safety, better IDE support...",
+                "tokens_used": 140,
+                "latency_ms": 1100
+              }
+            ],
+            "total_tokens": 290,
+            "total_latency_ms": 1300,
+            "cached": false
+          }
+        },
+        {
+          "description": "Agent debugging performance issue with context",
+          "input": {
+            "prompt": "My React app is slow and I can't figure out why. Help me identify the bottlenecks.",
+            "user_token": "poly_abc123...",
+            "models": ["gpt-4", "claude-3-sonnet"],
+            "project_memory": "full",
+            "project_context": {
+              "root_path": "/workspace/my-react-app",
+              "includes": ["**/*.tsx", "**/*.ts", "**/*.js"],
+              "excludes": ["node_modules/**", "dist/**", "build/**"]
+            }
+          }
+        },
+        {
+          "description": "Agent needs diverse architectural opinions",
+          "input": {
+            "prompt": "I'm designing a microservices architecture for a fintech app. What are the key considerations and potential pitfalls?",
+            "user_token": "poly_abc123...",
+            "models": ["gpt-4", "claude-3-sonnet", "gemini-pro"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "force_cli_detection",
+      "description": "Force detection and status update for CLI tools (Claude Code, Codex CLI, Gemini CLI). Updates local cache and reports status to MCP server via Supabase.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID for database status updates (optional for stdio-wrapper)",
+            "minLength": 1
+          },
+          "provider_id": {
+            "type": "string",
+            "description": "Specific CLI provider to detect (optional, detects all if not provided)",
+            "enum": ["claude_code", "codex_cli", "gemini_cli"]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether detection was successful"
+          },
+          "results": {
+            "type": "object",
+            "description": "Detection results for each provider",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": "boolean",
+                  "description": "Whether CLI is available"
+                },
+                "authenticated": {
+                  "type": "boolean",
+                  "description": "Whether CLI is authenticated"
+                },
+                "version": {
+                  "type": "string",
+                  "description": "CLI version if available"
+                },
+                "path": {
+                  "type": "string",
+                  "description": "Path to CLI executable"
+                },
+                "error": {
+                  "type": "string",
+                  "description": "Error message if detection failed"
+                }
+              }
+            }
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable result message"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Detection timestamp"
+          }
+        },
+        "required": ["success", "results", "message", "timestamp"]
+      },
+      "examples": [
+        {
+          "description": "Detect all CLI providers",
+          "input": {
+            "user_id": "user_123"
+          },
+          "output": {
+            "success": true,
+            "results": {
+              "claude_code": {
+                "available": true,
+                "authenticated": true,
+                "version": "claude-code v1.2.3",
+                "path": "/usr/local/bin/claude"
+              },
+              "codex_cli": {
+                "available": false,
+                "authenticated": false,
+                "error": "Codex CLI not found in PATH. Install Codex CLI from OpenAI"
+              }
+            },
+            "message": "CLI detection completed for all providers",
+            "timestamp": "2024-01-15T10:30:00Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "get_cli_status",
+      "description": "Get current CLI status with caching support. Returns cached results if available and fresh, otherwise performs new detection.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "User ID for database status retrieval (optional for stdio-wrapper)",
+            "minLength": 1
+          },
+          "provider_id": {
+            "type": "string",
+            "description": "Specific CLI provider status to get (optional, gets all if not provided)",
+            "enum": ["claude_code", "codex_cli", "gemini_cli"]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether status retrieval was successful"
+          },
+          "results": {
+            "type": "object",
+            "description": "Status results for each provider",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "available": {
+                  "type": "boolean"
+                },
+                "authenticated": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "type": "string"
+                },
+                "lastChecked": {
+                  "type": "string",
+                  "description": "Last status check timestamp"
+                }
+              }
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        },
+        "required": ["success", "results"]
+      }
+    },
+    {
+      "name": "send_cli_prompt",
+      "description": "Send a prompt to a CLI provider and get response. Supports both stdin and argument modes for maximum compatibility.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "description": "CLI provider to send prompt to",
+            "enum": ["claude_code", "codex_cli", "gemini_cli"]
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Prompt to send to the CLI",
+            "minLength": 1
+          },
+          "mode": {
+            "type": "string",
+            "description": "Prompt sending mode",
+            "enum": ["stdin", "args"],
+            "default": "args"
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "description": "Timeout in milliseconds",
+            "minimum": 1000,
+            "maximum": 300000,
+            "default": 30000
+          },
+          "user_id": {
+            "type": "string",
+            "description": "User ID for usage tracking (optional)",
+            "minLength": 1
+          }
+        },
+        "required": ["prompt"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether the prompt was sent successfully"
+          },
+          "content": {
+            "type": "string",
+            "description": "CLI response content"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message if prompt failed"
+          },
+          "tokens_used": {
+            "type": "integer",
+            "description": "Number of tokens used"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "description": "Response latency in milliseconds"
+          },
+          "provider": {
+            "type": "string",
+            "description": "CLI provider used"
+          },
+          "mode": {
+            "type": "string",
+            "description": "Mode used for sending"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "Response timestamp"
+          }
+        },
+        "required": ["success", "provider", "timestamp"]
+      },
+      "examples": [
+        {
+          "description": "Send prompt to Claude Code",
+          "input": {
+            "provider_id": "claude_code",
+            "prompt": "Help me debug this TypeScript error: Property 'map' does not exist on type 'string'",
+            "mode": "args",
+            "user_id": "user_123"
+          },
+          "output": {
+            "success": true,
+            "content": "This error occurs when you're trying to use the .map() method on a string variable. The .map() method is an array method, not a string method...",
+            "tokens_used": 150,
+            "latency_ms": 1200,
+            "provider": "claude_code",
+            "mode": "args",
+            "timestamp": "2024-01-15T10:35:00Z"
+          }
+        }
+      ]
+    },
+    {
+      "name": "enable_status_reporting",
+      "description": "Enable automatic CLI status reporting to polydev.ai server. Reports are sent when CLI detection runs and via periodic heartbeat. Requires a Polydev user token.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user token (pd_xxx or polydev_xxx). Can also be set via POLYDEV_USER_TOKEN env var.",
+            "minLength": 1
+          },
+          "heartbeat_interval_minutes": {
+            "type": "integer",
+            "description": "How often to send status updates (in minutes)",
+            "minimum": 5,
+            "maximum": 1440,
+            "default": 15
+          },
+          "start_heartbeat": {
+            "type": "boolean",
+            "description": "Whether to start automatic heartbeat immediately",
+            "default": true
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string" },
+          "heartbeat_enabled": { "type": "boolean" },
+          "heartbeat_interval_minutes": { "type": "integer" },
+          "initial_status": { "type": "object" },
+          "timestamp": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "disable_status_reporting",
+      "description": "Disable automatic CLI status reporting to polydev.ai server. Stops heartbeat and disables reporting.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "message": { "type": "string" },
+          "timestamp": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "get_status_reporting_info",
+      "description": "Get current status reporting configuration and history. Shows whether reporting is enabled, heartbeat status, and recent report history.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "available": { "type": "boolean" },
+          "config": {
+            "type": "object",
+            "properties": {
+              "serverUrl": { "type": "string" },
+              "reportingEnabled": { "type": "boolean" },
+              "heartbeatRunning": { "type": "boolean" },
+              "heartbeatIntervalMs": { "type": "integer" },
+              "isOnline": { "type": "boolean" },
+              "pendingReportsCount": { "type": "integer" }
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "provider": { "type": "string" },
+                "status": { "type": "string" },
+                "success": { "type": "boolean" },
+                "timestamp": { "type": "string" }
+              }
+            }
+          },
+          "timestamp": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "detect_memory_sources",
+      "description": "Detect all available memory sources across CLI tools (Claude Code, Cline, Codex, Cursor, Continue, Aider). Returns file paths for global memory, project memory, and recent conversations.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_path": {
+            "type": "string",
+            "description": "Project directory path to scan for memory sources",
+            "default": "."
+          },
+          "cli_tools": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["claude_code", "cline", "codex_cli", "cursor", "continue", "aider", "generic", "all"]
+            },
+            "description": "CLI tools to detect memory for",
+            "default": ["all"]
+          },
+          "memory_types": {
+            "type": "array", 
+            "items": {
+              "type": "string",
+              "enum": ["global", "project", "conversation", "config"]
+            },
+            "description": "Types of memory to detect",
+            "default": ["global", "project", "conversation"]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object", 
+              "properties": {
+                "cli_tool": { "type": "string" },
+                "memory_type": { "type": "string" },
+                "file_path": { "type": "string" },
+                "exists": { "type": "boolean" },
+                "size_bytes": { "type": "number" },
+                "last_modified": { "type": "string" }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "total_sources": { "type": "number" },
+              "sources_by_tool": { "type": "object" },
+              "sources_by_type": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "extract_memory", 
+      "description": "Extract and optionally encrypt memory content from detected CLI tool sources. Provides TF-IDF relevance scoring and content analysis.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token for server storage",
+            "minLength": 1
+          },
+          "project_path": {
+            "type": "string", 
+            "description": "Project directory path",
+            "default": "."
+          },
+          "cli_tools": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["all"]
+          },
+          "memory_types": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["global", "project", "conversation"]
+          },
+          "encryption_enabled": { 
+            "type": "boolean", 
+            "description": "Enable zero-knowledge encryption for extracted content",
+            "default": true 
+          },
+          "max_file_size_kb": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 500
+          },
+          "relevance_threshold": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 0.3
+          }
+        },
+        "required": ["user_token"]
+      }
+    },
+    {
+      "name": "get_recent_conversations",
+      "description": "Get recent conversations from CLI tools with TF-IDF relevance scoring against query context. Supports encrypted storage and retrieval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token",
+            "minLength": 1
+          },
+          "query_context": { 
+            "type": "string", 
+            "description": "Current query for relevance scoring and context matching"
+          },
+          "limit": { 
+            "type": "integer", 
+            "minimum": 1, 
+            "maximum": 50, 
+            "default": 6 
+          },
+          "cli_tools": { 
+            "type": "array", 
+            "items": { "type": "string" },
+            "default": ["all"] 
+          },
+          "time_range_hours": { 
+            "type": "integer", 
+            "minimum": 1, 
+            "maximum": 168, 
+            "default": 24 
+          },
+          "project_path": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": ["user_token"]
+      }
+    },
+    {
+      "name": "get_memory_context",
+      "description": "Get formatted memory and conversation context for injection into prompts. Automatically handles decryption and relevance scoring.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token", 
+            "minLength": 1
+          },
+          "query_context": {
+            "type": "string",
+            "description": "Query to find relevant memory and conversations for"
+          },
+          "max_memory_kb": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50
+          },
+          "max_conversations": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "default": 6
+          },
+          "cli_tools": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["all"]
+          },
+          "memory_types": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": ["project", "conversation"]
+          }
+        },
+        "required": ["user_token"]
+      }
+    },
+    {
+      "name": "manage_memory_preferences", 
+      "description": "Configure memory extraction and privacy preferences. Control which CLI tools and memory types are enabled, encryption settings, and context injection behavior.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": ["get", "update"],
+            "description": "Action to perform",
+            "default": "get"
+          },
+          "preferences": {
+            "type": "object",
+            "description": "Memory preferences to update",
+            "properties": {
+              "memory_enabled": { "type": "boolean" },
+              "privacy_mode": { "type": "boolean" },
+              "auto_extraction": { "type": "boolean" },
+              "cli_tools_enabled": { "type": "object" },
+              "memory_types_enabled": { "type": "object" },
+              "auto_inject_context": { "type": "boolean" },
+              "context_relevance_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+              "max_conversations_inject": { "type": "integer" },
+              "max_memory_inject_kb": { "type": "integer" },
+              "key_rotation_days": { "type": "integer" },
+              "cache_ttl_minutes": { "type": "integer" }
+            }
+          }
+        },
+        "required": ["user_token"]
+      }
+    }
+  ],
+  "configuration": {
+    "server_url": "https://www.polydev.ai/api/perspectives",
+    "dashboard_url": "https://polydev.ai/dashboard/mcp-tools",
+    "auth_required": true,
+    "rate_limits": {
+      "requests_per_minute": 100,
+      "requests_per_hour": 2000,
+      "requests_per_day": 10000
+    },
+    "setup_instructions": {
+      "step_1": "Visit https://polydev.ai/dashboard/mcp-tools",
+      "step_2": "Generate your MCP access token",
+      "step_3": "Configure your preferred models and settings",
+      "step_4": "Use the token in your MCP tool calls"
+    }
+  }
+}
