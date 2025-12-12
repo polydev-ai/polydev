@@ -1,5 +1,22 @@
 import { NextResponse } from 'next/server'
-import { createClient, createAdminClient } from '../../../../utils/supabase/server'
+import { createClient, createAdminClient } from '@/app/utils/supabase/server'
+
+// Helper function to check admin access
+async function checkAdminAccess(adminClient: any, userId: string, userEmail: string): Promise<boolean> {
+  const legacyAdminEmails = new Set(['admin@polydev.ai', 'venkat@polydev.ai', 'gvsfans@gmail.com']);
+  if (legacyAdminEmails.has(userEmail)) return true;
+
+  try {
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+    return profile?.is_admin || false;
+  } catch (error) {
+    return false;
+  }
+}
 
 export async function GET() {
   try {
@@ -11,19 +28,14 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check admin access
-    const { data: profile } = await supabase
-      .from('users')
-      .select('tier')
-      .eq('user_id', user.id)
-      .single()
+    // Use admin client to bypass RLS
+    const adminClient = createAdminClient()
 
-    if (profile?.tier !== 'admin') {
+    // Check admin access
+    const isAdmin = await checkAdminAccess(adminClient, user.id, user.email || '')
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
-
-    // Use admin client to fetch bonuses (bypasses RLS)
-    const adminClient = createAdminClient()
 
     const { data: bonuses, error } = await adminClient
       .from('user_bonus_quotas')

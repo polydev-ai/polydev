@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 // Global cache for dashboard data to prevent duplicate fetching
-// CACHE_VERSION: Increment this to invalidate all caches (current: 10 - fixed timezone + force refresh for October data)
-const CACHE_VERSION = 10
+// CACHE_VERSION: Increment this to invalidate all caches (current: 11 - debug chat logs counting)
+const CACHE_VERSION = 11
 const dashboardCache = {
   version: CACHE_VERSION,
   stats: null as any,
@@ -60,6 +60,8 @@ export function useDashboardData() {
     allTimeMessages: 0,
     allTimeApiCalls: 0,
     allTimeTokens: 0,
+    // Credits balance
+    creditsBalance: 0,
   })
   const [creditBalance, setCreditBalance] = useState<any>({
     balance: 0,
@@ -154,6 +156,8 @@ export function useDashboardData() {
           allTimeMessages: data.allTimeMessages,
           allTimeApiCalls: data.allTimeApiCalls,
           allTimeTokens: data.allTimeTokens,
+          // Credits balance from stats endpoint
+          creditsBalance: data.creditsBalance || 0,
         })
 
         // Set provider analytics from stats endpoint if available

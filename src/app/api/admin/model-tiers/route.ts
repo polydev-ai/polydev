@@ -1,21 +1,49 @@
 'use server'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, createAdminClient } from '@/app/utils/supabase/server'
+
+// Helper function to check admin access
+async function checkAdminAccess(adminClient: any, userId: string, userEmail: string): Promise<boolean> {
+  const legacyAdminEmails = new Set(['admin@polydev.ai', 'venkat@polydev.ai', 'gvsfans@gmail.com']);
+  if (legacyAdminEmails.has(userEmail)) return true;
+
+  try {
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+    return profile?.is_admin || false;
+  } catch (error) {
+    return false;
+  }
+}
 
 // Admin API for managing model tiers and max tokens
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = await createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const adminClient = createAdminClient()
+
+    // Check admin access
+    const isAdmin = await checkAdminAccess(adminClient, user.id, user.email || '')
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+    }
 
     const url = new URL(request.url)
     const tier = url.searchParams.get('tier')
     const provider = url.searchParams.get('provider')
 
-    let query = supabase
+    let query = adminClient
       .from('model_tiers')
       .select('*')
       .order('tier', { ascending: true })
@@ -49,23 +77,34 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = await createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const adminClient = createAdminClient()
+
+    // Check admin access
+    const isAdmin = await checkAdminAccess(adminClient, user.id, user.email || '')
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+    }
 
     const body = await request.json()
     const { action, ...data } = body
 
     switch (action) {
       case 'update':
-        return await updateModelTier(supabase, data)
+        return await updateModelTier(adminClient, data)
       case 'create':
-        return await createModelTier(supabase, data)
+        return await createModelTier(adminClient, data)
       case 'delete':
-        return await deleteModelTier(supabase, data)
+        return await deleteModelTier(adminClient, data)
       case 'reorder':
-        return await reorderModels(supabase, data)
+        return await reorderModels(adminClient, data)
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
@@ -75,7 +114,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function updateModelTier(supabase: any, data: any) {
+async function updateModelTier(adminClient: any, data: any) {
   const { id, model_name, display_name, tier, max_output_tokens, active } = data
 
   if (!id) {
@@ -92,7 +131,7 @@ async function updateModelTier(supabase: any, data: any) {
   if (max_output_tokens !== undefined) updateData.max_output_tokens = max_output_tokens
   if (active !== undefined) updateData.active = active
 
-  const { data: updated, error } = await supabase
+  const { data: updated, error } = await adminClient
     .from('model_tiers')
     .update(updateData)
     .eq('id', id)
@@ -112,7 +151,7 @@ async function updateModelTier(supabase: any, data: any) {
   return NextResponse.json({ success: true, model: updated })
 }
 
-async function createModelTier(supabase: any, data: any) {
+async function createModelTier(adminClient: any, data: any) {
   const { provider, model_name, display_name, tier, max_output_tokens } = data
 
   if (!provider || !model_name || !display_name || !tier) {
@@ -132,7 +171,7 @@ async function createModelTier(supabase: any, data: any) {
     updated_at: new Date().toISOString()
   }
 
-  const { data: created, error } = await supabase
+  const { data: created, error } = await adminClient
     .from('model_tiers')
     .insert(insertData)
     .select()
@@ -146,14 +185,14 @@ async function createModelTier(supabase: any, data: any) {
   return NextResponse.json({ success: true, model: created })
 }
 
-async function deleteModelTier(supabase: any, data: any) {
+async function deleteModelTier(adminClient: any, data: any) {
   const { id } = data
 
   if (!id) {
     return NextResponse.json({ error: 'Model ID is required' }, { status: 400 })
   }
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('model_tiers')
     .delete()
     .eq('id', id)
@@ -166,7 +205,7 @@ async function deleteModelTier(supabase: any, data: any) {
   return NextResponse.json({ success: true })
 }
 
-async function reorderModels(supabase: any, data: any) {
+async function reorderModels(adminClient: any, data: any) {
   const { tier, modelIds } = data
 
   if (!tier || !modelIds || !Array.isArray(modelIds)) {
@@ -183,7 +222,7 @@ async function reorderModels(supabase: any, data: any) {
 
   // Use a transaction-like approach: update each model
   for (const update of updates) {
-    const { error } = await supabase
+    const { error } = await adminClient
       .from('model_tiers')
       .update({
         display_order: update.display_order,

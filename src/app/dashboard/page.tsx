@@ -7,11 +7,11 @@ import { useDashboardData } from '../../hooks/useDashboardData'
 import {
   MessageSquare, Zap, DollarSign, Database,
   Activity, Clock, CheckCircle, TrendingUp,
-  ChevronRight, RefreshCw, Filter, Download
+  ChevronRight, RefreshCw, Filter, Download,
+  Terminal, Key, Coins, CreditCard, Sparkles
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AnimatedDashboard, { AnimatedCard } from '@/components/dashboard/AnimatedDashboard'
-import { getModelsByTier } from '@/lib/model-tiers'
 import { EncryptionStatus } from '@/components/EncryptionStatus'
 
 export default function Dashboard() {
@@ -301,16 +301,25 @@ export default function Dashboard() {
     <AnimatedDashboard>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">
-                Dashboard
-              </h1>
-              <p className="text-sm text-slate-500 mt-1">Monitor usage, costs, and performance</p>
+        {/* Header - Settings-like card style */}
+        <div className="bg-white rounded-lg shadow mb-8 hover:shadow-lg transition-shadow">
+          <div className="px-6 py-4 border-b border-slate-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+                <p className="text-slate-600">Monitor usage, costs, and performance across all your AI interactions</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <EncryptionStatus variant="badge" />
+                <button
+                  onClick={refresh}
+                  className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                  title="Refresh data"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            <EncryptionStatus variant="badge" />
           </div>
         </div>
 
@@ -318,14 +327,29 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
 
           {/* Messages */}
-          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-default">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all cursor-default">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Messages</span>
-              <MessageSquare className="h-4 w-4 text-slate-400" />
+              <div className="p-1.5 bg-slate-100 rounded-lg">
+                <MessageSquare className="h-4 w-4 text-slate-600" />
+              </div>
             </div>
-            <p className="text-2xl font-semibold text-slate-900">{formatNumber(realTimeData?.totalMessages || 0)}</p>
-            <p className="text-xs text-slate-500 mt-1">
-              this month
+            <p className="text-2xl font-bold text-slate-900">
+              {formatNumber(realTimeData?.totalMessages || 0)}
+              {quotaData?.limits?.messages && (
+                <span className="text-sm font-normal text-slate-400"> / {formatNumber(quotaData.limits.messages)}</span>
+              )}
+            </p>
+            <p className="text-xs mt-1">
+              {quotaData?.remaining?.messages !== null && quotaData?.remaining?.messages !== undefined ? (
+                quotaData.remaining.messages > 0 ? (
+                  <span className="text-slate-600 font-medium">{formatNumber(quotaData.remaining.messages)} remaining</span>
+                ) : (
+                  <span className="text-slate-500 font-medium">Limit reached</span>
+                )
+              ) : (
+                <span className="text-slate-500">this month</span>
+              )}
               {realTimeData?.allTimeMessages && (
                 <span className="text-[10px] text-slate-400 ml-2">
                   ({formatNumber(realTimeData.allTimeMessages)} all-time)
@@ -335,12 +359,14 @@ export default function Dashboard() {
           </AnimatedCard>
 
           {/* API Calls */}
-          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-default">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all cursor-default">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">API Calls</span>
-              <Zap className="h-4 w-4 text-slate-400" />
+              <div className="p-1.5 bg-slate-100 rounded-lg">
+                <Zap className="h-4 w-4 text-slate-600" />
+              </div>
             </div>
-            <p className="text-2xl font-semibold text-slate-900">{formatNumber(realTimeData?.totalApiCalls || 0)}</p>
+            <p className="text-2xl font-bold text-slate-900">{formatNumber(realTimeData?.totalApiCalls || 0)}</p>
             <p className="text-xs text-slate-500 mt-1">
               this month
               {realTimeData?.allTimeApiCalls && (
@@ -352,31 +378,35 @@ export default function Dashboard() {
           </AnimatedCard>
 
           {/* Cost */}
-          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-default">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all cursor-default">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Your Cost</span>
-              <DollarSign className="h-4 w-4 text-slate-400" />
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Cost</span>
+              <div className="p-1.5 bg-slate-100 rounded-lg">
+                <DollarSign className="h-4 w-4 text-slate-600" />
+              </div>
             </div>
-            <p className="text-2xl font-semibold text-slate-900">${(realTimeData?.totalCost || 0).toFixed(2)}</p>
-            <div className="mt-2 space-y-1">
-              <p className="text-xs text-slate-500">
-                <span className="font-medium text-slate-700">This month:</span> ${(realTimeData?.totalCost || 0).toFixed(2)}
-              </p>
-              {realTimeData?.allTimeMessages && (
-                <p className="text-xs text-slate-400">
-                  All-time: ${(realTimeData?.totalCost * 1.5 || 0).toFixed(2)}
-                </p>
+            <p className="text-2xl font-bold text-slate-900">
+              ${(realTimeData?.totalCost || 0).toFixed(2)}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              this month
+              {realTimeData?.allTimeCost && (
+                <span className="text-[10px] text-slate-400 ml-2">
+                  (${realTimeData.allTimeCost.toFixed(2)} all-time)
+                </span>
               )}
-            </div>
+            </p>
           </AnimatedCard>
 
           {/* Tokens */}
-          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow cursor-default">
+          <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all cursor-default">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Tokens</span>
-              <Database className="h-4 w-4 text-slate-400" />
+              <div className="p-1.5 bg-slate-100 rounded-lg">
+                <Database className="h-4 w-4 text-slate-600" />
+              </div>
             </div>
-            <p className="text-2xl font-semibold text-slate-900">{formatNumber(realTimeData?.tokenBreakdown?.total || 0)}</p>
+            <p className="text-2xl font-bold text-slate-900">{formatNumber(realTimeData?.tokenBreakdown?.total || 0)}</p>
             <p className="text-xs text-slate-500 mt-1">
               this month
               {realTimeData?.allTimeTokens && (
@@ -388,150 +418,242 @@ export default function Dashboard() {
           </AnimatedCard>
         </div>
 
-        {/* Perspectives */}
+        {/* Credits & Quota Overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          {/* Credits Balance Card */}
+          <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md transition-all">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-slate-900 rounded-xl">
+                  <Coins className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Credits Balance</h3>
+                  <p className="text-xs text-slate-500">Platform credits for AI models</p>
+                </div>
+              </div>
+              <Link
+                href="/dashboard/subscription"
+                className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1"
+              >
+                <span>Manage</span>
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+                <p className="text-xs text-slate-500 mb-1">Available Credits</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  {Math.round(realTimeData?.creditsBalance || 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+                <p className="text-xs text-slate-500 mb-1">Credits Used</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  {quotaData?.totalCreditsUsed || 0}
+                </p>
+                <p className="text-[10px] text-slate-400">this month</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
+                <p className="text-xs text-slate-500 mb-1">Bonus Messages</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  {quotaData?.bonusMessages || 0}
+                </p>
+              </div>
+            </div>
+
+            {/* Tier Usage Breakdown */}
+            {quotaData?.tierUsage && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <p className="text-xs font-medium text-slate-600 mb-3">Model Tier Usage (This Month)</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-2 bg-slate-50 rounded-lg border border-slate-100">
+                    <p className="text-lg font-semibold text-slate-900">{quotaData.tierUsage.premium?.count || 0}</p>
+                    <p className="text-[10px] text-slate-600">Premium</p>
+                    <p className="text-[10px] text-slate-400">{quotaData.tierUsage.premium?.credits || 0} credits</p>
+                  </div>
+                  <div className="text-center p-2 bg-slate-50 rounded-lg border border-slate-100">
+                    <p className="text-lg font-semibold text-slate-900">{quotaData.tierUsage.normal?.count || 0}</p>
+                    <p className="text-[10px] text-slate-600">Normal</p>
+                    <p className="text-[10px] text-slate-400">{quotaData.tierUsage.normal?.credits || 0} credits</p>
+                  </div>
+                  <div className="text-center p-2 bg-slate-50 rounded-lg border border-slate-100">
+                    <p className="text-lg font-semibold text-slate-900">{quotaData.tierUsage.eco?.count || 0}</p>
+                    <p className="text-[10px] text-slate-600">Eco</p>
+                    <p className="text-[10px] text-slate-400">{quotaData.tierUsage.eco?.credits || 0} credits</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </AnimatedCard>
+
+          {/* Models Used Card */}
+          <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <Zap className="h-5 w-5 text-slate-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Models Used</h3>
+                  <p className="text-xs text-slate-500">Your most active AI models</p>
+                </div>
+              </div>
+              <Link
+                href="/dashboard/models"
+                className="text-xs text-slate-600 hover:text-slate-900 flex items-center gap-1"
+              >
+                <span>View all</span>
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
+            
+            {modelAnalytics && modelAnalytics.length > 0 ? (
+              <div className="space-y-3">
+                {modelAnalytics.slice(0, 4).map((model: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {model.providerLogo ? (
+                        <img 
+                          src={model.providerLogo} 
+                          alt={model.provider} 
+                          className="w-8 h-8 object-contain rounded"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600">
+                          {(model.provider || 'M').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-slate-900 truncate max-w-[150px]" title={model.model}>
+                          {model.model?.length > 20 ? model.model.substring(0, 20) + '...' : model.model}
+                        </p>
+                        <p className="text-xs text-slate-500">{model.provider}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-slate-900">{model.requests} req</p>
+                      <p className="text-xs text-slate-500">${(model.totalCost || 0).toFixed(4)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-32 text-center">
+                <div>
+                  <Zap className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500">No model usage yet</p>
+                  <p className="text-xs text-slate-400">Start using AI models to see analytics</p>
+                </div>
+              </div>
+            )}
+          </AnimatedCard>
+        </div>
+
+        {/* Usage Sources - Shows how requests are being processed */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 
-          {/* Premium */}
-          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow group relative">
+          {/* CLI - First priority */}
+          <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all group relative">
             <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-medium text-slate-900">Premium</p>
-                <p className="text-xs text-slate-500">Highest quality</p>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-slate-100 rounded-lg">
+                  <Terminal className="h-4 w-4 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-900">CLI</p>
+                  <p className="text-xs text-slate-500">Free via your tools</p>
+                </div>
               </div>
-              <span className="text-xs text-slate-400">{quotaData?.percentages?.premium?.toFixed(0) || 0}%</span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">Priority 1</span>
             </div>
             <div className="flex items-baseline justify-between">
-              <p className="text-2xl font-semibold text-slate-900">{quotaData?.remaining?.premium || 0}</p>
-              <p className="text-sm text-slate-500">{quotaData?.used?.premium || 0} / {quotaData?.limits?.premium || 0}</p>
+              <p className="text-2xl font-bold text-slate-900">{quotaData?.sourceUsage?.cli?.requests || 0}</p>
+              <p className="text-sm text-slate-500">requests</p>
             </div>
-            <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-slate-400 rounded-full transition-all duration-300"
-                style={{ width: `${quotaData?.percentages?.premium || 0}%` }}
-              />
+            <div className="mt-2 text-xs text-slate-500">
+              Cost: <span className="font-medium text-slate-900">$0.00</span> (your API keys)
             </div>
-
-            {/* Tooltip showing available models */}
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-72 bg-white text-slate-900 border border-slate-200 rounded-lg p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
-              <div className="text-xs font-medium mb-2 text-slate-600">Available Models</div>
-              <div className="space-y-2">
-                {getModelsByTier('premium').map((model) => (
-                  <div key={model.modelId} className="flex items-center gap-2">
-                    {getProviderLogoUrl(model.provider) ? (
-                      <img
-                        src={getProviderLogoUrl(model.provider)!}
-                        alt={model.provider}
-                        className="w-5 h-5 object-contain rounded"
-                      />
-                    ) : (
-                      <div className="w-5 h-5 rounded bg-slate-200 flex items-center justify-center text-xs text-slate-600">
-                        {model.provider.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="text-sm">{model.displayName}</span>
-                  </div>
-                ))}
-              </div>
-              {/* Arrow */}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                <div className="w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
-              </div>
+            {/* Tooltip */}
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-64 bg-white text-slate-900 border border-slate-200 rounded-xl p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
+              <div className="text-xs font-medium mb-2 text-slate-900">CLI Usage Details</div>
+              <p className="text-xs text-slate-500 mb-2">
+                Requests processed through Claude Code, Cursor, or other CLI tools using your own API keys.
+              </p>
+              <p className="text-xs text-slate-700 font-medium">
+                This is the most cost-effective option - you pay providers directly.
+              </p>
             </div>
           </AnimatedCard>
 
-          {/* Normal */}
-          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow group relative">
+          {/* User API Keys - Second priority */}
+          <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all group relative">
             <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-medium text-slate-900">Normal</p>
-                <p className="text-xs text-slate-500">Balanced</p>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-slate-100 rounded-lg">
+                  <Key className="h-4 w-4 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Your API Keys</p>
+                  <p className="text-xs text-slate-500">Direct provider access</p>
+                </div>
               </div>
-              <span className="text-xs text-slate-400">{quotaData?.percentages?.normal?.toFixed(0) || 0}%</span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">Priority 2</span>
             </div>
             <div className="flex items-baseline justify-between">
-              <p className="text-2xl font-semibold text-slate-900">{quotaData?.remaining?.normal || 0}</p>
-              <p className="text-sm text-slate-500">{quotaData?.used?.normal || 0} / {quotaData?.limits?.normal || 0}</p>
+              <p className="text-2xl font-bold text-slate-900">{quotaData?.sourceUsage?.user_key?.requests || 0}</p>
+              <p className="text-sm text-slate-500">requests</p>
             </div>
-            <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-slate-400 rounded-full transition-all duration-300"
-                style={{ width: `${quotaData?.percentages?.normal || 0}%` }}
-              />
+            <div className="mt-2 text-xs text-slate-500">
+              Cost: <span className="font-medium text-slate-900">${(quotaData?.sourceUsage?.user_key?.cost || 0).toFixed(4)}</span>
             </div>
-
-            {/* Tooltip showing available models */}
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-72 bg-white text-slate-900 border border-slate-200 rounded-lg p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
-              <div className="text-xs font-medium mb-2 text-slate-600">Available Models</div>
-              <div className="space-y-2">
-                {getModelsByTier('normal').map((model) => (
-                  <div key={model.modelId} className="flex items-center gap-2">
-                    {getProviderLogoUrl(model.provider) ? (
-                      <img
-                        src={getProviderLogoUrl(model.provider)!}
-                        alt={model.provider}
-                        className="w-5 h-5 object-contain rounded"
-                      />
-                    ) : (
-                      <div className="w-5 h-5 rounded bg-slate-200 flex items-center justify-center text-xs text-slate-600">
-                        {model.provider.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="text-sm">{model.displayName}</span>
-                  </div>
-                ))}
-              </div>
-              {/* Arrow */}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                <div className="w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
-              </div>
+            {/* Tooltip */}
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-64 bg-white text-slate-900 border border-slate-200 rounded-xl p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
+              <div className="text-xs font-medium mb-2 text-slate-900">API Key Usage Details</div>
+              <p className="text-xs text-slate-500 mb-2">
+                Requests using API keys you've configured in your account settings.
+              </p>
+              <p className="text-xs text-slate-700 font-medium">
+                You control the budget and usage limits.
+              </p>
             </div>
           </AnimatedCard>
 
-          {/* Eco */}
-          <AnimatedCard className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-lg transition-shadow group relative">
+          {/* Credits - Platform Provided */}
+          <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-all group relative">
             <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-medium text-slate-900">Eco</p>
-                <p className="text-xs text-slate-500">Cost-effective</p>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-slate-100 rounded-lg">
+                  <Coins className="h-4 w-4 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Credits</p>
+                  <p className="text-xs text-slate-500">Platform provided</p>
+                </div>
               </div>
-              <span className="text-xs text-slate-400">{quotaData?.percentages?.eco?.toFixed(0) || 0}%</span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">Fallback</span>
             </div>
             <div className="flex items-baseline justify-between">
-              <p className="text-2xl font-semibold text-slate-900">{quotaData?.remaining?.eco || 0}</p>
-              <p className="text-sm text-slate-500">{quotaData?.used?.eco || 0} / {quotaData?.limits?.eco || 0}</p>
+              <p className="text-2xl font-bold text-slate-900">{(quotaData?.sourceUsage?.admin_credits?.requests || 0) + (quotaData?.sourceUsage?.web?.requests || 0)}</p>
+              <p className="text-sm text-slate-500">requests</p>
             </div>
-            <div className="mt-3 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-slate-400 rounded-full transition-all duration-300"
-                style={{ width: `${quotaData?.percentages?.eco || 0}%` }}
-              />
+            <div className="mt-2 text-xs text-slate-500">
+              Credits used: <span className="font-medium text-slate-900">{(quotaData?.sourceUsage?.admin_credits?.credits || 0) + (quotaData?.sourceUsage?.web?.credits || 0)}</span>
             </div>
-
-            {/* Tooltip showing available models */}
-            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-72 bg-white text-slate-900 border border-slate-200 rounded-lg p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
-              <div className="text-xs font-medium mb-2 text-slate-600">Available Models</div>
-              <div className="space-y-2">
-                {getModelsByTier('eco').map((model) => (
-                  <div key={model.modelId} className="flex items-center gap-2">
-                    {getProviderLogoUrl(model.provider) ? (
-                      <img
-                        src={getProviderLogoUrl(model.provider)!}
-                        alt={model.provider}
-                        className="w-5 h-5 object-contain rounded"
-                      />
-                    ) : (
-                      <div className="w-5 h-5 rounded bg-slate-200 flex items-center justify-center text-xs text-slate-600">
-                        {model.provider.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="text-sm">{model.displayName}</span>
-                  </div>
-                ))}
-              </div>
-              {/* Arrow */}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                <div className="w-2 h-2 bg-white border-r border-b border-slate-200 rotate-45"></div>
-              </div>
+            {/* Tooltip */}
+            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-64 bg-white text-slate-900 border border-slate-200 rounded-xl p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
+              <div className="text-xs font-medium mb-2 text-slate-900">Platform Credits</div>
+              <p className="text-xs text-slate-500 mb-2">
+                Requests processed using your platform credits when your own API keys aren't configured.
+              </p>
+              <p className="text-xs text-slate-700 font-medium">
+                Free tier includes limited credits. Upgrade for more.
+              </p>
             </div>
           </AnimatedCard>
         </div>
@@ -539,9 +661,11 @@ export default function Dashboard() {
         {/* Performance Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
 
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <div className="bg-white border border-slate-200 rounded-lg p-5 shadow hover:shadow-lg transition-shadow">
             <div className="flex items-center space-x-3">
-              <Clock className="h-5 w-5 text-slate-400" />
+              <div className="p-2 bg-slate-100 rounded-lg">
+                <Clock className="h-5 w-5 text-slate-600" />
+              </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-slate-900">Avg Response Time</p>
                 <p className="text-xl font-semibold text-slate-900 mt-1">{realTimeData?.responseTime || 0}ms</p>
@@ -549,9 +673,11 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <div className="bg-white border border-slate-200 rounded-lg p-5 shadow hover:shadow-lg transition-shadow">
             <div className="flex items-center space-x-3">
-              <CheckCircle className="h-5 w-5 text-slate-400" />
+              <div className="p-2 bg-slate-100 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-slate-600" />
+              </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-slate-900">Success Rate</p>
                 <p className="text-xl font-semibold text-slate-900 mt-1">{realTimeData?.uptime || 'N/A'}</p>
@@ -559,7 +685,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-lg p-5">
+          <div className="bg-white border border-slate-200 rounded-lg p-5 shadow hover:shadow-lg transition-shadow">
             <div>
               <p className="text-sm font-medium text-slate-900 mb-3">Active Providers</p>
               <div className="flex items-center justify-between">
@@ -600,10 +726,13 @@ export default function Dashboard() {
         </div>
 
         {/* Request Logs */}
-        <div className="bg-white border border-slate-200 rounded-lg">
+        <div className="bg-white border border-slate-200 rounded-lg shadow hover:shadow-lg transition-shadow">
           <div className="px-6 py-4 border-b border-slate-200">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-slate-900">Recent Requests</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Recent Requests</h2>
+                <p className="text-sm text-slate-600">View and filter your API request history</p>
+              </div>
               <Link
                 href="/dashboard/activity"
                 className="text-sm text-slate-600 hover:text-slate-900 flex items-center space-x-1"
@@ -832,9 +961,10 @@ export default function Dashboard() {
 
         {/* Provider Analytics */}
         {providerAnalytics && providerAnalytics.length > 0 && (
-          <div className="mt-8 bg-white border border-slate-200 rounded-lg">
+          <div className="mt-8 bg-white border border-slate-200 rounded-lg shadow hover:shadow-lg transition-shadow">
             <div className="px-6 py-4 border-b border-slate-200">
               <h2 className="text-lg font-semibold text-slate-900">Provider Analytics</h2>
+              <p className="text-sm text-slate-600">Performance metrics by AI provider</p>
             </div>
             <div className="divide-y divide-slate-200">
               {providerAnalytics.slice(0, 5).map((provider: any, idx: number) => (
@@ -877,9 +1007,10 @@ export default function Dashboard() {
 
         {/* Model Analytics */}
         {modelAnalytics && modelAnalytics.length > 0 && (
-          <div className="mt-8 bg-white border border-slate-200 rounded-lg">
+          <div className="mt-8 bg-white border border-slate-200 rounded-lg shadow hover:shadow-lg transition-shadow">
             <div className="px-6 py-4 border-b border-slate-200">
               <h2 className="text-lg font-semibold text-slate-900">Model Analytics</h2>
+              <p className="text-sm text-slate-600">Performance metrics by AI model</p>
             </div>
             <div className="divide-y divide-slate-200">
               {modelAnalytics.slice(0, 5).map((model: any, idx: number) => (
@@ -924,13 +1055,20 @@ export default function Dashboard() {
         )}
 
         {/* Quick Actions */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mt-8 bg-white border border-slate-200 rounded-lg shadow hover:shadow-lg transition-shadow">
+          <div className="px-6 py-4 border-b border-slate-200">
+            <h2 className="text-lg font-semibold text-slate-900">Quick Actions</h2>
+            <p className="text-sm text-slate-600">Navigate to commonly used pages</p>
+          </div>
+          <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link
             href="/dashboard/activity"
-            className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all group"
+            className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 hover:border-slate-300 transition-all group"
           >
             <div className="flex items-center space-x-3">
-              <TrendingUp className="h-5 w-5 text-slate-400" />
+              <div className="p-2 bg-white rounded-lg shadow-sm">
+                <TrendingUp className="h-5 w-5 text-slate-600" />
+              </div>
               <span className="text-sm font-medium text-slate-900">View Analytics</span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600" />
@@ -938,10 +1076,12 @@ export default function Dashboard() {
 
           <Link
             href="/dashboard/models"
-            className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all group"
+            className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 hover:border-slate-300 transition-all group"
           >
             <div className="flex items-center space-x-3">
-              <Zap className="h-5 w-5 text-slate-400" />
+              <div className="p-2 bg-white rounded-lg shadow-sm">
+                <Zap className="h-5 w-5 text-slate-600" />
+              </div>
               <span className="text-sm font-medium text-slate-900">Manage Models</span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600" />
@@ -949,14 +1089,17 @@ export default function Dashboard() {
 
           <Link
             href="/dashboard/subscription"
-            className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all group"
+            className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 hover:border-slate-300 transition-all group"
           >
             <div className="flex items-center space-x-3">
-              <DollarSign className="h-5 w-5 text-slate-400" />
+              <div className="p-2 bg-white rounded-lg shadow-sm">
+                <DollarSign className="h-5 w-5 text-slate-600" />
+              </div>
               <span className="text-sm font-medium text-slate-900">Subscription</span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-600" />
           </Link>
+          </div>
         </div>
 
         {/* Request Log Detail Modal */}
@@ -1115,7 +1258,7 @@ export default function Dashboard() {
                       {selectedLog.providers.map((provider: any, index: number) => (
                         <div key={index} className="border border-slate-200 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
                                 {(() => {
                                   const logoUrl = getProviderLogoUrl(provider.provider)
@@ -1145,7 +1288,7 @@ export default function Dashboard() {
                                 <div className="text-xs text-slate-500">{provider.provider}</div>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center gap-2">
                               <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
                                 {provider.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
                               </span>

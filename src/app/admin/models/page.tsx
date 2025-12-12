@@ -794,7 +794,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    placeholder="gpt-4o, claude-3-5-sonnet"
+                    placeholder="gpt-5.1, claude-sonnet-4.5"
                     required
                   />
                 </div>
@@ -812,7 +812,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                     className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
                       formErrors.displayName ? 'border-red-500 bg-red-50' : 'border-slate-300'
                     }`}
-                    placeholder="GPT-4o, Claude 3.5 Sonnet"
+                    placeholder="GPT-5.1, Claude Sonnet 4.5"
                     required
                   />
                   {formErrors.displayName && (
@@ -834,7 +834,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                       className={`flex-1 border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
                         formErrors.friendlyId ? 'border-red-500 bg-red-50' : 'border-slate-300'
                       }`}
-                      placeholder="gpt-4o, claude-3-5-sonnet"
+                      placeholder="gpt-5.1, claude-sonnet-4.5"
                     />
                     <button
                       type="button"
@@ -853,7 +853,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                   {formErrors.friendlyId && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.friendlyId}</p>
                   )}
-                  <p className="mt-1 text-xs text-slate-500">Lowercase letters, numbers, and dashes only (e.g., claude-sonnet-4-5)</p>
+                  <p className="mt-1 text-xs text-slate-500">Lowercase letters, numbers, and dashes only (e.g., claude-sonnet-4-5, gpt-5-1)</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-900 mb-2">
@@ -1289,7 +1289,7 @@ function ModelCreateForm({ onSave, onCancel }: {
                   {formErrors.friendlyId && (
                     <p className="mt-1 text-sm text-red-600">{formErrors.friendlyId}</p>
                   )}
-                  <p className="mt-1 text-xs text-slate-500">Lowercase letters, numbers, and dashes only (e.g., claude-sonnet-4-5)</p>
+                  <p className="mt-1 text-xs text-slate-500">Lowercase letters, numbers, and dashes only (e.g., claude-sonnet-4-5, gpt-5-1)</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-900 mb-2">

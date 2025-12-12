@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
-import { referralSystem } from '@/lib/referralSystem'
+import { referralSystem, REFERRAL_REWARDS } from '@/lib/referralSystem'
+import { emailTemplates } from '@/lib/emailTemplates'
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,6 +37,62 @@ export async function POST(request: NextRequest) {
         
         if (!result.success) {
           return NextResponse.json({ error: result.message }, { status: 400 })
+        }
+
+        // Send referral emails
+        if (result.referrerId) {
+          try {
+            // Get referrer stats for email
+            const referrerStats = await referralSystem.getUserReferralStats(result.referrerId)
+            const referrerEmail = await referralSystem.getReferrerEmail(result.referrerId)
+            
+            if (referrerEmail) {
+              // Send email to referrer
+              const referrerTemplate = emailTemplates.referralSuccess(
+                referrerEmail,
+                user.email || 'A new user',
+                REFERRAL_REWARDS.REFERRER_CREDITS,
+                referrerStats.completedReferrals
+              )
+              
+              await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: referrerEmail,
+                  from: 'noreply@polydev.ai',
+                  subject: referrerTemplate.subject,
+                  html: referrerTemplate.html,
+                  text: referrerTemplate.text
+                })
+              })
+              console.log(`[Referrals] Sent referral success email to referrer: ${referrerEmail}`)
+            }
+            
+            // Send welcome email to new user
+            if (user.email) {
+              const welcomeTemplate = emailTemplates.referralWelcome(
+                user.email,
+                REFERRAL_REWARDS.NEW_USER_CREDITS
+              )
+              
+              await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: user.email,
+                  from: 'noreply@polydev.ai',
+                  subject: welcomeTemplate.subject,
+                  html: welcomeTemplate.html,
+                  text: welcomeTemplate.text
+                })
+              })
+              console.log(`[Referrals] Sent welcome email to new user: ${user.email}`)
+            }
+          } catch (emailError) {
+            console.error('[Referrals] Error sending referral emails:', emailError)
+            // Don't fail the referral if emails fail
+          }
         }
 
         return NextResponse.json({ 
@@ -86,9 +143,7 @@ export async function GET(request: NextRequest) {
           completedReferrals: stats.completedReferrals,
           pendingReferrals: stats.pendingReferrals,
           thisMonthReferrals: stats.thisMonthReferrals,
-          bonusMessages: stats.totalCreditsEarned, // Credits as "bonus messages" for compatibility
-          currentTier: stats.currentTier,
-          nextTier: stats.nextTier,
+          totalCreditsEarned: stats.totalCreditsEarned,
           lifetime_value: stats.lifetime_value
         },
         codes: codes.map(code => ({
@@ -100,7 +155,7 @@ export async function GET(request: NextRequest) {
         })),
         // Legacy compatibility
         referrals: codes,
-        totalBonusMessages: stats.totalCreditsEarned,
+        totalCreditsEarned: stats.totalCreditsEarned,
         totalReferrals: stats.totalReferrals,
         completedReferrals: stats.completedReferrals
       })

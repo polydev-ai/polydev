@@ -10,7 +10,7 @@ import { checkQuotaMiddleware, deductQuotaMiddleware, generateSessionId, extract
 import { getModelTier } from '@/lib/model-tiers'
 import { getMaxOutputTokens } from '@/lib/max-tokens-resolver'
 import { normalizeProviderName } from '@/lib/provider-utils'
-// OpenRouterManager available if we later switch to per-user keys
+// Admin-provided keys serve as fallback when users don't have their own API keys
 
 // Generate a title from conversation context using AI
 async function generateConversationTitle(userMessage: string, assistantResponse?: string): Promise<string> {
@@ -408,8 +408,9 @@ async function getProviderFromModel(model: string, supabase: any, userId: string
       .eq('is_active', true)
 
     if (!modelProviders || modelProviders.length === 0) {
-      console.log(`[Model Routing] No providers found for model: ${model} in models_registry, using openrouter fallback`)
-      return 'openrouter' // Default fallback
+      console.log(`[Model Routing] No providers found for model: ${model} in models_registry`)
+      // Return the model name as-is, let the caller handle missing provider
+      return model
     }
 
     // Get user's API keys to determine which providers they have configured
@@ -464,7 +465,35 @@ async function getProviderFromModel(model: string, supabase: any, userId: string
     return firstProvider
   } catch (error) {
     console.error(`Error determining provider for model ${model}:`, error)
-    return 'openrouter' // Safe fallback
+    return model // Return model name, let caller handle missing provider
+  }
+}
+
+// NEW: Helper function to get the actual API model ID from model_tiers
+// This allows admin to configure display names (model_name) that map to real API model IDs
+async function getApiModelIdFromModelTiers(model: string, supabase: any): Promise<string | null> {
+  try {
+    const { data: modelTier, error } = await supabase
+      .from('model_tiers')
+      .select('api_model_id, model_name')
+      .eq('model_name', model)
+      .eq('active', true)
+      .maybeSingle()
+
+    if (error) {
+      console.error(`[Model Tiers] Error looking up api_model_id for ${model}:`, error)
+      return null
+    }
+
+    if (modelTier?.api_model_id) {
+      console.log(`[Model Tiers] Found api_model_id mapping: ${model} → ${modelTier.api_model_id}`)
+      return modelTier.api_model_id
+    }
+
+    return null
+  } catch (error) {
+    console.error(`[Model Tiers] Exception looking up api_model_id for ${model}:`, error)
+    return null
   }
 }
 
@@ -637,19 +666,19 @@ export async function POST(request: NextRequest) {
       console.log('[Admin Keys] Fetched admin keys:', adminKeys?.map(k => ({ provider: k.provider, active: k.active })))
     }
 
-    // Step 3: Get model mappings for OpenRouter credits fallback
+    // Step 3: Get model mappings for provider resolution
     const { data: modelMappings } = await supabase
       .from('model_mappings')
       .select('friendly_id, providers_mapping')
       .in('friendly_id', targetModels)
-    
-    // Step 4: Get user credit balance for OpenRouter credits
+
+    // Step 4: Get user credit balance for quota tracking
     const { data: userCredits } = await supabase
       .from('user_credits')
       .select('balance, promotional_balance')
       .eq('user_id', user.id)
       .single()
-    
+
     const totalCredits = (parseFloat(userCredits?.balance || '0') + parseFloat(userCredits?.promotional_balance || '0'))
     
     // Build provider configuration map with strict priority
@@ -662,7 +691,24 @@ export async function POST(request: NextRequest) {
     // Build comprehensive provider configuration with separate CLI and API capabilities
     const providerConfigs: Record<string, { cli?: any, api?: any, admin?: any }> = {}
 
-    // Process user API key configurations (HIGHEST PRIORITY - user's own keys)
+    // Process CLI configurations (HIGHEST PRIORITY - free for users, saves their API credits)
+    ;(cliConfigs || []).forEach(cli => {
+      const mappedProvider = cliProviderMappings[cli.provider]
+      if (mappedProvider) {
+        if (!providerConfigs[mappedProvider]) {
+          providerConfigs[mappedProvider] = {}
+        }
+        providerConfigs[mappedProvider].cli = {
+          type: 'cli',
+          priority: 1,  // CLI is HIGHEST priority - saves users money
+          cliProvider: cli.provider,
+          customPath: cli.custom_path,
+          sourceType: 'user_cli'
+        }
+      }
+    })
+
+    // Process user API key configurations (SECOND PRIORITY - user's own keys)
     ;(apiKeys || []).forEach(key => {
       const providerKey = normalizeProviderName(key.provider)
 
@@ -671,7 +717,7 @@ export async function POST(request: NextRequest) {
       }
       providerConfigs[providerKey].api = {
         type: 'api',
-        priority: 1,  // Changed from 2 to 1 - User keys have HIGHEST priority
+        priority: 2,  // User keys are SECOND priority (after CLI)
         apiKey: atob(key.encrypted_key),
         baseUrl: key.api_base,
         keyId: key.id,
@@ -679,7 +725,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Process admin-provided API keys (SECOND PRIORITY - admin keys before CLI)
+    // Process admin-provided API keys (THIRD PRIORITY - fallback when no CLI or user keys)
     ;(adminKeys || []).forEach(key => {
       const providerKey = normalizeProviderName(key.provider)
       const decryptedKey = atob(key.encrypted_key)
@@ -694,30 +740,13 @@ export async function POST(request: NextRequest) {
       }
       providerConfigs[providerKey].admin = {
         type: 'admin',
-        priority: 2,  // Changed from 3 to 2 - Admin keys have SECOND priority (after user keys, before CLI)
+        priority: 3,  // Admin keys are THIRD priority (fallback)
         apiKey: decryptedKey,
         baseUrl: key.api_base,
         keyId: key.id,
         sourceType: 'admin_key'
       }
       console.log(`[Admin Keys] ✓ Stored admin config for ${providerKey}, apiKey length: ${providerConfigs[providerKey].admin.apiKey?.length || 0}`)
-    })
-
-    // Process CLI configurations (THIRD PRIORITY - last resort after user and admin keys)
-    ;(cliConfigs || []).forEach(cli => {
-      const mappedProvider = cliProviderMappings[cli.provider]
-      if (mappedProvider) {
-        if (!providerConfigs[mappedProvider]) {
-          providerConfigs[mappedProvider] = {}
-        }
-        providerConfigs[mappedProvider].cli = {
-          type: 'cli',
-          priority: 3,  // Changed from 1 to 3 - CLI is now LAST RESORT (after user keys and admin keys)
-          cliProvider: cli.provider,
-          customPath: cli.custom_path,
-          sourceType: 'user_cli'
-        }
-      }
     })
 
     console.log('[Provider Configs] Final provider configs:', Object.keys(providerConfigs).map(p => ({
@@ -727,8 +756,9 @@ export async function POST(request: NextRequest) {
       hasAdmin: !!providerConfigs[p].admin,
       adminApiKeyLength: providerConfigs[p].admin?.apiKey?.length || 0
     })))
-    
-    // PRIORITY 3: OpenRouter credits will be handled per-model in the loop below
+
+    // Priority: CLI (1) > User API keys (2) > Admin keys (3)
+    // CLI is highest priority because it saves users money (no API credits consumed)
 
     // Get model mappings for provider selection
     const modelMappingMap = new Map()
@@ -744,26 +774,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Helper to determine provider source for a model (used for quota checking)
-    const getProviderSourceType = async (modelId: string): Promise<'cli' | 'user_key' | 'admin_key' | 'admin_credits' | null> => {
+    const getProviderSourceType = async (modelId: string): Promise<'cli' | 'user_key' | 'admin_key' | null> => {
       const requiredProvider = await getProviderFromModel(modelId, supabase, user.id)
 
-      // Check in priority order: User API keys > Admin keys (CLI disabled)
+      // Check in priority order: CLI > User API keys > Admin keys
+      if (providerConfigs[requiredProvider]?.cli) return 'cli'
       if (providerConfigs[requiredProvider]?.api) return 'user_key'
       if (providerConfigs[requiredProvider]?.admin) return 'admin_key'
-
-      // Check OpenRouter special case
-      if (requiredProvider === 'openrouter' && providerConfigs['openrouter']?.api) return 'user_key'
-
-      // Check credits availability
-      if (totalCredits > 0) {
-        const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
-        if (openrouterModelId !== modelId) return 'admin_credits'
-      }
 
       return null
     }
 
-    // QUOTA CHECK: Only check quota for admin-provided sources (admin_key and admin_credits)
+    // QUOTA CHECK: Only check quota for admin-provided sources (admin_key)
     // CLI and user API keys bypass quota checks
     const resolvedModels: string[] = []
 
@@ -792,13 +814,13 @@ export async function POST(request: NextRequest) {
       }
 
       // If prefer_own_keys is enabled, skip admin sources
-      if (preferOwnKeys && (sourceType === 'admin_key' || sourceType === 'admin_credits')) {
+      if (preferOwnKeys && sourceType === 'admin_key') {
         // Skip this model - user wants own keys only
         continue
       }
 
       // Check quota only for admin sources
-      if (sourceType === 'admin_key' || sourceType === 'admin_credits') {
+      if (sourceType === 'admin_key') {
         const quotaCheck = await checkQuotaMiddleware(request, user.id, modelName)
 
         if (!quotaCheck.allowed) {
@@ -820,7 +842,7 @@ export async function POST(request: NextRequest) {
                   if (model) {
                     // Check if this fallback model has quota
                     const fallbackSourceType = await getProviderSourceType(model.model_name)
-                    if (fallbackSourceType === 'admin_key' || fallbackSourceType === 'admin_credits') {
+                    if (fallbackSourceType === 'admin_key') {
                       const fallbackQuotaCheck = await checkQuotaMiddleware(request, user.id, model.model_name)
                       if (fallbackQuotaCheck.allowed) {
                         fallbackModel = model.model_name
@@ -838,7 +860,7 @@ export async function POST(request: NextRequest) {
                 if (!fallbackModel && tierModels.size > 0) {
                   for (const model of Array.from(tierModels.values())) {
                     const fallbackSourceType = await getProviderSourceType(model.model_name)
-                    if (fallbackSourceType === 'admin_key' || fallbackSourceType === 'admin_credits') {
+                    if (fallbackSourceType === 'admin_key') {
                       const fallbackQuotaCheck = await checkQuotaMiddleware(request, user.id, model.model_name)
                       if (fallbackQuotaCheck.allowed) {
                         fallbackModel = model.model_name
@@ -901,6 +923,7 @@ export async function POST(request: NextRequest) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].cli
           fallbackMethod = 'cli'
+          // Resolve CLI-specific model ID
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
           console.log(`[Selection] Selected CLI for ${requiredProvider} (FREE, will fallback to API/admin if CLI fails)`)
         }
@@ -910,6 +933,7 @@ export async function POST(request: NextRequest) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].api
           fallbackMethod = 'api'
+          // Resolve API-specific model ID
           actualModelId = await resolveProviderModelId(modelId, requiredProvider)
           console.log(`[Selection] Selected user API key for ${requiredProvider}`)
         }
@@ -925,7 +949,17 @@ export async function POST(request: NextRequest) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].admin
           fallbackMethod = 'admin'
-          actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+          
+          // For admin keys, first check model_tiers.api_model_id (admin-configured API model ID)
+          // This allows admin to map display names to actual API model IDs
+          const apiModelIdFromTiers = await getApiModelIdFromModelTiers(modelId, supabase)
+          if (apiModelIdFromTiers) {
+            actualModelId = apiModelIdFromTiers
+            console.log(`[Selection] Using api_model_id from model_tiers: ${modelId} → ${actualModelId}`)
+          } else {
+            // Fall back to standard model resolution
+            actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+          }
         }
 
         // NOTE: OpenRouter credits are DISABLED - we never fall back to credits
@@ -1098,7 +1132,15 @@ export async function POST(request: NextRequest) {
                       selectedProvider = requiredProvider
                       selectedConfig = providerConfigs[requiredProvider].admin
                       fallbackMethod = 'admin'
-                      actualModelId = await resolveProviderModelId(friendlyModelId, requiredProvider)
+                      
+                      // For admin keys, first check model_tiers.api_model_id
+                      const apiModelIdFromTiers = await getApiModelIdFromModelTiers(friendlyModelId, supabase)
+                      if (apiModelIdFromTiers) {
+                        actualModelId = apiModelIdFromTiers
+                        console.log(`[401 Retry] Using api_model_id from model_tiers: ${friendlyModelId} → ${actualModelId}`)
+                      } else {
+                        actualModelId = await resolveProviderModelId(friendlyModelId, requiredProvider)
+                      }
 
                       // Fetch model-specific max tokens from model_tiers table (respects admin configuration)
                       let retryMaxTokens = max_tokens
@@ -1250,10 +1292,10 @@ export async function POST(request: NextRequest) {
                   }
                 } else {
                   const usageOptions = { ...apiOptions, stream: false }
-                  const usageResp = await apiManager.createMessage(selectedProvider, usageOptions)
-                  if (usageResp.ok) {
-                    const ct = usageResp.headers.get('content-type') || ''
-                    const payload = ct.includes('application/json') ? await usageResp.json() : await usageResp.text()
+                  const usageResponse = await apiManager.createMessage(selectedProvider, usageOptions)
+                  if (usageResponse.ok) {
+                    const ct = usageResponse.headers.get('content-type') || ''
+                    const payload = ct.includes('application/json') ? await usageResponse.json() : await usageResponse.text()
                     const usage = parseUsageData(payload) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                     collected[friendlyModelId].usage = usage
                     collected[friendlyModelId].modelResolved = (payload && (payload.model || payload?.choices?.[0]?.model)) || actualModelId
@@ -1287,28 +1329,20 @@ export async function POST(request: NextRequest) {
                 }
               } catch {}
 
-              // Compute cost if possible and set credits_used properly from models.dev pricing
+              // Compute cost using actual provider pricing from models.dev
               try {
-                // When using credits (OpenRouter), use openrouter for pricing data
-                const pricingProvider = selectedConfig?.type === 'credits' ? 'openrouter' : (requiredProvider || selectedProvider)
-                const resolvedModel = collected[friendlyModelId].modelResolved || actualModelId
+                const pricingProvider = requiredProvider || selectedProvider
                 // Use the original friendly model id for pricing so mappings work
                 const limits = await modelsDevService.getModelLimits(friendlyModelId, pricingProvider)
                 const u = collected[friendlyModelId].usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                 if (limits?.pricing) {
                   const totalCost = computeCostUSD(u.prompt_tokens || 0, u.completion_tokens || 0, limits.pricing.input, limits.pricing.output)
-                  const inputCost = ((u.prompt_tokens || 0) / 1_000_000) * limits.pricing.input
-                  const outputCost = ((u.completion_tokens || 0) / 1_000_000) * limits.pricing.output
+                  const inputCost = ((u.prompt_tokens || 0) / 1000000) * limits.pricing.input
+                  const outputCost = ((u.completion_tokens || 0) / 1000000) * limits.pricing.output
                   collected[friendlyModelId].cost = { input_cost: inputCost, output_cost: outputCost, total_cost: totalCost }
-                  if (selectedConfig?.type === 'credits') {
-                    collected[friendlyModelId].creditsUsed = totalCost
-                  }
-                } else if (selectedConfig?.type === 'credits') {
-                  // No pricing info; as a safe fallback don't deduct blindly
-                  collected[friendlyModelId].creditsUsed = 0
                 }
               } catch (e) {
-                // Leave cost/credits undefined on failure
+                // Leave cost undefined on failure
               }
             } catch (err: any) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', model: friendlyModelId, message: err?.message || 'Provider error' })}\n\n`))
@@ -1402,7 +1436,7 @@ export async function POST(request: NextRequest) {
                     provider_info: r.provider ? { provider: r.provider, fallback_method: r.fallback_method } : null,
                     usage_info: r.usage || null,
                     cost_info: (r as any).cost || null,
-                    metadata: (r.credits_used || r.fallback_method) ? { credits_used: r.credits_used || 0, fallback_method: r.fallback_method } : null
+                    metadata: r.fallback_method ? { fallback_method: r.fallback_method } : null
                   }))
                 if (assistantMessages.length > 0) {
                   await supabase.from('chat_messages').insert(assistantMessages)
@@ -1553,48 +1587,24 @@ export async function POST(request: NextRequest) {
           actualModelId = await resolveProviderModelId(modelId, 'openrouter')
         }
         
-        // STEP 4: PRIORITY 3 - OpenRouter Credits (lowest priority, last resort)
-        if (!selectedProvider && totalCredits > 0) {
-          const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
-          if (openrouterModelId !== modelId) { // Only use credits if we have a mapping
-            selectedProvider = 'openrouter'
-            selectedConfig = {
-              type: 'credits',
-              priority: 3,
-              apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || '',
-              baseUrl: 'https://openrouter.ai/api/v1'
-            }
-            actualModelId = openrouterModelId
-            fallbackMethod = 'credits'
-          }
+        // STEP 4: Admin-provided keys (fallback when user has no API key)
+        if (!selectedProvider && providerConfigs[requiredProvider]?.admin) {
+          selectedProvider = requiredProvider
+          selectedConfig = providerConfigs[requiredProvider].admin
+          fallbackMethod = 'admin'
+          actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+          console.log(`[Admin Key Fallback] Using admin key for ${modelId} via ${requiredProvider}`)
         }
         
-        // If still nothing selected, emit a clear message when credits can't map this model
+        // If no provider found, return error
         if (!selectedProvider || !selectedConfig) {
-          try {
-            if (totalCredits > 0) {
-              const openrouterId = await resolveProviderModelId(modelId, 'openrouter')
-              if (openrouterId === modelId) {
-                return {
-                  model: modelId,
-                  content: '',
-                  usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-                  provider: 'N/A',
-                  fallback_method: 'none',
-                  error: `Polydev credits can't support this model without API keys (no OpenRouter mapping for ${modelId}).`,
-                  providerSourceId: undefined,
-                  sourceType: undefined
-                }
-              }
-            }
-          } catch {}
           return {
             model: modelId,
             content: '',
             usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
             provider: 'N/A',
             fallback_method: 'none',
-            error: `No provider available for model: ${modelId}. Please configure API keys at https://www.polydev.ai/dashboard/models or ensure you have sufficient credits.`,
+            error: `No provider available for model: ${modelId}. Please configure your API keys at https://www.polydev.ai/dashboard/models`,
             providerSourceId: undefined,
             sourceType: undefined
           }
@@ -1627,7 +1637,7 @@ export async function POST(request: NextRequest) {
 
             // Also get pricing and model data from models.dev for reasoning capabilities
             const { modelsDevService } = await import('@/lib/models-dev-integration')
-            const pricingProvider = selectedConfig?.type === 'credits' ? 'openrouter' : (requiredProvider || selectedProvider)
+            const pricingProvider = requiredProvider || selectedProvider
             const modelLimits = await modelsDevService.getModelLimits(modelId, pricingProvider)
 
             // Get model data for reasoning capabilities check
@@ -1687,7 +1697,7 @@ export async function POST(request: NextRequest) {
               'claude_code': 'claude-code',
               'codex_cli': 'codex-cli'
               // Note: gemini-cli is not supported by Enhanced Handler Factory
-              // When google models are requested with CLI, we'll fall back to API if available
+              // When google models are requested with CLI, we'll fall back to API
             }
             
             const handlerName = cliProviderMap[selectedConfig.cliProvider]
@@ -1797,7 +1807,7 @@ export async function POST(request: NextRequest) {
                   case 'openai':
                   case 'groq':
                   case 'deepseek':
-                  case 'xai':
+                  case 'mistral':
                     apiOptions.openAiBaseUrl = selectedConfig.baseUrl
                     break
                   case 'anthropic':
@@ -1957,7 +1967,7 @@ export async function POST(request: NextRequest) {
               // OpenAI format
               content = result.choices[0].message.content
             } else if (result.candidates) {
-              // Google Gemini format - handle both array and non-array candidates
+              // Google Gemini format - handle both array and non-array
               let candidate = null
               if (Array.isArray(result.candidates)) {
                 candidate = result.candidates[0]
@@ -2027,7 +2037,7 @@ export async function POST(request: NextRequest) {
             let cost = null
             console.log(`[DEBUG API Cost] Model: ${modelId}, Usage:`, usage, `ModelPricing:`, modelPricing)
             if (modelPricing && usage && (usage.prompt_tokens > 0 || usage.completion_tokens > 0)) {
-              const totalCost = computeCostUSD(usage.prompt_tokens || 0, usage.completion_tokens || 0, modelPricing.input, modelPricing.output)
+              const totalCost = computeCostUSD(usage.prompt_tokens, usage.completion_tokens, modelPricing.input, modelPricing.output)
               const inputCost = ((usage.prompt_tokens || 0) / 1000000) * modelPricing.input
               const outputCost = ((usage.completion_tokens || 0) / 1000000) * modelPricing.output
               cost = {
@@ -2147,34 +2157,6 @@ export async function POST(request: NextRequest) {
               throw new Error(result.error?.message || 'OpenRouter API call failed')
             }
             
-            // Compute cost using models.dev pricing when available
-            const usageForCost = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-            const totalCostUsd = modelPricing ? 
-              computeCostUSD(usageForCost.prompt_tokens || 0, usageForCost.completion_tokens || 0, modelPricing.input, modelPricing.output) : 0
-
-            // Deduct credits using unified total balance (promo + purchased treated as one)
-            if (selectedConfig.type === 'credits' && totalCostUsd > 0) {
-              try {
-                const { data: creditRow } = await supabase
-                  .from('user_credits')
-                  .select('balance, promotional_balance')
-                  .eq('user_id', user.id)
-                  .single()
-                let promo = parseFloat((creditRow?.promotional_balance ?? 0).toString())
-                let bal = parseFloat((creditRow?.balance ?? 0).toString())
-                const total = Math.max(0, promo + bal)
-                const newTotal = Math.max(0, total - totalCostUsd)
-                let newPromo = Math.min(promo, newTotal)
-                let newBal = Math.max(0, newTotal - newPromo)
-                await supabase
-                  .from('user_credits')
-                  .update({ balance: newBal.toFixed(6), promotional_balance: newPromo.toFixed(6) })
-                  .eq('user_id', user.id)
-              } catch (creditErr) {
-                console.warn('Failed to deduct user credits (non-stream):', creditErr)
-              }
-            }
-            
             // Extract content
             let content = ''
             if (result.content?.[0]?.text) {
@@ -2203,10 +2185,9 @@ export async function POST(request: NextRequest) {
               content: content,
               usage: parsedUsage,
               costInfo: costInfo,
-              cost: costInfo || undefined,
-              provider: selectedConfig.type === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)',
+              cost: costInfo,
+              provider: 'OpenRouter (API)',
               fallback_method: fallbackMethod,
-              credits_used: selectedConfig.type === 'credits' ? totalCostUsd : undefined,
               providerSourceId: selectedConfig?.keyId,
               sourceType: selectedConfig?.sourceType
             }
@@ -2214,8 +2195,7 @@ export async function POST(request: NextRequest) {
         } catch (error: any) {
           console.error(`Error with ${selectedProvider} for model ${modelId}:`, error)
 
-          // DISABLED: OpenRouter credits fallback - we never use credits
-          // Instead, when CLI fails with ANY error, fallback to user API or admin keys
+          // When CLI fails with ANY error, fallback to user API or admin keys
           if (fallbackMethod === 'cli') {
             // CLI failed - try to fallback to user API or admin keys
             console.log(`[CLI Retry Non-Stream] CLI failed for ${modelId}, attempting fallback to user API or admin keys`)
@@ -2302,7 +2282,15 @@ export async function POST(request: NextRequest) {
                 selectedProvider = requiredProvider
                 selectedConfig = providerConfigs[requiredProvider].admin
                 fallbackMethod = 'admin'
-                actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+                
+                // For admin keys, first check model_tiers.api_model_id
+                const apiModelIdFromTiers = await getApiModelIdFromModelTiers(modelId, supabase)
+                if (apiModelIdFromTiers) {
+                  actualModelId = apiModelIdFromTiers
+                  console.log(`[CLI Retry Non-Stream] Using api_model_id from model_tiers: ${modelId} → ${actualModelId}`)
+                } else {
+                  actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+                }
 
                 // Rebuild API options with admin key
                 const retryApiOptions: any = {
@@ -2542,94 +2530,11 @@ export async function POST(request: NextRequest) {
                 }
               }
             } else {
-              console.log(`❌ No OpenRouter API key configured, will try OpenRouter credits fallback`)
+              console.log(`❌ No OpenRouter API key configured`)
             }
           }
 
-          // DISABLED: OpenRouter credits fallback - we never use credits
-          // All CLI, user API, and admin API fallbacks have been exhausted
-          console.log(`❌ All fallbacks exhausted for ${modelId} (CLI, user API, admin keys). OpenRouter credits DISABLED - will not fallback.`)
-          if (false) { // DISABLED: Credits fallback
-              try {
-                const openrouterModelId = await resolveProviderModelId(modelId, 'openrouter')
-                if (openrouterModelId !== modelId) {
-                  const apiOptions: any = {
-                    messages: messages.map((msg: any) => ({
-                      role: msg.role,
-                      content: msg.content
-                    })),
-                    model: openrouterModelId,
-                    temperature: adjustedTemperature,
-                    maxTokens: adjustedMaxTokens,
-                    stream,
-                    apiKey: process.env.OPENROUTER_ORG_KEY || process.env.OPENROUTER_API_KEY || ''
-                  }
-
-                  // Apply OpenAI parameter transformations
-                  applyOpenAIParameterTransform(apiOptions, 'openrouter')
-
-                  const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
-                  
-                  // Safely parse OpenRouter credits fallback response
-                  let apiResult
-                  const contentType = apiResponse.headers.get('content-type') || ''
-                  if (contentType.includes('application/json')) {
-                    try {
-                      apiResult = await apiResponse.json()
-                    } catch (parseError) {
-                      console.error(`[JSON Parse Error] Failed to parse OpenRouter credits fallback response:`, parseError)
-                      throw new Error(`Invalid JSON response from OpenRouter credits fallback`)
-                    }
-                  } else {
-                    console.error(`[Response Error] OpenRouter credits fallback returned non-JSON response with content-type: ${contentType}`)
-                    const textResult = await apiResponse.text()
-                    throw new Error(`Expected JSON response from OpenRouter credits fallback, got: ${textResult.substring(0, 200)}`)
-                  }
-                  
-                  if (apiResponse.ok) {
-                    console.log(`OpenRouter credits fallback successful for ${modelId}`)
-                    
-                    // Calculate cost
-                    const parsedUsage = apiResult.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-                    let costInfo = null
-                    if (modelPricing && parsedUsage.prompt_tokens && parsedUsage.completion_tokens) {
-                      // Type assertion: we know modelPricing is not null after the check above
-                      const pricing = modelPricing!
-                      const totalCost = computeCostUSD(parsedUsage.prompt_tokens, parsedUsage.completion_tokens, pricing.input, pricing.output)
-                      const inputCost = (parsedUsage.prompt_tokens / 1000000) * pricing.input
-                      const outputCost = (parsedUsage.completion_tokens / 1000000) * pricing.output
-                      costInfo = {
-                        input_cost: inputCost,
-                        output_cost: outputCost,
-                        total_cost: totalCost
-                      }
-                    }
-                    
-                    return {
-                      model: modelId,
-                      content: apiResult.choices?.[0]?.message?.content || '',
-                      usage: parsedUsage,
-                      costInfo: costInfo,
-                      provider: 'OpenRouter (Credits - CLI Fallback)',
-                      fallback_method: 'credits',
-                      credits_used: (parsedUsage.total_tokens || 0) / 1000000 * 50,
-                      providerSourceId: undefined,
-                      sourceType: 'admin_credits'
-                    }
-                  }
-                }
-              } catch (creditsError: any) {
-                console.error(`OpenRouter credits fallback also failed for ${modelId}:`, creditsError)
-                
-                // Check for API key exhaustion in OpenRouter credits fallback
-                const creditsExhaustionCheck = ResponseValidator.checkApiKeyExhaustion(creditsError.message || '', 'openrouter')
-                if (creditsExhaustionCheck.isExhausted) {
-                  console.warn(`[API Key Exhaustion] OpenRouter Credits: ${creditsExhaustionCheck.message}`)
-                }
-              }
-            }
-          
-          // All fallbacks failed, return error with exhaustion details if applicable
+          // All fallbacks failed (CLI, user API, admin keys), return error with exhaustion details if applicable
           let errorMessage = `${selectedProvider} failed: ${error.message}. All fallback methods also failed.`
           if (exhaustionCheck.isExhausted) {
             if (exhaustionCheck.isPermanent) {
@@ -2735,7 +2640,7 @@ export async function POST(request: NextRequest) {
             provider_info: r.provider ? { provider: r.provider, fallback_method: r.fallback_method } : null,
             usage_info: r.usage || null,
             cost_info: (r as any).costInfo || null,
-            metadata: (r.credits_used || r.fallback_method) ? { credits_used: r.credits_used || 0, fallback_method: r.fallback_method } : null
+            metadata: r.fallback_method ? { fallback_method: r.fallback_method } : null
           }))
         
         if (assistantMessages.length > 0) {
@@ -2804,13 +2709,6 @@ export async function POST(request: NextRequest) {
       
       if (response?.fallback_method === 'cli') {
         costInfo = { input_cost: 0, output_cost: 0, total_cost: 0 } // CLI is free
-      } else if (response?.credits_used) {
-        costInfo = { 
-          input_cost: response.credits_used, 
-          output_cost: 0, 
-          total_cost: response.credits_used,
-          credits_used: response.credits_used
-        }
       } else {
         // Try to get pricing from model limits using the correct provider
         try {
@@ -2955,13 +2853,6 @@ export async function POST(request: NextRequest) {
         if (!providerBreakdown[response.provider]) {
           providerBreakdown[response.provider] = { cost: 0, tokens: 0, type: 'cli' }
         }
-        providerBreakdown[response.provider].tokens += (response.usage?.total_tokens || 0)
-      } else if (response.credits_used) {
-        totalCreditsUsed += response.credits_used
-        if (!providerBreakdown[response.provider]) {
-          providerBreakdown[response.provider] = { cost: 0, credits: 0, tokens: 0, type: 'credits' }
-        }
-        providerBreakdown[response.provider].credits += response.credits_used
         providerBreakdown[response.provider].tokens += (response.usage?.total_tokens || 0)
       } else {
         // API key usage - calculate cost from model limits (uses corrected pricing data)

@@ -1,7 +1,7 @@
 // Production-grade Stripe integration manager
 import { createClient } from '@/app/utils/supabase/server'
 import { createClient as createServerClient } from '@supabase/supabase-js'
-import { CREDIT_PACKAGES, SUBSCRIPTION_PLANS, getCreditPackageByPriceId } from './stripeConfig'
+import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from './stripeConfig'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -114,161 +114,56 @@ export class StripeManager {
   }
 
   /**
-   * Create a checkout session for credit purchase
+   * Create a checkout session for subscription (Plus or Pro)
    */
-  async createCreditCheckoutSession(
+  async createSubscriptionCheckoutSession(
     userId: string,
-    packageId: string,
+    planKey: string,
     successUrl?: string,
     cancelUrl?: string
   ) {
-    const creditPackage = CREDIT_PACKAGES.find(pkg => pkg.id === packageId)
-    if (!creditPackage) {
-      throw new Error('Invalid credit package selected')
+    const plan = SUBSCRIPTION_PLANS[planKey]
+    if (!plan || planKey === 'free') {
+      throw new Error('Invalid subscription plan selected')
     }
 
     // First ensure the user exists as a Stripe customer
-    let customer = await this.getOrCreateCustomer(userId)
+    const customer = await this.getOrCreateCustomer(userId)
 
-    // Create the checkout session using Stripe MCP
+    // Create the checkout session
     try {
       const sessionData = await this.createStripeCheckoutSession({
         customer: customer.id,
-        priceId: creditPackage.priceId,
+        priceId: plan.priceId,
         quantity: 1,
-        mode: 'payment',
-        successUrl: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/credits?success=true`,
-        cancelUrl: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/credits?canceled=true`,
+        mode: 'subscription',
+        successUrl: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?success=true`,
+        cancelUrl: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?canceled=true`,
         metadata: {
           userId,
-          packageId,
-          creditsAmount: creditPackage.totalCredits.toString(),
-          type: 'credit_purchase'
+          planKey,
+          monthlyCredits: plan.monthlyCredits.toString(),
+          type: 'subscription'
         }
       })
 
       return sessionData
     } catch (error) {
-      console.error('[StripeManager] Failed to create checkout session:', error)
+      console.error('[StripeManager] Failed to create subscription checkout:', error)
       throw new Error('Failed to create checkout session')
     }
   }
 
   /**
-   * Create a checkout session for subscription
-   */
-  async createSubscriptionCheckoutSession(
-    userId: string,
-    planKey: keyof typeof SUBSCRIPTION_PLANS,
-    successUrl?: string,
-    cancelUrl?: string
-  ) {
-    const plan = SUBSCRIPTION_PLANS[planKey]
-    if (!plan) {
-      throw new Error('Invalid subscription plan selected')
-    }
-
-    const session = {
-      priceId: plan.priceId,
-      mode: 'subscription' as const,
-      successUrl: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?success=true`,
-      cancelUrl: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?canceled=true`,
-      metadata: {
-        userId,
-        planKey,
-        type: 'subscription'
-      }
-    }
-
-    return session
-  }
-
-  /**
-   * Process successful credit purchase from webhook
-   */
-  async processCreditPurchase(
-    userId: string,
-    packageId: string,
-    stripeSessionId: string,
-    amountPaid: number
-  ) {
-    const creditPackage = CREDIT_PACKAGES.find(pkg => pkg.id === packageId)
-    if (!creditPackage) {
-      throw new Error('Invalid credit package')
-    }
-
-    const supabase = await this.getSupabase(true) // Use service role for admin operations
-
-    try {
-      // Record the purchase in purchase_history
-      const { data: purchase, error: purchaseError } = await supabase
-        .from('purchase_history')
-        .insert({
-          user_id: userId,
-          item_type: 'credits',
-          item_id: packageId,
-          amount_paid: amountPaid,
-          credits_purchased: creditPackage.totalCredits,
-          stripe_session_id: stripeSessionId,
-          status: 'completed',
-          metadata: {
-            package_name: creditPackage.name,
-            base_credits: creditPackage.credits,
-            bonus_credits: creditPackage.bonusCredits
-          }
-        })
-        .select()
-        .single()
-
-      if (purchaseError) {
-        throw new Error(`Failed to record purchase: ${purchaseError.message}`)
-      }
-
-      // Add credits to user account
-      const { error: creditsError } = await supabase
-        .from('user_credits')
-        .upsert({
-          user_id: userId,
-          balance: 0, // Will be updated by the trigger
-          promotional_balance: 0,
-          updated_at: new Date().toISOString()
-        })
-
-      if (creditsError) {
-        throw new Error(`Failed to initialize credits: ${creditsError.message}`)
-      }
-
-      // Add the purchased credits
-      const { error: addCreditsError } = await supabase.rpc('add_user_credits', {
-        p_user_id: userId,
-        p_amount: creditPackage.totalCredits,
-        p_transaction_type: 'purchase',
-        p_description: `Purchased ${creditPackage.name} package`
-      })
-
-      if (addCreditsError) {
-        throw new Error(`Failed to add credits: ${addCreditsError.message}`)
-      }
-
-      return {
-        success: true,
-        creditsAdded: creditPackage.totalCredits,
-        packageName: creditPackage.name
-      }
-    } catch (error) {
-      console.error('[StripeManager] Credit purchase processing failed:', error)
-      throw error
-    }
-  }
-
-  /**
    * Process successful subscription from webhook
+   * New pricing: Plus = 20,000 credits/month, Pro = 50,000 credits/month
+   * Credits rollover as long as user maintains at least Plus subscription
    */
   async processSubscription(
     userId: string,
     stripeCustomerId: string,
     stripeSubscriptionId: string,
-    planKey: keyof typeof SUBSCRIPTION_PLANS,
+    planKey: string,
     status: string
   ) {
     const plan = SUBSCRIPTION_PLANS[planKey]
@@ -297,23 +192,115 @@ export class StripeManager {
         throw new Error(`Failed to update subscription: ${subscriptionError.message}`)
       }
 
-      // Add monthly credits for pro plan ($5 = 500 credits at $0.01 per credit)
-      if (planKey === 'pro' && status === 'active') {
+      // Add monthly credits based on plan
+      // Plus: 20,000 credits/month
+      // Pro: 50,000 credits/month
+      if (status === 'active' && plan.monthlyCredits > 0) {
         await supabase.rpc('add_user_credits', {
           p_user_id: userId,
-          p_amount: 500, // $5 worth of credits
-          p_transaction_type: 'subscription_bonus',
-          p_description: 'Monthly Pro subscription credits'
+          p_amount: plan.monthlyCredits,
+          p_transaction_type: 'subscription_credits',
+          p_description: `Monthly ${plan.name} subscription credits`
         })
       }
 
       return {
         success: true,
         planName: plan.name,
+        creditsAdded: plan.monthlyCredits,
         status
       }
     } catch (error) {
       console.error('[StripeManager] Subscription processing failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Process subscription renewal (monthly credit top-up)
+   * Called when a subscription period renews
+   */
+  async processSubscriptionRenewal(
+    userId: string,
+    planKey: string
+  ) {
+    const plan = SUBSCRIPTION_PLANS[planKey]
+    if (!plan) {
+      throw new Error('Invalid subscription plan')
+    }
+
+    const supabase = await this.getSupabase(true)
+
+    try {
+      // Add monthly credits (they rollover, so just add to existing balance)
+      if (plan.monthlyCredits > 0) {
+        await supabase.rpc('add_user_credits', {
+          p_user_id: userId,
+          p_amount: plan.monthlyCredits,
+          p_transaction_type: 'subscription_renewal',
+          p_description: `Monthly ${plan.name} subscription renewal credits`
+        })
+      }
+
+      // Update subscription period
+      const { error: updateError } = await supabase
+        .from('user_subscriptions')
+        .update({
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+
+      if (updateError) {
+        throw new Error(`Failed to update subscription period: ${updateError.message}`)
+      }
+
+      return {
+        success: true,
+        creditsAdded: plan.monthlyCredits,
+        planName: plan.name
+      }
+    } catch (error) {
+      console.error('[StripeManager] Subscription renewal failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Grant initial free credits to new users (500 credits one-time)
+   */
+  async grantFreeCredits(userId: string) {
+    const supabase = await this.getSupabase(true)
+    const freeCredits = SUBSCRIPTION_PLANS.free.monthlyCredits // 500
+
+    try {
+      // Check if user already received free credits
+      const { data: existing } = await supabase
+        .from('credit_transactions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('transaction_type', 'signup_bonus')
+        .single()
+
+      if (existing) {
+        return { success: false, message: 'Free credits already granted' }
+      }
+
+      // Grant free credits
+      await supabase.rpc('add_user_credits', {
+        p_user_id: userId,
+        p_amount: freeCredits,
+        p_transaction_type: 'signup_bonus',
+        p_description: 'Welcome bonus - 500 free credits'
+      })
+
+      return {
+        success: true,
+        creditsAdded: freeCredits
+      }
+    } catch (error) {
+      console.error('[StripeManager] Failed to grant free credits:', error)
       throw error
     }
   }

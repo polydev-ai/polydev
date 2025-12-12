@@ -10,8 +10,6 @@ import {
   sendPaymentFailedEmail,
   sendPaymentSucceededEmail
 } from '@/lib/resendService'
-import OpenRouterClient from '@/lib/openrouter'
-import CreditManager from '@/lib/creditManager'
 import { quotaManager } from '@/lib/quota-manager'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -19,12 +17,11 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 })
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
-const creditManager = new CreditManager()
 
 /**
  * Helper function to determine subscription tier from Stripe price ID
  */
-async function determineTierFromPriceId(priceId: string, supabase: any): Promise<'plus' | 'pro' | 'enterprise'> {
+async function determineTierFromPriceId(priceId: string, supabase: any): Promise<'plus' | 'pro'> {
   try {
     // Fetch pricing config from database
     const { data: pricingData, error } = await supabase
@@ -53,13 +50,6 @@ async function determineTierFromPriceId(priceId: string, supabase: any): Promise
       if (priceId === config.pro_tier.stripe_price_id_monthly ||
           priceId === config.pro_tier.stripe_price_id_annual) {
         return 'pro'
-      }
-    }
-
-    if (config.enterprise_tier) {
-      if (priceId === config.enterprise_tier.stripe_price_id_monthly ||
-          priceId === config.enterprise_tier.stripe_price_id_annual) {
-        return 'enterprise'
       }
     }
 
@@ -262,14 +252,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         return
       }
 
-      // Create OpenRouter API key for the user if they don't have one
-      try {
-        await creditManager.createUserOpenRouterKey(user.id)
-        console.log(`[Stripe Webhook] OpenRouter key provisioned for user ${user.id}`)
-      } catch (keyError) {
-        console.error('[Stripe Webhook] Failed to provision OpenRouter key:', keyError)
-        // Don't return - credits were added successfully, key can be retried later
-      }
+      // Note: OpenRouter key provisioning removed - credit purchases are disabled
+      // The new system uses integer credits through subscriptions only
 
       // Send credit purchase email notification
       try {
@@ -367,7 +351,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
       // Don't return - subscription was created, we can retry quota update later
     }
 
-    // Update user message usage for paid users (Plus, Pro, Enterprise)
+    // Update user message usage for paid users (Plus, Pro)
     const currentMonth = new Date().toISOString().substring(0, 7)
     await supabase
       .from('user_message_usage')
@@ -379,20 +363,20 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
         cli_usage_allowed: true
       }, { onConflict: 'user_id,month_year' })
 
-    // Initialize credits for paid users
+    // Initialize credits for paid users - integer credits based on tier
     if (subscription.status === 'active') {
-      // Different credit allocations by tier
-      const creditAllocation = tier === 'enterprise' ? 15.0 : tier === 'pro' ? 10.0 : 5.0
+      // Credit allocations: Pro = 50,000, Plus = 20,000
+      const creditAllocation = tier === 'pro' ? 50000 : 20000
 
       await supabase
         .from('user_credits')
         .upsert({
           user_id: userId,
           balance: creditAllocation,
-          promotional_balance: 0.0,
+          promotional_balance: 0,
           monthly_allocation: creditAllocation,
-          total_purchased: 0.0,
-          total_spent: 0.0,
+          total_purchased: 0,
+          total_spent: 0,
           last_monthly_reset: new Date().toISOString()
         }, {
           onConflict: 'user_id',
@@ -405,8 +389,8 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
       const tierDisplayName = tier.charAt(0).toUpperCase() + tier.slice(1)
       const template = emailTemplates.subscriptionCreated(customerEmail, tierDisplayName)
 
-      // Call MCP function directly (available in API route context)
-      const emailResult = await fetch('/api/internal/send-email', {
+      // Call MCP function directly (use full URL for webhook context)
+      const emailResult = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -465,12 +449,19 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
 
     const userId = user.id
 
+    // Extract price ID from subscription to determine tier
+    const subscriptionItem = subscription.items?.data?.[0]
+    const priceId = subscriptionItem?.price?.id
+    
+    // Determine tier from price ID
+    const tier = priceId ? await determineTierFromPriceId(priceId, supabase) : 'plus'
+
     // Update subscription record  
     const subscriptionData = {
       user_id: userId,
       stripe_customer_id: subscription.customer as string,
       stripe_subscription_id: subscription.id,
-      tier: 'pro' as const,
+      tier: tier,
       status: subscription.status as any,
       current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
       current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
@@ -487,7 +478,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
       return
     }
 
-    // Update user message usage for Pro users
+    // Update user message usage for paid users
     const currentMonth = new Date().toISOString().substring(0, 7)
     await supabase
       .from('user_message_usage')
@@ -495,21 +486,23 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
         user_id: userId,
         month_year: currentMonth,
         messages_sent: 0,
-        messages_limit: 999999, // Unlimited for pro users
+        messages_limit: 999999, // Unlimited for paid users
         cli_usage_allowed: true
       }, { onConflict: 'user_id,month_year' })
 
-    // Allocate $5 monthly credits for Pro users
+    // Allocate monthly credits based on tier
     if (subscription.status === 'active') {
+      const creditAllocation = tier === 'pro' ? 50000 : 20000
+      
       await supabase
         .from('user_credits')
         .upsert({
           user_id: userId,
-          balance: 5.0, // Start with $5
-          promotional_balance: 0.0,
-          monthly_allocation: 5.0,
-          total_purchased: 0.0,
-          total_spent: 0.0,
+          balance: creditAllocation,
+          promotional_balance: 0,
+          monthly_allocation: creditAllocation,
+          total_purchased: 0,
+          total_spent: 0,
           last_monthly_reset: new Date().toISOString()
         }, { 
           onConflict: 'user_id',
@@ -587,15 +580,16 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
     // Allocate monthly credits if this is a subscription payment
     const { data: subscription } = await supabase
       .from('user_subscriptions')
-      .select('user_id')
+      .select('user_id, tier')
       .eq('stripe_subscription_id', (invoice as any).subscription)
       .single()
 
     if (subscription?.user_id) {
-      // Add $5 monthly allocation
+      // Add monthly credits based on tier: Pro = 50,000, Plus = 20,000
+      const creditAmount = subscription.tier === 'pro' ? 50000 : 20000
       await supabase.rpc('allocate_monthly_credits', {
         p_user_id: subscription.user_id,
-        p_amount: 5.0
+        p_amount: creditAmount
       })
     }
 

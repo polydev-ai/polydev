@@ -28,13 +28,18 @@ export async function sendEmail({ to, template, from = 'noreply@polydev.ai' }: S
   }
 }
 
-export async function sendSubscriptionCreatedEmail(userEmail: string, planName: string = 'Pro') {
+export async function sendSubscriptionCreatedEmail(userEmail: string, planName: string = 'Plus') {
   const template = emailTemplates.subscriptionCreated(userEmail, planName)
   return sendEmail({ to: userEmail, template })
 }
 
-export async function sendSubscriptionCancelledEmail(userEmail: string, planName: string = 'Pro', periodEnd: string) {
+export async function sendSubscriptionCancelledEmail(userEmail: string, planName: string = 'Plus', periodEnd: string) {
   const template = emailTemplates.subscriptionCancelled(userEmail, planName, periodEnd)
+  return sendEmail({ to: userEmail, template })
+}
+
+export async function sendSubscriptionRenewalEmail(userEmail: string, planName: string, creditsAdded: number, periodEnd: string) {
+  const template = emailTemplates.subscriptionRenewal(userEmail, planName, creditsAdded, periodEnd)
   return sendEmail({ to: userEmail, template })
 }
 
@@ -48,7 +53,24 @@ export async function sendPaymentSucceededEmail(userEmail: string, amount: strin
   return sendEmail({ to: userEmail, template })
 }
 
+export async function sendWelcomeFreeCreditsEmail(userEmail: string) {
+  const template = emailTemplates.welcomeFreeCredits(userEmail)
+  return sendEmail({ to: userEmail, template })
+}
+
+// Legacy function for backward compatibility (deprecated)
 export async function sendCreditPurchaseEmail(userEmail: string, creditAmount: number, packageName: string, amountPaid: number) {
   const template = emailTemplates.creditPurchase(userEmail, creditAmount, packageName, amountPaid)
   return sendEmail({ to: userEmail, template })
+}
+
+// Referral email functions
+export async function sendReferralSuccessEmail(referrerEmail: string, newUserName: string, creditsEarned: number, totalReferrals: number) {
+  const template = emailTemplates.referralSuccess(referrerEmail, newUserName, creditsEarned, totalReferrals)
+  return sendEmail({ to: referrerEmail, template })
+}
+
+export async function sendReferralWelcomeEmail(newUserEmail: string, creditsReceived: number, referrerName?: string) {
+  const template = emailTemplates.referralWelcome(newUserEmail, creditsReceived, referrerName)
+  return sendEmail({ to: newUserEmail, template })
 }

@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     console.log('[Dashboard Stats] Fetching real statistics for user:', user.id)
 
     // Check cache first
-    const cacheKey = `dashboard-stats-v10-${user.id}` // v10: fixed timezone consistency + October data refresh
+    const cacheKey = `dashboard-stats-v11-${user.id}` // v11: debug chat logs counting
     const cachedStats = getCachedData(cacheKey)
     if (cachedStats) {
       console.log('[Dashboard Stats] Returning cached data')
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
         .from('user_credits')
         .select('balance, promotional_balance')
         .eq('user_id', user.id)
-        .single(),
+        .maybeSingle(),
 
       // 1. MCP access tokens
       supabase
@@ -191,7 +191,21 @@ export async function GET(request: NextRequest) {
     ])
 
     // Extract data from parallel results
-    const userCredits = userCreditsResult.status === 'fulfilled' ? userCreditsResult.value.data : null
+    const userCredits = userCreditsResult.status === 'fulfilled' && !userCreditsResult.value.error 
+      ? userCreditsResult.value.data 
+      : null
+    
+    // Log user credits result for debugging
+    if (userCreditsResult.status === 'fulfilled') {
+      console.log('[Dashboard Stats] User credits query result:', {
+        hasError: !!userCreditsResult.value.error,
+        error: userCreditsResult.value.error,
+        data: userCreditsResult.value.data
+      })
+    } else {
+      console.log('[Dashboard Stats] User credits query rejected:', userCreditsResult.reason)
+    }
+    
     const mcpTokens = mcpTokensResult.status === 'fulfilled' ? mcpTokensResult.value.data : []
     const allTokens = allTokensResult.status === 'fulfilled' ? allTokensResult.value.data : []
     const userTokens = userTokensResult.status === 'fulfilled' ? userTokensResult.value.data : []
@@ -200,6 +214,16 @@ export async function GET(request: NextRequest) {
     const requestLogs = requestLogsResult.status === 'fulfilled' ? requestLogsResult.value.data : []
     const usageLogs = usageLogsResult.status === 'fulfilled' ? usageLogsResult.value.data : []
     const chatLogs = chatLogsResult.status === 'fulfilled' ? chatLogsResult.value.data : []
+    
+    // DEBUG: Log chat logs query result in detail
+    console.log('[Dashboard Stats] CHAT LOGS DEBUG:', {
+      status: chatLogsResult.status,
+      hasError: chatLogsResult.status === 'fulfilled' ? !!chatLogsResult.value.error : 'rejected',
+      error: chatLogsResult.status === 'fulfilled' ? chatLogsResult.value.error : chatLogsResult.reason,
+      dataLength: chatLogs?.length || 0,
+      firstRecord: chatLogs?.[0] || null
+    })
+    
     const allTimeRequestLogs = allTimeRequestLogsResult.status === 'fulfilled' ? allTimeRequestLogsResult.value.data : []
     const allTimeChatLogs = allTimeChatLogsResult.status === 'fulfilled' ? allTimeChatLogsResult.value.data : []
     const modelsDevProviders = providersRegistryResult.status === 'fulfilled' ? providersRegistryResult.value.data : []
@@ -472,32 +496,37 @@ export async function GET(request: NextRequest) {
     console.log(`[Dashboard Stats] Total tokens THIS MONTH: ${totalUsageTokens} (MCP: ${mcpTokenCount} + Chat: ${chatTokens})`)
 
     // Calculate average response time from BOTH MCP and chat data - only from successful requests
+    // Use more realistic bounds: 100ms minimum (network latency), 30s max (reasonable timeout)
     const mcpResponseTimes = (requestLogs || [])
       .filter(log => {
-        const hasResponseTime = 'response_time_ms' in log && log.response_time_ms && (log.response_time_ms as number) > 0
+        const responseTime = log.response_time_ms as number
+        const hasResponseTime = 'response_time_ms' in log && responseTime > 0
         const isSuccessful = (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)
-        const isReasonableTime = (log.response_time_ms as number) < 60000 // Less than 60 seconds
+        const isReasonableTime = responseTime >= 100 && responseTime <= 30000 // 100ms to 30 seconds
         return hasResponseTime && isSuccessful && isReasonableTime
       })
       .map(log => (log as any).response_time_ms)
 
-    const chatResponseTimes = (chatLogs || [])
-      .filter(log => {
-        const hasResponseTime = 'response_time_ms' in log && log.response_time_ms && (log.response_time_ms as number) > 0
-        const isSuccessful = log.total_tokens > 0 // Chat logs without explicit status - use tokens as success indicator
-        const isReasonableTime = 'response_time_ms' in log ? (log.response_time_ms as number) < 60000 : true // Less than 60 seconds
-        return hasResponseTime && isSuccessful && isReasonableTime
-      })
-      .map(log => (log as any).response_time_ms)
+    // Chat logs don't have response_time_ms, so skip them for response time calculation
+    const chatResponseTimes: number[] = []
 
     const allResponseTimes = [...mcpResponseTimes, ...chatResponseTimes]
-    const avgResponseTime = allResponseTimes.length > 0
-      ? Math.round(allResponseTimes.reduce((sum, time) => sum + time, 0) / allResponseTimes.length)
-      : 0
+    
+    // Use median for more accurate representation (less affected by outliers)
+    let avgResponseTime = 0
+    if (allResponseTimes.length > 0) {
+      const sorted = [...allResponseTimes].sort((a, b) => a - b)
+      const mid = Math.floor(sorted.length / 2)
+      avgResponseTime = sorted.length % 2 !== 0 
+        ? sorted[mid] 
+        : Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+    }
 
-    console.log(`[Dashboard Stats] Response time calculation: ${allResponseTimes.length} samples, avg: ${avgResponseTime}ms`)
+    console.log(`[Dashboard Stats] Response time calculation: ${allResponseTimes.length} samples, median: ${avgResponseTime}ms`)
 
-    // Calculate uptime based on success rate from BOTH MCP and chat sources
+    // Calculate success rate from BOTH MCP and chat sources
+    // Count total requests that have any response data (not just those with tokens)
+    const mcpTotalRequests = (requestLogs || []).length
     const mcpSuccessfulRequests = (requestLogs || []).filter(log => {
       // Explicit success status
       if ((log as any).status === 'success') return true
@@ -509,20 +538,22 @@ export async function GET(request: NextRequest) {
       return hasTokens || hasCost
     }).length
 
-    // For chat sessions, if chatLogs has cost tracking, use that. Otherwise, assume all chat logs are successful
-    const chatSuccessfulRequests = (chatLogs || []).length > 0
-      ? (chatLogs || []).filter(log => {
-          // Chat logs assume success if entry exists with tokens
-          const hasTokens = log.total_tokens && log.total_tokens > 0
-          const hasCost = log.total_cost && log.total_cost > 0
-          return hasTokens || hasCost
-        }).length
-      : (chatLogs || []).length // If no chat logs with cost data, assume all chat logs are successful
+    // For chat sessions - count based on actual logged entries
+    const chatTotalRequests = (chatLogs || []).length
+    const chatSuccessfulRequests = (chatLogs || []).filter(log => {
+      // Chat logs assume success if entry exists with tokens
+      const hasTokens = log.total_tokens && log.total_tokens > 0
+      const hasCost = log.total_cost && log.total_cost > 0
+      return hasTokens || hasCost
+    }).length
 
     const totalSuccessfulRequests = mcpSuccessfulRequests + chatSuccessfulRequests
-    const systemUptime = totalApiCalls > 0 ? `${((totalSuccessfulRequests / totalApiCalls) * 100).toFixed(1)}%` : 'N/A'
+    const totalRequestsForSuccessRate = mcpTotalRequests + chatTotalRequests
+    const systemUptime = totalRequestsForSuccessRate > 0 
+      ? `${((totalSuccessfulRequests / totalRequestsForSuccessRate) * 100).toFixed(1)}%` 
+      : 'N/A'
 
-    console.log(`[Dashboard Stats] Success rate: ${totalSuccessfulRequests}/${totalApiCalls} = ${systemUptime}`)
+    console.log(`[Dashboard Stats] Success rate: ${totalSuccessfulRequests}/${totalRequestsForSuccessRate} = ${systemUptime}`)
 
     // Get provider breakdown based on actual user API keys and usage
     const providerStats = apiKeys?.map(apiKey => {
@@ -861,7 +892,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Use already fetched providers registry data (from parallel queries)
+    // Use already fetched providers registry data (from parallel query)
     console.log(`[Dashboard Stats] Using ${modelsDevProviders?.length || 0} providers from parallel query`)
 
     // Helper function to map model names to proper provider names
@@ -973,9 +1004,9 @@ export async function GET(request: NextRequest) {
             provider: correctProvider,
             model: actualModelName,
             cost: response.cost || 0,
-            tokens: response.tokens_used || response.total_tokens || 0,
-            latency: response.response_time_ms || log.response_time_ms || 0,
-            success: response.error ? false : true
+            tokens_used: response.tokens_used || response.total_tokens || 0,
+            response_time_ms: response.response_time_ms || log.response_time_ms || 0,
+            error: response.error || false
           })
         })
       } else if (log.models_used && typeof log.models_used === 'object') {
@@ -995,9 +1026,9 @@ export async function GET(request: NextRequest) {
             provider: correctProvider,
             model: actualModelName,
             cost: log.total_cost || 0,
-            tokens: log.total_tokens || 0,
-            latency: log.response_time_ms || 0,
-            success: log.total_tokens > 0 // Assume success if tokens exist
+            tokens_used: log.total_tokens || 0,
+            response_time_ms: log.response_time_ms || 0,
+            error: false
           })
         })
       }
@@ -1026,10 +1057,10 @@ export async function GET(request: NextRequest) {
         const pStats = providerAnalytics[provider.provider]
         pStats.requests++
         pStats.totalCost += provider.cost || 0
-        pStats.totalTokens += provider.tokens || 0
-        pStats.totalLatency += provider.latency || 0
-        if (provider.success) pStats.successCount++
-        else pStats.errorCount++
+        pStats.totalTokens += provider.tokens_used || 0
+        pStats.totalLatency += provider.response_time_ms || 0
+        if (provider.error) pStats.errorCount++
+        else pStats.successCount++
         if (provider.model) pStats.models.add(provider.model)
 
         // Model analytics
@@ -1054,10 +1085,10 @@ export async function GET(request: NextRequest) {
         const mStats = modelAnalytics[modelKey]
         mStats.requests++
         mStats.totalCost += provider.cost || 0
-        mStats.totalTokens += provider.tokens || 0
-        mStats.totalLatency += provider.latency || 0
-        if (provider.success) mStats.successCount++
-        else mStats.errorCount++
+        mStats.totalTokens += provider.tokens_used || 0
+        mStats.totalLatency += provider.response_time_ms || 0
+        if (provider.error) mStats.errorCount++
+        else mStats.successCount++
       })
     })
 

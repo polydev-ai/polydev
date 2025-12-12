@@ -268,28 +268,13 @@ export default function CreditsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Used</span>
-                    <span className="text-2xl font-bold">{quotaData.used.premium}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Limit</span>
-                    <span className="text-lg">{quotaData.limits.premium}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Remaining</span>
-                    <Badge className={TIER_COLORS.premium.badge}>{quotaData.remaining.premium}</Badge>
-                  </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold">{quotaData.tierUsage.premium.count}</p>
+                  <p className="text-sm text-muted-foreground">API calls this month</p>
                 </div>
-                <Progress value={quotaData.percentages.premium} className="h-2" />
-                <div className="text-xs text-muted-foreground">
-                  {quotaData.percentages.premium.toFixed(1)}% used
-                </div>
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">This Month</p>
-                  <p className="text-lg font-semibold">{quotaData.tierUsage.premium.count} API calls</p>
-                  <p className="text-xs text-muted-foreground">Est. cost: ${quotaData.tierUsage.premium.cost.toFixed(4)}</p>
+                <div className="pt-4 border-t text-center">
+                  <p className="text-lg font-semibold">${quotaData.tierUsage.premium.cost.toFixed(4)}</p>
+                  <p className="text-xs text-muted-foreground">Estimated cost</p>
                 </div>
               </CardContent>
             </Card>
@@ -306,28 +291,13 @@ export default function CreditsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Used</span>
-                    <span className="text-2xl font-bold">{quotaData.used.normal}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Limit</span>
-                    <span className="text-lg">{quotaData.limits.normal}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Remaining</span>
-                    <Badge className={TIER_COLORS.normal.badge}>{quotaData.remaining.normal}</Badge>
-                  </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold">{quotaData.tierUsage.normal.count}</p>
+                  <p className="text-sm text-muted-foreground">API calls this month</p>
                 </div>
-                <Progress value={quotaData.percentages.normal} className="h-2" />
-                <div className="text-xs text-muted-foreground">
-                  {quotaData.percentages.normal.toFixed(1)}% used
-                </div>
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">This Month</p>
-                  <p className="text-lg font-semibold">{quotaData.tierUsage.normal.count} API calls</p>
-                  <p className="text-xs text-muted-foreground">Est. cost: ${quotaData.tierUsage.normal.cost.toFixed(4)}</p>
+                <div className="pt-4 border-t text-center">
+                  <p className="text-lg font-semibold">${quotaData.tierUsage.normal.cost.toFixed(4)}</p>
+                  <p className="text-xs text-muted-foreground">Estimated cost</p>
                 </div>
               </CardContent>
             </Card>
@@ -344,28 +314,13 @@ export default function CreditsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Used</span>
-                    <span className="text-2xl font-bold">{quotaData.used.eco}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Limit</span>
-                    <span className="text-lg">{quotaData.limits.eco}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Remaining</span>
-                    <Badge className={TIER_COLORS.eco.badge}>{quotaData.remaining.eco}</Badge>
-                  </div>
+                <div className="text-center">
+                  <p className="text-3xl font-bold">{quotaData.tierUsage.eco.count}</p>
+                  <p className="text-sm text-muted-foreground">API calls this month</p>
                 </div>
-                <Progress value={quotaData.percentages.eco} className="h-2" />
-                <div className="text-xs text-muted-foreground">
-                  {quotaData.percentages.eco.toFixed(1)}% used
-                </div>
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">This Month</p>
-                  <p className="text-lg font-semibold">{quotaData.tierUsage.eco.count} API calls</p>
-                  <p className="text-xs text-muted-foreground">Est. cost: ${quotaData.tierUsage.eco.cost.toFixed(4)}</p>
+                <div className="pt-4 border-t text-center">
+                  <p className="text-lg font-semibold">${quotaData.tierUsage.eco.cost.toFixed(4)}</p>
+                  <p className="text-xs text-muted-foreground">Estimated cost</p>
                 </div>
               </CardContent>
             </Card>

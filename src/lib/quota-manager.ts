@@ -46,6 +46,23 @@ export interface QuotaDeduction {
 
 export class QuotaManager {
   /**
+   * Tier-based credit costs
+   * Eco = 1 credit, Normal = 4 credits, Premium = 20 credits
+   */
+  private static readonly TIER_CREDIT_COSTS: Record<string, number> = {
+    eco: 1,
+    normal: 4,
+    premium: 20
+  }
+
+  /**
+   * Get credit cost for a model tier
+   */
+  getTierCreditCost(tier: 'premium' | 'normal' | 'eco'): number {
+    return QuotaManager.TIER_CREDIT_COSTS[tier] || 4 // Default to normal cost
+  }
+
+  /**
    * Check if user can make request with given model
    */
   async checkQuotaAvailability(
@@ -53,15 +70,42 @@ export class QuotaManager {
     modelName: string
   ): Promise<UserQuotaStatus> {
     try {
-      // Get model tier info
-      const modelInfo = getModelTier(modelName)
+      // Get model tier info - first try hardcoded, then database
+      let modelInfo = getModelTier(modelName)
+      
+      // If not found in hardcoded list, try database lookup
       if (!modelInfo) {
-        return {
-          allowed: false,
-          reason: `Unknown model: ${modelName}`,
-          quotaRemaining: { bonusMessages: 0, premium: 0, normal: 0, eco: 0 },
-          planTier: 'free',
-          currentUsage: { messages: 0, premium: 0, normal: 0, eco: 0 }
+        const { data: dbModel } = await supabase
+          .from('model_tiers')
+          .select('tier, provider, model_name')
+          .eq('model_name', modelName)
+          .eq('active', true)
+          .maybeSingle()
+        
+        if (dbModel) {
+          // Create a minimal ModelTierInfo from database
+          modelInfo = {
+            provider: dbModel.provider?.toLowerCase() || 'unknown',
+            modelId: dbModel.model_name,
+            tier: dbModel.tier as 'premium' | 'normal' | 'eco',
+            displayName: dbModel.model_name,
+            costPer1k: { input: 0, output: 0 }, // Will be calculated from actual usage
+            routingStrategy: 'api_key'
+          }
+        }
+      }
+      
+      // If still not found, default to 'normal' tier to allow the request
+      // This prevents blocking legitimate requests for models not in our tier lists
+      if (!modelInfo) {
+        console.warn(`[QuotaManager] Model "${modelName}" not found in tier lists, defaulting to normal tier`)
+        modelInfo = {
+          provider: 'unknown',
+          modelId: modelName,
+          tier: 'normal',
+          displayName: modelName,
+          costPer1k: { input: 0, output: 0 },
+          routingStrategy: 'api_key'
         }
       }
 
@@ -172,14 +216,54 @@ export class QuotaManager {
     try {
       const { userId, modelName, sessionId, inputTokens, outputTokens, estimatedCost } = deduction
 
-      // Get model tier info
-      const modelInfo = getModelTier(modelName)
+      // Get model tier info - first try hardcoded, then database
+      let modelInfo = getModelTier(modelName)
+      
+      // If not found in hardcoded list, try database lookup
       if (!modelInfo) {
-        throw new Error(`Unknown model: ${modelName}`)
+        const { data: dbModel } = await supabase
+          .from('model_tiers')
+          .select('tier, provider, model_name')
+          .eq('model_name', modelName)
+          .eq('active', true)
+          .maybeSingle()
+        
+        if (dbModel) {
+          modelInfo = {
+            provider: dbModel.provider?.toLowerCase() || 'unknown',
+            modelId: dbModel.model_name,
+            tier: dbModel.tier as 'premium' | 'normal' | 'eco',
+            displayName: dbModel.model_name,
+            costPer1k: { input: 0, output: 0 },
+            routingStrategy: 'api_key'
+          }
+        }
+      }
+      
+      // If still not found, default to 'normal' tier
+      if (!modelInfo) {
+        console.warn(`[QuotaManager] deductQuota: Model "${modelName}" not found, defaulting to normal tier`)
+        modelInfo = {
+          provider: 'unknown',
+          modelId: modelName,
+          tier: 'normal',
+          displayName: modelName,
+          costPer1k: { input: 0, output: 0 },
+          routingStrategy: 'api_key'
+        }
       }
 
-      // Calculate actual cost if not provided
+      // Calculate actual cost if not provided (in dollars) - for record keeping
       const actualCost = estimatedCost || calculatePerspectiveCost(modelName, inputTokens, outputTokens)
+
+      // Use tier-based credit costs: Eco=1, Normal=4, Premium=20
+      const creditsToDeduct = this.getTierCreditCost(modelInfo.tier)
+      console.log(`[QuotaManager] Deducting ${creditsToDeduct} credits for ${modelInfo.tier} tier model: ${modelName}`)
+
+      // Deduct credits from user_credits when using admin-provided models
+      if (deduction.sourceType === 'admin_credits' || deduction.sourceType === 'admin_key' || !deduction.sourceType) {
+        await this.deductUserCredits(userId, creditsToDeduct)
+      }
 
       // Try to deduct from bonus messages first (FIFO - expiring soonest first)
       const bonusDeducted = await bonusManager.deductFromBonuses(userId, 1)
@@ -238,6 +322,7 @@ export class QuotaManager {
         total_tokens: inputTokens + outputTokens,
         estimated_cost: actualCost,
         perspectives_deducted: 1,
+        credits_deducted: creditsToDeduct, // Track tier-based credits: Eco=1, Normal=4, Premium=20
         request_metadata: deduction.requestMetadata || {},
         response_metadata: deduction.responseMetadata || {}
       }
@@ -472,6 +557,90 @@ export class QuotaManager {
     } catch (error) {
       console.error('Error in updateUserPlan:', error)
       throw error
+    }
+  }
+
+  /**
+   * Deduct credits from user's balance when using admin-provided models
+   * Deducts from promotional_balance first (FIFO), then from regular balance
+   */
+  async deductUserCredits(userId: string, creditsToDeduct: number): Promise<void> {
+    try {
+      if (creditsToDeduct <= 0) return
+
+      // Get current credit balances
+      const { data: userCredits, error: fetchError } = await supabase
+        .from('user_credits')
+        .select('balance, promotional_balance, total_spent')
+        .eq('user_id', userId)
+        .maybeSingle()
+
+      if (fetchError) {
+        console.error('Error fetching user credits:', fetchError)
+        throw new Error('Failed to fetch user credits')
+      }
+
+      if (!userCredits) {
+        // Create initial credit record if it doesn't exist
+        const { error: insertError } = await supabase
+          .from('user_credits')
+          .insert({
+            user_id: userId,
+            balance: 0,
+            promotional_balance: 0,
+            total_spent: creditsToDeduct,
+            updated_at: new Date().toISOString()
+          })
+        
+        if (insertError) {
+          console.error('Error creating user credits:', insertError)
+        }
+        return
+      }
+
+      const currentBalance = parseFloat(userCredits.balance?.toString() || '0')
+      const currentPromoBalance = parseFloat(userCredits.promotional_balance?.toString() || '0')
+      const currentTotalSpent = parseFloat(userCredits.total_spent?.toString() || '0')
+
+      let remainingToDeduct = creditsToDeduct
+      let newPromoBalance = currentPromoBalance
+      let newBalance = currentBalance
+
+      // Deduct from promotional balance first (FIFO - use free credits first)
+      if (currentPromoBalance > 0) {
+        const promoDeduction = Math.min(currentPromoBalance, remainingToDeduct)
+        newPromoBalance = currentPromoBalance - promoDeduction
+        remainingToDeduct -= promoDeduction
+      }
+
+      // Deduct remainder from regular balance
+      if (remainingToDeduct > 0 && currentBalance > 0) {
+        const balanceDeduction = Math.min(currentBalance, remainingToDeduct)
+        newBalance = currentBalance - balanceDeduction
+        remainingToDeduct -= balanceDeduction
+      }
+
+      // Update user credits
+      const { error: updateError } = await supabase
+        .from('user_credits')
+        .update({
+          balance: newBalance,
+          promotional_balance: newPromoBalance,
+          total_spent: currentTotalSpent + creditsToDeduct,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId)
+
+      if (updateError) {
+        console.error('Error updating user credits:', updateError)
+        throw new Error('Failed to update user credits')
+      }
+
+      console.log(`[QuotaManager] Deducted ${creditsToDeduct} credits from user ${userId}. Promo: ${currentPromoBalance} -> ${newPromoBalance}, Balance: ${currentBalance} -> ${newBalance}`)
+
+    } catch (error) {
+      console.error('Error deducting user credits:', error)
+      // Don't throw - credit deduction failure shouldn't block the request
     }
   }
 }

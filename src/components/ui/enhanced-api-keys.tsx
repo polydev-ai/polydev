@@ -5,10 +5,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { usePreferences } from '../../hooks/usePreferences'
 import { useEnhancedApiKeysData } from '../../hooks/useEnhancedApiKeysData'
 import { createClient } from '../../app/utils/supabase/client'
-import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, AlertCircle, Check, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Clock, RefreshCw, Copy } from 'lucide-react'
+import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, AlertCircle, Check, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Clock, RefreshCw, Copy, BarChart3, Activity, TrendingUp } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { ProviderConfig } from '../../types/providers'
-import { PROVIDER_ICONS } from '../../lib/openrouter-providers'
+import { PROVIDER_ICONS } from '../../lib/provider-icons'
 // Use API endpoint instead of direct modelsDevService import to avoid server-side imports in client component
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { getModelTier } from '../../lib/model-tiers'
@@ -166,6 +166,16 @@ export default function EnhancedApiKeysPage() {
   const [cliStatusLoading, setCliStatusLoading] = useState(false)
   const [viewMode, setViewMode] = useState<'simple' | 'advanced'>('simple')
 
+  // Model usage analytics state
+  const [modelAnalytics, setModelAnalytics] = useState<{
+    modelBreakdown: Array<{ model: string; tier: string; requests: number; credits: number }>
+    tierBreakdown: { premium: { requests: number; credits: number }; normal: { requests: number; credits: number }; eco: { requests: number; credits: number } }
+    totalCreditsUsed: number
+    totalRequests: number
+  } | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [showAnalytics, setShowAnalytics] = useState(false) // Hidden by default
+
   // Combine loading states
   const loading = dataLoading || authLoading || preferencesLoading
   
@@ -181,6 +191,34 @@ export default function EnhancedApiKeysPage() {
   })
 
   const supabase = createClient()
+
+  // Fetch model analytics
+  const fetchModelAnalytics = useCallback(async () => {
+    try {
+      setAnalyticsLoading(true)
+      const response = await fetch('/api/usage/credits?timeframe=30d')
+      if (response.ok) {
+        const data = await response.json()
+        setModelAnalytics({
+          modelBreakdown: data.modelBreakdown || [],
+          tierBreakdown: data.tierBreakdown || { premium: { requests: 0, credits: 0 }, normal: { requests: 0, credits: 0 }, eco: { requests: 0, credits: 0 } },
+          totalCreditsUsed: data.period?.totalCreditsUsed || 0,
+          totalRequests: data.period?.totalRequests || 0
+        })
+      }
+    } catch (err) {
+      console.error('Failed to fetch model analytics:', err)
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }, [])
+
+  // Fetch analytics when expanded
+  useEffect(() => {
+    if (user && showAnalytics && !modelAnalytics) {
+      fetchModelAnalytics()
+    }
+  }, [user, showAnalytics, modelAnalytics, fetchModelAnalytics])
 
   // Copy API key to clipboard
   const copyApiKey = async (apiKey: ApiKey) => {
@@ -750,6 +788,138 @@ export default function EnhancedApiKeysPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Model Usage Analytics - Collapsible Section */}
+      <div className="bg-white rounded-lg border border-slate-200 hover:shadow-lg transition-shadow">
+        <button
+          onClick={() => setShowAnalytics(!showAnalytics)}
+          className="w-full p-4 flex items-center justify-between text-left"
+        >
+          <div className="flex items-center space-x-2">
+            <BarChart3 className="w-5 h-5 text-slate-700" />
+            <h2 className="text-lg font-semibold text-slate-900">Model Usage Analytics</h2>
+            <span className="text-xs text-slate-500">(Last 30 Days)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            {analyticsLoading && <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />}
+            <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${showAnalytics ? 'rotate-180' : ''}`} />
+          </div>
+        </button>
+
+        {showAnalytics && (
+          <div className="px-6 pb-6 border-t border-slate-100">
+            {!modelAnalytics ? (
+              <div className="py-8 text-center text-slate-500">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+                <p>Loading analytics...</p>
+              </div>
+            ) : (
+              <>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 mb-6">
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    <p className="text-xs text-slate-500 mb-1">Total Credits Used</p>
+                    <p className="text-2xl font-bold text-slate-900">{modelAnalytics.totalCreditsUsed.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    <p className="text-xs text-slate-500 mb-1">Total Requests</p>
+                    <p className="text-2xl font-bold text-slate-900">{modelAnalytics.totalRequests.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    <p className="text-xs text-slate-500 mb-1">Avg Credits/Request</p>
+                    <p className="text-2xl font-bold text-slate-900">
+                      {modelAnalytics.totalRequests > 0
+                        ? (modelAnalytics.totalCreditsUsed / modelAnalytics.totalRequests).toFixed(1)
+                        : '0'}
+                    </p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    <p className="text-xs text-slate-500 mb-1">Models Used</p>
+                    <p className="text-2xl font-bold text-slate-900">{modelAnalytics.modelBreakdown.length}</p>
+                  </div>
+                </div>
+
+                {/* Tier Breakdown */}
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    Usage by Tier
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-slate-700">Premium</span>
+                        <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded">20 cr/req</span>
+                      </div>
+                      <p className="text-xl font-bold text-slate-900">{modelAnalytics.tierBreakdown.premium.requests}</p>
+                      <p className="text-xs text-slate-600">requests • {modelAnalytics.tierBreakdown.premium.credits} credits</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-slate-700">Normal</span>
+                        <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded">4 cr/req</span>
+                      </div>
+                      <p className="text-xl font-bold text-slate-900">{modelAnalytics.tierBreakdown.normal.requests}</p>
+                      <p className="text-xs text-slate-600">requests • {modelAnalytics.tierBreakdown.normal.credits} credits</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-slate-700">Eco</span>
+                        <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded">1 cr/req</span>
+                      </div>
+                      <p className="text-xl font-bold text-slate-900">{modelAnalytics.tierBreakdown.eco.requests}</p>
+                      <p className="text-xs text-slate-600">requests • {modelAnalytics.tierBreakdown.eco.credits} credits</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Models */}
+                {modelAnalytics.modelBreakdown.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" />
+                      Top Models by Credits
+                    </h3>
+                    <div className="space-y-2">
+                      {modelAnalytics.modelBreakdown.slice(0, 5).map((model, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-slate-500 w-5">{idx + 1}.</span>
+                            <div>
+                              <p className="text-sm font-medium text-slate-900 truncate max-w-[250px]" title={model.model}>
+                                {model.model}
+                              </p>
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                                {model.tier}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-slate-900">{model.credits} credits</p>
+                            <p className="text-xs text-slate-500">{model.requests} requests</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Refresh button */}
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <button
+                    onClick={fetchModelAnalytics}
+                    disabled={analyticsLoading}
+                    className="text-slate-600 hover:text-slate-900 text-sm flex items-center gap-1"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${analyticsLoading ? 'animate-spin' : ''}`} />
+                    <span>Refresh Analytics</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Simple Mode: Just Perspectives and Tier Priority */}
       {viewMode === 'simple' && (

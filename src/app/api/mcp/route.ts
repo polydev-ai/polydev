@@ -5,7 +5,6 @@ import { createClient } from '@/app/utils/supabase/server'
 import { createHash } from 'crypto'
 import { MCPMemoryManager } from '@/lib/mcpMemory'
 import { subscriptionManager } from '@/lib/subscriptionManager'
-import { OpenRouterManager } from '@/lib/openrouterManager'
 import { modelsDevService } from '@/lib/models-dev-integration'
 import { resolveProviderModelId } from '@/lib/model-resolver'
 import { apiManager } from '@/lib/api'
@@ -1539,341 +1538,147 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                                  apiKeyForModel?.max_tokens ??
                                  maxTokens
         // Handle Credits Only mode (when encrypted_key is empty)
-        console.log(`[MCP] CRITICAL - Checking credits-only for model "${model}":`, {
+        console.log(`[MCP] Checking credits-only for model "${model}":`, {
           hasEncryptedKey: !!apiKeyForModel.encrypted_key,
           keyPreview: apiKeyForModel.key_preview,
           provider: providerName
         })
         if (!apiKeyForModel.encrypted_key || apiKeyForModel.key_preview === 'Credits Only') {
-          console.log(`[MCP] Credits-only configuration for ${providerName}, using OpenRouter credits...`)
+          // User doesn't have their own API key - try admin-provided key as fallback
+          console.log(`[MCP] No user API key for ${providerName}, checking for admin-provided key...`)
 
-          try {
-            // Resolve model ID for OpenRouter
-            console.log(`[MCP] Resolving model ${model} for OpenRouter...`)
-            const openrouterModelId = await resolveProviderModelId(model, 'openrouter')
-            console.log(`[MCP] Resolved ${model} → ${openrouterModelId}`)
+          // Check for admin-provided key for this provider
+          const { data: adminKey } = await serviceRoleSupabase
+            .from('user_api_keys')
+            .select('encrypted_key, api_base')
+            .eq('provider', providerName)
+            .eq('is_admin_key', true)
+            .eq('active', true)
+            .single()
 
-            if (openrouterModelId === model) {
-              console.error(`[MCP] No OpenRouter mapping found for ${model}`)
+          if (adminKey?.encrypted_key) {
+            console.log(`[MCP] Found admin-provided key for ${providerName}, using as fallback`)
+            const adminDecryptedKey = Buffer.from(adminKey.encrypted_key, 'base64').toString('utf-8')
+
+            try {
+              const apiOptions: any = {
+                model: cleanModel,
+                messages: [{ role: 'user' as const, content: contextualPrompt }],
+                temperature: providerTemperature,
+                max_tokens: providerMaxTokens,
+                stream: false,
+                apiKey: adminDecryptedKey,
+                baseUrl: adminKey.api_base || provider.base_url
+              }
+
+              if (model === 'gpt-5' || model.includes('gpt-5')) {
+                apiOptions.max_completion_tokens = providerMaxTokens
+                delete apiOptions.max_tokens
+              }
+
+              const apiResponse = await apiManager.createMessage(providerName, apiOptions)
+
+              const contentType = apiResponse.headers.get('content-type') || ''
+              if (!contentType.includes('application/json')) {
+                throw new Error(`Invalid response from ${provider.display_name}`)
+              }
+
+              const result = await apiResponse.json()
+              if (result.error) {
+                throw new Error(result.error.message || `${provider.display_name} API error`)
+              }
+
+              const endTime = Date.now()
+              const duration = endTime - startTime
+              const tokensUsed = result.usage?.total_tokens || 0
+
               return {
                 model,
-                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
+                provider: `${provider.display_name} (Admin Key)`,
+                content: result.choices?.[0]?.message?.content || result.content?.[0]?.text || '',
+                tokens_used: tokensUsed,
+                response_time_ms: duration,
+                latency_ms: duration,
+                fallback: true,
+                source_type: 'admin_key'
               }
+            } catch (adminKeyError) {
+              console.error(`[MCP] Admin key fallback failed for ${providerName}:`, adminKeyError)
             }
+          }
 
-            // Get OpenRouter strategy for credits
-            const openRouterManager = new OpenRouterManager()
-            const estimatedTokens = Math.min(providerMaxTokens || 1000, 4000)
-            const estimatedCost = estimatedTokens * 0.00003
-            const isCliRequest = request?.headers.get('user-agent')?.includes('cli') ||
-                                request?.headers.get('x-request-source') === 'cli' ||
-                                args.source === 'cli'
-
-            const strategy = await openRouterManager.determineApiKeyStrategy(
-              user.id,
-              undefined,
-              estimatedCost,
-              isCliRequest
-            )
-
-            if (!strategy.canProceed) {
-              return {
-                model,
-                error: strategy.error || 'Cannot proceed with request'
-              }
-            }
-
-            console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy for ${model}`)
-
-            // Use apiManager like chat API does
-            const apiOptions = {
-              model: openrouterModelId,
-              messages: [{ role: 'user' as const, content: contextualPrompt }],
-              temperature: providerTemperature,
-              maxTokens: providerMaxTokens,
-              stream: false,
-              apiKey: strategy.apiKey,
-              baseUrl: 'https://openrouter.ai/api/v1'
-            }
-
-            const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
-
-            // Parse the response
-            const contentType = apiResponse.headers.get('content-type') || ''
-            if (!contentType.includes('application/json')) {
-              throw new Error('Invalid response from OpenRouter')
-            }
-
-            const result = await apiResponse.json()
-            if (result.error) {
-              throw new Error(result.error.message || 'OpenRouter API error')
-            }
-
-            const endTime = Date.now()
-            const duration = endTime - startTime
-            const tokensUsed = result.usage?.total_tokens || 0
-
-            // Handle credits if using credits strategy
-            if (strategy.strategy === 'credits') {
-              try {
-                const actualCost = tokensUsed * 0.00003
-                await openRouterManager.deductCredits(user.id, actualCost)
-                await openRouterManager.recordUsage(
-                  user.id,
-                  model,
-                  Math.floor(tokensUsed * 0.7),
-                  Math.floor(tokensUsed * 0.3),
-                  actualCost,
-                  strategy.strategy
-                )
-              } catch (creditError) {
-                console.error('[MCP] Error handling credits:', creditError)
-              }
-            }
-
-            return {
-              model,
-              provider: 'OpenRouter (Credits)',
-              content: result.choices?.[0]?.message?.content || '',
-              tokens_used: tokensUsed,
-              response_time_ms: duration,
-              latency_ms: duration
-            }
-
-          } catch (openRouterError) {
-            console.error(`[MCP] OpenRouter fallback failed:`, openRouterError)
-            return {
-              model,
-              error: `No API key found for ${provider.display_name} and OpenRouter fallback failed. Please add your API key in the dashboard or purchase credits.`
-            }
+          // No admin key available - user needs to add their own API key
+          return {
+            model,
+            error: `No API key configured for ${provider.display_name}. Please add your ${provider.display_name} API key in the dashboard Settings → API Keys.`
           }
         }
 
         // Check provider budget before making API call
         if (apiKeyForModel.monthly_budget && apiKeyForModel.current_usage &&
             parseFloat(apiKeyForModel.current_usage.toString()) >= parseFloat(apiKeyForModel.monthly_budget.toString())) {
-          
-          console.log(`[MCP] Budget exceeded for ${provider.display_name}, attempting OpenRouter fallback...`)
-          
-          try {
-            // Initialize OpenRouter manager for budget fallback
-            const openRouterManager = new OpenRouterManager()
-            
-            // Estimate request cost
-            const estimatedTokens = Math.min(maxTokens || 1000, 4000)
-            const estimatedCost = estimatedTokens * 0.00003
-            
-            // Determine API key strategy with CLI priority
-            const strategy = await openRouterManager.determineApiKeyStrategy(
-              user.id,
-              undefined,
-              estimatedCost,
-              isCliRequest
-            )
-            
-            if (!strategy.canProceed) {
-              return {
-                model,
-                error: `Monthly budget of $${apiKeyForModel.monthly_budget} exceeded for ${provider.display_name}. ${strategy.error || 'No credits available for fallback.'}`
-              }
-            }
-            
-            // Use OpenRouter as fallback with apiManager (same as chat API)
-            console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy due to budget limit`)
 
-            // Map to OpenRouter-specific model ID using shared resolver
-            const openrouterModelIdB = await resolveProviderModelId(model, 'openrouter')
-            if (openrouterModelIdB === model) {
-              // No mapping found - resolver returns original ID when no mapping exists
-              console.warn(`[MCP] Budget-fallback credits blocked: no OpenRouter mapping for ${model}`)
-              return {
-                model,
-                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
-              }
-            }
+          console.log(`[MCP] Budget exceeded for ${provider.display_name}, checking for admin key fallback...`)
 
-            // Use apiManager like chat API does for OpenRouter credits
-            const apiOptions = {
-              model: openrouterModelIdB,
-              messages: [{ role: 'user' as const, content: contextualPrompt }],
-              temperature: providerTemperature,
-              maxTokens: providerMaxTokens,
-              stream: false,
-              apiKey: strategy.apiKey,
-              baseUrl: 'https://openrouter.ai/api/v1'
-            }
+          // Check for admin-provided key for this provider
+          const { data: adminKeyBudget } = await serviceRoleSupabase
+            .from('user_api_keys')
+            .select('encrypted_key, api_base')
+            .eq('provider', providerName)
+            .eq('is_admin_key', true)
+            .eq('active', true)
+            .single()
 
-            const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
+          if (adminKeyBudget?.encrypted_key) {
+            console.log(`[MCP] Found admin key for budget fallback`)
+            const adminDecryptedKey = Buffer.from(adminKeyBudget.encrypted_key, 'base64').toString('utf-8')
 
-            // Parse the response
-            let response: APIResponse
-            const contentType = apiResponse.headers.get('content-type') || ''
-            if (contentType.includes('application/json')) {
-              const result = await apiResponse.json()
-              if (result.error) {
-                throw new Error(result.error.message || 'OpenRouter API error')
+            try {
+              const apiOptions: any = {
+                model: cleanModel,
+                messages: [{ role: 'user' as const, content: contextualPrompt }],
+                temperature: providerTemperature,
+                max_tokens: providerMaxTokens,
+                stream: false,
+                apiKey: adminDecryptedKey,
+                baseUrl: adminKeyBudget.api_base || provider.base_url
               }
-              response = {
-                content: result.choices?.[0]?.message?.content || '',
-                tokens_used: result.usage?.total_tokens || 0
+
+              if (model === 'gpt-5' || model.includes('gpt-5')) {
+                apiOptions.max_completion_tokens = providerMaxTokens
+                delete apiOptions.max_tokens
               }
-            } else {
-              throw new Error('Invalid response from OpenRouter')
-            }
-              
-              const endTime = Date.now()
-              const duration = endTime - startTime
-              
-              // Handle credits if using credits strategy
-              if (strategy.strategy === 'credits') {
-                try {
-                  const actualCost = response.tokens_used * 0.00003
-                  await openRouterManager.deductCredits(user.id, actualCost)
-                  await openRouterManager.recordUsage(
-                    user.id,
-                    model,
-                    Math.floor(response.tokens_used * 0.7),
-                    Math.floor(response.tokens_used * 0.3),
-                    actualCost,
-                    strategy.strategy
-                  )
-                } catch (creditError) {
-                  console.error('[MCP] Error handling credits:', creditError)
+
+              const apiResponse = await apiManager.createMessage(providerName, apiOptions)
+
+              const contentType = apiResponse.headers.get('content-type') || ''
+              if (contentType.includes('application/json')) {
+                const result = await apiResponse.json()
+                if (result.error) {
+                  throw new Error(result.error.message || `${provider.display_name} API error`)
+                }
+
+                const endTime = Date.now()
+                const duration = endTime - startTime
+
+                return {
+                  model,
+                  provider: `${provider.display_name} (Admin Key - Budget Exceeded)`,
+                  content: result.choices?.[0]?.message?.content || result.content?.[0]?.text || '',
+                  tokens_used: result.usage?.total_tokens || 0,
+                  response_time_ms: duration,
+                  fallback: true,
+                  source_type: 'admin_key'
                 }
               }
-              
-              return {
-                model,
-                provider: `${provider.display_name} (Credits - Budget Exceeded)`,
-                content: response.content,
-                tokens_used: response.tokens_used,
-                response_time_ms: duration,
-                strategy: strategy.strategy,
-                fallback: true
-              }
-          } catch (fallbackError) {
-            console.error(`[MCP] Budget fallback failed:`, fallbackError)
+            } catch (fallbackError) {
+              console.error(`[MCP] Admin key budget fallback failed:`, fallbackError)
+            }
           }
-          
+
           return {
             model,
-            error: `Monthly budget of $${apiKeyForModel.monthly_budget} exceeded for ${provider.display_name}. Current usage: $${apiKeyForModel.current_usage}. OpenRouter fallback not available.`
-          }
-        }
-
-        // Handle credits-only mode or decode API key
-        if (!apiKeyForModel.encrypted_key) {
-          // This is a credits-only configuration, trigger OpenRouter fallback
-          console.log(`[MCP] Credits-only configuration for ${provider.display_name}, using OpenRouter fallback...`)
-          
-          try {
-            // Initialize OpenRouter manager for credits-only fallback
-            const openRouterManager = new OpenRouterManager()
-            
-            // Estimate request cost
-            const estimatedTokens = Math.min(maxTokens || 1000, 4000)
-            const estimatedCost = estimatedTokens * 0.00003
-            
-            // Check if this is a CLI request
-            const isCliRequest = request?.headers.get('user-agent')?.includes('cli') || 
-                                request?.headers.get('x-request-source') === 'cli' ||
-                                args.source === 'cli'
-            
-            // Determine API key strategy with CLI priority
-            const strategy = await openRouterManager.determineApiKeyStrategy(
-              user.id,
-              undefined,
-              estimatedCost,
-              isCliRequest
-            )
-            
-            if (!strategy.canProceed) {
-              return {
-                model,
-                error: `${strategy.error || 'Cannot proceed with request'}`
-              }
-            }
-            
-            console.log(`[MCP] Using OpenRouter ${strategy.strategy} strategy for credits-only ${model}`)
-
-            // Resolve OpenRouter model ID using shared resolver
-            const openrouterModelIdCO = await resolveProviderModelId(model, 'openrouter')
-            if (openrouterModelIdCO === model) {
-              // No mapping found - resolver returns original ID when no mapping exists
-              console.warn(`[MCP] Credits-only fallback blocked: no OpenRouter mapping for ${model}`)
-              return {
-                model,
-                error: `Polydev credits can't support this model without API keys (no OpenRouter mapping).`
-              }
-            }
-
-            // Use apiManager like chat API does for OpenRouter credits
-            const apiOptions = {
-              model: openrouterModelIdCO,
-              messages: [{ role: 'user' as const, content: contextualPrompt }],
-              temperature: providerTemperature,
-              maxTokens: providerMaxTokens,
-              stream: false,
-              apiKey: strategy.apiKey,
-              baseUrl: 'https://openrouter.ai/api/v1'
-            }
-
-            const apiResponse = await apiManager.createMessage('openrouter', apiOptions)
-
-            // Parse the response
-            let response: APIResponse
-            const contentType = apiResponse.headers.get('content-type') || ''
-            if (contentType.includes('application/json')) {
-              const result = await apiResponse.json()
-              if (result.error) {
-                throw new Error(result.error.message || 'OpenRouter API error')
-              }
-              response = {
-                content: result.choices?.[0]?.message?.content || '',
-                tokens_used: result.usage?.total_tokens || 0
-              }
-            } else {
-              throw new Error('Invalid response from OpenRouter')
-            }
-            
-            const endTime = Date.now()
-            const duration = endTime - startTime
-            
-            // Handle credits if using credits strategy
-            if (strategy.strategy === 'credits') {
-              try {
-                const actualCost = response.tokens_used * 0.00003
-                await openRouterManager.deductCredits(user.id, actualCost)
-                await openRouterManager.recordUsage(
-                  user.id,
-                  model,
-                  Math.floor(response.tokens_used * 0.7),
-                  Math.floor(response.tokens_used * 0.3),
-                  actualCost,
-                  strategy.strategy
-                )
-              } catch (creditError) {
-                console.error('[MCP] Error handling credits:', creditError)
-              }
-            }
-            
-            console.log(`[MCP] ${provider.display_name} (${model}) credits-only - Duration: ${duration}ms, Tokens: ${response.tokens_used}`)
-            return {
-              model,
-              provider: `${provider.display_name} (Credits Only)`,
-              content: response.content,
-              tokens_used: response.tokens_used,
-              response_time_ms: duration,
-              strategy: strategy.strategy,
-              fallback: true
-            }
-            
-          } catch (creditsError) {
-            console.error(`[MCP] Credits-only fallback failed:`, creditsError)
-            return {
-              model,
-              error: `Credits-only mode failed. Please add your API key or purchase more credits.`
-            }
+            error: `Monthly budget of $${apiKeyForModel.monthly_budget} exceeded for ${provider.display_name}. Current usage: $${apiKeyForModel.current_usage}. Please increase your budget or add a new API key.`
           }
         }
 
@@ -1951,17 +1756,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Only check credits if using credits path
         let estimatedCost = 0
         if (usagePath === 'credits') {
-          let baseCost = 0.1 // Default fallback cost
-          
-          // Basic cost estimation for common models
+          let baseCost = 0.05 // Conservative fallback
+            
           if (model.includes('gpt-4') || model.includes('claude-3')) {
-            baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10 // Convert to credits
+            baseCost = (estimatedInputTokens * 0.00003 + estimatedOutputTokens * 0.00006) * 10
           } else if (model.includes('gpt-3.5') || model.includes('claude-haiku')) {
             baseCost = (estimatedInputTokens * 0.0000015 + estimatedOutputTokens * 0.000002) * 10
-          } else {
-            baseCost = 0.05 // Very conservative estimate for other models
           }
-
+            
           console.log(`[MCP Credit] Base cost for ${model}: ${baseCost} credits`)
 
           // Check credit sufficiency with 10% markup
@@ -2089,7 +1891,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           // Continue with original model ID
         }
 
-        // Use apiManager directly like the chat API does
+        // Use apiManager directly like chat API does
         let response: APIResponse
         try {
           // Build API options similar to chat API
@@ -2097,7 +1899,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             model: resolvedModelId, // Use resolved model ID
             messages: [{ role: 'user' as const, content: contextualPrompt }],
             temperature: providerTemperature,
-            maxTokens: providerMaxTokens,
+            max_tokens: providerMaxTokens,
             stream: false,
             apiKey: decryptedKey,
             baseUrl: provider.base_url
@@ -2106,7 +1908,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           // Handle model-specific parameter requirements (same as chat API)
           if (model === 'gpt-5' || model.includes('gpt-5')) {
             apiOptions.max_completion_tokens = providerMaxTokens
-            delete apiOptions.maxTokens
+            delete apiOptions.max_tokens
           }
 
           // Call apiManager.createMessage directly like chat API does
@@ -2484,8 +2286,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       // Extract provider from the response.provider field, or determine from model name
       const providerName = response.provider?.toLowerCase() || 'unknown'
       const provider = providerName.replace(/\s*\(.*\)$/, '').trim() // Remove any suffixes like "(Credits)"
-      const pricingKey = `${provider}:${response.model}`
-      const pricing = pricingMap.get(pricingKey)
+      const pricing = pricingMap.get(`${provider}:${response.model}`)
       
       let cost = 0
       if (pricing && response.tokens_used && !response.content?.error) {
@@ -2725,7 +2526,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         const limits = await modelsDevService.getModelLimits(friendlyId, providerId)
         const pricing = limits?.pricing
         if (pricing) {
-          const inputTokens = Math.floor(r.tokens_used * 0.25)
+          const inputTokens = Math.ceil(r.tokens_used * 0.25)
           const outputTokens = r.tokens_used - inputTokens
           const cost = (inputTokens / 1_000_000) * pricing.input + (outputTokens / 1_000_000) * pricing.output
           perResponseCost[i] = Number(cost.toFixed(6))
@@ -2958,15 +2759,6 @@ async function handleCliStatusReport(args: any, user: any): Promise<string> {
     }
 
     // Format provider name for user-friendly display
-    const formatProvider = (provider: string): string => {
-      switch (provider) {
-        case 'claude_code': return 'Claude Code'
-        case 'codex_cli': return 'Codex CLI'
-        case 'gemini_cli': return 'Gemini CLI'
-        default: return provider
-      }
-    }
-
     const providerName = formatProvider(provider)
     const statusIconMap: Record<string, string> = {
       'available': '✅',
@@ -3219,7 +3011,7 @@ async function handleSelectModelsInteractive(args: any, user: any, request: Next
 }
 
 // Helper function to get default model for a provider
-// Returns null if no default_model is configured - user must set it in dashboard
+// Returns null if no default_model is configured - user must set it in dashboard/models
 function getDefaultModelForProvider(provider: string): string | null {
   // No hardcoded defaults - user must configure default_model in dashboard/models
   return null
@@ -3318,8 +3110,8 @@ function getTopModelsFromPreferences(preferences: any, count: number = 3): strin
 
     // Sort providers by 'order'
     const providersSorted = Object.entries(modelPrefs)
-      .filter(([, pref]) => pref && typeof pref === 'object')
-      .sort(([, a]: any, [, b]: any) => (a.order || 0) - (b.order || 0))
+      .filter(([, pref]: [string, any]) => pref && typeof pref === 'object')
+      .sort(([_, a]: any, [, b]: any) => (a.order || 0) - (b.order || 0))
 
     console.log('[MCP] getTopModelsFromPreferences - Sorted providers:',
       providersSorted.map(([p, pref]: any) => `${p}(order:${pref.order}, models:${pref.models})`))

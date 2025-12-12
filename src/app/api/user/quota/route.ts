@@ -46,7 +46,7 @@ export async function GET() {
     // Get recent perspective usage breakdown
     const { data: usageStats, error: usageError } = await supabase
       .from('perspective_usage')
-      .select('model_tier, perspectives_deducted, estimated_cost, created_at, request_metadata')
+      .select('model_tier, perspectives_deducted, estimated_cost, credits_deducted, created_at, request_metadata')
       .eq('user_id', user.id)
       .gte('created_at', quota.current_month_start || new Date().toISOString())
       .order('created_at', { ascending: false })
@@ -54,25 +54,32 @@ export async function GET() {
 
     // Aggregate usage by tier
     const tierUsage = {
-      premium: { count: 0, cost: 0 },
-      normal: { count: 0, cost: 0 },
-      eco: { count: 0, cost: 0 }
+      premium: { count: 0, cost: 0, credits: 0 },
+      normal: { count: 0, cost: 0, credits: 0 },
+      eco: { count: 0, cost: 0, credits: 0 }
     }
 
     // Aggregate usage by source type
     const sourceUsage = {
-      cli: { count: 0, cost: 0, requests: 0 },
-      web: { count: 0, cost: 0, requests: 0 },
-      user_key: { count: 0, cost: 0, requests: 0 },
-      admin_credits: { count: 0, cost: 0, requests: 0 }
+      cli: { count: 0, cost: 0, credits: 0, requests: 0 },
+      web: { count: 0, cost: 0, credits: 0, requests: 0 },
+      user_key: { count: 0, cost: 0, credits: 0, requests: 0 },
+      admin_credits: { count: 0, cost: 0, credits: 0, requests: 0 }
     }
+
+    // Tier credit costs for fallback calculation
+    const tierCreditCosts = { premium: 20, normal: 4, eco: 1 }
 
     if (usageStats && !usageError) {
       usageStats.forEach(usage => {
         const tier = usage.model_tier as 'premium' | 'normal' | 'eco'
+        // Use actual credits_deducted if available, otherwise calculate from tier
+        const credits = usage.credits_deducted || tierCreditCosts[tier] || 4
+        
         if (tierUsage[tier]) {
           tierUsage[tier].count += usage.perspectives_deducted || 0
           tierUsage[tier].cost += usage.estimated_cost || 0
+          tierUsage[tier].credits += credits
         }
 
         // Extract source type from request_metadata
@@ -80,19 +87,23 @@ export async function GET() {
         if (sourceType === 'user_cli') {
           sourceUsage.cli.count += usage.perspectives_deducted || 0
           sourceUsage.cli.cost += usage.estimated_cost || 0
+          sourceUsage.cli.credits += credits
           sourceUsage.cli.requests += 1
         } else if (sourceType === 'user_key') {
           sourceUsage.user_key.count += usage.perspectives_deducted || 0
           sourceUsage.user_key.cost += usage.estimated_cost || 0
+          sourceUsage.user_key.credits += credits
           sourceUsage.user_key.requests += 1
         } else if (sourceType === 'admin_credits') {
           sourceUsage.admin_credits.count += usage.perspectives_deducted || 0
           sourceUsage.admin_credits.cost += usage.estimated_cost || 0
+          sourceUsage.admin_credits.credits += credits
           sourceUsage.admin_credits.requests += 1
         } else {
           // Default to web if no source type or 'admin_key'
           sourceUsage.web.count += usage.perspectives_deducted || 0
           sourceUsage.web.cost += usage.estimated_cost || 0
+          sourceUsage.web.credits += credits
           sourceUsage.web.requests += 1
         }
       })
@@ -148,6 +159,9 @@ export async function GET() {
       bonusMessages: bonusBalance,
       tierUsage,
       sourceUsage,
+      // Credit pricing info
+      tierCreditCosts,
+      totalCreditsUsed: tierUsage.premium.credits + tierUsage.normal.credits + tierUsage.eco.credits,
       updatedAt: quota.updated_at,
       // Include all-time count for display
       allTimeMessages: actualMessageCount.allTimeTotalMessages

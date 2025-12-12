@@ -40,6 +40,7 @@ interface PricingConfig {
       stripe_price_id_monthly: string
       stripe_price_id_annual: string
       message_limit: number | null
+      monthly_credits: number
       features: string[]
     }
     pro_tier: {
@@ -51,17 +52,7 @@ interface PricingConfig {
       stripe_price_id_monthly: string
       stripe_price_id_annual: string
       message_limit: number | null
-      features: string[]
-    }
-    enterprise_tier: {
-      name: string
-      price_cents_monthly: number
-      price_cents_annual: number
-      price_display_monthly: string
-      price_display_annual: string
-      stripe_price_id_monthly: string
-      stripe_price_id_annual: string
-      message_limit: number | null
+      monthly_credits: number
       features: string[]
     }
   }
@@ -188,7 +179,7 @@ export default function AdminPricing() {
     }
   }
 
-  const updateSubscriptionPrice = (tier: 'free_tier' | 'plus_tier' | 'pro_tier' | 'enterprise_tier', field: string, value: any) => {
+  const updateSubscriptionPrice = (tier: 'free_tier' | 'plus_tier' | 'pro_tier', field: string, value: any) => {
     if (!config) return
 
     const newConfig = {
@@ -261,7 +252,7 @@ export default function AdminPricing() {
                 Subscription Tiers
               </h2>
 
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Free Tier */}
                 <Card>
                   <CardHeader>
@@ -559,131 +550,6 @@ export default function AdminPricing() {
                             id="pro-stripe-annual"
                             value={config.subscription_pricing.pro_tier.stripe_price_id_annual}
                             onChange={(e) => updateSubscriptionPrice('pro_tier', 'stripe_price_id_annual', e.target.value)}
-                            placeholder="price_annual_xxx"
-                            className="text-sm"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Enterprise Tier */}
-                <Card className="border-2 border-slate-900">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      Enterprise Plan
-                      <div className="flex flex-col items-end gap-1">
-                        <Badge className="bg-slate-900 text-white">
-                          {config.subscription_pricing.enterprise_tier.price_display_monthly || '$60'}/month
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {config.subscription_pricing.enterprise_tier.price_display_annual || '$50'}/month annual
-                        </Badge>
-                      </div>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="enterprise-messages">Messages/Month</Label>
-                      <Input
-                        id="enterprise-messages"
-                        value="Unlimited"
-                        disabled
-                        className="bg-slate-100"
-                      />
-                    </div>
-                    <div className="border-t pt-4">
-                      <Label className="text-sm font-semibold mb-3 block">Pricing (Editable)</Label>
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor="enterprise-price-monthly" className="text-xs">Monthly Price (cents)</Label>
-                          <Input
-                            id="enterprise-price-monthly"
-                            type="number"
-                            value={config.subscription_pricing.enterprise_tier.price_cents_monthly}
-                            onChange={(e) => {
-                              const cents = parseInt(e.target.value)
-                              const display = `$${(cents / 100).toFixed(0)}`
-                              updateSubscriptionPrice('enterprise_tier', 'price_cents_monthly', cents)
-                              updateSubscriptionPrice('enterprise_tier', 'price_display_monthly', display)
-                            }}
-                            placeholder="6000 = $60"
-                            className="text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="enterprise-price-annual" className="text-xs">Annual Price Per Month (cents)</Label>
-                          <Input
-                            id="enterprise-price-annual"
-                            type="number"
-                            value={config.subscription_pricing.enterprise_tier.price_cents_annual}
-                            onChange={(e) => {
-                              const cents = parseInt(e.target.value)
-                              const display = `$${(cents / 100).toFixed(0)}`
-                              updateSubscriptionPrice('enterprise_tier', 'price_cents_annual', cents)
-                              updateSubscriptionPrice('enterprise_tier', 'price_display_annual', display)
-                            }}
-                            placeholder="5000 = $50/month"
-                            className="text-sm"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t pt-4">
-                      <Label className="text-sm font-semibold mb-3 block">Perspective Allocations</Label>
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor="enterprise-premium" className="text-xs">Premium Perspectives</Label>
-                          <Input
-                            id="enterprise-premium"
-                            type="number"
-                            placeholder="1200"
-                            className="text-sm"
-                            disabled
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="enterprise-normal" className="text-xs">Normal Perspectives</Label>
-                          <Input
-                            id="enterprise-normal"
-                            type="number"
-                            placeholder="5000"
-                            className="text-sm"
-                            disabled
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="enterprise-eco" className="text-xs">Eco Perspectives</Label>
-                          <Input
-                            id="enterprise-eco"
-                            type="number"
-                            placeholder="20000"
-                            className="text-sm"
-                            disabled
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t pt-4">
-                      <Label className="text-sm font-semibold mb-3 block">Stripe Configuration</Label>
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor="enterprise-stripe-monthly" className="text-xs">Monthly Price ID</Label>
-                          <Input
-                            id="enterprise-stripe-monthly"
-                            value={config.subscription_pricing.enterprise_tier.stripe_price_id_monthly}
-                            onChange={(e) => updateSubscriptionPrice('enterprise_tier', 'stripe_price_id_monthly', e.target.value)}
-                            placeholder="price_monthly_xxx"
-                            className="text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="enterprise-stripe-annual" className="text-xs">Annual Price ID</Label>
-                          <Input
-                            id="enterprise-stripe-annual"
-                            value={config.subscription_pricing.enterprise_tier.stripe_price_id_annual}
-                            onChange={(e) => updateSubscriptionPrice('enterprise_tier', 'stripe_price_id_annual', e.target.value)}
                             placeholder="price_annual_xxx"
                             className="text-sm"
                           />

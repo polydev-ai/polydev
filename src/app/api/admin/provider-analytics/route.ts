@@ -1,56 +1,22 @@
 'use server'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { createClient, createAdminClient } from '@/app/utils/supabase/server'
 
-// Get authenticated user from request
-async function getAuthenticatedUser(request: NextRequest) {
+// Helper function to check admin access
+async function checkAdminAccess(adminClient: any, userId: string, userEmail: string): Promise<boolean> {
+  const legacyAdminEmails = new Set(['admin@polydev.ai', 'venkat@polydev.ai', 'gvsfans@gmail.com']);
+  if (legacyAdminEmails.has(userEmail)) return true;
+
   try {
-    const cookieStore = await cookies()
-    const allCookies = cookieStore.getAll()
-
-    let accessToken = null
-
-    for (const cookie of allCookies) {
-      if (cookie.name.includes('auth-token')) {
-        try {
-          let decoded = cookie.value
-
-          if (cookie.value.startsWith('base64-')) {
-            decoded = Buffer.from(cookie.value.substring(7), 'base64').toString('utf-8')
-          }
-
-          const parsed = JSON.parse(decoded)
-          if (parsed.access_token) {
-            accessToken = parsed.access_token
-            break
-          }
-        } catch (e) {
-          continue
-        }
-      }
-    }
-
-    if (!accessToken) {
-      return null
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data: { user }, error } = await supabase.auth.getUser(accessToken)
-
-    if (error || !user) {
-      return null
-    }
-
-    return user
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+    return profile?.is_admin || false;
   } catch (error) {
-    console.error('Error in getAuthenticatedUser:', error)
-    return null
+    return false;
   }
 }
 
@@ -67,16 +33,21 @@ function getTimeRangeHours(timeRange: string): number {
 
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const user = await getAuthenticatedUser(request)
-    if (!user) {
+    const supabase = await createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const adminClient = createAdminClient()
+
+    // Check admin access
+    const isAdmin = await checkAdminAccess(adminClient, user.id, user.email || '')
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+    }
 
     const url = new URL(request.url)
     const provider = url.searchParams.get('provider')
@@ -87,7 +58,7 @@ export async function GET(request: NextRequest) {
     const startTime = new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString()
 
     // Get key usage stats with actual data from usage logs
-    let keysQuery = supabase
+    let keysQuery = adminClient
       .from('user_api_keys')
       .select('id, provider, key_name, priority_order, monthly_budget, daily_limit, current_usage, daily_usage, active, last_used_at')
       .eq('is_admin_key', true)
@@ -110,7 +81,7 @@ export async function GET(request: NextRequest) {
     // Fetch usage logs for each key from perspective_usage
     const keyUsageStats = await Promise.all(
       (keys || []).map(async (key) => {
-        const { data: logs } = await supabase
+        const { data: logs } = await adminClient
           .from('perspective_usage')
           .select('estimated_cost, input_tokens, output_tokens, request_metadata, response_metadata')
           .eq('provider_source_id', key.id)
@@ -168,7 +139,7 @@ export async function GET(request: NextRequest) {
 
     // Get error analysis from perspective_usage metadata
     const keyIds = (keys || []).map(k => k.id)
-    let errorQuery = supabase
+    let errorQuery = adminClient
       .from('perspective_usage')
       .select('provider_source_id, request_metadata, response_metadata')
       .gte('created_at', startTime)

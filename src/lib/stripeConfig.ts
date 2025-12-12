@@ -1,5 +1,84 @@
-// Production-grade Stripe configuration and credit packages
+// Production-grade Stripe configuration and subscription plans
+// Credit System: Premium = 20 credits, Normal = 4 credits, Eco = 1 credit
 
+export interface SubscriptionPlan {
+  id: string
+  name: string
+  description: string
+  monthlyCredits: number
+  priceId: string
+  productId: string
+  price: number // in cents
+  displayPrice: string
+  popular?: boolean
+  features: string[]
+}
+
+// New simplified subscription-based pricing
+// Credits rollover as long as user maintains at least Plus subscription
+export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
+  free: {
+    id: 'free',
+    name: 'Free',
+    description: 'Try it out',
+    monthlyCredits: 500, // One-time, not monthly
+    priceId: '', // No Stripe price for free tier
+    productId: '',
+    price: 0,
+    displayPrice: '$0',
+    features: [
+      '500 credits to start',
+      'All AI models access',
+      'MCP integration',
+      'Basic support'
+    ]
+  },
+  plus: {
+    id: 'plus',
+    name: 'Plus',
+    description: 'Most popular for developers',
+    monthlyCredits: 20000,
+    priceId: 'price_1Scw7FJtMA6wwImlxicpgLmQ',
+    productId: 'prod_Ta6JZabJj1dbhU',
+    price: 2500, // $25.00/month
+    displayPrice: '$25/month',
+    popular: true,
+    features: [
+      '20,000 credits/month',
+      'Credits rollover (while subscribed)',
+      'All AI models access',
+      'BYOK (use your own API keys)',
+      'Priority support'
+    ]
+  },
+  pro: {
+    id: 'pro',
+    name: 'Pro',
+    description: 'For power users',
+    monthlyCredits: 50000,
+    priceId: 'price_1Scw7FJtMA6wwImlH8SulHFv',
+    productId: 'prod_Ta6J26mimjYWJF',
+    price: 5000, // $50.00/month
+    displayPrice: '$50/month',
+    features: [
+      '50,000 credits/month',
+      'Credits rollover (while subscribed)',
+      'All AI models access',
+      'BYOK (use your own API keys)',
+      'Priority support',
+      'Advanced analytics'
+    ]
+  }
+}
+
+// Credit cost per model tier (used for deduction calculations)
+export const CREDIT_COSTS = {
+  premium: 20,  // Premium models (GPT-5.1, Claude Opus 4.5, etc.)
+  normal: 4,    // Normal models
+  eco: 1        // Eco/fast models
+} as const
+
+// Legacy credit packages (deprecated - kept for backward compatibility)
 export interface CreditPackage {
   id: string
   name: string
@@ -9,95 +88,15 @@ export interface CreditPackage {
   totalCredits: number
   priceId: string
   productId: string
-  price: number // in cents
+  price: number
   displayPrice: string
   savings?: number
   popular?: boolean
   features: string[]
 }
 
-export const CREDIT_PACKAGES: CreditPackage[] = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    description: 'Perfect for getting started',
-    credits: 20,
-    bonusCredits: 0,
-    totalCredits: 20,
-    priceId: 'price_1S4euAJtMA6wwImle3TlCfMo',
-    productId: 'prod_T0gGwoVYkYvZPY',
-    price: 2200, // $22.00 (10% markup - $20 in credits)
-    displayPrice: '$22.00',
-    features: [
-      '$20 AI model credits',
-      'Works with all providers',
-      'No expiration',
-      'Instant activation',
-      '10% covers payment processing & platform maintenance'
-    ]
-  },
-  {
-    id: 'professional',
-    name: 'Professional',
-    description: 'Most popular choice',
-    credits: 40,
-    bonusCredits: 0,
-    totalCredits: 40,
-    priceId: 'price_1S4euSJtMA6wwIml8sSfQfon',
-    productId: 'prod_T0gGpZlpFHDD6v',
-    price: 4400, // $44.00 (10% markup - $40 in credits)
-    displayPrice: '$44.00',
-    popular: true,
-    features: [
-      '$40 AI model credits',
-      'Works with all providers',
-      'No expiration',
-      'Instant activation',
-      '10% covers payment processing & platform maintenance',
-      'Priority support'
-    ]
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    description: 'For power users',
-    credits: 90,
-    bonusCredits: 0,
-    totalCredits: 90,
-    priceId: 'price_1S4eucJtMA6wwImlC3N4YoBl',
-    productId: 'prod_T0gHVaYypV8qu3',
-    price: 9900, // $99.00 (10% markup - $90 in credits)
-    displayPrice: '$99.00',
-    features: [
-      '$90 AI model credits',
-      'Works with all providers',
-      'No expiration',
-      'Instant activation',
-      '10% covers payment processing & platform maintenance',
-      'Priority support',
-      'Advanced analytics'
-    ]
-  }
-]
-
-export const SUBSCRIPTION_PLANS = {
-  pro: {
-    name: 'Polydev Pro',
-    description: 'Unlimited MCP messages, CLI access, and $5 monthly credits',
-    priceId: 'price_1S2oYBJtMA6wwImls1Og4rZi',
-    productId: 'prod_Sym6JmhSXjOlTj',
-    price: 2000, // $20.00/month
-    displayPrice: '$20/month',
-    features: [
-      'Unlimited MCP messages',
-      'CLI access',
-      '$5 monthly credits',
-      'All AI providers',
-      'Priority support',
-      'Advanced features'
-    ]
-  }
-}
+// Deprecated: Use SUBSCRIPTION_PLANS instead
+export const CREDIT_PACKAGES: CreditPackage[] = []
 
 export function getCreditPackageById(id: string): CreditPackage | undefined {
   return CREDIT_PACKAGES.find(pkg => pkg.id === id)

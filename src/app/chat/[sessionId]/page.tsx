@@ -52,7 +52,7 @@ export default function Chat() {
     getSessionWithMessages,
     deleteSession
   } = useChatSessions()
-  const { preferences, updatePreferences } = usePreferences()
+  const { preferences, updatePreferences, loading: preferencesLoading } = usePreferences()
   const { apiKeys, cliStatuses, modelTiers } = useEnhancedApiKeysData()
   
   const [messages, setMessages] = useState<Message[]>([])
@@ -68,13 +68,18 @@ export default function Chat() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [isCreatingSession, setIsCreatingSession] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
   // Set selected models ONCE on initial load using waterfall priority logic
   // Priority: CLI Tools → User API Keys → Admin Keys (with tier + provider priority)
   const hasInitializedModels = useRef(false)
 
   useEffect(() => {
-    if (dashboardModels.length > 0 && !hasInitializedModels.current) {
+    // Wait for BOTH models AND preferences to be fully loaded before initializing
+    // IMPORTANT: Also verify preferences object exists (not just loading = false)
+    if (dashboardModels.length > 0 && !preferencesLoading && preferences && !hasInitializedModels.current) {
       hasInitializedModels.current = true
 
       // Get perspectives_per_message setting (default to 2)
@@ -82,12 +87,14 @@ export default function Chat() {
 
       // Check if we have saved chat models preference
       const savedChatModels = preferences?.mcp_settings?.saved_chat_models
+      console.log('[Chat] Initializing models - savedChatModels:', savedChatModels)
       if (savedChatModels && savedChatModels.length > 0) {
         // Filter saved models to only include those that are still configured
         const validSavedModels = savedChatModels.filter(modelId =>
           dashboardModels.some(model => model.id === modelId && model.isConfigured)
         )
 
+        console.log('[Chat] Valid saved models:', validSavedModels)
         if (validSavedModels.length > 0) {
           setSelectedModels(validSavedModels)
           return
@@ -113,6 +120,7 @@ export default function Chat() {
 
           for (const cli of availableCLI) {
             if (priorityModels.length >= perspectivesPerMessage) break
+            if (!cli.enabled) continue
 
             // Find CLI models in dashboardModels
             const cliModels = dashboardModels.filter(m =>
@@ -225,7 +233,7 @@ export default function Chat() {
         })
       }
     }
-  }, [dashboardModels])
+  }, [dashboardModels, preferencesLoading, preferences])
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -330,7 +338,7 @@ export default function Chat() {
   const loadSession = async (session: ChatSession) => {
     const sessionWithMessages = await getSessionWithMessages(session.id)
     if (sessionWithMessages) {
-      setCurrentSession(session)
+      setCurrentSession(sessionWithMessages)
       const converted = sessionWithMessages.chat_messages.map(convertChatMessage)
       setMessages(converted)
     }
@@ -399,6 +407,9 @@ export default function Chat() {
     setMessages(prev => [...prev, ...placeholderMessages])
 
     try {
+      // Create AbortController for cancellation
+      abortControllerRef.current = new AbortController()
+
       const response = await fetch('/api/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -410,6 +421,7 @@ export default function Chat() {
           session_id: sessionId,
           stream: true
         }),
+        signal: abortControllerRef.current.signal
       })
 
       if (!response.ok) throw new Error(`HTTP error ${response.status}`)
@@ -539,9 +551,81 @@ export default function Chat() {
         newCount: newModels.length,
         newModels
       })
+
+      // Persist the selection to user preferences - ALWAYS save, even if preferences not fully loaded
+      if (updatePreferences) {
+        const mcpSettings = preferences?.mcp_settings
+        updatePreferences({
+          mcp_settings: {
+            default_temperature: mcpSettings?.default_temperature ?? 0.7,
+            default_max_tokens: mcpSettings?.default_max_tokens ?? 4000,
+            auto_select_model: mcpSettings?.auto_select_model ?? false,
+            memory_settings: mcpSettings?.memory_settings ?? {
+              enable_conversation_memory: true,
+              enable_project_memory: true,
+              max_conversation_history: 10,
+              auto_extract_patterns: true
+            },
+            saved_chat_models: newModels,
+            saved_mcp_models: mcpSettings?.saved_mcp_models,
+            max_chat_models: mcpSettings?.max_chat_models,
+            max_mcp_models: mcpSettings?.max_mcp_models,
+            perspectives_per_message: mcpSettings?.perspectives_per_message,
+            tier_priority: mcpSettings?.tier_priority,
+            provider_priority: mcpSettings?.provider_priority,
+            model_order: mcpSettings?.model_order
+          }
+        }).then(() => {
+          console.log('[Chat] Model selection saved successfully:', newModels)
+        }).catch(err => {
+          console.error('[Chat] Failed to save model selection:', err)
+        })
+      } else {
+        console.warn('[Chat] updatePreferences not available, cannot save model selection')
+      }
+
       return newModels
     })
+  }, [updatePreferences, preferences])
+
+  // Auto-resize textarea
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.style.height = 'auto'
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`
+    }
   }, [])
+
+  // Copy message content to clipboard
+  const copyMessage = useCallback(async (messageId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopiedMessageId(messageId)
+      setTimeout(() => setCopiedMessageId(null), 2000)
+    } catch (err) {
+      console.error('[Chat] Failed to copy:', err)
+    }
+  }, [])
+
+  // Stop generating responses
+  const stopGenerating = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+    setIsLoading(false)
+    setIsStreaming(false)
+    setStreamingResponses({})
+  }, [])
+
+  // Suggested prompts for empty state
+  const suggestedPrompts = useMemo(() => [
+    { icon: '💡', text: 'Compare different approaches to solving this problem', fullPrompt: 'What are the different approaches to implementing user authentication in a web application? Compare JWT, session-based, and OAuth approaches.' },
+    { icon: '📝', text: 'Help me write better documentation', fullPrompt: 'Can you help me write clear and comprehensive documentation for a REST API? Include best practices and examples.' },
+    { icon: '🐛', text: 'Debug this code issue', fullPrompt: 'I\'m having an issue with my code. Can you help me debug and identify the root cause?' },
+    { icon: '🚀', text: 'Optimize performance', fullPrompt: 'What are the best practices for optimizing the performance of a React application?' }
+  ], [])
 
   const getTierBadgeColor = useCallback((tier: 'cli' | 'api' | 'admin' | 'premium' | 'normal' | 'eco') => {
     switch (tier) {
@@ -714,7 +798,7 @@ export default function Chat() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="sticky top-16 z-[90] bg-white/80 backdrop-blur border-b border-slate-200">
+        <div className="sticky top-16 z-[90] bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-sm">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -763,7 +847,7 @@ export default function Chat() {
                       {viewMode === 'unified' ? (
                         <>
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H15a2 2 0 00-2 2" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                           </svg>
                           Split
                         </>
@@ -798,11 +882,14 @@ export default function Chat() {
 
             {/* Model Selector Dropdown */}
             {showModelSelector && (
-              <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200 shadow-lg">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-slate-900">
-                    Your Dashboard Models ({selectedModels.length} selected)
-                  </h3>
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-900">
+                      Your Dashboard Models ({selectedModels.length} selected)
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Select models to get multiple perspectives</p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowModelSelector(false)}
@@ -924,7 +1011,7 @@ export default function Chat() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
-                    <div className="bg-slate-50 rounded-xl p-6">
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
                       <div className="w-12 h-12 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center mb-4 mx-auto">
                         <svg className="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -935,7 +1022,7 @@ export default function Chat() {
                         See how different AI models respond to the same prompt
                       </p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-6">
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
                       <div className="w-12 h-12 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center mb-4 mx-auto">
                         <svg className="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -946,7 +1033,7 @@ export default function Chat() {
                         CLI models prioritized, with API and credit fallbacks
                       </p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-6">
+                    <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
                       <div className="w-12 h-12 bg-slate-100 border border-slate-200 rounded-lg flex items-center justify-center mb-4 mx-auto">
                         <svg className="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -958,6 +1045,31 @@ export default function Chat() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Suggested Prompts */}
+                  {selectedModels.length > 0 && (
+                    <div className="mt-10">
+                      <h3 className="text-sm font-medium text-slate-500 mb-4">Try asking</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
+                        {suggestedPrompts.map((prompt, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => {
+                              setInput(prompt.fullPrompt)
+                              textareaRef.current?.focus()
+                            }}
+                            className="flex items-start gap-3 p-4 text-left bg-white border border-slate-200 rounded-xl hover:border-slate-300 hover:shadow-md transition-all group shadow-sm"
+                          >
+                            <span className="text-xl">{prompt.icon}</span>
+                            <span className="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">
+                              {prompt.text}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : viewMode === 'unified' ? (
                 // Unified view - traditional chat layout
@@ -1037,10 +1149,10 @@ export default function Chat() {
                           </div>
                         </div>
                       )}
-                      <div className={`px-6 py-5 rounded-2xl shadow-sm transition-all duration-200 ${
+                      <div className={`px-6 py-5 rounded-2xl transition-all duration-200 ${
                         message.role === 'user'
-                          ? 'bg-slate-900 text-white'
-                          : 'bg-white text-slate-900 border border-slate-200 hover:shadow-md'
+                          ? 'bg-slate-900 text-white shadow-md'
+                          : 'bg-white text-slate-900 border border-slate-200 shadow-sm hover:shadow-md'
                       }`}>
                         <div className="relative">
                           <MessageContent 
@@ -1090,10 +1202,32 @@ export default function Chat() {
                             )}
                           </div>
                         )}
-                        <div className={`text-xs mt-2 opacity-70 ${
-                          message.role === 'user' ? 'text-white' : 'text-slate-600'
+                        <div className={`flex items-center justify-between mt-3 pt-2 ${
+                          message.role === 'assistant' ? 'border-t border-slate-100' : ''
                         }`}>
-                          {message.timestamp.toLocaleTimeString()}
+                          <div className={`text-xs opacity-70 ${
+                            message.role === 'user' ? 'text-white' : 'text-slate-500'
+                          }`}>
+                            {message.timestamp.toLocaleTimeString()}
+                          </div>
+                          {message.role === 'assistant' && message.content && !message.id.startsWith('streaming-') && (
+                            <button
+                              type="button"
+                              onClick={() => copyMessage(message.id, message.content)}
+                              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                              title="Copy message"
+                            >
+                              {copiedMessageId === message.id ? (
+                                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1126,9 +1260,9 @@ export default function Chat() {
                         'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'
                       }`}>
                         {turn.assistantMessages.map((message) => (
-                          <div key={message.id} className="bg-slate-50 rounded-2xl">
+                          <div key={message.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow overflow-hidden">
                             {/* Model header */}
-                            <div className="px-4 py-3 border-b border-slate-200 bg-white">
+                            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
                                   {(() => {
@@ -1140,7 +1274,7 @@ export default function Chat() {
                                           <img 
                                             src={model.providerLogo} 
                                             alt={providerName}
-                                            className="w-6 h-6 rounded-lg flex-shrink-0 object-contain"
+                                            className="w-8 h-8 rounded-lg flex-shrink-0 object-contain"
                                             onError={(e) => {
                                               const img = e.currentTarget as HTMLImageElement
                                               const fallback = img.parentElement?.querySelector('.logo-fallback') as HTMLElement
@@ -1149,13 +1283,13 @@ export default function Chat() {
                                             }}
                                           />
                                         ) : null}
-                                        <div className={`logo-fallback w-6 h-6 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
+                                        <div className={`logo-fallback w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 ${model?.providerLogo ? 'hidden' : ''}`}>
                                           <span className="text-white text-xs font-bold">
                                             {providerName.charAt(0).toUpperCase()}
                                           </span>
                                         </div>
                                         <div>
-                                          <div className="text-sm font-semibold text-slate-900">
+                                          <div className="text-sm font-medium text-slate-900">
                                             {message.model}
                                           </div>
                                           <div className="text-xs text-slate-600">
@@ -1312,24 +1446,45 @@ export default function Chat() {
           </div>
 
           {/* Input Area */}
-          <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-slate-200">
-            <div className="px-4 py-4">
+          <div className="sticky bottom-0 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div className="px-4 py-4 max-w-4xl mx-auto">
               <div className="relative">
+                {/* Stop Generating Button - Only show when streaming */}
+                {(isLoading || isStreaming) && (
+                  <div className="flex justify-center mb-3">
+                    <button
+                      type="button"
+                      onClick={stopGenerating}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-full hover:bg-slate-50 shadow-sm transition-all"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="6" y="6" width="12" height="12" rx="1" strokeWidth={2} />
+                      </svg>
+                      Stop generating
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex space-x-3">
                   <div className="flex-1 relative">
-                    <input
-                      type="text"
+                    <textarea
+                      ref={textareaRef}
                       value={input}
-                      onChange={(e) => setInput(e.target.value)}
+                      onChange={(e) => {
+                        setInput(e.target.value)
+                        adjustTextareaHeight()
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()
                           sendMessage()
                         }
                       }}
-                      placeholder={selectedModels.length === 0 ? "Select models above to start chatting..." : "Type your message..."}
+                      placeholder={selectedModels.length === 0 ? "Select models above to start chatting..." : "Message Polydev..."}
                       disabled={selectedModels.length === 0 || isLoading || isStreaming}
-                      className="w-full px-4 py-3 pr-12 bg-slate-100 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900 text-slate-900 placeholder-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      rows={1}
+                      className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent text-slate-900 placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none overflow-hidden min-h-[48px] max-h-[200px] shadow-sm"
+                      style={{ height: 'auto' }}
                     />
                     <button
                       type="button"
@@ -1338,7 +1493,7 @@ export default function Chat() {
                         sendMessage()
                       }}
                       disabled={!input.trim() || selectedModels.length === 0 || isLoading || isStreaming}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors pointer-events-auto z-10"
+                      className="absolute right-2 bottom-2 p-2 bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors pointer-events-auto z-10"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -1348,8 +1503,14 @@ export default function Chat() {
                 </div>
 
                 {selectedModels.length === 0 && (
-                  <p className="text-sm text-slate-900 mt-2">
+                  <p className="text-sm text-slate-500 mt-2 text-center">
                     Please select at least one model to start chatting.
+                  </p>
+                )}
+
+                {selectedModels.length > 0 && !isLoading && !isStreaming && (
+                  <p className="text-xs text-slate-400 mt-2 text-center">
+                    Press Enter to send, Shift+Enter for new line
                   </p>
                 )}
               </div>

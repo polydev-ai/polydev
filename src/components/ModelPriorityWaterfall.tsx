@@ -330,14 +330,14 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         </div>
       </div>
 
-      {/* Admin Keys (Perspectives) - Tier Priority */}
-      <div className="p-5 bg-gradient-to-br from-purple-50/50 to-purple-100/30 rounded-xl border border-purple-200/60">
+      {/* Credits - Tier Priority */}
+      <div className="p-5 bg-slate-50 rounded-xl border border-slate-200">
         <div className="flex items-center gap-2 mb-4">
-          <div className="p-1.5 bg-white rounded-lg shadow-sm">
-            <Crown className="w-4 h-4 text-purple-600" />
+          <div className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-100">
+            <Crown className="w-4 h-4 text-slate-700" />
           </div>
           <div className="flex-1">
-            <h4 className="text-sm font-semibold text-slate-900">Admin Tier Priority</h4>
+            <h4 className="text-sm font-semibold text-slate-900">Credits Tier Priority</h4>
             <p className="text-xs text-slate-600">Perspective quota usage order</p>
           </div>
         </div>

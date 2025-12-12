@@ -1,20 +1,48 @@
 'use server'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, createAdminClient } from '@/app/utils/supabase/server'
+
+// Helper function to check admin access
+async function checkAdminAccess(adminClient: any, userId: string, userEmail: string): Promise<boolean> {
+  const legacyAdminEmails = new Set(['admin@polydev.ai', 'venkat@polydev.ai', 'gvsfans@gmail.com']);
+  if (legacyAdminEmails.has(userEmail)) return true;
+
+  try {
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+    return profile?.is_admin || false;
+  } catch (error) {
+    return false;
+  }
+}
 
 // Admin API for managing provider configuration (max tokens, etc.)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = await createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const adminClient = createAdminClient()
+
+    // Check admin access
+    const isAdmin = await checkAdminAccess(adminClient, user.id, user.email || '')
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+    }
 
     const url = new URL(request.url)
     const provider = url.searchParams.get('provider')
 
-    let query = supabase
+    let query = adminClient
       .from('provider_configurations')
       .select('*')
       .order('provider_name', { ascending: true })
@@ -42,10 +70,21 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = await createClient()
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const adminClient = createAdminClient()
+
+    // Check admin access
+    const isAdmin = await checkAdminAccess(adminClient, user.id, user.email || '')
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+    }
 
     const body = await request.json()
     const { provider_name, max_output_tokens_premium, max_output_tokens_normal, max_output_tokens_eco, max_output_tokens_default } = body
@@ -63,7 +102,7 @@ export async function POST(request: NextRequest) {
     if (max_output_tokens_eco !== undefined) updateData.max_output_tokens_eco = max_output_tokens_eco
     if (max_output_tokens_default !== undefined) updateData.max_output_tokens_default = max_output_tokens_default
 
-    const { data, error } = await supabase
+    const { data, error } = await adminClient
       .from('provider_configurations')
       .update(updateData)
       .eq('provider_name', provider_name)

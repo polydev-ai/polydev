@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { createClient } from '../utils/supabase/client'
-import { AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
+import { Settings, MessageSquare, Zap, Clock, Heart, Key, CreditCard, Shield, ArrowRight } from 'lucide-react'
 
 interface UserProfile {
   id: string
@@ -244,242 +245,238 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-white py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div
-          className="bg-white rounded-lg shadow mb-8 hover:shadow-lg transition-shadow"
-        >
-          <div className="px-6 py-8">
-            <div className="flex items-center space-x-6">
-              <div className="h-24 w-24 bg-slate-900 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-white">
-                  {avatarInitial}
-                </span>
+    <div className="min-h-screen bg-slate-50 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header Card */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden">
+          <div className="px-6 py-6">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-5">
+                <div className="h-20 w-20 bg-slate-900 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-2xl font-bold text-white">
+                    {avatarInitial}
+                  </span>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">
+                    {displayName}
+                  </h1>
+                  <p className="text-slate-600">{user.email}</p>
+                  <div className="mt-1 flex items-center space-x-3 text-sm text-slate-500">
+                    <span className="flex items-center space-x-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Member since {memberSince}</span>
+                    </span>
+                    {profile?.company && (
+                      <span className="text-slate-400">•</span>
+                    )}
+                    {profile?.company && <span>{profile.company}</span>}
+                    {profile?.role && (
+                      <span className="text-slate-400">•</span>
+                    )}
+                    {profile?.role && <span className="capitalize">{profile.role}</span>}
+                  </div>
+                </div>
+              </div>
+              <Link
+                href="/settings"
+                className="flex items-center space-x-1 text-sm text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                <span>Edit Profile</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-slate-100 rounded-lg">
+                <MessageSquare className="h-5 w-5 text-slate-700" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">
-                  {displayName}
-                </h1>
-                <p className="text-slate-600 text-lg">
-                  {user.email}
-                </p>
-                <div className="mt-2 flex items-center space-x-4 text-sm text-slate-600">
-                  <span>Member since {memberSince}</span>
-                  {profile?.company && (
-                    <>
-                      <span>•</span>
-                      <span>{profile.company}</span>
-                    </>
-                  )}
-                  {profile?.role && (
-                    <>
-                      <span>•</span>
-                      <span className="capitalize">{profile.role}</span>
-                    </>
-                  )}
-                </div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Messages</p>
+                <p className="text-xl font-bold text-slate-900">{stats?.totalChats || 0}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-slate-100 rounded-lg">
+                <Zap className="h-5 w-5 text-slate-700" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Tokens</p>
+                <p className="text-xl font-bold text-slate-900">{formattedTokens}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-slate-100 rounded-lg">
+                <Heart className="h-5 w-5 text-slate-700" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Favorite</p>
+                <p className="text-lg font-bold text-slate-900 truncate">{stats?.favoriteModel || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-slate-100 rounded-lg">
+                <Clock className="h-5 w-5 text-slate-700" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Days Active</p>
+                <p className="text-xl font-bold text-slate-900">{stats?.joinedDays || 0}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div
-          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-        >
-          {/* Stats Cards */}
-          <div className="lg:col-span-2">
-            <div
-              className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
-            >
-              <div
-                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-center">
-                  <div className="p-2 bg-slate-100 rounded-lg">
-                    <svg className="h-6 w-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-slate-600">Messages Sent</p>
-                    <p className="text-2xl font-bold text-slate-900">{stats?.totalChats || 0}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-center">
-                  <div className="p-2 bg-slate-100 rounded-lg">
-                    <svg className="h-6 w-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-slate-600">Tokens Used</p>
-                    <p className="text-2xl font-bold text-slate-900">{formattedTokens}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-center">
-                  <div className="p-2 bg-slate-100 rounded-lg">
-                    <svg className="h-6 w-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-slate-600">Favorite Model</p>
-                    <p className="text-2xl font-bold text-slate-900">{stats?.favoriteModel || 'N/A'}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-center">
-                  <div className="p-2 bg-slate-100 rounded-lg">
-                    <svg className="h-6 w-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-slate-600">Days Active</p>
-                    <p className="text-2xl font-bold text-slate-900">{stats?.joinedDays || 0}</p>
-                  </div>
-                </div>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Recent Activity */}
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-medium text-slate-900">Recent Activity</h3>
             </div>
-
-            {/* Recent Activity */}
-            <div
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow"
-            >
-              <div className="px-6 py-4 border-b border-slate-200">
-                <h3 className="text-lg font-medium text-slate-900">Recent Activity</h3>
-              </div>
-              <div className="px-6 py-4">
-                {renderedActivity ? (
-                  <div className="space-y-4">
-                    {renderedActivity.map((activity, index) => (
-                      <div key={index} className="flex items-start space-x-3">
-                        <div className="h-2 w-2 rounded-full mt-2 bg-slate-900"></div>
-                        <div className="flex-1">
-                          <p className="text-sm text-slate-900">
-                            <span className="font-medium">{activity.action}</span>
-                            {activity.title && (
-                              <span className="text-slate-600"> - {activity.title}</span>
-                            )}
-                          </p>
-                          <p className="text-xs text-slate-600 mt-1">
-                            Model: {activity.model}
-                          </p>
-                          <div className="flex items-center space-x-2 text-xs text-slate-600 mt-1">
-                            <span>{activity.formattedDate} {activity.formattedTime}</span>
-                            {activity.tokens > 0 && (
-                              <>
-                                <span>•</span>
-                                <span>{activity.formattedTokens} tokens</span>
-                              </>
-                            )}
-                            {activity.cost > 0 && (
-                              <>
-                                <span>•</span>
-                                <span>${activity.formattedCost}</span>
-                              </>
-                            )}
-                          </div>
+            <div className="px-6 py-4">
+              {renderedActivity ? (
+                <div className="space-y-4">
+                  {renderedActivity.map((activity, index) => (
+                    <div key={index} className="flex items-start space-x-3">
+                      <div className="h-2 w-2 rounded-full mt-2 bg-slate-900"></div>
+                      <div className="flex-1">
+                        <p className="text-sm text-slate-900">
+                          <span className="font-medium">{activity.action}</span>
+                          {activity.title && (
+                            <span className="text-slate-600"> - {activity.title}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-slate-600 mt-1">
+                          Model: {activity.model}
+                        </p>
+                        <div className="flex items-center space-x-2 text-xs text-slate-600 mt-1">
+                          <span>{activity.formattedDate} {activity.formattedTime}</span>
+                          {activity.tokens > 0 && (
+                            <>
+                              <span>•</span>
+                              <span>{activity.formattedTokens} tokens</span>
+                            </>
+                          )}
+                          {activity.cost > 0 && (
+                            <>
+                              <span>•</span>
+                              <span>${activity.formattedCost}</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-slate-600">No recent activity found</p>
-                    <p className="text-sm text-slate-500 mt-2">
-                      Start using the API to see your activity here
-                    </p>
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-slate-600">No recent activity found</p>
+                  <p className="text-sm text-slate-500 mt-2">
+                    Start using the API to see your activity here
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Profile Info */}
           <div className="space-y-6">
-            <div
-              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-            >
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Profile Information</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-slate-600">Email</label>
-                  <p className="text-sm text-slate-900">{user.email}</p>
-                </div>
-                {profile?.display_name && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Display Name</label>
-                    <p className="text-sm text-slate-900">{profile.display_name}</p>
-                  </div>
-                )}
-                {profile?.company && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Company</label>
-                    <p className="text-sm text-slate-900">{profile.company}</p>
-                  </div>
-                )}
-                {profile?.role && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Role</label>
-                    <p className="text-sm text-slate-900 capitalize">{profile.role}</p>
-                  </div>
-                )}
-                {profile?.timezone && (
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Timezone</label>
-                    <p className="text-sm text-slate-900">{profile.timezone}</p>
-                  </div>
-                )}
+            {/* Quick Links */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200">
+                <h3 className="font-medium text-slate-900">Quick Links</h3>
               </div>
-              <div className="mt-6">
-                <a
-                  href="/settings"
-                  className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-900 bg-white hover:bg-slate-50 transition-colors"
-                >
-                  Edit Profile
-                </a>
-              </div>
-            </div>
-
-            <div
-              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
-            >
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <a
+              <div className="p-2">
+                <Link
                   href="/chat"
-                  className="block w-full px-4 py-2 text-center bg-slate-900 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                  className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors group"
                 >
-                  Start New Chat
-                </a>
-                <a
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                      <MessageSquare className="w-4 h-4 text-slate-700" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">Start New Chat</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                </Link>
+
+                <Link
                   href="/dashboard"
-                  className="block w-full px-4 py-2 text-center border border-slate-300 text-slate-900 rounded-lg hover:bg-slate-50 transition-colors"
+                  className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors group"
                 >
-                  View Dashboard
-                </a>
-                <a
-                  href="/explorer"
-                  className="block w-full px-4 py-2 text-center border border-slate-300 text-slate-900 rounded-lg hover:bg-slate-50 transition-colors"
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                      <Zap className="w-4 h-4 text-slate-700" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">Dashboard</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                </Link>
+
+                <Link
+                  href="/dashboard/mcp-tokens"
+                  className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors group"
                 >
-                  Explore Models
-                </a>
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                      <Key className="w-4 h-4 text-slate-700" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">MCP Tokens</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                </Link>
+
+                <Link
+                  href="/dashboard/billing"
+                  className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                      <CreditCard className="w-4 h-4 text-slate-700" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">Billing</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                </Link>
+
+                <Link
+                  href="/settings"
+                  className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                      <Settings className="w-4 h-4 text-slate-700" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">Settings</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                </Link>
+
+                <Link
+                  href="/dashboard/security"
+                  className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors group"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-1.5 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                      <Shield className="w-4 h-4 text-slate-700" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-700">Security</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-colors" />
+                </Link>
               </div>
             </div>
           </div>

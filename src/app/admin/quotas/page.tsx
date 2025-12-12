@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
-import { ArrowLeft, Search, Target, Zap, Clock, RefreshCw, User, Mail, Calendar, Edit, Home } from 'lucide-react'
+import { Search, Target, Zap, Clock, RefreshCw, User, Edit, Home } from 'lucide-react'
 
 interface UserQuotaInfo {
   id: string
+  user_id: string
   email: string
   plan_tier: string
   messages_per_month: number | null
@@ -34,7 +35,7 @@ export default function QuotaManagement() {
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<UserQuotaInfo[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterTier, setFilterTier] = useState('all') // all, free, plus, pro
+  const [filterTier, setFilterTier] = useState('all')
   const [updateModal, setUpdateModal] = useState<QuotaUpdateModal>({ user: null, field: null })
   const [newValue, setNewValue] = useState('')
 
@@ -70,12 +71,12 @@ export default function QuotaManagement() {
         const { data: profile } = await supabase
           .from('profiles')
           .select('is_admin')
-          .eq('email', user.email)
+          .eq('id', user.id)
           .single()
 
         isNewAdmin = profile?.is_admin || false
       } catch (error) {
-        console.log('Profile not found, checking legacy admin access')
+        console.log('Profile check failed, using legacy admin check')
       }
 
       if (!isNewAdmin && !isLegacyAdmin) {
@@ -94,30 +95,22 @@ export default function QuotaManagement() {
 
   async function loadQuotaData() {
     try {
-      console.log('📊 Loading quota data...')
+      console.log('📊 Loading quota data via admin API...')
 
-      // Get user quota data with profile email
-      const { data: quotaData, error } = await supabase
-        .from('user_perspective_quotas')
-        .select(`
-          *,
-          profiles!inner(email)
-        `)
-        .order('created_at', { ascending: false })
+      const response = await fetch('/api/admin/quotas')
 
-      if (error) {
-        console.error('Error loading quota data:', error)
-        return
+      if (!response.ok) {
+        throw new Error(`Admin quotas API failed: ${response.statusText}`)
       }
 
-      // Transform the data to flatten the profile info
-      const transformedData = quotaData?.map((item: any) => ({
-        ...item,
-        email: item.profiles.email
-      })) || []
+      const data = await response.json()
 
-      console.log(`✅ Loaded ${transformedData.length} user quotas`)
-      setUsers(transformedData)
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to load quotas')
+      }
+
+      console.log(`✅ Loaded ${data.quotas?.length || 0} user quotas`)
+      setUsers(data.quotas || [])
     } catch (error) {
       console.error('Error loading quota data:', error)
       setUsers([])
@@ -126,41 +119,28 @@ export default function QuotaManagement() {
 
   async function updateUserQuota(userId: string, field: string, value: any) {
     try {
-      const updateData: any = {}
+      const dbField = field === 'premium_limit' ? 'premium_perspectives_limit'
+        : field === 'normal_limit' ? 'normal_perspectives_limit'
+        : field === 'eco_limit' ? 'eco_perspectives_limit'
+        : field
 
-      switch (field) {
-        case 'plan_tier':
-          updateData.plan_tier = value
-          break
-        case 'messages_per_month':
-          updateData.messages_per_month = value === '' ? null : parseInt(value)
-          break
-        case 'premium_limit':
-          updateData.premium_perspectives_limit = parseInt(value)
-          break
-        case 'normal_limit':
-          updateData.normal_perspectives_limit = parseInt(value)
-          break
-        case 'eco_limit':
-          updateData.eco_perspectives_limit = parseInt(value)
-          break
-        default:
-          throw new Error('Invalid field')
+      const response = await fetch('/api/admin/quotas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          action: 'update',
+          field: dbField,
+          value: field === 'messages_per_month' && value === '' ? null :
+                 field === 'plan_tier' ? value : parseInt(value)
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to update quota')
       }
-
-      const { error } = await supabase
-        .from('user_perspective_quotas')
-        .update(updateData)
-        .eq('user_id', userId)
-
-      if (error) {
-        throw error
-      }
-
-      await logActivity(
-        'update_quota',
-        `Updated ${field} for user ${userId} to ${value}`
-      )
 
       await loadQuotaData()
       setUpdateModal({ user: null, field: null })
@@ -171,38 +151,26 @@ export default function QuotaManagement() {
     }
   }
 
-  async function resetUserQuota(userId: string, quotaType: 'monthly' | 'all') {
-    if (!confirm(`Are you sure you want to reset ${quotaType === 'monthly' ? 'monthly usage' : 'all quotas'} for this user?`)) {
+  async function resetUserQuota(userId: string) {
+    if (!confirm('Are you sure you want to reset monthly usage for this user?')) {
       return
     }
 
     try {
-      const updateData: any = {
-        current_month_start: new Date().toISOString().slice(0, 10),
-        last_reset_date: new Date().toISOString().slice(0, 10),
-        updated_at: new Date().toISOString()
+      const response = await fetch('/api/admin/quotas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          action: 'reset'
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to reset quota')
       }
-
-      if (quotaType === 'monthly') {
-        updateData.messages_used = 0
-        updateData.premium_perspectives_used = 0
-        updateData.normal_perspectives_used = 0
-        updateData.eco_perspectives_used = 0
-      }
-
-      const { error } = await supabase
-        .from('user_perspective_quotas')
-        .update(updateData)
-        .eq('user_id', userId)
-
-      if (error) {
-        throw error
-      }
-
-      await logActivity(
-        'reset_quota',
-        `Reset ${quotaType} quota for user ${userId}`
-      )
 
       await loadQuotaData()
     } catch (error) {
@@ -211,22 +179,8 @@ export default function QuotaManagement() {
     }
   }
 
-  async function logActivity(action: string, details: string) {
-    try {
-      await supabase
-        .from('admin_activity_log')
-        .insert([{
-          admin_email: user?.email,
-          action,
-          details
-        }])
-    } catch (error) {
-      console.error('Error logging activity:', error)
-    }
-  }
-
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
 
     if (!matchesSearch) return false
 
@@ -247,9 +201,9 @@ export default function QuotaManagement() {
     freeUsers: users.filter(u => u.plan_tier === 'free').length,
     plusUsers: users.filter(u => u.plan_tier === 'plus').length,
     proUsers: users.filter(u => u.plan_tier === 'pro').length,
-    totalPremiumUsage: users.reduce((sum, u) => sum + u.premium_perspectives_used, 0),
-    totalNormalUsage: users.reduce((sum, u) => sum + u.normal_perspectives_used, 0),
-    totalEcoUsage: users.reduce((sum, u) => sum + u.eco_perspectives_used, 0)
+    totalPremiumUsage: users.reduce((sum, u) => sum + (u.premium_perspectives_used || 0), 0),
+    totalNormalUsage: users.reduce((sum, u) => sum + (u.normal_perspectives_used || 0), 0),
+    totalEcoUsage: users.reduce((sum, u) => sum + (u.eco_perspectives_used || 0), 0)
   }
 
   const getUsagePercentage = (used: number, limit: number) => {
@@ -405,7 +359,7 @@ export default function QuotaManagement() {
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50">
+                <tr key={user.id || user.user_id} className="hover:bg-slate-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-8 w-8">
@@ -414,64 +368,64 @@ export default function QuotaManagement() {
                         </div>
                       </div>
                       <div className="ml-3">
-                        <div className="text-sm font-medium text-slate-900">{user.email}</div>
-                        <div className="text-xs text-slate-500">ID: {user.id.slice(0, 8)}...</div>
+                        <div className="text-sm font-medium text-slate-900">{user.email || 'Unknown'}</div>
+                        <div className="text-xs text-slate-500">ID: {(user.user_id || user.id || '').slice(0, 8)}...</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-900 border border-slate-200">
-                      {user.plan_tier.toUpperCase()}
+                      {(user.plan_tier || 'free').toUpperCase()}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-slate-900">
-                      {user.messages_used} / {user.messages_per_month || '∞'}
+                      {user.messages_used || 0} / {user.messages_per_month || '∞'}
                     </div>
                     {user.messages_per_month && (
                       <div className="w-full bg-slate-200 rounded-full h-1.5 mt-1">
                         <div
-                          className={`h-1.5 rounded-full ${getUsageColor(getUsagePercentage(user.messages_used, user.messages_per_month))}`}
-                          style={{ width: `${getUsagePercentage(user.messages_used, user.messages_per_month)}%` }}
+                          className={`h-1.5 rounded-full ${getUsageColor(getUsagePercentage(user.messages_used || 0, user.messages_per_month))}`}
+                          style={{ width: `${getUsagePercentage(user.messages_used || 0, user.messages_per_month)}%` }}
                         ></div>
                       </div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-slate-900">
-                      {user.premium_perspectives_used} / {user.premium_perspectives_limit}
+                      {user.premium_perspectives_used || 0} / {user.premium_perspectives_limit || 0}
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-1.5 mt-1">
                       <div
-                        className={`h-1.5 rounded-full ${getUsageColor(getUsagePercentage(user.premium_perspectives_used, user.premium_perspectives_limit))}`}
-                        style={{ width: `${getUsagePercentage(user.premium_perspectives_used, user.premium_perspectives_limit)}%` }}
+                        className={`h-1.5 rounded-full ${getUsageColor(getUsagePercentage(user.premium_perspectives_used || 0, user.premium_perspectives_limit || 1))}`}
+                        style={{ width: `${getUsagePercentage(user.premium_perspectives_used || 0, user.premium_perspectives_limit || 1)}%` }}
                       ></div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-slate-900">
-                      {user.normal_perspectives_used} / {user.normal_perspectives_limit}
+                      {user.normal_perspectives_used || 0} / {user.normal_perspectives_limit || 0}
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-1.5 mt-1">
                       <div
-                        className={`h-1.5 rounded-full ${getUsageColor(getUsagePercentage(user.normal_perspectives_used, user.normal_perspectives_limit))}`}
-                        style={{ width: `${getUsagePercentage(user.normal_perspectives_used, user.normal_perspectives_limit)}%` }}
+                        className={`h-1.5 rounded-full ${getUsageColor(getUsagePercentage(user.normal_perspectives_used || 0, user.normal_perspectives_limit || 1))}`}
+                        style={{ width: `${getUsagePercentage(user.normal_perspectives_used || 0, user.normal_perspectives_limit || 1)}%` }}
                       ></div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-slate-900">
-                      {user.eco_perspectives_used} / {user.eco_perspectives_limit}
+                      {user.eco_perspectives_used || 0} / {user.eco_perspectives_limit || 0}
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-1.5 mt-1">
                       <div
-                        className={`h-1.5 rounded-full ${getUsageColor(getUsagePercentage(user.eco_perspectives_used, user.eco_perspectives_limit))}`}
-                        style={{ width: `${getUsagePercentage(user.eco_perspectives_used, user.eco_perspectives_limit)}%` }}
+                        className={`h-1.5 rounded-full ${getUsageColor(getUsagePercentage(user.eco_perspectives_used || 0, user.eco_perspectives_limit || 1))}`}
+                        style={{ width: `${getUsagePercentage(user.eco_perspectives_used || 0, user.eco_perspectives_limit || 1)}%` }}
                       ></div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                    {new Date(user.last_reset_date).toLocaleDateString()}
+                    {user.last_reset_date ? new Date(user.last_reset_date).toLocaleDateString() : 'Never'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
@@ -483,7 +437,7 @@ export default function QuotaManagement() {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => resetUserQuota(user.id, 'monthly')}
+                        onClick={() => resetUserQuota(user.user_id || user.id)}
                         className="text-slate-900 hover:text-slate-700"
                         title="Reset Monthly Usage"
                       >
@@ -501,7 +455,7 @@ export default function QuotaManagement() {
               <User className="mx-auto h-12 w-12 text-slate-400" />
               <h3 className="mt-2 text-sm font-medium text-slate-900">No users found</h3>
               <p className="mt-1 text-sm text-slate-500">
-                {searchTerm ? 'Try adjusting your search terms.' : 'No users match the selected filter.'}
+                {searchTerm ? 'Try adjusting your search terms.' : 'No quota data available yet.'}
               </p>
             </div>
           )}
@@ -527,7 +481,7 @@ export default function QuotaManagement() {
               <div className="mb-6">
                 {updateModal.field === 'plan_tier' ? (
                   <select
-                    value={newValue || updateModal.user.plan_tier}
+                    value={newValue || updateModal.user.plan_tier || 'free'}
                     onChange={(e) => setNewValue(e.target.value)}
                     className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400"
                   >
@@ -557,7 +511,7 @@ export default function QuotaManagement() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => updateUserQuota(updateModal.user!.id, updateModal.field!, newValue)}
+                  onClick={() => updateUserQuota(updateModal.user!.user_id || updateModal.user!.id, updateModal.field!, newValue || (updateModal.field === 'plan_tier' ? updateModal.user!.plan_tier : ''))}
                   className="px-4 py-2 text-white bg-slate-900 rounded-md hover:bg-slate-700"
                 >
                   Update

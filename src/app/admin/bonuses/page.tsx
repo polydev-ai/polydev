@@ -49,6 +49,7 @@ interface BonusQuota {
   user_id: string
   bonus_type: string
   messages: number
+  credits: number
   premium_perspectives: number
   normal_perspectives: number
   eco_perspectives: number
@@ -70,6 +71,7 @@ interface GrantBonusForm {
   userId: string
   bonusType: 'admin_bonus' | 'referral_bonus'
   messages: number
+  credits: number
   premiumPerspectives: number
   normalPerspectives: number
   ecoPerspectives: number
@@ -89,7 +91,8 @@ export default function AdminBonuses() {
   const [grantForm, setGrantForm] = useState<GrantBonusForm>({
     userId: '',
     bonusType: 'admin_bonus',
-    messages: 800,
+    messages: 0,
+    credits: 1000,
     premiumPerspectives: 0,
     normalPerspectives: 0,
     ecoPerspectives: 0,
@@ -208,6 +211,7 @@ export default function AdminBonuses() {
         user_id: userId,
         bonus_type: grantForm.bonusType,
         messages: grantForm.messages,
+        credits: grantForm.credits,
         premium_perspectives: grantForm.premiumPerspectives,
         normal_perspectives: grantForm.normalPerspectives,
         eco_perspectives: grantForm.ecoPerspectives,
@@ -222,6 +226,41 @@ export default function AdminBonuses() {
         .insert(bonusRecords)
 
       if (error) throw error
+
+      // If credits are being granted, also add them to user_credits.promotional_balance
+      if (grantForm.credits > 0) {
+        for (const userId of targetUserIds) {
+          // First check if user has a user_credits record
+          const { data: existingCredits } = await supabase
+            .from('user_credits')
+            .select('promotional_balance')
+            .eq('user_id', userId)
+            .single()
+
+          if (existingCredits) {
+            // Update existing record
+            await supabase
+              .from('user_credits')
+              .update({
+                promotional_balance: (existingCredits.promotional_balance || 0) + grantForm.credits,
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', userId)
+          } else {
+            // Create new record
+            await supabase
+              .from('user_credits')
+              .insert({
+                user_id: userId,
+                balance: 0,
+                promotional_balance: grantForm.credits,
+                monthly_allocation: 0,
+                total_purchased: 0,
+                total_spent: 0
+              })
+          }
+        }
+      }
 
       const successMessage = grantForm.userId === 'ALL_USERS'
         ? `Bonus granted successfully to all ${targetUserIds.length} users!`
@@ -262,7 +301,8 @@ export default function AdminBonuses() {
     setGrantForm({
       userId: '',
       bonusType: 'admin_bonus',
-      messages: 800,
+      messages: 0,
+      credits: 1000,
       premiumPerspectives: 0,
       normalPerspectives: 0,
       ecoPerspectives: 0,
@@ -299,6 +339,7 @@ export default function AdminBonuses() {
 
   const totalBonuses = bonuses.length
   const totalMessages = bonuses.reduce((sum, b) => sum + b.messages, 0)
+  const totalCredits = bonuses.reduce((sum, b) => sum + (b.credits || 0), 0)
   const activeBonuses = bonuses.filter(b => !b.is_expired).length
 
   return (
@@ -320,7 +361,7 @@ export default function AdminBonuses() {
               Bonus Quotas Management
             </h1>
             <p className="text-slate-600 mt-2">
-              Grant and manage bonus messages and perspectives for users
+              Grant and manage bonus credits, messages, and perspectives for users
             </p>
           </div>
           <Button onClick={() => setShowGrantDialog(true)}>
@@ -345,7 +386,7 @@ export default function AdminBonuses() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium text-slate-600">Total Bonuses</CardTitle>
@@ -360,6 +401,14 @@ export default function AdminBonuses() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-slate-900">{activeBonuses}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-slate-600">Total Credits Granted</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-900">{totalCredits.toLocaleString()}</div>
             </CardContent>
           </Card>
           <Card>
@@ -412,6 +461,7 @@ export default function AdminBonuses() {
                     <TableRow>
                       <TableHead>User</TableHead>
                       <TableHead>Type</TableHead>
+                      <TableHead>Credits</TableHead>
                       <TableHead>Messages</TableHead>
                       <TableHead>Premium</TableHead>
                       <TableHead>Normal</TableHead>
@@ -432,6 +482,7 @@ export default function AdminBonuses() {
                             {bonus.bonus_type.replace('_', ' ')}
                           </Badge>
                         </TableCell>
+                        <TableCell className="font-medium">{(bonus.credits || 0).toLocaleString()}</TableCell>
                         <TableCell>{bonus.messages.toLocaleString()}</TableCell>
                         <TableCell>{bonus.premium_perspectives}</TableCell>
                         <TableCell>{bonus.normal_perspectives}</TableCell>
@@ -476,7 +527,7 @@ export default function AdminBonuses() {
             <DialogHeader className="flex-shrink-0 pb-4 border-b">
               <DialogTitle>Grant Bonus Quota</DialogTitle>
               <DialogDescription>
-                Grant bonus messages and perspectives to a user
+                Grant bonus credits, messages, and perspectives to a user. Credits are added to the user's promotional balance.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4 overflow-y-auto flex-1 px-1 min-h-0">
@@ -520,7 +571,18 @@ export default function AdminBonuses() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="messages">Messages *</Label>
+                  <Label htmlFor="credits">Credits</Label>
+                  <Input
+                    id="credits"
+                    type="number"
+                    value={grantForm.credits}
+                    onChange={(e) => setGrantForm({ ...grantForm, credits: parseInt(e.target.value) || 0 })}
+                    placeholder="Added to promotional balance"
+                  />
+                  <p className="text-xs text-slate-500">Added to user's promotional balance</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="messages">Messages</Label>
                   <Input
                     id="messages"
                     type="number"
@@ -528,6 +590,9 @@ export default function AdminBonuses() {
                     onChange={(e) => setGrantForm({ ...grantForm, messages: parseInt(e.target.value) || 0 })}
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="expires">Expires In (Days)</Label>
                   <Input

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
 import { motion } from 'framer-motion'
-import { Plus, Eye, EyeOff, Copy, Trash2, Settings, Key, AlertCircle, Check, Clock } from 'lucide-react'
+import { Plus, Eye, EyeOff, Copy, Trash2, Key, AlertCircle, Check, Clock, ExternalLink, Terminal, Zap } from 'lucide-react'
 
 interface MCPToken {
   id: string
@@ -225,25 +225,63 @@ export default function MCPTokensPage() {
       animate="visible"
     >
       <motion.div className="mb-8" variants={itemVariants}>
-        <h1 className="text-3xl font-bold text-slate-900 mb-4">
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">
           MCP API Tokens
         </h1>
         <p className="text-slate-600 mb-6">
-          Generate API tokens to authenticate with Polydev's hosted MCP server. Use OAuth for the best experience or API tokens for programmatic access.
+          Connect AI coding assistants to Polydev for multi-model perspectives. Get insights from Claude, GPT-4, Gemini, and more in a single request.
         </p>
 
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start space-x-3">
-            <Key className="w-5 h-5 text-slate-900 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-slate-900 mb-1">Hosted MCP Server</h3>
-              <p className="text-sm text-slate-600 mb-2">
-                Connect your MCP clients to Polydev's hosted server for breakthrough insights from multiple AI models. Supports both OAuth and API token authentication.
-              </p>
-              <div className="bg-slate-100 rounded px-3 py-2 font-mono text-sm">
-                <strong>Server URL:</strong> https://www.polydev.ai/api/mcp
+        {/* Quick Start Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center space-x-2 mb-2">
+              <div className="p-2 bg-slate-100 rounded-lg">
+                <Zap className="w-4 h-4 text-slate-900" />
               </div>
+              <h3 className="font-semibold text-slate-900">Claude Desktop</h3>
             </div>
+            <p className="text-xs text-slate-600 mb-2">Best experience with OAuth authentication</p>
+            <code className="text-xs bg-slate-100 px-2 py-1 rounded block truncate">polydev_*</code>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center space-x-2 mb-2">
+              <div className="p-2 bg-slate-100 rounded-lg">
+                <Terminal className="w-4 h-4 text-slate-900" />
+              </div>
+              <h3 className="font-semibold text-slate-900">Continue.dev / Cursor</h3>
+            </div>
+            <p className="text-xs text-slate-600 mb-2">API token for IDE extensions</p>
+            <code className="text-xs bg-slate-100 px-2 py-1 rounded block truncate">pd_*</code>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center space-x-2 mb-2">
+              <div className="p-2 bg-slate-100 rounded-lg">
+                <Key className="w-4 h-4 text-slate-900" />
+              </div>
+              <h3 className="font-semibold text-slate-900">NPM Package</h3>
+            </div>
+            <p className="text-xs text-slate-600 mb-2">For polydev-perspectives-mcp</p>
+            <code className="text-xs bg-slate-100 px-2 py-1 rounded block truncate">POLYDEV_USER_TOKEN</code>
+          </div>
+        </div>
+
+        {/* Server URL Box */}
+        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm">MCP Server URL</h3>
+              <code className="text-sm font-mono text-slate-700">https://www.polydev.ai/api/mcp</code>
+            </div>
+            <button
+              onClick={() => copyToClipboard('https://www.polydev.ai/api/mcp', 'server-url')}
+              className="text-slate-600 hover:text-slate-900 p-2"
+              title="Copy server URL"
+            >
+              {copiedToken === 'server-url' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            </button>
           </div>
         </div>
       </motion.div>
@@ -446,7 +484,7 @@ export default function MCPTokensPage() {
                         </span>
                         {token.last_used_at && (
                           <span className="flex items-center space-x-1">
-                            <Settings className="w-4 h-4" />
+                            <Clock className="w-4 h-4" />
                             <span>Last used {new Date(token.last_used_at).toLocaleDateString()}</span>
                           </span>
                         )}
@@ -491,75 +529,94 @@ export default function MCPTokensPage() {
         </div>
       </motion.div>
 
-      {/* Usage Instructions */}
+      {/* Setup Instructions - Tabbed */}
       <motion.div
-        className="mt-8 bg-slate-50 rounded-lg p-6 border border-slate-200 hover:shadow-lg transition-shadow"
+        className="mt-8 bg-white rounded-lg border border-slate-200 hover:shadow-lg transition-shadow overflow-hidden"
         variants={itemVariants}
-        whileHover={{ scale: 1.01 }}
       >
-        <h3 className="font-semibold text-slate-900 mb-4 flex items-center space-x-2">
-          <Settings className="w-5 h-5" />
-          <span>How to Use MCP Tokens</span>
-        </h3>
-        <div className="space-y-4 text-sm text-slate-600">
-          <div>
-            <h4 className="font-medium text-slate-900 mb-1">Claude Desktop (OAuth - Recommended)</h4>
-            <p>Connect using OAuth for the best experience. This generates <span className="font-mono bg-slate-200 px-1 rounded">polydev_</span> tokens automatically:</p>
-            <pre className="bg-slate-100 p-2 rounded mt-2 text-xs overflow-x-auto">
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+          <h3 className="font-semibold text-slate-900 flex items-center space-x-2">
+            <Terminal className="w-5 h-5" />
+            <span>Setup Instructions</span>
+          </h3>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Claude Desktop */}
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Zap className="w-4 h-4 text-slate-700" />
+                <h4 className="font-medium text-slate-900">Claude Desktop</h4>
+                <span className="text-xs bg-slate-900 text-white px-2 py-0.5 rounded">Recommended</span>
+              </div>
+              <a href="https://docs.polydev.ai/setup/claude-desktop" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-600 hover:text-slate-900 flex items-center space-x-1">
+                <span>Full guide</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-slate-600 mb-3">Add to your <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">claude_desktop_config.json</code>:</p>
+              <pre className="bg-slate-900 text-slate-100 p-3 rounded text-xs overflow-x-auto">
 {`{
   "mcpServers": {
     "polydev": {
       "remote": {
-        "transport": {
-          "type": "http",
-          "url": "https://www.polydev.ai/api/mcp"
-        },
-        "auth": {
-          "type": "oauth",
-          "provider": "polydev"
-        }
+        "transport": { "type": "http", "url": "https://www.polydev.ai/api/mcp" },
+        "auth": { "type": "oauth", "provider": "polydev" }
       }
     }
   }
 }`}
-            </pre>
+              </pre>
+            </div>
           </div>
-          <div>
-            <h4 className="font-medium text-slate-900 mb-1">Published Package (polydev-perspectives-mcp)</h4>
-            <p>Use <span className="font-mono bg-slate-200 px-1 rounded">pd_</span> tokens for the npm package:</p>
-            <pre className="bg-slate-100 p-2 rounded mt-2 text-xs overflow-x-auto">
+
+          {/* Continue.dev / Cursor */}
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Terminal className="w-4 h-4 text-slate-700" />
+                <h4 className="font-medium text-slate-900">Continue.dev / Cursor / Other IDEs</h4>
+              </div>
+            </div>
+            <div className="p-4">
+              <p className="text-sm text-slate-600 mb-3">Use a <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">pd_*</code> API token with bearer auth:</p>
+              <pre className="bg-slate-900 text-slate-100 p-3 rounded text-xs overflow-x-auto">
+{`{
+  "mcpServers": {
+    "polydev": {
+      "remote": {
+        "transport": { "type": "http", "url": "https://www.polydev.ai/api/mcp" },
+        "auth": { "type": "bearer", "token": "pd_your_token_here" }
+      }
+    }
+  }
+}`}
+              </pre>
+            </div>
+          </div>
+
+          {/* NPM Package */}
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Key className="w-4 h-4 text-slate-700" />
+                <h4 className="font-medium text-slate-900">NPM Package (polydev-perspectives-mcp)</h4>
+              </div>
+              <a href="https://www.npmjs.com/package/polydev-perspectives-mcp" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-600 hover:text-slate-900 flex items-center space-x-1">
+                <span>npm</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <div className="p-4">
+              <pre className="bg-slate-900 text-slate-100 p-3 rounded text-xs overflow-x-auto">
 {`npm install -g polydev-perspectives-mcp
 
-# Set environment variable
-export POLYDEV_USER_TOKEN="pd_your_token_here"
-
-# Or pass directly in MCP calls`}
-            </pre>
-          </div>
-          <div>
-            <h4 className="font-medium text-slate-900 mb-1">Continue.dev & Other MCP Clients</h4>
-            <p>Use <span className="font-mono bg-slate-200 px-1 rounded">pd_</span> API tokens for programmatic access:</p>
-            <pre className="bg-slate-100 p-2 rounded mt-2 text-xs overflow-x-auto">
-{`{
-  "experimental": {
-    "modelContextProtocol": true
-  },
-  "mcpServers": {
-    "polydev": {
-      "remote": {
-        "transport": {
-          "type": "http",
-          "url": "https://www.polydev.ai/api/mcp"
-        },
-        "auth": {
-          "type": "bearer",
-          "token": "pd_your_token_here"
-        }
-      }
-    }
-  }
-}`}
-            </pre>
+# Set your token as an environment variable
+export POLYDEV_USER_TOKEN="pd_your_token_here"`}
+              </pre>
+            </div>
           </div>
         </div>
       </motion.div>

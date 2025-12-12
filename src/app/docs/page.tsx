@@ -1,1166 +1,402 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { marked } from 'marked'
-import { ChevronLeft, ChevronRight, Copy, Check, BookOpen, ExternalLink, Zap, Shield, Code2 } from 'lucide-react'
+import { Copy, Check, Terminal, Code2, Box, Sparkles, Cpu, ArrowRight, Key, AlertCircle, CheckCircle2 } from 'lucide-react'
 
-interface DocSection {
-  id: string
-  title: string
-  items: {
-    title: string
-    href: string
-    description?: string
-    filePath?: string
-  }[]
-}
-
-interface CopyButtonProps {
-  text: string
-}
-
-function CopyButton({ text }: CopyButtonProps) {
-  const [copied, setCopied] = useState(false)
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      console.error('Failed to copy text: ', err)
-    }
-  }
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="absolute top-4 right-4 p-2.5 rounded-lg bg-white hover:bg-slate-50 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-slate-200 shadow-sm"
-      title="Copy to clipboard"
-    >
-      {copied ? (
-        <Check className="h-4 w-4 text-slate-900" />
-      ) : (
-        <Copy className="h-4 w-4 text-slate-600" />
-      )}
-    </button>
-  )
-}
-
-// Global cache for docs content to prevent reprocessing
-const docsCache = {
-  content: new Map<string, string>(),
-  processedMarkdown: new Map<string, string>(),
-  tableOfContents: new Map<string, { id: string; text: string; level: number }[]>(),
-  timestamps: new Map<string, number>(),
-  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes for content
-}
+type TabId = 'claude-code' | 'cursor' | 'cline' | 'windsurf' | 'continue' | 'api'
 
 export default function Documentation() {
-  const [activeSection, setActiveSection] = useState('getting-started')
-  const [activeItem, setActiveItem] = useState('introduction')
-  const [content, setContent] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [toc, setToc] = useState<{ id: string; text: string; level: number }[]>([])
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const isMountedRef = useRef(true)
+  const [activeTab, setActiveTab] = useState<TabId>('claude-code')
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
 
-  // Memoized doc sections to prevent recreation on every render
-  const docSections: DocSection[] = useMemo(() => [
-    {
-      id: 'getting-started',
-      title: 'Getting Started',
-      items: [
-        { title: 'What is Polydev?', href: '#what-is-polydev', filePath: '/docs/intro/what-is-polydev.md' },
-        { title: 'Quick Start', href: '#quick-start', filePath: '/docs/intro/quick-start.md' },
-        { title: 'Installation', href: '#installation', filePath: '/docs/intro/installation.md' }
-      ]
-    },
-    {
-      id: 'configuration',
-      title: 'Configuration',
-      items: [
-        { title: 'Environment Setup', href: '#environment', filePath: '/docs/config/environment.md' },
-        { title: 'Authentication', href: '#authentication', filePath: '/docs/config/authentication.md' },
-        { title: 'User Preferences', href: '#preferences', filePath: '/docs/config/preferences.md' }
-      ]
-    },
-    {
-      id: 'providers',
-      title: 'AI Providers',
-      items: [
-        { title: 'Provider Overview', href: '#providers-overview', filePath: '/docs/providers/index.md' },
-        { title: 'OpenAI', href: '#openai', filePath: '/docs/providers/api-providers/openai.md' },
-        { title: 'Anthropic', href: '#anthropic', filePath: '/docs/providers/api-providers/anthropic.md' },
-        { title: 'Google AI (Gemini)', href: '#google-ai', filePath: '/docs/providers/api-providers/google-ai.md' },
-        { title: 'Groq', href: '#groq', filePath: '/docs/providers/api-providers/groq.md' },
-        { title: 'OpenRouter', href: '#openrouter', filePath: '/docs/providers/api-providers/openrouter.md' },
-        { title: 'Claude Code CLI', href: '#claude-code', filePath: '/docs/providers/cli-providers/claude-code.md' },
-        { title: 'Continue.dev', href: '#continue', filePath: '/docs/providers/cli-providers/continue.md' },
-        { title: 'Cursor', href: '#cursor', filePath: '/docs/providers/cli-providers/cursor.md' },
-        { title: 'Cline (VS Code)', href: '#cline', filePath: '/docs/providers/cli-providers/cline.md' }
-      ]
-    },
-    {
-      id: 'features',
-      title: 'Features',
-      items: [
-        { title: 'Perspectives (multi-model)', href: '#perspectives', filePath: '/docs/features/perspectives/index.md' },
-        { title: 'Project Memory', href: '#memory', filePath: '/docs/features/memory/index.md' },
-        { title: 'Intelligent Fallback', href: '#fallback', filePath: '/docs/features/fallback/index.md' },
-        { title: 'Analytics', href: '#analytics', filePath: '/docs/features/analytics/index.md' },
-        { title: 'Security', href: '#security', filePath: '/docs/features/security/index.md' }
-      ]
-    },
-    {
-      id: 'mcp',
-      title: 'MCP Integration',
-      items: [
-        { title: 'Overview', href: '#mcp-overview', filePath: '/docs/mcp/overview.md' },
-        { title: 'Server Setup', href: '#mcp-server', filePath: '/docs/mcp/server-setup.md' },
-        { title: 'Claude Desktop', href: '#mcp-claude-desktop', filePath: '/docs/mcp/clients/claude-desktop.md' },
-        { title: 'Cline (VS Code)', href: '#mcp-cline', filePath: '/docs/mcp/clients/cline.md' },
-        { title: 'Cursor', href: '#mcp-cursor', filePath: '/docs/mcp/clients/cursor.md' },
-        { title: 'Continue', href: '#mcp-continue', filePath: '/docs/mcp/clients/continue.md' },
-        { title: 'Gemini CLI', href: '#mcp-gemini', filePath: '/docs/mcp/clients/gemini-cli.md' }
-      ]
-    },
-    {
-      id: 'api-reference',
-      title: 'API Reference',
-      items: [
-        { title: 'API Overview', href: '#api-overview', filePath: '/docs/api-reference/index.md' },
-        { title: 'Perspectives API', href: '#perspectives-api', filePath: '/docs/api-reference/perspectives/index.md' },
-        { title: 'Chat Completions', href: '#chat-api', filePath: '/docs/api-reference/chat/index.md' },
-        { title: 'Models', href: '#models-api', filePath: '/docs/api-reference/models/index.md' },
-        { title: 'Webhooks', href: '#webhooks-api', filePath: '/docs/api-reference/webhooks/index.md' }
-      ]
+  const copyToClipboard = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedCode(id)
+      setTimeout(() => setCopiedCode(null), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
     }
-  ], []) // Empty dependency array since docSections is static
-
-  // Get current item index for navigation - memoized for performance
-  const getCurrentItemIndex = useCallback(() => {
-    for (let sectionIndex = 0; sectionIndex < docSections.length; sectionIndex++) {
-      const section = docSections[sectionIndex]
-      for (let itemIndex = 0; itemIndex < section.items.length; itemIndex++) {
-        const item = section.items[itemIndex]
-        if (activeItem === item.href.replace('#', '')) {
-          return { sectionIndex, itemIndex, section, item }
-        }
-      }
-    }
-    return null
-  }, [docSections, activeItem])
-
-  // Memoized navigation items calculation
-  const getNavigationItems = useCallback(() => {
-    const current = getCurrentItemIndex()
-    if (!current) return { prev: null, next: null }
-
-    const allItems: Array<{ title: string, href: string, filePath?: string, section: string }> = []
-    docSections.forEach(section => {
-      section.items.forEach(item => {
-        allItems.push({
-          ...item,
-          section: section.title
-        })
-      })
-    })
-
-    const currentIndex = allItems.findIndex(item =>
-      activeItem === item.href.replace('#', '')
-    )
-
-    return {
-      prev: currentIndex > 0 ? allItems[currentIndex - 1] : null,
-      next: currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null
-    }
-  }, [getCurrentItemIndex, docSections, activeItem])
-
-  // Enhanced markdown processing with caching: heading anchors + copy buttons for code
-  const processMarkdownContent = useCallback((html: string) => {
-    // Check cache first
-    if (docsCache.processedMarkdown.has(html)) {
-      return docsCache.processedMarkdown.get(html)!
-    }
-    // Add ids to h2/h3 for anchors
-    const addIds = (s: string) =>
-      s
-        .replace(/<h2>([^<]+)<\/h2>/g, (_m, t) => {
-          const id = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-          return `<h2 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-slate-300 hover:text-slate-500 no-underline align-middle" aria-label="Link to section">#</a></h2>`
-        })
-        .replace(/<h3>([^<]+)<\/h3>/g, (_m, t) => {
-          const id = t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-          return `<h3 id="${id}">${t}<a href="#${id}" class="anchor-link ml-2 text-slate-300 hover:text-slate-500 no-underline align-middle" aria-label="Link to section">#</a></h3>`
-        })
-
-    html = addIds(html)
-
-    // Add copy buttons to code blocks and improve styling
-    return html.replace(
-      /<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
-      (match, attributes, code) => {
-        const decodedCode = code
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&amp;/g, '&')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-
-        return `
-          <div class="relative group my-8">
-            <pre class="bg-white text-slate-900 rounded-lg p-6 overflow-x-auto border border-slate-200 font-mono text-sm leading-relaxed"><code${attributes}>${code}</code></pre>
-            <button class="copy-btn absolute top-4 right-4 p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors duration-200 opacity-0 group-hover:opacity-100 border border-slate-200" data-code="${decodedCode.replace(/"/g, '&quot;')}" title="Copy to clipboard">
-              <svg class="h-4 w-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-              </svg>
-            </button>
-          </div>
-        `
-      }
-    )
-
-    // Cache the result
-    const result = addIds(html)
-    docsCache.processedMarkdown.set(html, result)
-    return result
-  }, [])
-
-  // After content mounts, enhance with code-tabs and collect TOC
-  useEffect(() => {
-    const container = document.getElementById('doc-content')
-    if (!container) return
-
-    // Build TOC from h2/h3
-    const headings = Array.from(container.querySelectorAll('h2, h3')) as HTMLHeadingElement[]
-    const tocItems = headings.map(h => ({ id: h.id, text: h.textContent || '', level: h.tagName === 'H2' ? 2 : 3 }))
-    setToc(tocItems)
-
-    // Append visible anchor links to headings if missing
-    headings.forEach(h => {
-      if (!h.id) {
-        const id = (h.textContent || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-        if (id) h.id = id
-      }
-      if (!h.querySelector('a.anchor-link')) {
-        const a = document.createElement('a')
-        a.href = `#${h.id}`
-        a.className = 'ml-2 text-slate-300 hover:text-slate-500 no-underline align-middle anchor-link'
-        a.ariaLabel = 'Link to section'
-        a.textContent = '#'
-        h.appendChild(a)
-      }
-    })
-
-    // Initialize simple code tabs
-    const groups = container.querySelectorAll<HTMLElement>('.code-tabs')
-    groups.forEach(group => {
-      const buttons = Array.from(group.querySelectorAll<HTMLButtonElement>('.tab-button'))
-      const panes = Array.from(group.querySelectorAll<HTMLElement>('pre[data-lang]'))
-      const activate = (lang: string) => {
-        panes.forEach(p => {
-          p.style.display = p.dataset.lang === lang ? 'block' : 'none'
-        })
-        buttons.forEach(b => {
-          if (b.dataset.lang === lang) b.classList.add('bg-slate-200', 'text-slate-900')
-          else b.classList.remove('bg-slate-200', 'text-slate-900')
-        })
-      }
-      // Default to first button
-      const initial = buttons[0]?.dataset.lang || panes[0]?.dataset.lang || 'curl'
-      activate(initial)
-      buttons.forEach(btn => btn.addEventListener('click', () => activate(btn.dataset.lang || initial)))
-    })
-  }, [content])
-
-  // Optimized sample content with caching and lazy loading
-  const getSampleContent = useCallback((itemId: string) => {
-    // Check cache first
-    if (docsCache.content.has(itemId)) {
-      const cachedData = docsCache.content.get(itemId)!
-      const timestamp = docsCache.timestamps.get(itemId) || 0
-      if (Date.now() - timestamp < docsCache.CACHE_DURATION) {
-        return cachedData
-      }
-    }
-    const samples: Record<string, string> = {
-      'what-is-polydev': `
-# What is Polydev?
-
-Get multiple AI perspectives when you're stuck. Simple as that.
-
-When your agent hits a roadblock, Polydev queries several AI models simultaneously and gives you diverse solutions.
-
-## How it works
-
-1. **Connect** - Works with Claude Desktop, Cline, Cursor, and other MCP clients
-2. **Ask** - Send your question through your agent
-3. **Get perspectives** - Receive responses from multiple AI models
-4. **Choose** - Pick the best solution
-
-## Example
-
-\`\`\`javascript
-await callTool({
-  name: "get_perspectives",
-  arguments: {
-    prompt: "My React component re-renders excessively. Help debug this.",
-    project_memory: "full"
   }
-});
-\`\`\`
 
-Returns perspectives from Claude, GPT, Gemini, and others.
+  const CodeBlock = ({ code, id }: { code: string; id: string }) => (
+    <div className="relative group">
+      <pre className="bg-slate-900 text-white p-4 rounded-lg text-sm overflow-x-auto font-mono">
+        <code>{code}</code>
+      </pre>
+      <button
+        onClick={() => copyToClipboard(code, id)}
+        className="absolute top-2 right-2 p-2 bg-slate-700 hover:bg-slate-600 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+        title="Copy to clipboard"
+      >
+        {copiedCode === id ? (
+          <Check className="w-4 h-4 text-green-400" />
+        ) : (
+          <Copy className="w-4 h-4 text-slate-300" />
+        )}
+      </button>
+    </div>
+  )
 
-## Features
+  const StepNumber = ({ num }: { num: number }) => (
+    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-semibold">
+      {num}
+    </div>
+  )
 
-- **Multiple models** - Query Claude, GPT, Gemini simultaneously
-- **Smart fallback** - Uses your CLI tools first, then API keys, then credits
-- **Project context** - Includes relevant files from your codebase
-- **Zero setup** - Works with existing Claude Desktop/Cline installations
+  const tabs = [
+    { id: 'claude-code' as TabId, label: 'Claude Code', icon: Terminal, popular: true },
+    { id: 'cursor' as TabId, label: 'Cursor', icon: Code2 },
+    { id: 'cline' as TabId, label: 'Cline', icon: Box },
+    { id: 'windsurf' as TabId, label: 'Windsurf', icon: Sparkles },
+    { id: 'continue' as TabId, label: 'Continue', icon: Cpu },
+    { id: 'api' as TabId, label: 'REST API', icon: Code2 },
+  ]
 
-Ready to get started? [Quick Start →](#quick-start)
-`,
-      'quick-start': `
-# Quick Start
-
-Get Polydev running in 2 minutes.
-
-## Install
-
-\`\`\`bash
-git clone https://github.com/polydev-ai/polydev.git
-cd polydev
-npm install
-\`\`\`
-
-## Setup
-
-**Option 1: Use existing CLI tools (recommended)**
-
-If you have Claude Desktop, Cline, or Cursor installed, you're done. Polydev will use these automatically.
-
-**Option 2: Add your API keys**
-
-\`\`\`bash
-# Start dashboard
-npm run dev
-
-# Open http://localhost:3000
-# Go to Settings → API Keys
-# Add your OpenAI, Anthropic, or other API keys
-\`\`\`
-
-## Configure your agent
-
-Add to your Claude Desktop config (\`~/Library/Application Support/Claude/claude_desktop_config.json\`):
-
-\`\`\`json
-{
+  const configs: Record<TabId, { command: string; config: string; configPath: string }> = {
+    'claude-code': {
+      command: 'claude mcp add polydev --scope user -- npx -y polydev-ai',
+      configPath: '~/.claude.json',
+      config: `{
   "mcpServers": {
     "polydev": {
-      "command": "node",
-      "args": ["/path/to/polydev/mcp/server.js"]
+      "command": "npx",
+      "args": ["-y", "polydev-ai"],
+      "env": {
+        "POLYDEV_USER_TOKEN": "pd_your_token_here"
+      }
     }
   }
-}
-\`\`\`
-
-## Test it
-
-Ask your agent:
-
-\`\`\`
-"I'm having trouble with React re-renders. Can you get multiple perspectives on debugging this?"
-\`\`\`
-
-Your agent will use Polydev to query multiple AI models and give you diverse solutions.
-
-## That's it
-
-Polydev now handles multi-model requests automatically when your agent gets stuck.
-`,
-      'installation': `
-# Installation Guide
-
-Choose the installation method that works best for your development environment.
-
-## Prerequisites
-
-- **Node.js**: Version 18.0 or higher
-- **Package Manager**: npm, yarn, or pnpm
-- **Operating System**: macOS, Windows, or Linux
-
-## Method 1: NPM Package (Recommended)
-
-\`\`\`bash
-# Install globally for CLI access
-npm install -g @polydev/cli
-
-# Or install locally in your project
-npm install @polydev/sdk
-\`\`\`
-
-## Method 2: Package Managers
-
-### Yarn
-
-\`\`\`bash
-# Global installation
-yarn global add @polydev/cli
-
-# Project installation
-yarn add @polydev/sdk
-\`\`\`
-
-### PNPM
-
-\`\`\`bash
-# Global installation
-pnpm add -g @polydev/cli
-
-# Project installation
-pnpm add @polydev/sdk
-\`\`\`
-
-## Method 3: Direct Download
-
-For environments without Node.js:
-
-\`\`\`bash
-# macOS/Linux
-curl -fsSL https://install.polydev.ai | sh
-
-# Windows PowerShell
-iwr -useb https://install.polydev.ai/windows | iex
-\`\`\`
-
-## Verification
-
-Verify your installation:
-
-\`\`\`bash
-# Check CLI version
-polydev --version
-
-# Check available commands
-polydev --help
-
-# Test connection
-polydev status
-\`\`\`
-
-## Framework Integration
-
-### React/Next.js
-
-\`\`\`bash
-npm install @polydev/react
-\`\`\`
-
-\`\`\`jsx
-import { usePolydev } from '@polydev/react'
-
-function MyComponent() {
-  const { ask, perspectives, loading } = usePolydev()
-
-  const handleQuery = async () => {
-    const result = await perspectives('Explain React Server Components')
-    console.log(result)
-  }
-
-  return <button onClick={handleQuery}>Ask AI</button>
-}
-\`\`\`
-
-### Python
-
-\`\`\`bash
-pip install polydev-python
-\`\`\`
-
-\`\`\`python
-from polydev import Client
-
-client = Client(api_key="your-key")
-response = client.perspectives(
-    prompt="Explain Python asyncio",
-    models=["gpt-4", "claude-3-opus"]
-)
-\`\`\`
-
-### Go
-
-\`\`\`bash
-go get github.com/polydev-ai/polydev-go
-\`\`\`
-
-\`\`\`go
-package main
-
-import "github.com/polydev-ai/polydev-go"
-
-func main() {
-    client := polydev.NewClient("your-api-key")
-    response, err := client.Perspectives(polydev.PerspectivesRequest{
-        Prompt: "Explain Go concurrency",
-        Models: []string{"gpt-4", "claude-3-opus"},
-    })
-}
-\`\`\`
-
-## Troubleshooting
-
-### Common Issues
-
-**Permission denied on macOS/Linux:**
-\`\`\`bash
-sudo npm install -g @polydev/cli
-\`\`\`
-
-**Windows PowerShell execution policy:**
-\`\`\`powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-\`\`\`
-
-**Node.js version issues:**
-\`\`\`bash
-# Use nvm to manage Node.js versions
-nvm install 18
-nvm use 18
-\`\`\`
-
-### Getting Help
-
-- **Documentation**: [docs.polydev.ai](https://docs.polydev.ai)
-- **GitHub Issues**: [github.com/polydev-ai/polydev](https://github.com/polydev-ai/polydev)
-- **Discord Community**: [discord.gg/polydev](https://discord.gg/polydev)
-- **Email Support**: support@polydev.ai
-
-Next: [Quick Start Guide →](#quick-start)
-`,
-      'environment': `
-# Environment Setup
-
-Configure Polydev for optimal performance, security, and cost management.
-
-## API Key Configuration
-
-### Option 1: Environment Variables (Recommended)
-
-\`\`\`bash
-# Polydev API key (required)
-export POLYDEV_API_KEY="pd_your_api_key_here"
-
-# Optional: Provider API keys for direct access
-export OPENAI_API_KEY="sk-..."
-export ANTHROPIC_API_KEY="sk-ant-..."
-export GOOGLE_API_KEY="AIza..."
-\`\`\`
-
-### Option 2: Configuration File
-
-Create \`.polydev/config.json\` in your home directory:
-
-\`\`\`json
-{
-  "apiKey": "pd_your_api_key_here",
-  "providers": {
-    "openai": {
-      "apiKey": "sk-...",
-      "enabled": true
+}`
     },
-    "anthropic": {
-      "apiKey": "sk-ant-...",
-      "enabled": true
+    'cursor': {
+      command: '',
+      configPath: '~/.cursor/mcp.json',
+      config: `{
+  "mcpServers": {
+    "polydev": {
+      "command": "npx",
+      "args": ["-y", "polydev-ai"],
+      "env": {
+        "POLYDEV_USER_TOKEN": "pd_your_token_here"
+      }
+    }
+  }
+}`
     },
-    "google": {
-      "apiKey": "AIza...",
-      "enabled": true
-    }
-  },
-  "preferences": {
-    "defaultModels": ["gpt-4", "claude-3-opus", "gemini-pro"],
-    "costOptimization": true,
-    "cacheEnabled": true
-  }
-}
-\`\`\`
-
-### Option 3: CLI Configuration
-
-\`\`\`bash
-# Set API key
-polydev config set api-key pd_your_api_key_here
-
-# Set default models
-polydev config set default-models gpt-4,claude-3-opus,gemini-pro
-
-# Enable cost optimization
-polydev config set cost-optimization true
-\`\`\`
-
-## Advanced Configuration
-
-### Cost Management
-
-\`\`\`javascript
-// polydev.config.js
-module.exports = {
-  costOptimization: {
-    enabled: true,
-    maxCostPerRequest: 0.25,        // Maximum $0.25 per request
-    maxDailyCost: 50.00,            // Daily budget limit
-    preferCheaperModels: true,      // Prefer cost-effective options
-    fallbackToFreeProviders: true, // Use CLI tools as fallback
-  },
-
-  routing: {
-    strategy: "cost-optimized",     // or "performance", "balanced"
-    priorities: ["cost", "speed", "quality"]
-  }
-}
-\`\`\`
-
-### Performance Settings
-
-\`\`\`javascript
-module.exports = {
-  performance: {
-    timeout: 30000,          // 30 second timeout
-    retries: 3,              // Retry failed requests 3 times
-    concurrent: 5,           // Max 5 concurrent requests
-    caching: {
-      enabled: true,
-      ttl: 3600,            // Cache for 1 hour
-      strategy: "intelligent" // or "aggressive", "minimal"
-    }
-  },
-
-  fallback: {
-    enabled: true,
-    chain: [
-      "gpt-4",
-      "claude-3-opus",
-      "gemini-pro",
-      "llama-3.3-70b"
-    ],
-    timeout: 10000          // 10 second timeout per model
-  }
-}
-\`\`\`
-
-### Security Configuration
-
-\`\`\`javascript
-module.exports = {
-  security: {
-    encryptLocalCache: true,        // Encrypt cached responses
-    anonymizeRequests: true,        // Remove PII from logs
-    auditLogging: true,             // Enable audit trails
-
-    // Data retention
-    dataRetention: {
-      requests: 30,                 // Keep request logs for 30 days
-      responses: 7,                 // Keep responses for 7 days
-      cache: 1                      // Keep cache for 1 day
+    'cline': {
+      command: '',
+      configPath: 'VS Code Settings or ~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json',
+      config: `{
+  "cline.mcpServers": {
+    "polydev": {
+      "command": "npx",
+      "args": ["-y", "polydev-ai"],
+      "env": {
+        "POLYDEV_USER_TOKEN": "pd_your_token_here"
+      }
     }
   }
-}
-\`\`\`
-
-## Environment-Specific Settings
-
-### Development
-
-\`\`\`bash
-# .env.development
-POLYDEV_ENV=development
-POLYDEV_DEBUG=true
-POLYDEV_CACHE_TTL=300
-POLYDEV_COST_LIMIT=5.00
-\`\`\`
-
-### Production
-
-\`\`\`bash
-# .env.production
-POLYDEV_ENV=production
-POLYDEV_DEBUG=false
-POLYDEV_CACHE_TTL=3600
-POLYDEV_COST_LIMIT=100.00
-POLYDEV_MONITORING=true
-\`\`\`
-
-### Testing
-
-\`\`\`bash
-# .env.test
-POLYDEV_ENV=test
-POLYDEV_USE_MOCK=true
-POLYDEV_CACHE_ENABLED=false
-\`\`\`
-
-## Validation & Testing
-
-### Verify Configuration
-
-\`\`\`bash
-# Check configuration status
-polydev config status
-
-# Test API connectivity
-polydev test connection
-
-# Validate API keys
-polydev test auth
-
-# Test model access
-polydev test models --model gpt-4
-\`\`\`
-
-### Health Checks
-
-\`\`\`bash
-# Full system health check
-polydev health
-
-# Check provider status
-polydev status providers
-
-# Check cost usage
-polydev usage today
-\`\`\`
-
-## IDE Integration
-
-### VS Code
-
-Create \`.vscode/settings.json\`:
-
-\`\`\`json
-{
-  "polydev.apiKey": "\${env:POLYDEV_API_KEY}",
-  "polydev.defaultModels": ["gpt-4", "claude-3-opus"],
-  "polydev.costOptimization": true
-}
-\`\`\`
-
-### JetBrains IDEs
-
-Configure in IDE settings or \`~/.polydev/jetbrains.properties\`:
-
-\`\`\`properties
-polydev.apiKey=\${POLYDEV_API_KEY}
-polydev.defaultModels=gpt-4,claude-3-opus
-polydev.costOptimization=true
-\`\`\`
-
-Ready to configure authentication? [Continue to Authentication →](#authentication)
-`
-    }
-
-    const result = samples[itemId] || samples['what-is-polydev']
-
-    // Cache the result
-    docsCache.content.set(itemId, result)
-    docsCache.timestamps.set(itemId, Date.now())
-    return result
-  }, [])
-
-  // Optimized load content with debouncing and caching
-  const loadContent = useCallback(async (filePath: string, showLoading = true) => {
-    if (!filePath) return
-
-    // Clear previous debounce timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
-
-    // Debounce the content loading
-    debounceTimerRef.current = setTimeout(async () => {
-      if (!isMountedRef.current) return
-
-      // Check cache first
-      if (docsCache.content.has(filePath)) {
-        const cachedData = docsCache.content.get(filePath)!
-        const timestamp = docsCache.timestamps.get(filePath) || 0
-        if (Date.now() - timestamp < docsCache.CACHE_DURATION) {
-          setContent(cachedData)
-          return
-        }
-      }
-
-    if (showLoading) {
-      setLoading(true)
-    }
-
-    // Get the item ID from the current active item for sample content
-    const itemId = activeItem
-
-    try {
-      const response = await fetch(`/api/docs?path=${encodeURIComponent(filePath)}`)
-      if (response.ok) {
-        const markdown = await response.text()
-        const html = await marked(markdown)
-        const processedHtml = processMarkdownContent(html)
-        setContent(processedHtml)
-      } else {
-        // Use sample content instead of error message
-        const sampleMarkdown = getSampleContent(itemId)
-        const html = await marked(sampleMarkdown)
-        const processedHtml = processMarkdownContent(html)
-        setContent(processedHtml)
-      }
-    } catch (error) {
-      console.error('Error loading documentation:', error)
-      // Use sample content instead of error message
-      const sampleMarkdown = getSampleContent(itemId)
-      const html = await marked(sampleMarkdown)
-      const processedHtml = processMarkdownContent(html)
-      setContent(processedHtml)
-
-      // Cache the processed content
-      docsCache.content.set(filePath, processedHtml)
-      docsCache.timestamps.set(filePath, Date.now())
-    } finally {
-      if (showLoading && isMountedRef.current) {
-        setLoading(false)
+}`
+    },
+    'windsurf': {
+      command: '',
+      configPath: '~/.codeium/windsurf/mcp_config.json',
+      config: `{
+  "mcpServers": {
+    "polydev": {
+      "command": "npx",
+      "args": ["-y", "polydev-ai"],
+      "env": {
+        "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
     }
-    }, 300) // 300ms debounce
-  }, [activeItem, processMarkdownContent, getSampleContent])
-
-  // Cleanup function for component unmount
-  useEffect(() => {
-    isMountedRef.current = true
-    return () => {
-      isMountedRef.current = false
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
+  }
+}`
+    },
+    'continue': {
+      command: '',
+      configPath: '~/.continue/config.json',
+      config: `{
+  "mcpServers": {
+    "polydev": {
+      "command": "npx",
+      "args": ["-y", "polydev-ai"],
+      "env": {
+        "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
     }
-  }, [])
-
-  // Load initial content immediately with sample data
-  useEffect(() => {
-    const initialSection = docSections.find(s => s.id === activeSection)
-    const initialItem = initialSection?.items?.[0]
-    if (initialItem) {
-      setActiveItem(initialItem.href.replace('#', ''))
-
-      // Immediately show sample content to prevent loading delay
-      const itemId = initialItem.href.replace('#', '')
-      const sampleMarkdown = getSampleContent(itemId)
-      Promise.resolve(marked(sampleMarkdown)).then(html => {
-        const processedHtml = processMarkdownContent(html)
-        setContent(processedHtml)
-      })
-
-      // Then try to load real content in the background without showing loading
-      if (initialItem.filePath) {
-        loadContent(initialItem.filePath, false)
-      }
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Add click handlers for copy buttons after content loads
-  useEffect(() => {
-    const handleCopyClick = async (e: Event) => {
-      const target = e.target as HTMLElement
-      const button = target.closest('.copy-btn') as HTMLButtonElement
-      if (!button) return
-
-      const code = button.getAttribute('data-code')
-      if (!code) return
-
-      try {
-        await navigator.clipboard.writeText(code)
-        const svg = button.querySelector('svg')
-        if (svg) {
-          svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>`
-          svg.classList.remove('text-slate-600')
-          svg.classList.add('text-slate-900')
-          setTimeout(() => {
-            svg.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>`
-            svg.classList.remove('text-slate-900')
-            svg.classList.add('text-slate-600')
-          }, 2000)
-        }
-      } catch (err) {
-        console.error('Failed to copy text: ', err)
-      }
-    }
-
-    document.addEventListener('click', handleCopyClick)
-    return () => document.removeEventListener('click', handleCopyClick)
-  }, [content])
-
-  // Handle section/item changes
-  const handleItemClick = (item: any) => {
-    setActiveItem(item.href.replace('#', ''))
-    if (item.filePath) {
-      loadContent(item.filePath)
+  }
+}`
+    },
+    'api': {
+      command: '',
+      configPath: 'API Endpoint',
+      config: `curl -X POST https://www.polydev.ai/api/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer pd_your_token_here" \\
+  -d '{
+    "model": "gpt-5.1",
+    "messages": [
+      {"role": "user", "content": "Hello!"}
+    ]
+  }'`
     }
   }
 
-  const { prev, next } = getNavigationItems()
-  const currentItem = getCurrentItemIndex()
+  const currentConfig = configs[activeTab]
 
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <BookOpen className="h-7 w-7 text-slate-900" />
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">Documentation</h1>
-                <p className="text-sm text-slate-600 hidden sm:block">Polydev AI Platform</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-6 text-sm">
-              {currentItem && (
-                <div className="hidden lg:flex items-center space-x-2 text-slate-600">
-                  <span>{currentItem.section.title}</span>
-                  <span>•</span>
-                  <span className="text-slate-900 font-medium">{currentItem.item.title}</span>
-                </div>
-              )}
-              <Link
-                href="/dashboard"
-                className="flex items-center space-x-2 text-slate-600 hover:text-slate-900 transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                <span>Dashboard</span>
-              </Link>
-            </div>
-          </div>
+      <div className="border-b border-slate-200">
+        <div className="max-w-4xl mx-auto px-6 py-16">
+          <h1 className="text-4xl font-bold text-slate-900 mb-4">
+            Get Started with Polydev
+          </h1>
+          <p className="text-xl text-slate-600">
+            Connect your IDE to get AI perspectives from multiple models when you're stuck.
+          </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto">
-        <div className="flex">
-          {/* Sidebar */}
-          <div className="w-80 flex-shrink-0 bg-white border-r border-slate-200 min-h-screen">
-            <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
-              <div className="p-6">
-                {/* Quick Actions */}
-                <div className="mb-8">
-                  <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-4">Quick Start</h3>
-                  <div className="space-y-2">
-                    <Link
-                      href="/docs/quickstart"
-                      className="flex items-center justify-between p-3 bg-slate-200 rounded-lg hover:bg-slate-300 transition-colors group"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Zap className="h-5 w-5 text-slate-900" />
-                        <div>
-                          <div className="font-medium text-slate-900">Docs Quickstart</div>
-                          <div className="text-xs text-slate-600">3 steps • 2 minutes</div>
-                        </div>
-                      </div>
-                      <span className="text-slate-600 group-hover:text-slate-900">→</span>
-                    </Link>
-                    <Link
-                      href="/chat"
-                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-colors group"
-                    >
-                      <Zap className="h-5 w-5 text-slate-900" />
-                      <div>
-                        <div className="font-medium text-slate-900">Try Polydev</div>
-                        <div className="text-xs text-slate-600">Multi-model chat</div>
-                      </div>
-                    </Link>
-                    <Link
-                      href="/dashboard/models"
-                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-colors group"
-                    >
-                      <Shield className="h-5 w-5 text-slate-900" />
-                      <div>
-                        <div className="font-medium text-slate-900">Setup API Keys</div>
-                        <div className="text-xs text-slate-600">Configure providers</div>
-                      </div>
-                    </Link>
-                    <Link
-                      href="/dashboard/mcp-tokens"
-                      className="flex items-center space-x-3 p-3 border border-slate-200 rounded-lg hover:border-slate-300 hover:bg-slate-50 transition-colors group"
-                    >
-                      <Code2 className="h-5 w-5 text-slate-900" />
-                      <div>
-                        <div className="font-medium text-slate-900">MCP Tokens</div>
-                        <div className="text-xs text-slate-600">For CLI integration</div>
-                      </div>
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Navigation */}
-                <nav className="space-y-6">
-                  {docSections.map((section) => (
-                    <div key={section.id} className="space-y-3">
-                      <button
-                        onClick={() => {
-                          setActiveSection(section.id)
-                          if (section.items.length > 0) {
-                            handleItemClick(section.items[0])
-                          }
-                        }}
-                        className="w-full text-left text-sm font-semibold text-slate-900"
-                      >
-                        {section.title}
-                      </button>
-                      <div className="space-y-1">
-                        {section.items.map((item) => (
-                          <button
-                            key={item.href}
-                            onClick={() => handleItemClick(item)}
-                            className={`block w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${
-                              activeItem === item.href.replace('#', '')
-                                ? 'text-slate-900 bg-slate-100 font-medium'
-                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                            }`}
-                          >
-                            {item.title}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </nav>
-              </div>
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        {/* Step 1: Get Token */}
+        <section className="mb-16">
+          <div className="flex items-start gap-4 mb-6">
+            <StepNumber num={1} />
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-900">Get your token</h2>
+              <p className="text-slate-600 mt-1">Generate a token from your dashboard</p>
             </div>
           </div>
 
-          {/* Modern Main Content */}
-          <div className="flex-1 min-w-0">
-            <div className="px-8 lg:px-16 py-12">
-              {loading ? (
-                <div className="flex items-center justify-center py-32">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900 mx-auto mb-6"></div>
-                    <p className="text-slate-600 text-lg">Loading documentation...</p>
-                  </div>
+          <div className="ml-11">
+            <Link
+              href="/dashboard/mcp-tokens"
+              className="inline-flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-lg font-medium hover:bg-slate-800 transition-colors"
+            >
+              <Key className="w-4 h-4" />
+              Generate Token
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <p className="text-sm text-slate-500 mt-3">
+              Your token starts with <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700">pd_</code>
+            </p>
+          </div>
+        </section>
+
+        {/* Step 2: Choose IDE */}
+        <section className="mb-16">
+          <div className="flex items-start gap-4 mb-6">
+            <StepNumber num={2} />
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-900">Connect your IDE</h2>
+              <p className="text-slate-600 mt-1">Add Polydev to your coding environment</p>
+            </div>
+          </div>
+
+          <div className="ml-11">
+            {/* Tab Navigation */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {tabs.map((tab) => {
+                const Icon = tab.icon
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      activeTab === tab.id
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                    {tab.popular && activeTab === tab.id && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-white/20">Popular</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Claude Code specific - has CLI command */}
+            {activeTab === 'claude-code' && (
+              <div className="space-y-4 mb-6">
+                <div>
+                  <p className="text-sm font-medium text-slate-700 mb-2">Run this command:</p>
+                  <CodeBlock code={currentConfig.command} id="cc-command" />
                 </div>
-              ) : (
-                <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:gap-12">
-                  <article
-                    id="doc-content"
-                    className="prose prose-slate max-w-none
-                      prose-headings:scroll-m-20 prose-headings:font-semibold prose-headings:tracking-tight
-                      prose-h1:text-4xl prose-h1:mb-6 prose-h1:mt-2
-                      prose-h2:text-3xl prose-h2:mt-10 prose-h2:mb-4 prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-2
-                      prose-h3:text-2xl prose-h3:mt-8 prose-h3:mb-4
-                      prose-h4:text-xl prose-h4:mt-6 prose-h4:mb-2
-                      prose-p:leading-7 prose-p:text-slate-700 prose-p:mb-4
-                      prose-a:font-medium prose-a:text-slate-900 prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-slate-600
-                      prose-blockquote:mt-6 prose-blockquote:border-l-2 prose-blockquote:border-slate-300 prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:text-slate-700
-                      prose-code:relative prose-code:rounded prose-code:bg-slate-100 prose-code:px-[0.4rem] prose-code:py-[0.2rem] prose-code:font-mono prose-code:text-sm prose-code:font-medium prose-code:text-slate-900 prose-code:before:content-none prose-code:after:content-none
-                      prose-pre:bg-white prose-pre:text-slate-900 prose-pre:border prose-pre:border-slate-200 prose-pre:mt-6 prose-pre:mb-4 prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:py-4
-                      prose-ol:my-6 prose-ol:ml-6 prose-ol:list-decimal prose-ol:[&>li]:mt-2
-                      prose-ul:my-6 prose-ul:ml-6 prose-ul:list-disc prose-ul:[&>li]:mt-2
-                      prose-li:text-slate-700 prose-li:leading-7
-                      prose-table:my-6 prose-table:w-full prose-table:overflow-y-auto
-                      prose-th:border prose-th:border-slate-200 prose-th:px-4 prose-th:py-2 prose-th:text-left prose-th:font-semibold prose-th:bg-slate-50
-                      prose-td:border prose-td:border-slate-200 prose-td:px-4 prose-td:py-2 prose-td:text-left
-                      prose-img:rounded-lg prose-img:border prose-img:border-slate-200
-                      prose-hr:my-8 prose-hr:border-slate-200
-                      prose-strong:font-semibold prose-strong:text-slate-900
-                      max-w-3xl"
-                    dangerouslySetInnerHTML={{ __html: content }}
+                <div>
+                  <p className="text-sm font-medium text-slate-700 mb-2">Then set your token:</p>
+                  <CodeBlock
+                    code={`export POLYDEV_USER_TOKEN="pd_your_token_here"`}
+                    id="cc-token"
                   />
-                  <nav className="hidden lg:block sticky top-24 self-start text-sm border-l border-slate-200 pl-6">
-                    <div className="font-semibold text-slate-900 mb-3">On this page</div>
-                    <ul className="space-y-2 text-slate-600">
-                      {toc.map((item, idx) => (
-                        <li key={idx}>
-                          <a href={`#${item.id}`} className={`block hover:text-slate-900 ${item.level === 3 ? 'pl-4 text-slate-500' : ''}`}>{item.text}</a>
-                        </li>
-                      ))}
-                    </ul>
-                  </nav>
-                </div>
-              )}
-
-              {/* Enhanced Navigation */}
-              {(prev || next) && (
-                <div className="mt-24 pt-12 border-t border-slate-200">
-                  <div className="flex justify-between items-center gap-8">
-                    {prev ? (
-                      <button
-                        onClick={() => handleItemClick(prev)}
-                        className="flex items-center space-x-4 px-8 py-6 text-left bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:border-slate-300 hover:shadow-md transition-all duration-300 group flex-1"
-                      >
-                        <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-slate-200 transition-colors">
-                          <ChevronLeft className="h-5 w-5 text-slate-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Previous</div>
-                          <div className="font-bold text-slate-900 text-lg truncate">{prev.title}</div>
-                          <div className="text-sm text-slate-600">{prev.section}</div>
-                        </div>
-                      </button>
-                    ) : (
-                      <div className="flex-1"></div>
-                    )}
-
-                    {next && (
-                      <button
-                        onClick={() => handleItemClick(next)}
-                        className="flex items-center space-x-4 px-8 py-6 text-right bg-white border border-slate-200 rounded-2xl hover:bg-slate-50 hover:border-slate-300 hover:shadow-md transition-all duration-300 group flex-1"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold mb-1">Next</div>
-                          <div className="font-bold text-slate-900 text-lg truncate">{next.title}</div>
-                          <div className="text-sm text-slate-600">{next.section}</div>
-                        </div>
-                        <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-slate-200 transition-colors">
-                          <ChevronRight className="h-5 w-5 text-slate-600" />
-                        </div>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-8 lg:px-16 py-8 border-t border-slate-200">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
-                <div className="text-slate-600">
-                  <div className="font-medium text-slate-900 mb-1">Polydev Documentation</div>
-                  <div className="text-sm">Unified AI platform for developers</div>
-                </div>
-                <div className="flex space-x-8 text-sm">
-                  <a
-                    href="https://github.com/polydev-ai/polydev"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-slate-600 hover:text-slate-900 transition-colors font-medium"
-                  >
-                    GitHub
-                  </a>
-                  <a
-                    href="https://discord.gg/polydev"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-slate-600 hover:text-slate-900 transition-colors font-medium"
-                  >
-                    Discord
-                  </a>
-                  <Link
-                    href="/dashboard/support"
-                    className="text-slate-600 hover:text-slate-900 transition-colors font-medium"
-                  >
-                    Support
-                  </Link>
                 </div>
               </div>
+            )}
+
+            {/* API tab */}
+            {activeTab === 'api' && (
+              <div className="space-y-4 mb-6">
+                <p className="text-sm text-slate-600">
+                  Polydev is OpenAI SDK compatible. Use it with cURL or any HTTP client:
+                </p>
+                <CodeBlock code={currentConfig.config} id="api-config" />
+              </div>
+            )}
+
+            {/* Config file for other IDEs */}
+            {activeTab !== 'claude-code' && activeTab !== 'api' && (
+              <div className="space-y-4 mb-6">
+                <div>
+                  <p className="text-sm font-medium text-slate-700 mb-2">
+                    Add to <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 text-xs">{currentConfig.configPath}</code>:
+                  </p>
+                  <CodeBlock code={currentConfig.config} id={`${activeTab}-config`} />
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <p className="text-sm text-slate-600">
+                    Replace <code className="bg-slate-100 px-1 rounded">pd_your_token_here</code> with your actual token, then restart your IDE.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Step 3: Try it */}
+        <section className="mb-16">
+          <div className="flex items-start gap-4 mb-6">
+            <StepNumber num={3} />
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-900">Try it out</h2>
+              <p className="text-slate-600 mt-1">Ask your AI assistant to use Polydev</p>
             </div>
           </div>
+
+          <div className="ml-11">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+              <p className="text-slate-700 font-medium mb-3">Example prompt:</p>
+              <p className="text-slate-600 italic">
+                "Can you get perspectives from multiple AI models about the best way to structure a React component?"
+              </p>
+            </div>
+
+            <div className="mt-6 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <p className="text-slate-600">
+                Polydev will query multiple AI models (Claude, GPT, Gemini) and return diverse perspectives.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Available Tools */}
+        <section className="mb-16 border-t border-slate-200 pt-12">
+          <h2 className="text-xl font-semibold text-slate-900 mb-6">Available MCP Tools</h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="font-medium text-slate-900">get_perspectives</p>
+              <p className="text-sm text-slate-600 mt-1">Get AI perspectives from multiple models simultaneously</p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="font-medium text-slate-900">send_cli_prompt</p>
+              <p className="text-sm text-slate-600 mt-1">Send prompts to local CLI tools (Claude Code, Codex)</p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="font-medium text-slate-900">force_cli_detection</p>
+              <p className="text-sm text-slate-600 mt-1">Detect available local CLI tools</p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <p className="font-medium text-slate-900">extract_memory</p>
+              <p className="text-sm text-slate-600 mt-1">Extract conversation memory for context sharing</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Supported Models */}
+        <section className="mb-16 border-t border-slate-200 pt-12">
+          <h2 className="text-xl font-semibold text-slate-900 mb-6">Supported Models</h2>
+          <div className="grid sm:grid-cols-4 gap-4">
+            <div className="border border-slate-200 rounded-lg p-4">
+              <h3 className="font-medium text-slate-900 mb-2">OpenAI</h3>
+              <ul className="text-sm text-slate-600 space-y-1">
+                <li>gpt-5.1</li>
+                <li>gpt-5.1-mini</li>
+                <li>gpt-5.1-nano</li>
+              </ul>
+            </div>
+            <div className="border border-slate-200 rounded-lg p-4">
+              <h3 className="font-medium text-slate-900 mb-2">Anthropic</h3>
+              <ul className="text-sm text-slate-600 space-y-1">
+                <li>claude-opus-4.5</li>
+                <li>claude-sonnet-4.5</li>
+                <li>claude-haiku-4.5</li>
+              </ul>
+            </div>
+            <div className="border border-slate-200 rounded-lg p-4">
+              <h3 className="font-medium text-slate-900 mb-2">Google</h3>
+              <ul className="text-sm text-slate-600 space-y-1">
+                <li>gemini-3.0-pro</li>
+                <li>gemini-3.0-flash</li>
+              </ul>
+            </div>
+            <div className="border border-slate-200 rounded-lg p-4">
+              <h3 className="font-medium text-slate-900 mb-2">xAI</h3>
+              <ul className="text-sm text-slate-600 space-y-1">
+                <li>grok-4.1</li>
+                <li>grok-4.1-mini</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* Next Steps */}
+        <section className="border-t border-slate-200 pt-12">
+          <h2 className="text-xl font-semibold text-slate-900 mb-6">Next Steps</h2>
+          <div className="grid sm:grid-cols-3 gap-4">
+            <Link
+              href="/dashboard/models"
+              className="group border border-slate-200 rounded-lg p-5 hover:border-slate-300 transition-colors"
+            >
+              <h3 className="font-medium text-slate-900 mb-1">Add API Keys</h3>
+              <p className="text-sm text-slate-600">Configure your own provider keys for more control</p>
+              <span className="inline-flex items-center text-sm text-slate-500 mt-3 group-hover:text-slate-900">
+                Settings <ArrowRight className="w-3 h-3 ml-1" />
+              </span>
+            </Link>
+            <Link
+              href="/chat"
+              className="group border border-slate-200 rounded-lg p-5 hover:border-slate-300 transition-colors"
+            >
+              <h3 className="font-medium text-slate-900 mb-1">Try Chat</h3>
+              <p className="text-sm text-slate-600">Test multi-model chat in your browser</p>
+              <span className="inline-flex items-center text-sm text-slate-500 mt-3 group-hover:text-slate-900">
+                Open Chat <ArrowRight className="w-3 h-3 ml-1" />
+              </span>
+            </Link>
+            <Link
+              href="/docs/mcp-integration"
+              className="group border border-slate-200 rounded-lg p-5 hover:border-slate-300 transition-colors"
+            >
+              <h3 className="font-medium text-slate-900 mb-1">Full Setup Guide</h3>
+              <p className="text-sm text-slate-600">Detailed instructions with troubleshooting</p>
+              <span className="inline-flex items-center text-sm text-slate-500 mt-3 group-hover:text-slate-900">
+                View Guide <ArrowRight className="w-3 h-3 ml-1" />
+              </span>
+            </Link>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <div className="mt-16 pt-8 border-t border-slate-200 text-center">
+          <p className="text-sm text-slate-500">
+            Need help? <a href="mailto:support@polydev.ai" className="text-slate-700 underline">support@polydev.ai</a>
+          </p>
         </div>
       </div>
     </div>

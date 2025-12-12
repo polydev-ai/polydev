@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/app/utils/supabase/server'
 import { bonusManager } from '@/lib/bonus-manager'
+
+// Helper function to check admin access
+async function checkAdminAccess(adminClient: any, userId: string, userEmail: string): Promise<boolean> {
+  const legacyAdminEmails = new Set(['admin@polydev.ai', 'venkat@polydev.ai', 'gvsfans@gmail.com']);
+  if (legacyAdminEmails.has(userEmail)) return true;
+
+  try {
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+    return profile?.is_admin || false;
+  } catch (error) {
+    return false;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,13 +34,8 @@ export async function POST(request: NextRequest) {
 
     // Check if user is admin
     const adminClient = createAdminClient()
-    const { data: profile, error: profileError } = await adminClient
-      .from('users')
-      .select('tier')
-      .eq('user_id', user.id)
-      .single()
-
-    if (profileError || profile?.tier !== 'admin') {
+    const isAdmin = await checkAdminAccess(adminClient, user.id, user.email || '')
+    if (!isAdmin) {
       return NextResponse.json(
         { error: 'Forbidden - Admin access required' },
         { status: 403 }

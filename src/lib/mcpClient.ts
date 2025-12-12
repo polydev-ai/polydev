@@ -1,5 +1,5 @@
 // MCP Client wrapper for API routes
-// Since API routes can't directly use MCP tools, we simulate the calls
+// Uses actual Resend API for email sending
 
 interface ResendEmailParams {
   to: string
@@ -13,20 +13,51 @@ interface ResendEmailResult {
   id: string
 }
 
-// This is a wrapper that simulates MCP calls for API routes
-// In a real MCP setup, this would connect to the actual MCP server
+// Send email using Resend API directly
 export async function mcp__resend__send_email(params: ResendEmailParams): Promise<ResendEmailResult> {
-  // For now, return a mock result since API routes can't access MCP directly
-  // In production, this would make an actual MCP call to the Resend server
+  const apiKey = process.env.RESEND_API_KEY
 
-  console.log('[MCP Client] Simulating Resend email send:', {
+  if (!apiKey) {
+    console.error('[MCP Client] RESEND_API_KEY is not configured')
+    throw new Error('RESEND_API_KEY not configured')
+  }
+
+  console.log('[MCP Client] Sending email via Resend:', {
     to: params.to,
     subject: params.subject,
     from: params.from
   })
 
-  // Mock successful response
-  return {
-    id: `resend_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: params.from,
+        to: [params.to],
+        subject: params.subject,
+        text: params.text,
+        html: params.html
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('[MCP Client] Resend API error:', errorData)
+      throw new Error(`Resend API error: ${response.status} - ${JSON.stringify(errorData)}`)
+    }
+
+    const data = await response.json()
+    console.log('[MCP Client] Email sent successfully:', data)
+
+    return {
+      id: data.id || `resend_${Date.now()}`
+    }
+  } catch (error) {
+    console.error('[MCP Client] Error sending email:', error)
+    throw error
   }
 }

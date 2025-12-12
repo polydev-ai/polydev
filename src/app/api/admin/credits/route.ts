@@ -1,6 +1,23 @@
 import { NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/app/utils/supabase/server'
 
+// Helper function to check admin access
+async function checkAdminAccess(adminClient: any, userId: string, userEmail: string): Promise<boolean> {
+  const legacyAdminEmails = new Set(['admin@polydev.ai', 'venkat@polydev.ai', 'gvsfans@gmail.com']);
+  if (legacyAdminEmails.has(userEmail)) return true;
+
+  try {
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', userId)
+      .single();
+    return profile?.is_admin || false;
+  } catch (error) {
+    return false;
+  }
+}
+
 export async function GET() {
   try {
     const supabase = await createClient()
@@ -14,13 +31,9 @@ export async function GET() {
 
     // Check admin status using admin client to bypass RLS
     const adminClient = createAdminClient()
-    const { data: profile } = await adminClient
-      .from('users')
-      .select('tier')
-      .eq('user_id', user.id)
-      .single()
+    const isAdmin = await checkAdminAccess(adminClient, user.id, user.email || '')
 
-    if (profile?.tier !== 'admin') {
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
@@ -136,13 +149,9 @@ export async function POST(request: Request) {
 
     // Check admin status
     const adminClient = createAdminClient()
-    const { data: profile } = await adminClient
-      .from('users')
-      .select('tier')
-      .eq('user_id', user.id)
-      .single()
+    const isAdmin = await checkAdminAccess(adminClient, user.id, user.email || '')
 
-    if (profile?.tier !== 'admin') {
+    if (!isAdmin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 

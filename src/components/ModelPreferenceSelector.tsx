@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, Check, Search, Star, AlertCircle, Zap, Lock,
 import { usePreferences } from '../hooks/usePreferences'
 import { useChatModels } from '../hooks/useChatModels'
 import { useEnhancedApiKeysData } from '../hooks/useEnhancedApiKeysData'
-import { PROVIDER_ICONS } from '../lib/openrouter-providers'
+import { PROVIDER_ICONS } from '../lib/provider-icons'
 
 interface SelectedModelsConfig {
   chat_models: string[]  // Models selected for chat

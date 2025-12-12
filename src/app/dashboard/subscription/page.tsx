@@ -14,11 +14,18 @@ import {
   Settings,
   CheckCircle,
   X,
-  MessageCircle
+  MessageCircle,
+  Coins,
+  Gift,
+  TrendingUp,
+  Zap,
+  BarChart3,
+  Activity,
+  Clock
 } from 'lucide-react'
 
 interface Subscription {
-  tier: 'free' | 'plus' | 'pro' | 'enterprise'
+  tier: 'free' | 'plus' | 'pro'
   status: 'active' | 'past_due' | 'canceled' | 'trialing'
   current_period_end: string | null
   cancel_at_period_end: boolean
@@ -28,12 +35,27 @@ interface Subscription {
 interface MessageUsage {
   messages_sent: number
   messages_limit: number
+  messages_remaining?: number
   month_year: string
   actual_messages_sent?: number
   breakdown?: {
     chat_messages: number
     mcp_calls: number
   }
+  allTime?: {
+    total_messages: number
+    chat_messages: number
+    mcp_calls: number
+  }
+}
+
+interface Credits {
+  balance: number
+  promotional_balance: number
+  total_available: number
+  monthly_allocation: number
+  total_spent: number
+  total_purchased: number
 }
 
 interface ProfileStats {
@@ -42,6 +64,48 @@ interface ProfileStats {
   favoriteModel: string
   joinedDays: number
   lastActive: string
+}
+
+interface CreditsAnalytics {
+  balance: {
+    current: number
+    promotional: number
+    total: number
+    totalSpent: number
+    totalPurchased: number
+  }
+  period: {
+    from: string
+    to: string
+    totalCreditsUsed: number
+    totalRequests: number
+  }
+  tierBreakdown: {
+    premium: { requests: number; credits: number; estimatedCost: number }
+    normal: { requests: number; credits: number; estimatedCost: number }
+    eco: { requests: number; credits: number; estimatedCost: number }
+  }
+  tierCosts: {
+    premium: number
+    normal: number
+    eco: number
+  }
+  modelBreakdown: Array<{
+    model: string
+    tier: string
+    requests: number
+    credits: number
+    estimatedCost: number
+  }>
+  sourceBreakdown: Record<string, { requests: number; credits: number }>
+  dailyUsage: Array<{ date: string; credits: number; requests: number }>
+  recentTransactions: Array<{
+    date: string
+    model: string
+    tier: string
+    credits: number
+    source: string
+  }>
 }
 
 // Global cache for subscription data to prevent duplicate fetching
@@ -66,11 +130,29 @@ const itemVariants = {
 export default function SubscriptionPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [messageUsage, setMessageUsage] = useState<MessageUsage | null>(null)
+  const [credits, setCredits] = useState<Credits | null>(null)
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null)
+  const [creditsAnalytics, setCreditsAnalytics] = useState<CreditsAnalytics | null>(null)
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState<'7d' | '30d' | '90d'>('30d')
   const [isLoading, setIsLoading] = useState(true)
   const [isUpgrading, setIsUpgrading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const isMountedRef = useRef(true)
+
+  // Fetch credits analytics data
+  const fetchCreditsAnalytics = useCallback(async (timeframe: string) => {
+    try {
+      const response = await fetch(`/api/usage/credits?timeframe=${timeframe}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (isMountedRef.current) {
+          setCreditsAnalytics(data)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch credits analytics:', error)
+    }
+  }, [])
 
   // Fetch with caching and deduplication
   const fetchSubscriptionData = useCallback(async () => {
@@ -82,6 +164,7 @@ export default function SubscriptionPage() {
       const cachedData = subscriptionCache.data
       setSubscription(cachedData.subscription)
       setMessageUsage(cachedData.messageUsage)
+      setCredits(cachedData.credits)
       setProfileStats(cachedData.profileStats)
       setIsLoading(false)
       return
@@ -108,6 +191,7 @@ export default function SubscriptionPage() {
         const results = {
           subscription: null,
           messageUsage: null,
+          credits: null,
           profileStats: null
         }
 
@@ -115,6 +199,7 @@ export default function SubscriptionPage() {
           const subscriptionData = await subscriptionResponse.json()
           results.subscription = subscriptionData.subscription
           results.messageUsage = subscriptionData.messageUsage
+          results.credits = subscriptionData.credits
         } else {
           setMessage({ type: 'error', text: 'Failed to load subscription data' })
         }
@@ -131,6 +216,7 @@ export default function SubscriptionPage() {
         if (isMountedRef.current) {
           setSubscription(results.subscription)
           setMessageUsage(results.messageUsage)
+          setCredits(results.credits)
           setProfileStats(results.profileStats)
         }
 
@@ -153,14 +239,20 @@ export default function SubscriptionPage() {
   useEffect(() => {
     isMountedRef.current = true
     fetchSubscriptionData()
+    fetchCreditsAnalytics(analyticsTimeframe)
 
     return () => {
       isMountedRef.current = false
     }
-  }, [fetchSubscriptionData])
+  }, [fetchSubscriptionData, fetchCreditsAnalytics, analyticsTimeframe])
+
+  // Handle timeframe change
+  const handleTimeframeChange = useCallback((timeframe: '7d' | '30d' | '90d') => {
+    setAnalyticsTimeframe(timeframe)
+  }, [])
 
   // Memoized handlers to prevent unnecessary re-renders
-  const handleUpgrade = useCallback(async (tier: 'plus' | 'pro' | 'enterprise' = 'plus', interval: 'month' | 'year' = 'month') => {
+  const handleUpgrade = useCallback(async (tier: 'plus' | 'pro' = 'plus', interval: 'month' | 'year' = 'month') => {
     setIsUpgrading(true)
     try {
       const response = await fetch('/api/subscription/upgrade', {
@@ -222,8 +314,7 @@ export default function SubscriptionPage() {
       : 0
     const isPro = subscription?.tier === 'pro'
     const isPlus = subscription?.tier === 'plus'
-    const isEnterprise = subscription?.tier === 'enterprise'
-    const isFree = !isPro && !isPlus && !isEnterprise
+    const isFree = !isPro && !isPlus
     const isActive = subscription?.status === 'active'
     const currentPeriodEndDate = subscription?.current_period_end
       ? new Date(subscription.current_period_end).toLocaleDateString()
@@ -234,7 +325,6 @@ export default function SubscriptionPage() {
       messageUsagePercentage,
       isPro,
       isPlus,
-      isEnterprise,
       isFree,
       isActive,
       currentPeriodEndDate
@@ -261,7 +351,6 @@ export default function SubscriptionPage() {
     messageUsagePercentage,
     isPro,
     isPlus,
-    isEnterprise,
     isFree,
     isActive,
     currentPeriodEndDate
@@ -279,14 +368,13 @@ export default function SubscriptionPage() {
           <h1 className="text-3xl font-bold flex items-center gap-2">
             Subscription
             {isPro && <Badge variant="default" className="ml-2 bg-slate-900 text-white">Pro</Badge>}
-            {isEnterprise && <Badge variant="default" className="ml-2 bg-slate-900 text-white">Enterprise</Badge>}
           </h1>
           <p className="text-muted-foreground mt-1">
             Manage your Polydev subscription and usage
           </p>
         </div>
-        <Badge variant={(isPro || isPlus || isEnterprise) ? "default" : "secondary"} className="text-sm">
-          {isEnterprise ? 'Enterprise Plan' : isPro ? 'Pro Plan' : isPlus ? 'Plus Plan' : 'Free Plan'}
+        <Badge variant={(isPro || isPlus) ? "default" : "secondary"} className="text-sm">
+          {isPro ? 'Pro Plan' : isPlus ? 'Plus Plan' : 'Free Plan'}
         </Badge>
       </div>
 
@@ -316,12 +404,7 @@ export default function SubscriptionPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                {isEnterprise ? (
-                  <>
-                    <Badge variant="default" className="bg-slate-900 text-white">Enterprise</Badge>
-                    Polydev Enterprise
-                  </>
-                ) : isPro ? (
+                {isPro ? (
                   <>
                     <Badge variant="default" className="bg-slate-900 text-white">Pro</Badge>
                     Polydev Pro
@@ -336,10 +419,8 @@ export default function SubscriptionPage() {
                 )}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {isEnterprise
-                  ? `$60/month • ${isActive ? 'Active' : subscription?.status}`
-                  : isPro
-                  ? `$35/month • ${isActive ? 'Active' : subscription?.status}`
+                {isPro
+                  ? `$50/month • ${isActive ? 'Active' : subscription?.status}`
                   : isPlus
                   ? `$25/month • ${isActive ? 'Active' : subscription?.status}`
                   : 'Limited features'
@@ -384,11 +465,14 @@ export default function SubscriptionPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {actualMessagesSent}
-              {isFree && ` / ${messageUsage?.messages_limit || 200}`}
+              {actualMessagesSent} / {messageUsage?.messages_limit || 200}
             </div>
             <p className="text-xs text-muted-foreground">
-              {(isPro || isPlus) ? 'Messages sent this month' : 'Messages this month'}
+              {messageUsage?.messages_remaining !== undefined && messageUsage.messages_remaining > 0 ? (
+                <span className="text-green-600 font-medium">{messageUsage.messages_remaining} remaining</span>
+              ) : (
+                <span className="text-amber-600 font-medium">Limit reached</span>
+              )}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Includes web chat + MCP client calls
@@ -399,9 +483,38 @@ export default function SubscriptionPage() {
                 </>
               )}
             </p>
-            {isFree && messageUsage && (
+            {messageUsage && (
               <Progress value={messageUsagePercentage} className="mt-2" />
             )}
+          </CardContent>
+        </Card>
+
+        {/* Credits Balance */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Credits Balance</CardTitle>
+            <Coins className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {credits?.total_available?.toFixed(0) || '0'} <span className="text-sm font-normal text-muted-foreground">credits</span>
+            </div>
+            <div className="space-y-1 mt-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Purchased credits</span>
+                <span className="font-medium">{credits?.balance?.toFixed(0) || '0'}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Gift className="h-3 w-3" /> Bonus credits
+                </span>
+                <span className="font-medium text-green-600">{credits?.promotional_balance?.toFixed(0) || '0'}</span>
+              </div>
+              <div className="flex justify-between text-xs pt-1 border-t">
+                <span className="text-muted-foreground">Credits spent</span>
+                <span className="font-medium">{credits?.total_spent?.toFixed(0) || '0'}</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -422,8 +535,220 @@ export default function SubscriptionPage() {
         </Card>
       </div>
 
+      {/* Credits Analytics Section */}
+      {creditsAnalytics && (
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Credits Analytics
+              </CardTitle>
+              <div className="flex gap-1">
+                {(['7d', '30d', '90d'] as const).map((tf) => (
+                  <Button
+                    key={tf}
+                    variant={analyticsTimeframe === tf ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => handleTimeframeChange(tf)}
+                    className="text-xs px-2 py-1 h-7"
+                  >
+                    {tf === '7d' ? '7 Days' : tf === '30d' ? '30 Days' : '90 Days'}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-slate-50 rounded-lg p-4">
+                <p className="text-xs text-slate-500 mb-1">Total Credits Used</p>
+                <p className="text-2xl font-bold text-slate-900">
+                  {creditsAnalytics.period.totalCreditsUsed.toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-400">in selected period</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <p className="text-xs text-slate-500 mb-1">Total Requests</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {creditsAnalytics.period.totalRequests.toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-400">API calls made</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <p className="text-xs text-slate-500 mb-1">Avg Credits/Request</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {creditsAnalytics.period.totalRequests > 0 
+                    ? (creditsAnalytics.period.totalCreditsUsed / creditsAnalytics.period.totalRequests).toFixed(1)
+                    : '0'}
+                </p>
+                <p className="text-xs text-slate-400">efficiency metric</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <p className="text-xs text-slate-500 mb-1">Available Balance</p>
+                <p className="text-2xl font-bold text-amber-600">
+                  {Math.round(creditsAnalytics.balance.total).toLocaleString()}
+                </p>
+                <p className="text-xs text-slate-400">credits remaining</p>
+              </div>
+            </div>
+
+            {/* Tier Breakdown */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Usage by Model Tier
+              </h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-amber-700">Premium</span>
+                    <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">
+                      {creditsAnalytics.tierCosts.premium} credits/req
+                    </Badge>
+                  </div>
+                  <p className="text-xl font-bold text-amber-900">{creditsAnalytics.tierBreakdown.premium.requests}</p>
+                  <p className="text-xs text-amber-600">requests</p>
+                  <p className="text-sm font-medium text-amber-700 mt-1">
+                    {creditsAnalytics.tierBreakdown.premium.credits} credits
+                  </p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-blue-700">Normal</span>
+                    <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">
+                      {creditsAnalytics.tierCosts.normal} credits/req
+                    </Badge>
+                  </div>
+                  <p className="text-xl font-bold text-blue-900">{creditsAnalytics.tierBreakdown.normal.requests}</p>
+                  <p className="text-xs text-blue-600">requests</p>
+                  <p className="text-sm font-medium text-blue-700 mt-1">
+                    {creditsAnalytics.tierBreakdown.normal.credits} credits
+                  </p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-green-700">Eco</span>
+                    <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200">
+                      {creditsAnalytics.tierCosts.eco} credit/req
+                    </Badge>
+                  </div>
+                  <p className="text-xl font-bold text-green-900">{creditsAnalytics.tierBreakdown.eco.requests}</p>
+                  <p className="text-xs text-green-600">requests</p>
+                  <p className="text-sm font-medium text-green-700 mt-1">
+                    {creditsAnalytics.tierBreakdown.eco.credits} credits
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Model Breakdown */}
+            {creditsAnalytics.modelBreakdown.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  Top Models by Credits Used
+                </h4>
+                <div className="space-y-2">
+                  {creditsAnalytics.modelBreakdown.slice(0, 5).map((model, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-slate-500 w-5">{idx + 1}.</span>
+                        <div>
+                          <p className="text-sm font-medium text-slate-900 truncate max-w-[200px]" title={model.model}>
+                            {model.model}
+                          </p>
+                          <Badge variant="outline" className={`text-[10px] ${
+                            model.tier === 'premium' ? 'bg-amber-50 text-amber-700' :
+                            model.tier === 'eco' ? 'bg-green-50 text-green-700' :
+                            'bg-blue-50 text-blue-700'
+                          }`}>
+                            {model.tier}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-slate-900">{model.credits} credits</p>
+                        <p className="text-xs text-slate-500">{model.requests} requests</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Source Breakdown */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Usage by Source
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(creditsAnalytics.sourceBreakdown).map(([source, data]) => (
+                  <div key={source} className="bg-slate-50 rounded-lg p-3 text-center">
+                    <p className="text-xs text-slate-500 capitalize mb-1">
+                      {source === 'admin_key' ? 'Platform' : 
+                       source === 'admin_credits' ? 'Credits' :
+                       source === 'user_key' ? 'Your API Key' : 
+                       source === 'user_cli' ? 'CLI' : source}
+                    </p>
+                    <p className="text-lg font-bold text-slate-900">{data.credits}</p>
+                    <p className="text-[10px] text-slate-400">{data.requests} requests</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent Transactions */}
+            {creditsAnalytics.recentTransactions.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Recent Transactions
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-2 px-3 text-xs font-medium text-slate-500">Time</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-slate-500">Model</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-slate-500">Tier</th>
+                        <th className="text-right py-2 px-3 text-xs font-medium text-slate-500">Credits</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {creditsAnalytics.recentTransactions.slice(0, 10).map((tx, idx) => (
+                        <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-2 px-3 text-xs text-slate-500">
+                            {new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="py-2 px-3 text-xs font-medium text-slate-900 truncate max-w-[150px]" title={tx.model}>
+                            {tx.model}
+                          </td>
+                          <td className="py-2 px-3">
+                            <Badge variant="outline" className={`text-[10px] ${
+                              tx.tier === 'premium' ? 'bg-amber-50 text-amber-700' :
+                              tx.tier === 'eco' ? 'bg-green-50 text-green-700' :
+                              'bg-blue-50 text-blue-700'
+                            }`}>
+                              {tx.tier}
+                            </Badge>
+                          </td>
+                          <td className="py-2 px-3 text-right text-xs font-medium text-slate-900">-{tx.credits}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Plan Comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Free Plan */}
         <Card className={isFree ? 'border-slate-300 bg-slate-50/30' : ''}>
           <CardHeader>
@@ -437,23 +762,23 @@ export default function SubscriptionPage() {
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                200 messages/month
+                100 messages/month
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                10/40/150 perspectives
+                500 credits to start
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                Top AI models
+                All AI models access
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                Compare responses
+                MCP integration
               </li>
               <li className="flex items-center gap-2">
-                <X className="h-4 w-4 text-slate-900" />
-                Limited perspectives
+                <X className="h-4 w-4 text-slate-400" />
+                Credits don't rollover
               </li>
             </ul>
           </CardContent>
@@ -464,7 +789,6 @@ export default function SubscriptionPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                
                 Plus Plan
               </div>
               {isPlus && <Badge className="bg-slate-900 text-white">Current</Badge>}
@@ -473,60 +797,46 @@ export default function SubscriptionPage() {
           <CardContent className="space-y-4">
             <div>
               <div className="text-2xl font-bold">$25/month</div>
-              <div className="text-sm text-slate-600 font-medium">or $20/month annually</div>
             </div>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                Unlimited messages
+                20,000 credits/month
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                400/1,600/4,000 perspectives
+                Credits rollover (while subscribed)
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                340+ models access
+                All AI models access
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                Advanced memory features
+                BYOK (use your own API keys)
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                Cost optimization
+                Priority support
               </li>
             </ul>
-            {!isPlus && (
-              <div className="space-y-2">
-                <Button
-                  className="w-full bg-slate-900 text-white hover:bg-slate-700"
-                  onClick={() => handleUpgrade('plus', 'month')}
-                  disabled={isUpgrading}
-                >
-                  
-                  {isUpgrading ? 'Processing...' : 'Monthly - $25/mo'}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-slate-900 text-slate-900 hover:bg-slate-100"
-                  onClick={() => handleUpgrade('plus', 'year')}
-                  disabled={isUpgrading}
-                >
-                  
-                  {isUpgrading ? 'Processing...' : 'Annual - $240/yr ($20/mo)'}
-                </Button>
-              </div>
+            {!isPlus && !isPro && (
+              <Button
+                className="w-full bg-slate-900 text-white hover:bg-slate-700"
+                onClick={() => handleUpgrade('plus', 'month')}
+                disabled={isUpgrading}
+              >
+                {isUpgrading ? 'Processing...' : 'Upgrade to Plus - $25/mo'}
+              </Button>
             )}
           </CardContent>
         </Card>
 
         {/* Pro Plan */}
-        <Card className={isPro ? 'border-slate-200 bg-white' : ''}>
+        <Card className={isPro ? 'border-2 border-slate-900 bg-white' : 'border-2 border-slate-900'}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-
                 Pro Plan
               </div>
               {isPro && <Badge className="bg-slate-900 text-white">Current</Badge>}
@@ -534,114 +844,42 @@ export default function SubscriptionPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <div className="text-2xl font-bold">$35/month</div>
-              <div className="text-sm text-slate-600 font-medium">or $30/month annually</div>
+              <div className="text-2xl font-bold">$50/month</div>
             </div>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                Unlimited messages
+                50,000 credits/month
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                600/2,500/8,000 perspectives
+                Credits rollover (while subscribed)
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                All 340+ models access
+                All AI models access
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                Advanced analytics
+                BYOK (use your own API keys)
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
                 Priority support
               </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-slate-900" />
+                Advanced analytics
+              </li>
             </ul>
             {!isPro && (
-              <div className="space-y-2">
-                <Button
-                  className="w-full bg-slate-900 text-white hover:bg-slate-700"
-                  onClick={() => handleUpgrade('pro', 'month')}
-                  disabled={isUpgrading}
-                >
-
-                  {isUpgrading ? 'Processing...' : 'Monthly - $35/mo'}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-slate-900 text-slate-900 hover:bg-slate-100"
-                  onClick={() => handleUpgrade('pro', 'year')}
-                  disabled={isUpgrading}
-                >
-
-                  {isUpgrading ? 'Processing...' : 'Annual - $360/yr ($30/mo)'}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Enterprise Plan */}
-        <Card className={isEnterprise ? 'border-2 border-slate-900 bg-white' : 'border-2 border-slate-900'}>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                Enterprise Plan
-              </div>
-              {isEnterprise && <Badge className="bg-slate-900 text-white">Current</Badge>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="text-2xl font-bold">$60/month</div>
-              <div className="text-sm text-slate-600 font-medium">or $50/month annually</div>
-            </div>
-            <ul className="space-y-2">
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                Unlimited messages
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                1,200/5,000/20,000 perspectives
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                All 340+ models access
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                Priority model access
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                Team collaboration features
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                Dedicated support
-              </li>
-            </ul>
-            {!isEnterprise && (
-              <div className="space-y-2">
-                <Button
-                  className="w-full bg-slate-900 text-white hover:bg-slate-700"
-                  onClick={() => handleUpgrade('enterprise', 'month')}
-                  disabled={isUpgrading}
-                >
-                  {isUpgrading ? 'Processing...' : 'Monthly - $60/mo'}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full border-slate-900 text-slate-900 hover:bg-slate-100"
-                  onClick={() => handleUpgrade('enterprise', 'year')}
-                  disabled={isUpgrading}
-                >
-                  {isUpgrading ? 'Processing...' : 'Annual - $600/yr ($50/mo)'}
-                </Button>
-              </div>
+              <Button
+                className="w-full bg-slate-900 text-white hover:bg-slate-700"
+                onClick={() => handleUpgrade('pro', 'month')}
+                disabled={isUpgrading}
+              >
+                {isUpgrading ? 'Processing...' : 'Upgrade to Pro - $50/mo'}
+              </Button>
             )}
           </CardContent>
         </Card>

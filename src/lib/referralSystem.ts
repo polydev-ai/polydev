@@ -1,22 +1,18 @@
-// Production-grade referral tracking system
+// Simple referral tracking system - flat rewards
 import { createClient } from '@/app/utils/supabase/server'
 import { createClient as createServerClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
-export interface ReferralTier {
-  id: string
-  name: string
-  minReferrals: number
-  bonusMultiplier: number
-  creditsBonus: number
-  features: string[]
+// Simple flat rewards - no tiers
+export const REFERRAL_REWARDS = {
+  REFERRER_CREDITS: 500,    // Referrer gets 500 credits
+  NEW_USER_CREDITS: 200     // New user gets 200 credits (free messages)
 }
 
 export interface ReferralReward {
-  type: 'credits' | 'subscription_discount' | 'bonus_messages' | 'premium_features'
+  type: 'credits' | 'bonus_messages'
   amount: number
   description: string
-  expires_at?: string
 }
 
 export interface ReferralStats {
@@ -25,53 +21,8 @@ export interface ReferralStats {
   pendingReferrals: number
   thisMonthReferrals: number
   totalCreditsEarned: number
-  currentTier: ReferralTier
-  nextTier?: ReferralTier
   lifetime_value: number
 }
-
-export const REFERRAL_TIERS: ReferralTier[] = [
-  {
-    id: 'bronze',
-    name: 'Bronze Referrer',
-    minReferrals: 0,
-    bonusMultiplier: 1.0,
-    creditsBonus: 100,
-    features: ['Basic referral tracking', '100 credits per referral']
-  },
-  {
-    id: 'silver', 
-    name: 'Silver Referrer',
-    minReferrals: 5,
-    bonusMultiplier: 1.2,
-    creditsBonus: 120,
-    features: ['Enhanced tracking', '120 credits per referral', '20% bonus on all rewards']
-  },
-  {
-    id: 'gold',
-    name: 'Gold Referrer', 
-    minReferrals: 15,
-    bonusMultiplier: 1.5,
-    creditsBonus: 150,
-    features: ['Premium analytics', '150 credits per referral', '50% bonus on all rewards', 'Priority support']
-  },
-  {
-    id: 'platinum',
-    name: 'Platinum Referrer',
-    minReferrals: 30,
-    bonusMultiplier: 2.0, 
-    creditsBonus: 200,
-    features: ['Advanced analytics', '200 credits per referral', '100% bonus on all rewards', 'Dedicated support', 'Custom referral links']
-  },
-  {
-    id: 'diamond',
-    name: 'Diamond Referrer',
-    minReferrals: 50,
-    bonusMultiplier: 3.0,
-    creditsBonus: 300,
-    features: ['Enterprise analytics', '300 credits per referral', '200% bonus on all rewards', 'Revenue sharing', 'White-label options']
-  }
-]
 
 export class ReferralSystem {
   constructor() {}
@@ -127,8 +78,8 @@ export class ReferralSystem {
         referrer_id: userId,
         referral_code: code,
         status: 'pending',
-        bonus_messages: 100,
-        uses_remaining: 5, // Use existing schema default
+        bonus_messages: REFERRAL_REWARDS.NEW_USER_CREDITS,
+        uses_remaining: 10, // Allow 10 uses per code
         total_uses: 0
       })
       .select()
@@ -144,12 +95,12 @@ export class ReferralSystem {
   }
 
   /**
-   * Redeem a referral code
+   * Redeem a referral code - simple flat rewards
    */
   async redeemReferralCode(
-    newUserId: string, 
+    newUserId: string,
     referralCode: string
-  ): Promise<{ success: boolean; rewards: ReferralReward[]; message: string }> {
+  ): Promise<{ success: boolean; rewards: ReferralReward[]; message: string; referrerId?: string }> {
     const supabase = await this.getSupabase(true)
 
     try {
@@ -159,7 +110,6 @@ export class ReferralSystem {
         .select('*')
         .eq('referral_code', referralCode.toUpperCase())
         .gt('uses_remaining', 0)
-        .is('referred_user_id', null) // Not yet redeemed
         .single()
 
       if (codeError || !referralCodeData) {
@@ -197,13 +147,9 @@ export class ReferralSystem {
         }
       }
 
-      // Get referrer's current tier
-      const referrerStats = await this.getUserReferralStats(referrerId)
-      const currentTier = referrerStats.currentTier
-
-      // Calculate rewards based on tier
-      const referrerCredits = Math.floor(currentTier.creditsBonus * currentTier.bonusMultiplier)
-      const newUserCredits = referralCodeData.bonus_messages || 100 // Use existing bonus_messages field
+      // Simple flat rewards
+      const referrerCredits = REFERRAL_REWARDS.REFERRER_CREDITS
+      const newUserCredits = REFERRAL_REWARDS.NEW_USER_CREDITS
 
       // Update referral record with the new user
       const { error: referralError } = await supabase
@@ -230,13 +176,13 @@ export class ReferralSystem {
           p_user_id: referrerId,
           p_amount: referrerCredits,
           p_transaction_type: 'referral_bonus',
-          p_description: `Referral bonus for inviting new user (Tier: ${currentTier.name})`
+          p_description: `Referral bonus: You earned ${referrerCredits} credits for inviting a friend!`
         }),
         supabase.rpc('add_user_credits', {
           p_user_id: newUserId,
           p_amount: newUserCredits,
           p_transaction_type: 'welcome_bonus',
-          p_description: `Welcome bonus for using referral code ${referralCode}`
+          p_description: `Welcome bonus: ${newUserCredits} free credits for using referral code ${referralCode}`
         })
       ])
 
@@ -244,14 +190,15 @@ export class ReferralSystem {
         {
           type: 'credits',
           amount: newUserCredits,
-          description: `Welcome bonus of ${newUserCredits} credits`
+          description: `Welcome bonus of ${newUserCredits} free credits`
         }
       ]
 
       return {
         success: true,
         rewards,
-        message: `Welcome! You received ${newUserCredits} credits. Your referrer earned ${referrerCredits} credits!`
+        message: `Welcome! You received ${newUserCredits} free credits. Your referrer earned ${referrerCredits} credits!`,
+        referrerId
       }
 
     } catch (error) {
@@ -265,13 +212,13 @@ export class ReferralSystem {
   }
 
   /**
-   * Get comprehensive referral statistics for a user
+   * Get referral statistics for a user
    */
   async getUserReferralStats(userId: string): Promise<ReferralStats> {
     const supabase = await this.getSupabase(true)
 
     try {
-      // Get all referrals by this user (both as codes they created and completed referrals)
+      // Get all referrals by this user
       const { data: referrals, error } = await supabase
         .from('user_referrals')
         .select('*')
@@ -287,24 +234,20 @@ export class ReferralSystem {
 
       // Calculate this month's referrals
       const currentMonth = new Date().toISOString().substring(0, 7)
-      const thisMonthReferrals = referrals?.filter(r => 
+      const thisMonthReferrals = referrals?.filter(r =>
         r.created_at?.substring(0, 7) === currentMonth && r.status === 'completed'
       ).length || 0
 
-      // Calculate total credits earned from referrals using existing schema
+      // Calculate total credits earned from referrals
       const totalCreditsEarned = referrals?.reduce((sum, r) => {
         if (r.rewards_given?.referrer_credits) {
           return sum + r.rewards_given.referrer_credits
         }
-        // Fallback to bonus_messages if rewards_given not available
-        return sum + (r.status === 'completed' && r.referred_user_id ? (r.bonus_messages || 0) : 0)
+        // Fallback: count completed referrals at current rate
+        return sum + (r.status === 'completed' && r.referred_user_id ? REFERRAL_REWARDS.REFERRER_CREDITS : 0)
       }, 0) || 0
 
-      // Determine current tier
-      const currentTier = this.getTierForReferralCount(completedReferrals)
-      const nextTier = this.getNextTier(currentTier)
-
-      // Calculate lifetime value (credits earned + potential subscription discounts)
+      // Calculate lifetime value (credits earned)
       const lifetime_value = totalCreditsEarned * 0.01 // $0.01 per credit
 
       return {
@@ -313,14 +256,12 @@ export class ReferralSystem {
         pendingReferrals,
         thisMonthReferrals,
         totalCreditsEarned,
-        currentTier,
-        nextTier,
         lifetime_value
       }
 
     } catch (error) {
       console.error('[ReferralSystem] Error fetching referral stats:', error)
-      
+
       // Return default stats on error
       return {
         totalReferrals: 0,
@@ -328,7 +269,6 @@ export class ReferralSystem {
         pendingReferrals: 0,
         thisMonthReferrals: 0,
         totalCreditsEarned: 0,
-        currentTier: REFERRAL_TIERS[0],
         lifetime_value: 0
       }
     }
@@ -400,23 +340,23 @@ export class ReferralSystem {
   }
 
   /**
-   * Get tier based on referral count
+   * Get referrer email for sending notifications
    */
-  private getTierForReferralCount(count: number): ReferralTier {
-    for (let i = REFERRAL_TIERS.length - 1; i >= 0; i--) {
-      if (count >= REFERRAL_TIERS[i].minReferrals) {
-        return REFERRAL_TIERS[i]
-      }
-    }
-    return REFERRAL_TIERS[0]
-  }
+  async getReferrerEmail(referrerId: string): Promise<string | null> {
+    const supabase = await this.getSupabase(true)
 
-  /**
-   * Get next tier
-   */
-  private getNextTier(currentTier: ReferralTier): ReferralTier | undefined {
-    const currentIndex = REFERRAL_TIERS.findIndex(tier => tier.id === currentTier.id)
-    return currentIndex < REFERRAL_TIERS.length - 1 ? REFERRAL_TIERS[currentIndex + 1] : undefined
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', referrerId)
+        .single()
+
+      return profile?.email || null
+    } catch (error) {
+      console.error('[ReferralSystem] Error getting referrer email:', error)
+      return null
+    }
   }
 }
 

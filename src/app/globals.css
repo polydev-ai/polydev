@@ -133,8 +133,8 @@ button, a, .card {
   animation: gradient-shift 3s ease infinite;
 }
 
-/* Code block improvements */
-pre {
+/* Code block improvements - only for unstyled pre elements */
+pre:not([class*="bg-"]) {
   overflow-x: auto;
   border-radius: 0.5rem;
   border: 1px solid #d1d5db;
@@ -143,11 +143,20 @@ pre {
   line-height: 1.5;
 }
 
-pre code {
+pre:not([class*="bg-"]) code {
   font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Monaco', 'SF Mono', monospace;
   font-variant-ligatures: common-ligatures;
   color: #374151;
   font-size: inherit;
+}
+
+/* Dark background code blocks - ensure white text */
+pre[class*="bg-slate-900"] code,
+pre[class*="bg-slate-800"] code,
+pre[class*="bg-gray-900"] code,
+pre[class*="bg-gray-800"] code {
+  color: #ffffff !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Monaco', 'SF Mono', monospace;
 }
 
 /* Inline code */
@@ -162,15 +171,15 @@ code:not(pre code) {
 
 /* Dark mode code blocks */
 @media (prefers-color-scheme: dark) {
-  pre {
+  pre:not([class*="bg-"]) {
     background: #1f2937;
     border-color: #374151;
   }
-  
-  pre code {
+
+  pre:not([class*="bg-"]) code {
     color: #d1d5db;
   }
-  
+
   code:not(pre code) {
     background: #374151;
     color: #d1d5db;
