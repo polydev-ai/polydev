@@ -127,6 +127,18 @@ interface ModelsDevModel {
   }
 }
 
+// Helper function to format time ago
+function getTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
 export default function EnhancedApiKeysPage() {
   const { user, loading: authLoading } = useAuth()
   const { preferences, updatePreferences: updateUserPreferences, loading: preferencesLoading, refetch: refetchPreferences } = usePreferences()
@@ -976,25 +988,59 @@ export default function EnhancedApiKeysPage() {
                 {CLI_PROVIDERS.map((cliProvider) => {
                   const status = cliStatuses.find(s => s.provider === cliProvider.provider)
                   const statusType = status?.status || 'unchecked'
-                  const lastChecked = status?.last_checked_at ? new Date(status.last_checked_at).toLocaleString() : null
+                  const lastChecked = status?.last_checked_at ? new Date(status.last_checked_at) : null
+                  const isStale = lastChecked ? (Date.now() - lastChecked.getTime()) > 5 * 60 * 1000 : true // 5 minutes
+                  const isVeryStale = lastChecked ? (Date.now() - lastChecked.getTime()) > 30 * 60 * 1000 : true // 30 minutes
+                  const timeAgo = lastChecked ? getTimeAgo(lastChecked) : null
 
                   return (
-                    <div key={cliProvider.provider} className="border border-slate-200 rounded-lg p-4">
+                    <div key={cliProvider.provider} className={`border rounded-lg p-4 ${isVeryStale && statusType === 'available' ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200'}`}>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 flex-wrap gap-1">
                             <h3 className="font-medium text-slate-900">
                               {cliProvider.name}
                             </h3>
                             {status?.cli_version && (
                               <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
-                                {status.cli_version}
+                                v{status.cli_version}
+                              </span>
+                            )}
+                            {status?.authenticated && statusType === 'available' && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" /> Authenticated
+                              </span>
+                            )}
+                            {statusType === 'available' && !status?.authenticated && (
+                              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">
+                                Not authenticated
                               </span>
                             )}
                           </div>
                           <p className="text-sm text-slate-600 mt-1">
                             {cliProvider.description}
                           </p>
+
+                          {/* Last Checked Time & Stale Warning */}
+                          <div className="flex items-center gap-2 mt-2 text-xs">
+                            {timeAgo && (
+                              <span className={`flex items-center gap-1 ${isStale ? 'text-amber-600' : 'text-slate-500'}`}>
+                                <Clock className="w-3 h-3" />
+                                Checked {timeAgo}
+                              </span>
+                            )}
+                            {isVeryStale && statusType === 'available' && (
+                              <span className="text-amber-600 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Status may be outdated
+                              </span>
+                            )}
+                            {!lastChecked && statusType === 'unchecked' && (
+                              <span className="text-slate-400">
+                                Never checked - MCP bridge reports status when connected
+                              </span>
+                            )}
+                          </div>
 
                           {status?.message && (
                             <p className="text-sm text-slate-900 mt-2 p-2 bg-slate-50 rounded border border-slate-200">

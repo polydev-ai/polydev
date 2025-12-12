@@ -9,6 +9,7 @@ import { modelsDevService } from '@/lib/models-dev-integration'
 import { resolveProviderModelId } from '@/lib/model-resolver'
 import { apiManager } from '@/lib/api'
 import { SmartCliCache } from '@/lib/smartCliCache'
+import { CLIRouter, CLI_PROVIDER_MAP, PROVIDER_TO_CLI } from '@/lib/cliRouter'
 
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
@@ -1473,6 +1474,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         const cliToolName = providerToCliMap[providerName.toLowerCase()]
         let skipApiKey = false
         let cliConfig = null
+        let cliAttempted = false
+        let cliFailureReason: string | null = null
 
         // ✅ CRITICAL FIX: Only check CLI availability for Pro users
         // Free users should NEVER attempt CLI - go straight to API keys
@@ -1488,17 +1491,58 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           )
 
           if (cliConfig) {
-            // ✅ Pro user with CLI available - use it
-            skipApiKey = true
-            console.log(`[MCP] ✅ Pro user ${user.id} - CLI tool ${cliToolName} is available and authenticated - SKIPPING API key for ${providerName}`)
-            return {
-              model,
-              provider: `${providerName} (CLI Available)`,
-              content: `Local CLI tool ${cliToolName} is available and will be used instead of API keys for ${providerName}. This model will be handled by the CLI tool.`,
-              tokens_used: 0,
-              latency_ms: 0,
-              cli_available: true
+            // ✅ Pro user with CLI available - ACTUALLY EXECUTE CLI
+            console.log(`[MCP] ✅ Pro user ${user.id} - CLI tool ${cliToolName} is available and authenticated - EXECUTING CLI for ${providerName}`)
+            
+            cliAttempted = true  // Track that we attempted CLI
+            
+            try {
+              // Create CLI router instance
+              const cliRouter = new CLIRouter({
+                userId: user.id,
+                supabase: serviceRoleSupabase,
+                preferCli: true
+              })
+              
+              // Execute CLI command with 120 second timeout for model calls
+              const cliResult = await cliRouter.executeCliPrompt(
+                cliToolName,
+                contextualPrompt,
+                cleanModel,
+                120000 // 2 minute timeout
+              )
+              
+              if (cliResult.success && cliResult.content) {
+                const endTime = Date.now()
+                console.log(`[MCP] ✅ CLI execution successful for ${cliToolName}:`, {
+                  contentLength: cliResult.content.length,
+                  tokensEstimated: cliResult.tokensEstimated,
+                  executionTimeMs: cliResult.executionTimeMs
+                })
+                
+                return {
+                  model,
+                  provider: `${providerName} (${CLI_PROVIDER_MAP[cliToolName]?.cliTool || cliToolName})`,
+                  content: cliResult.content,
+                  tokens_used: cliResult.tokensEstimated || 0,
+                  latency_ms: cliResult.executionTimeMs || (endTime - startTime),
+                  cli_used: true,
+                  cli_provider: cliToolName,
+                  subscription_based: true // No API cost - uses user's subscription
+                }
+              } else {
+                // CLI failed - log and fall through to API
+                console.log(`[MCP] ⚠️ CLI execution failed for ${cliToolName}, falling back to API:`, cliResult.error)
+                cliFailureReason = cliResult.error || 'CLI execution returned no content'
+              }
+            } catch (cliError: any) {
+              // CLI error - log and fall through to API
+              console.error(`[MCP] ❌ CLI error for ${cliToolName}:`, cliError.message)
+              cliFailureReason = cliError.message || 'CLI execution threw an error'
             }
+            
+            // CLI failed - fall through to API key path below
+            console.log(`[MCP] CLI fallback: Continuing to API key path for ${providerName}`)
           }
 
           if (!cliConfig) {
@@ -1618,7 +1662,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         if (apiKeyForModel.monthly_budget && apiKeyForModel.current_usage &&
             parseFloat(apiKeyForModel.current_usage.toString()) >= parseFloat(apiKeyForModel.monthly_budget.toString())) {
 
-          console.log(`[MCP] Budget exceeded for ${provider.display_name}, checking for admin key fallback...`)
+          console.log(`[MCP] Budget exceeded for ${providerName}, checking for admin key fallback...`)
 
           // Check for admin-provided key for this provider
           const { data: adminKeyBudget } = await serviceRoleSupabase
@@ -1667,6 +1711,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                   content: result.choices?.[0]?.message?.content || result.content?.[0]?.text || '',
                   tokens_used: result.usage?.total_tokens || 0,
                   response_time_ms: duration,
+                  latency_ms: duration,
                   fallback: true,
                   source_type: 'admin_key'
                 }
@@ -1678,19 +1723,19 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
           return {
             model,
-            error: `Monthly budget of $${apiKeyForModel.monthly_budget} exceeded for ${provider.display_name}. Current usage: $${apiKeyForModel.current_usage}. Please increase your budget or add a new API key.`
+            error: `Monthly budget of $${apiKeyForModel.monthly_budget} exceeded for ${providerName}. Current usage: $${apiKeyForModel.current_usage}. Please increase your budget or add a new API key.`
           }
         }
 
         // Decode the Base64 encoded API key
         const decryptedKey = Buffer.from(apiKeyForModel.encrypted_key, 'base64').toString('utf-8')
-        console.log(`[MCP] Decoded key for ${provider.display_name}: ${decryptedKey.substring(0, 10)}...`)
+        console.log(`[MCP] Decoded key for ${providerName}: ${decryptedKey.substring(0, 10)}...`)
 
-        console.log(`[MCP] ${provider.display_name} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens} (API budget: $${apiKeyForModel.monthly_budget || 'unlimited'}, used: $${apiKeyForModel.current_usage || '0'})`)
+        console.log(`[MCP] ${providerName} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens} (API budget: $${apiKeyForModel.monthly_budget || 'unlimited'}, used: $${apiKeyForModel.current_usage || '0'})`)
 
         // Determine usage path based on user preference and availability
-        let usagePath = 'credits' // Default fallback
-        let sessionType = 'credits'
+        let usagePath = 'api_key' // Default fallback
+        let sessionType = 'api_key'
         
         const hasValidApiKey = apiKeyForModel && decryptedKey && decryptedKey !== 'demo_key'
         const userUsagePreference = 'auto' // Default usage preference
@@ -1723,7 +1768,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             break
         }
         
-        console.log(`[MCP Usage] Usage path: ${usagePath} for ${provider.display_name} (user preference: ${userUsagePreference})`)
+        console.log(`[MCP Usage] Usage path: ${usagePath} for ${providerName} (user preference: ${userUsagePreference})`)
 
         // Check credits only if using credits path
         let userCredits = null
@@ -1884,8 +1929,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Resolve model ID for the specific provider using shared resolver (same as chat API)
         let resolvedModelId = cleanModel
         try {
-          resolvedModelId = await resolveProviderModelId(cleanModel, provider.provider_name)
-          console.log(`[MCP] Model resolution for ${cleanModel} with ${provider.provider_name}: ${resolvedModelId}`)
+          resolvedModelId = await resolveProviderModelId(cleanModel, providerName)
+          console.log(`[MCP] Model resolution for ${cleanModel} with ${providerName}: ${resolvedModelId}`)
         } catch (resolutionError) {
           console.warn(`[MCP] Model resolution failed for ${cleanModel}:`, resolutionError)
           // Continue with original model ID
@@ -1912,14 +1957,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           }
 
           // Call apiManager.createMessage directly like chat API does
-          const apiResponse = await apiManager.createMessage(provider.provider_name, apiOptions)
+          const apiResponse = await apiManager.createMessage(providerName, apiOptions)
 
           // Parse the response based on content type
           const contentType = apiResponse.headers.get('content-type') || ''
           if (contentType.includes('application/json')) {
             const result = await apiResponse.json()
             console.log(`[MCP DEBUG] API Response for ${resolvedModelId}:`, {
-              provider: provider.provider_name,
+              provider: providerName,
               hasChoices: !!result.choices,
               hasError: !!result.error,
               contentPreview: result.choices?.[0]?.message?.content?.substring(0, 100)
@@ -1934,14 +1979,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             const isGPT5 = resolvedModelId?.includes('gpt-5') ||
                            model?.includes('gpt-5') ||
                            cleanModel?.includes('gpt-5') ||
-                           provider.provider_name === 'openai' && model === 'gpt-5'
+                           providerName === 'openai' && model === 'gpt-5'
 
             console.log(`[MCP JSON DEBUG] Pre-extraction check:`, {
               isGPT5,
               model,
               resolvedModelId,
               cleanModel,
-              providerName: provider.provider_name,
+              providerName: providerName,
               resultType: typeof result,
               hasChoices: !!result.choices,
               contentPreview: result.choices?.[0]?.message?.content?.substring(0, 50)
@@ -1968,7 +2013,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               }
             } else {
               // Use the existing parseResponse function for other providers
-              response = parseResponse(provider.provider_name, result, resolvedModelId)
+              response = parseResponse(providerName, result, resolvedModelId)
               console.log(`[MCP] Used parseResponse, got:`, { content: response.content?.substring(0, 50), tokens: response.tokens_used })
             }
 
@@ -2007,13 +2052,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         } catch (apiKeyErr: any) {
           const msg = apiKeyErr instanceof Error ? apiKeyErr.message : String(apiKeyErr)
           const isAuth = /401|unauthori(z|s)ed|invalid api key|forbidden|key/i.test(msg)
-          console.error(`[MCP] API key issue for ${provider.display_name}: ${msg}`)
+          console.error(`[MCP] API key issue for ${providerName}: ${msg}`)
           return {
             model: cleanModel,
             originalModel: model,
             error: isAuth
-              ? `Your API key for ${provider.display_name} appears invalid or unauthorized. Unable to send perspectives with this provider.`
-              : `Provider call failed for ${provider.display_name}: ${msg}`,
+              ? `Your API key for ${providerName} appears invalid or unauthorized. Unable to send perspectives with this provider.`
+              : `Provider call failed for ${providerName}: ${msg}`,
             latency_ms: Date.now() - startTime
           }
         }
@@ -2037,7 +2082,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             p_session_type: sessionType,
             p_tool_name: 'polydev_mcp',
             p_model_name: cleanModel,
-            p_provider: provider.display_name,
+            p_provider: providerName,
             p_message_count: 1,
             p_input_tokens: actualInputTokens,
             p_output_tokens: actualOutputTokens,
@@ -2046,7 +2091,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             p_metadata: JSON.stringify({
               estimated_cost: estimatedCost,
               usage_path: usagePath,
-              api_key_provider: usagePath === 'api_key' ? provider.display_name : null,
+              api_key_provider: usagePath === 'api_key' ? providerName : null,
               request_source: 'mcp_api'
             })
           })
@@ -2169,10 +2214,15 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         const returnValue = {
           model: cleanModel, // Use clean model name in response
           originalModel: model, // Keep original for debugging
-          provider: provider.display_name,
+          provider: providerName,
           content: finalContent,
           tokens_used: response.tokens_used,
-          latency_ms: latency
+          latency_ms: latency,
+          // CLI tracking metadata - helps users understand routing decisions
+          ...(cliAttempted && {
+            cli_attempted: true,
+            cli_fallback_reason: cliFailureReason || 'CLI failed, used API key fallback'
+          })
         }
 
         console.log(`[MCP RETURN] Returning response for ${cleanModel}:`, {
@@ -2412,7 +2462,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     //     }
     
     // // Display usage method clearly
-    // if (primaryUsageMethod === 'api_keys') {
+    //if (primaryUsageMethod === 'api_keys') {
     //   statusDisplay += `\n🔑 **Usage Method**: Own API Keys`
     //   if (successfulResponses.length > 0) {
     //     statusDisplay += ` (${successfulResponses.length} model${successfulResponses.length > 1 ? 's' : ''})`
@@ -3042,7 +3092,7 @@ function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): s
       const normalizedPrefProvider = normalizeProviderName(prefProvider)
       
       // Find matching API key with flexible provider name matching
-      const matchingApiKey = apiKeys.find(key => {
+      const matchingApiKey = apiKeys?.find(key => {
         const normalizedKeyProvider = normalizeProviderName(key.provider)
         return normalizedKeyProvider === normalizedPrefProvider
       })

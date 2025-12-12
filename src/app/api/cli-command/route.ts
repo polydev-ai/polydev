@@ -9,6 +9,7 @@ interface CLICommandRequest {
   provider: 'claude_code' | 'codex_cli' | 'gemini_cli'
   model?: string // Optional - will use user's preference if not provided
   prompt: string
+  timeout_ms?: number // Optional timeout in milliseconds
 }
 
 interface CLICommandResult {
@@ -16,6 +17,52 @@ interface CLICommandResult {
   response?: string
   error?: string
   model_used?: string
+  execution_time_ms?: number
+  tokens_estimated?: number
+}
+
+// CLI command configurations
+const CLI_CONFIGS: Record<string, {
+  command: string
+  buildArgs: (prompt: string, model?: string) => string[]
+  defaultModel: string
+}> = {
+  claude_code: {
+    command: 'claude',
+    buildArgs: (prompt, model) => {
+      const args: string[] = []
+      if (model) {
+        args.push('--model', model)
+      }
+      args.push('-p', prompt)
+      return args
+    },
+    defaultModel: 'claude-sonnet-4'
+  },
+  codex_cli: {
+    command: 'codex',
+    buildArgs: (prompt, model) => {
+      const args: string[] = []
+      if (model) {
+        args.push('--model', model)
+      }
+      args.push(prompt)
+      return args
+    },
+    defaultModel: 'gpt-4o'
+  },
+  gemini_cli: {
+    command: 'gemini',
+    buildArgs: (prompt, model) => {
+      const args: string[] = []
+      if (model) {
+        args.push('-m', model)
+      }
+      args.push('-p', prompt)
+      return args
+    },
+    defaultModel: 'gemini-2.5-pro'
+  }
 }
 
 /**
@@ -23,43 +70,40 @@ interface CLICommandResult {
  */
 async function executeCliCommand(
   provider: 'claude_code' | 'codex_cli' | 'gemini_cli',
-  model: string,
   prompt: string,
-  timeout = 30000
+  model?: string,
+  timeoutMs: number = 60000
 ): Promise<CLICommandResult> {
-  return new Promise((resolve) => {
-    let command: string
-    let args: string[]
+  const startTime = Date.now()
+  const config = CLI_CONFIGS[provider]
 
-    switch (provider) {
-      case 'claude_code':
-        command = 'claude'
-        args = ['--model', model, prompt]
-        break
-      case 'codex_cli':
-        command = 'codex'
-        args = ['--model', model, prompt]
-        break
-      case 'gemini_cli':
-        command = 'gemini'
-        args = ['--model', model, prompt]
-        break
-      default:
-        resolve({
-          success: false,
-          error: `Unsupported CLI provider: ${provider}`
-        })
-        return
+  if (!config) {
+    return {
+      success: false,
+      error: `Unsupported CLI provider: ${provider}`
     }
+  }
 
-    const child = spawn(command, args, {
+  const args = config.buildArgs(prompt, model)
+  const modelUsed = model || config.defaultModel
+
+  return new Promise((resolve) => {
+    console.log(`[CLI Command] Executing: ${config.command} ${args.join(' ').substring(0, 100)}...`)
+
+    const child = spawn(config.command, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
-      timeout
+      env: {
+        ...process.env,
+        NO_COLOR: '1',
+        CI: '1',
+        TERM: 'dumb'
+      }
     })
 
     let stdout = ''
     let stderr = ''
+    let killed = false
 
     child.stdout?.on('data', (data) => {
       stdout += data.toString()
@@ -69,38 +113,67 @@ async function executeCliCommand(
       stderr += data.toString()
     })
 
+    const timeout = setTimeout(() => {
+      killed = true
+      child.kill('SIGTERM')
+      const executionTime = Date.now() - startTime
+      resolve({
+        success: false,
+        error: `Command timed out after ${timeoutMs}ms`,
+        model_used: modelUsed,
+        execution_time_ms: executionTime
+      })
+    }, timeoutMs)
+
     child.on('close', (code) => {
+      clearTimeout(timeout)
+      if (killed) return
+
+      const executionTime = Date.now() - startTime
+      const cleanOutput = cleanCliOutput(stdout)
+      
+      // Estimate tokens (rough: 4 chars per token)
+      const tokensEstimated = Math.ceil((prompt.length + cleanOutput.length) / 4)
+
       if (code === 0) {
         resolve({
           success: true,
-          response: stdout.trim(),
-          model_used: model
+          response: cleanOutput,
+          model_used: modelUsed,
+          execution_time_ms: executionTime,
+          tokens_estimated: tokensEstimated
         })
       } else {
         resolve({
           success: false,
           error: stderr.trim() || `Command exited with code ${code}`,
-          model_used: model
+          model_used: modelUsed,
+          execution_time_ms: executionTime
         })
       }
     })
 
     child.on('error', (error) => {
+      clearTimeout(timeout)
+      const executionTime = Date.now() - startTime
       resolve({
         success: false,
-        error: error.message
+        error: error.message,
+        execution_time_ms: executionTime
       })
     })
-
-    // Set timeout
-    setTimeout(() => {
-      child.kill()
-      resolve({
-        success: false,
-        error: 'Command timeout'
-      })
-    }, timeout)
   })
+}
+
+/**
+ * Clean CLI output (remove ANSI codes, normalize whitespace)
+ */
+function cleanCliOutput(output: string): string {
+  return output
+    .replace(/\x1b\[[0-9;]*m/g, '')  // Remove ANSI escape codes
+    .replace(/\r\n/g, '\n')           // Normalize line endings
+    .replace(/\n{3,}/g, '\n\n')       // Collapse multiple newlines
+    .trim()
 }
 
 /**
@@ -253,7 +326,7 @@ export async function POST(request: NextRequest) {
     console.log(`📋 Using model: ${modelToUse} for provider: ${provider}`)
 
     // Execute CLI command
-    const result = await executeCliCommand(provider, modelToUse, prompt)
+    const result = await executeCliCommand(provider, prompt, model)
     
     console.log(`✅ CLI command completed: success=${result.success}`)
 

@@ -84,11 +84,13 @@ async function executeCommand(command: string, args: string[], timeout = 10000):
 
 /**
  * Detect Claude Code CLI
+ * Uses 'claude --version' for installation check
+ * Uses config file check for authentication (faster than running a prompt)
  */
 async function detectClaudeCode(): Promise<CLIValidationResult> {
   try {
     // First check if claude command exists
-    const versionResult = await executeCommand('claude', ['--version'], 3000)
+    const versionResult = await executeCommand('claude', ['--version'], 5000)
     if (!versionResult.success) {
       return {
         provider: 'claude_code',
@@ -96,39 +98,37 @@ async function detectClaudeCode(): Promise<CLIValidationResult> {
         message: 'Claude Code CLI not installed',
         issue_type: 'not_installed',
         solutions: [
-          'Install Claude Code CLI',
-          'Restart your terminal after installation',
-          'Make sure the CLI is in your PATH'
+          'Install Claude Code CLI: npm install -g @anthropic-ai/claude-code',
+          'Or visit: https://claude.ai/download',
+          'Restart your terminal after installation'
         ],
         install_command: 'npm install -g @anthropic-ai/claude-code',
-        auth_command: 'claude auth login'
+        auth_command: 'claude login'
       }
     }
 
     const version = versionResult.stdout || 'Unknown version'
 
-    // Test authentication with a minimal prompt and shorter timeout
-    const testResult = await executeCommand('claude', ['-p', 'ok'], 8000)
+    // Check authentication by running 'claude config list' or checking auth status
+    // This is faster and more reliable than running a test prompt
+    const authCheck = await executeCommand('claude', ['config', 'list'], 5000)
     
-    console.log('Claude test result:', {
-      success: testResult.success,
-      stdout: testResult.stdout?.substring(0, 100),
-      stderr: testResult.stderr?.substring(0, 100),
-      error: testResult.error
+    console.log('Claude auth check result:', {
+      success: authCheck.success,
+      stdout: authCheck.stdout?.substring(0, 200),
+      stderr: authCheck.stderr?.substring(0, 100)
     })
 
-    // Check for authentication errors in all output sources
-    const allOutput = (testResult.stdout || '') + ' ' + (testResult.stderr || '') + ' ' + (testResult.error || '')
+    const allOutput = (authCheck.stdout || '') + ' ' + (authCheck.stderr || '')
     const outputLower = allOutput.toLowerCase()
-    
-    // Clear authentication failure patterns
+
+    // Check for authentication errors
     if (outputLower.includes('not logged in') || 
-        outputLower.includes('authentication required') || 
+        outputLower.includes('not authenticated') ||
+        outputLower.includes('please login') ||
         outputLower.includes('please log in') ||
-        outputLower.includes('login required') ||
-        outputLower.includes('unauthorized') ||
-        outputLower.includes('auth login') ||
-        outputLower.includes('please authenticate')) {
+        outputLower.includes('run `claude login`') ||
+        outputLower.includes('unauthorized')) {
       return {
         provider: 'claude_code',
         status: 'unavailable',
@@ -137,16 +137,16 @@ async function detectClaudeCode(): Promise<CLIValidationResult> {
         authenticated: false,
         issue_type: 'not_authenticated',
         solutions: [
-          'Run authentication command',
-          'Follow browser login prompts',
-          'Ensure you have an active Anthropic account'
+          'Run: claude login',
+          'Follow browser authentication prompts',
+          'Ensure you have an active Claude subscription'
         ],
-        auth_command: 'claude auth login'
+        auth_command: 'claude login'
       }
     }
 
-    // If we got any response output (even if command "failed" due to timeout), authentication likely worked
-    if (testResult.stdout && testResult.stdout.trim().length > 0) {
+    // If config list works without auth errors, assume authenticated
+    if (authCheck.success || (authCheck.stdout && authCheck.stdout.length > 0)) {
       return {
         provider: 'claude_code',
         status: 'available',
@@ -156,37 +156,48 @@ async function detectClaudeCode(): Promise<CLIValidationResult> {
       }
     }
 
-    // If command timed out but no auth errors, it's likely authenticated but slow
-    if (testResult.error?.includes('timeout') && !outputLower.includes('auth')) {
+    // Fallback: try a minimal prompt test
+    const testResult = await executeCommand('claude', ['-p', 'hi', '--no-input'], 10000)
+    
+    if (testResult.success || (testResult.stdout && testResult.stdout.trim().length > 0)) {
       return {
         provider: 'claude_code',
         status: 'available',
-        message: 'Claude Code CLI authenticated (slow response)',
+        message: 'Claude Code CLI authenticated and ready',
         cli_version: version,
-        authenticated: true,
-        issue_type: 'environment_issue',
-        solutions: [
-          'CLI is authenticated but network responses are slow',
-          'This is normal for cold starts',
-          'Check internet connection if consistently slow'
-        ]
+        authenticated: true
       }
     }
 
-    // If no output and no clear error, status is unclear
+    // Check test result for auth errors
+    const testOutput = (testResult.stdout || '') + ' ' + (testResult.stderr || '') + ' ' + (testResult.error || '')
+    if (testOutput.toLowerCase().includes('login') || testOutput.toLowerCase().includes('auth')) {
+      return {
+        provider: 'claude_code',
+        status: 'unavailable',
+        message: 'Claude Code CLI requires authentication',
+        cli_version: version,
+        authenticated: false,
+        issue_type: 'not_authenticated',
+        solutions: ['Run: claude login'],
+        auth_command: 'claude login'
+      }
+    }
+
+    // Status unclear
     return {
       provider: 'claude_code',
       status: 'unavailable',
-      message: 'Claude Code CLI status unclear - please verify',
+      message: 'Claude Code CLI status unclear - please verify manually',
       cli_version: version,
       authenticated: false,
       issue_type: 'unknown',
       solutions: [
-        'Try manual test: claude -p "hello"',
-        'If not working: claude auth login',
-        'Check internet connection'
+        'Try: claude -p "hello"',
+        'If not working: claude login',
+        'Check your internet connection'
       ],
-      auth_command: 'claude auth login'
+      auth_command: 'claude login'
     }
   } catch (error: any) {
     return {
@@ -194,19 +205,21 @@ async function detectClaudeCode(): Promise<CLIValidationResult> {
       status: 'not_installed',
       message: `Error detecting Claude Code: ${error?.message || 'Unknown error'}`,
       issue_type: 'unknown',
-      solutions: ['Try reinstalling the CLI'],
+      solutions: ['Try reinstalling: npm install -g @anthropic-ai/claude-code'],
       install_command: 'npm install -g @anthropic-ai/claude-code'
     }
   }
 }
 
 /**
- * Detect Codex CLI
+ * Detect Codex CLI (OpenAI's CLI tool)
+ * Uses 'codex --version' for installation check
+ * Uses 'codex auth status' or config check for authentication
  */
 async function detectCodexCli(): Promise<CLIValidationResult> {
   try {
     // First check if codex command exists
-    const versionResult = await executeCommand('codex', ['--version'], 3000)
+    const versionResult = await executeCommand('codex', ['--version'], 5000)
     if (!versionResult.success) {
       return {
         provider: 'codex_cli',
@@ -214,22 +227,35 @@ async function detectCodexCli(): Promise<CLIValidationResult> {
         message: 'Codex CLI not installed',
         issue_type: 'not_installed',
         solutions: [
-          'Install Codex CLI via npm',
-          'Alternative: Install via Homebrew',
+          'Install Codex CLI: npm install -g @openai/codex',
+          'Or: brew install openai-codex (macOS)',
           'Restart your terminal after installation'
         ],
         install_command: 'npm install -g @openai/codex',
-        auth_command: 'codex login'
+        auth_command: 'codex auth'
       }
     }
 
     const version = versionResult.stdout || 'Unknown version'
 
-    // Try simple execution test with proper timeout
-    const testResult = await executeCommand('codex', ['exec', 'test'], 10000)
+    // Check authentication status
+    const authResult = await executeCommand('codex', ['auth', 'whoami'], 5000)
     
-    if (testResult.success && testResult.stdout?.includes('test')) {
-      // Perfect - CLI is working and authenticated
+    console.log('Codex auth check result:', {
+      success: authResult.success,
+      stdout: authResult.stdout?.substring(0, 200),
+      stderr: authResult.stderr?.substring(0, 100)
+    })
+
+    const allOutput = (authResult.stdout || '') + ' ' + (authResult.stderr || '')
+    const outputLower = allOutput.toLowerCase()
+
+    // Check for authentication success indicators
+    if (authResult.success && 
+        (outputLower.includes('logged in') || 
+         outputLower.includes('authenticated') ||
+         outputLower.includes('@') ||  // Email indicates logged in
+         authResult.stdout?.includes('user'))) {
       return {
         provider: 'codex_cli',
         status: 'available',
@@ -239,14 +265,12 @@ async function detectCodexCli(): Promise<CLIValidationResult> {
       }
     }
 
-    // Check specific error types
-    const errorText = (testResult.stderr || testResult.error || '').toLowerCase()
-    
-    if (errorText.includes('not logged in') || 
-        errorText.includes('authentication') || 
-        errorText.includes('login required') ||
-        errorText.includes('unauthorized') ||
-        errorText.includes('api key')) {
+    // Check for authentication errors
+    if (outputLower.includes('not logged in') || 
+        outputLower.includes('not authenticated') ||
+        outputLower.includes('unauthorized') ||
+        outputLower.includes('login required') ||
+        outputLower.includes('api key')) {
       return {
         provider: 'codex_cli',
         status: 'unavailable',
@@ -255,140 +279,141 @@ async function detectCodexCli(): Promise<CLIValidationResult> {
         authenticated: false,
         issue_type: 'not_authenticated',
         solutions: [
-          'Run login command',
+          'Run: codex auth',
           'Follow browser login prompts',
-          'Ensure you have OpenAI API access',
-          'Check your OpenAI account has Codex access'
+          'Ensure you have a ChatGPT Plus or OpenAI API subscription'
         ],
-        auth_command: 'codex login'
+        auth_command: 'codex auth'
       }
     }
 
-    // If exec command failed due to timeout or other issues, check login status directly
-    const loginCheck = await executeCommand('codex', ['login', 'status'], 3000)
-    if (loginCheck.success && loginCheck.stdout?.includes('Logged in using')) {
-      return {
-        provider: 'codex_cli', 
-        status: 'available',
-        message: 'Codex CLI authenticated (slow response may indicate network issues)',
-        cli_version: version,
-        authenticated: true,
-        issue_type: 'environment_issue',
-        solutions: [
-          'CLI is working but responses are slow',
-          'Check your internet connection',
-          'Consider upgrading your OpenAI plan for faster responses'
-        ]
+    // Fallback: try 'codex auth status' if 'whoami' didn't work
+    const statusResult = await executeCommand('codex', ['auth', 'status'], 5000)
+    if (statusResult.success) {
+      const statusOutput = (statusResult.stdout || '').toLowerCase()
+      if (statusOutput.includes('logged in') || statusOutput.includes('authenticated')) {
+        return {
+          provider: 'codex_cli',
+          status: 'available',
+          message: 'Codex CLI authenticated and ready',
+          cli_version: version,
+          authenticated: true
+        }
       }
     }
 
-    // Default to authentication issue if we can't determine the exact problem
+    // Default: assume not authenticated if we can't verify
     return {
-      provider: 'codex_cli', 
+      provider: 'codex_cli',
       status: 'unavailable',
-      message: 'Codex CLI installed but may have authentication or environment issues',
+      message: 'Codex CLI authentication status unknown',
       cli_version: version,
       authenticated: false,
       issue_type: 'environment_issue',
       solutions: [
-        'Try running: codex login',
-        'Check your internet connection',
-        'Verify your OpenAI account status',
-        'Update CLI: npm update -g @openai/codex'
+        'Try: codex auth',
+        'Check: codex auth status',
+        'Ensure you have an OpenAI account'
       ],
-      auth_command: 'codex login'
+      auth_command: 'codex auth'
     }
   } catch (error: any) {
     return {
       provider: 'codex_cli',
-      status: 'not_installed', 
+      status: 'not_installed',
       message: `Error detecting Codex CLI: ${error?.message || 'Unknown error'}`,
       issue_type: 'unknown',
-      solutions: ['Try reinstalling the CLI'],
+      solutions: ['Try: npm install -g @openai/codex'],
       install_command: 'npm install -g @openai/codex'
     }
   }
 }
 
 /**
- * Detect Gemini CLI
+ * Detect Gemini CLI (Google's CLI tool)
+ * Uses 'gemini --version' for installation check
+ * Uses auth check for authentication status
  */
 async function detectGeminiCli(): Promise<CLIValidationResult> {
   try {
-    // First check if gemini command exists
+    // First check if gemini command exists using 'which'
     const existsResult = await executeCommand('sh', ['-c', 'command -v gemini'], 3000)
     
-    if (!existsResult.success) {
+    if (!existsResult.success || !existsResult.stdout?.trim()) {
       return {
         provider: 'gemini_cli',
         status: 'not_installed',
         message: 'Gemini CLI not installed',
         issue_type: 'not_installed',
         solutions: [
-          'Install Gemini CLI via npm',
-          'Make sure you have Node.js 18+ installed',
+          'Install Gemini CLI: npm install -g @google/gemini-cli',
+          'Requires Node.js 18+ (20+ recommended)',
           'Restart your terminal after installation'
         ],
         install_command: 'npm install -g @google/gemini-cli',
-        auth_command: 'gemini login'
+        auth_command: 'gemini auth'
       }
     }
 
-    // Get version - this will also reveal Node.js compatibility issues
-    const versionResult = await executeCommand('gemini', ['--version'], 3000)
+    // Get version
+    const versionResult = await executeCommand('gemini', ['--version'], 5000)
     
-    // Check for Node.js compatibility issues first
-    if (!versionResult.success) {
-      const errorText = versionResult.error || versionResult.stderr || ''
-      if (errorText.includes('ReferenceError') || errorText.includes('File is not defined')) {
-        return {
-          provider: 'gemini_cli',
-          status: 'unavailable',
-          message: 'Gemini CLI has Node.js compatibility issues',
-          issue_type: 'compatibility_issue',
-          solutions: [
-            'Update Node.js to version 20+ (current issue with v18)',
-            'Alternative: Use nvm to switch Node versions: nvm install 20 && nvm use 20',
-            'Reinstall Gemini CLI after Node update',
-            'Check GitHub issues for @google/gemini-cli compatibility'
-          ],
-          install_command: 'nvm install 20 && nvm use 20 && npm install -g @google/gemini-cli'
-        }
-      }
-      
+    // Check for Node.js compatibility issues
+    const versionOutput = (versionResult.stdout || '') + ' ' + (versionResult.stderr || '') + ' ' + (versionResult.error || '')
+    if (versionOutput.includes('ReferenceError') || 
+        versionOutput.includes('File is not defined') ||
+        versionOutput.includes('undici')) {
       return {
         provider: 'gemini_cli',
-        status: 'unavailable', 
-        message: 'Gemini CLI installed but has issues',
-        issue_type: 'unknown',
-        solutions: ['Try reinstalling the CLI'],
-        install_command: 'npm install -g @google/gemini-cli'
+        status: 'unavailable',
+        message: 'Gemini CLI has Node.js compatibility issues',
+        issue_type: 'compatibility_issue',
+        solutions: [
+          'Upgrade Node.js to version 20+',
+          'Run: nvm install 20 && nvm use 20',
+          'Then reinstall: npm install -g @google/gemini-cli',
+          'Known issue with Node.js 18 and undici dependency'
+        ],
+        install_command: 'nvm install 20 && npm install -g @google/gemini-cli'
       }
     }
 
-    const version = versionResult.stdout || 'Gemini CLI'
+    const version = versionResult.stdout?.trim() || 'Gemini CLI'
 
-    // Test with simple prompt using fast model
-    const testResult = await executeCommand('gemini', ['-m', 'gemini-2.5-flash', '-p', 'test'], 10000)
+    // Check authentication
+    const authResult = await executeCommand('gemini', ['auth', 'status'], 5000)
     
-    if (testResult.success && testResult.stdout?.includes('test')) {
-      // Perfect - CLI is working and authenticated
+    console.log('Gemini auth check result:', {
+      success: authResult.success,
+      stdout: authResult.stdout?.substring(0, 200),
+      stderr: authResult.stderr?.substring(0, 100)
+    })
+
+    const allOutput = (authResult.stdout || '') + ' ' + (authResult.stderr || '')
+    const outputLower = allOutput.toLowerCase()
+
+    // Check for authentication success
+    if (authResult.success && 
+        (outputLower.includes('logged in') || 
+         outputLower.includes('authenticated') ||
+         outputLower.includes('active') ||
+         outputLower.includes('@google') ||
+         outputLower.includes('@gmail'))) {
       return {
         provider: 'gemini_cli',
-        status: 'available', 
+        status: 'available',
         message: 'Gemini CLI authenticated and ready',
         cli_version: version,
         authenticated: true
       }
     }
 
-    // Check for specific error types
-    const errorText = (testResult.stderr || testResult.error || '').toLowerCase()
-    
-    if (errorText.includes('not authenticated') || 
-        errorText.includes('authentication') || 
-        errorText.includes('login required') ||
-        errorText.includes('api key')) {
+    // Check for authentication errors
+    if (outputLower.includes('not authenticated') || 
+        outputLower.includes('not logged in') ||
+        outputLower.includes('please login') ||
+        outputLower.includes('unauthorized') ||
+        outputLower.includes('api key')) {
       return {
         provider: 'gemini_cli',
         status: 'unavailable',
@@ -397,17 +422,16 @@ async function detectGeminiCli(): Promise<CLIValidationResult> {
         authenticated: false,
         issue_type: 'not_authenticated',
         solutions: [
-          'Run authentication command',
-          'Use browser login or API key setup',
-          'Ensure you have Google AI API access',
-          'Check your Google Cloud billing is enabled'
+          'Run: gemini auth login',
+          'Follow browser authentication prompts',
+          'Ensure you have a Google account with Gemini access'
         ],
-        auth_command: 'gemini login'
+        auth_command: 'gemini auth login'
       }
     }
 
-    // Check for Node.js compatibility issues in execution
-    if (errorText.includes('referenceerror') || errorText.includes('file is not defined')) {
+    // Check for Node.js compatibility issues in auth check
+    if (outputLower.includes('referenceerror') || outputLower.includes('file is not defined')) {
       return {
         provider: 'gemini_cli',
         status: 'unavailable',
@@ -416,30 +440,43 @@ async function detectGeminiCli(): Promise<CLIValidationResult> {
         authenticated: false,
         issue_type: 'compatibility_issue',
         solutions: [
-          'Update Node.js to version 20+',
-          'Use nvm to switch versions: nvm install 20 && nvm use 20',
-          'Reinstall CLI after Node update',
-          'This is a known issue with Node.js 18 and undici dependency'
+          'Upgrade Node.js to version 20+',
+          'Run: nvm install 20 && nvm use 20',
+          'Then reinstall: npm install -g @google/gemini-cli'
         ],
         install_command: 'nvm install 20 && npm install -g @google/gemini-cli'
       }
     }
 
-    // Default case - CLI exists but something went wrong
+    // Fallback: try running 'gemini auth' without arguments
+    const authCheck = await executeCommand('gemini', ['auth'], 3000)
+    if (authCheck.success) {
+      const authOutput = (authCheck.stdout || '').toLowerCase()
+      if (authOutput.includes('logged in') || authOutput.includes('authenticated')) {
+        return {
+          provider: 'gemini_cli',
+          status: 'available',
+          message: 'Gemini CLI authenticated and ready',
+          cli_version: version,
+          authenticated: true
+        }
+      }
+    }
+
+    // Default: status unknown
     return {
       provider: 'gemini_cli',
       status: 'unavailable',
-      message: 'Gemini CLI installed but may have configuration issues',
+      message: 'Gemini CLI authentication status unknown',
       cli_version: version,
       authenticated: false,
       issue_type: 'environment_issue',
       solutions: [
-        'Try running: gemini login',
-        'Check your internet connection',
-        'Verify Google AI API access',
-        'Update CLI: npm update -g @google/gemini-cli'
+        'Try: gemini auth login',
+        'Check: gemini auth status',
+        'Ensure you have a Google account with Gemini access'
       ],
-      auth_command: 'gemini login'
+      auth_command: 'gemini auth login'
     }
   } catch (error: any) {
     return {
@@ -447,7 +484,7 @@ async function detectGeminiCli(): Promise<CLIValidationResult> {
       status: 'not_installed',
       message: `Error detecting Gemini CLI: ${error?.message || 'Unknown error'}`,
       issue_type: 'unknown',
-      solutions: ['Try installing the CLI'],
+      solutions: ['Try: npm install -g @google/gemini-cli'],
       install_command: 'npm install -g @google/gemini-cli'
     }
   }
