@@ -2794,11 +2794,13 @@ async function handleCliStatusReport(args: any, user: any): Promise<string> {
         throw new Error(`Failed to update CLI status: ${updateError.message}`)
       }
     } else {
+      // Note: Don't set enabled=true here - that triggers Pro subscription check
+      // Status reporting is informational; enabling CLI is a separate user action
       const { error: insertError } = await serviceRoleSupabase
         .from('cli_provider_configurations')
         .insert({
           ...updateData,
-          enabled: status === 'available',
+          enabled: false,  // Default to false; user must explicitly enable
           created_at: new Date().toISOString()
         })
 
