@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { CLIManager } = require('./cliManager');
+const { CLIManager } = require('../lib/cliManager');
 
 // Simple .env file loader (no external dependencies)
 function loadEnvFile(filePath) {
