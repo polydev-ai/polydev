@@ -41,21 +41,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { provider, api_key, key_name, api_base, default_model, is_preferred = false, is_primary = false, monthly_budget = null } = await request.json()
+    const { provider, api_key, key_name, api_base, default_model, is_preferred = false, monthly_budget = null } = await request.json()
 
     // Validate required fields - API key is now optional
     if (!provider) {
       return NextResponse.json({ error: 'Provider is required' }, { status: 400 })
-    }
-
-    // If marking as primary, unset other primary keys for this user+provider
-    if (is_primary) {
-      await supabase
-        .from('user_api_keys')
-        .update({ is_primary: false })
-        .eq('user_id', user.id)
-        .eq('provider', provider)
-        .eq('is_primary', true)
     }
     
     // Handle optional API key - encrypt if provided, otherwise store placeholder
@@ -96,7 +86,7 @@ export async function POST(request: NextRequest) {
       key_preview: keyPreview,
       api_base: api_base || null,
       default_model: cleanDefaultModel || null,
-      is_primary,
+      is_preferred,
       monthly_budget,
       display_order: maxOrder + 1,
       active: true
