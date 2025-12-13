@@ -140,26 +140,10 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // ✅ CRITICAL FIX: Check user subscription tier before attempting CLI configuration updates
-    // Only Pro users can use CLI tools - skip database updates for free users
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('tier')
-      .eq('user_id', actualUserId)
-      .single()
-
-    const isProUser = userProfile?.tier === 'pro'
-
-    if (!isProUser) {
-      // Free user attempting to update CLI status - return early without error
-      console.log(`[CLI-Status] Free user ${actualUserId} (tier: ${userProfile?.tier}) - CLI tools require Pro subscription, skipping database update`);
-      return NextResponse.json({
-        success: true,
-        message: `CLI tools require Pro subscription. Status update skipped.`,
-        subscription_required: 'pro',
-        current_tier: userProfile?.tier || 'free'
-      }, { status: 200 })  // Return 200 to avoid error logging in MCP bridge
-    }
+    // CLI status reporting is now available to ALL users (free and pro)
+    // This allows users to see their CLI tools status on the dashboard
+    // Note: Using CLI tools for AI queries may still have tier-based limits
+    console.log(`[CLI-Status] Processing status update for user ${actualUserId}`);
 
     // Update or create CLI configuration
     // Only update columns that exist in the actual database schema
@@ -200,17 +184,6 @@ export async function POST(request: NextRequest) {
 
       if (updateError) {
         console.error('CLI config update error:', updateError)
-
-        // Check if error is due to Pro subscription requirement
-        if (updateError.message?.includes('CLI tools require Pro subscription')) {
-          console.log('[CLI-Status] Free user attempted to enable CLI - blocked by database trigger (expected)');
-          return NextResponse.json({
-            error: 'CLI tools require Pro subscription',
-            reason: 'Free tier users cannot enable CLI tools',
-            subscription_required: 'pro'
-          }, { status: 403 })
-        }
-
         return NextResponse.json({ error: 'Failed to update CLI configuration' }, { status: 500 })
       }
       console.log('[DEBUG] Update successful!');
@@ -233,17 +206,6 @@ export async function POST(request: NextRequest) {
 
       if (insertError) {
         console.error('CLI config insert error:', insertError)
-
-        // Check if error is due to Pro subscription requirement
-        if (insertError.message?.includes('CLI tools require Pro subscription')) {
-          console.log('[CLI-Status] Free user attempted to enable CLI - blocked by database trigger (expected)');
-          return NextResponse.json({
-            error: 'CLI tools require Pro subscription',
-            reason: 'Free tier users cannot enable CLI tools',
-            subscription_required: 'pro'
-          }, { status: 403 })
-        }
-
         return NextResponse.json({ error: 'Failed to create CLI configuration' }, { status: 500 })
       }
       console.log('[DEBUG] Insert successful!');

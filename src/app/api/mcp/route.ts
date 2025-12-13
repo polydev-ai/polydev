@@ -1536,7 +1536,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 cliFailureReason = cliResult.error || 'CLI execution returned no content'
               }
             } catch (cliError: any) {
-              // CLI error - log and fall through to API
+              // CLI error - log and fall through to API key path below
               console.error(`[MCP] ❌ CLI error for ${cliToolName}:`, cliError.message)
               cliFailureReason = cliError.message || 'CLI execution threw an error'
             }
@@ -2529,13 +2529,10 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     if (cliCheck.canUse) {
       statusDisplay += `\n🖥️ **CLI Access**: ✅ Available`
     } else {
-      statusDisplay += `\n🖥️ **CLI Access**: ❌ Requires Pro subscription`
+      statusDisplay += `\n🖥️ **CLI Access**: ❌ Not available`
     }
     
-    // Log potential mismatch for debugging
-    if (planTier !== 'pro' && cliCheck.canUse) {
-      console.warn('[MCP Status] CLI allowed but subscription not pro – investigate RLS / duplicate row', { userId: user.id, planTier, cliAccess: cliCheck.canUse })
-    }
+    // CLI access is now available to all users (free and pro)
     
     statusDisplay += '\n'
     

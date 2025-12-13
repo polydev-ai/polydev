@@ -306,18 +306,12 @@ export class SubscriptionManager {
     }
   }
 
-  // Check if user can use CLI
+  // Check if user can use CLI - now available to ALL users (free and pro)
+  // CLI status reporting and basic CLI features are available to everyone
   async canUseCLI(userId: string, useServiceRole: boolean = true): Promise<{ canUse: boolean; reason?: string }> {
     try {
-      const subscription = await this.getUserSubscription(userId, useServiceRole)
-      
-      if (!subscription || subscription.tier !== 'pro' || subscription.status !== 'active') {
-        return {
-          canUse: false,
-          reason: 'CLI access requires Polydev Pro subscription ($20/month)'
-        }
-      }
-
+      // CLI tools are now available to all users
+      // Pro users get additional benefits but basic CLI access is free
       return { canUse: true }
     } catch (error) {
       console.error('Error in canUseCLI:', error)
