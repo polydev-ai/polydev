@@ -96,7 +96,6 @@ export async function POST(request: NextRequest) {
       key_preview: keyPreview,
       api_base: api_base || null,
       default_model: cleanDefaultModel || null,
-      is_preferred,
       is_primary,
       monthly_budget,
       display_order: maxOrder + 1,
