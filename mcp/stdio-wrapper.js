@@ -449,8 +449,8 @@ class StdioMCPWrapper {
         throw new Error('prompt is required');
       }
 
-      // Use reasonable timeout for CLI responses (15 seconds instead of 5)
-      const gracefulTimeout = Math.min(timeout_ms, 15000);
+      // Use reasonable timeout for CLI responses (180 seconds for complex prompts)
+      const gracefulTimeout = Math.min(timeout_ms, 180000);
 
       let localResults = [];
 
