@@ -686,7 +686,7 @@ class StdioMCPWrapper {
     // Format CLI responses for logging on the server
     const cliResponses = localResults.map(result => ({
       provider_id: result.provider_id,
-      model: result.model || this.getDefaultModelForCli(result.provider_id),
+      model: result.model_used || this.getDefaultModelForCli(result.provider_id),
       content: result.content || '',
       tokens_used: result.tokens_used || 0,
       latency_ms: result.latency_ms || 0,
