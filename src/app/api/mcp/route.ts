@@ -1403,6 +1403,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   // No more complex preferences logic
   let models: string[] = []
 
+  // DEBUG: Log incoming args to trace exclude_providers
+  console.log(`[MCP DEBUG] Full args received:`, JSON.stringify(args, null, 2))
+  console.log(`[MCP DEBUG] args.exclude_providers:`, args.exclude_providers)
+  console.log(`[MCP DEBUG] typeof exclude_providers:`, typeof args.exclude_providers)
+
   if (args.models && args.models.length > 0) {
     // If models explicitly specified, use those
     models = args.models
@@ -1464,21 +1469,36 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
   // Handle exclude_providers parameter - filter out providers that succeeded via local CLI
   // This prevents redundant remote API calls when local CLIs already returned results
+  console.log(`[MCP DEBUG] Checking exclude_providers condition:`, {
+    hasExcludeProviders: !!args.exclude_providers,
+    isArray: Array.isArray(args.exclude_providers),
+    length: args.exclude_providers?.length,
+    value: args.exclude_providers
+  })
+  
   if (args.exclude_providers && Array.isArray(args.exclude_providers) && args.exclude_providers.length > 0) {
     console.log(`[MCP] Excluding providers that succeeded locally:`, args.exclude_providers)
     
     // Map provider names to lowercase for comparison
     const excludeSet = new Set(args.exclude_providers.map((p: string) => p.toLowerCase()))
+    console.log(`[MCP DEBUG] excludeSet:`, Array.from(excludeSet))
     
     // Filter out models from excluded providers
     const originalCount = models.length
+    console.log(`[MCP DEBUG] Models before filtering:`, models)
+    console.log(`[MCP DEBUG] API keys for matching:`, apiKeys?.map(k => ({ provider: k.provider, model: k.default_model })))
+    
     models = models.filter((model: string) => {
       // Find the API key config for this model to get its provider
       const apiKeyForModel = apiKeys?.find(key => key.default_model === model)
+      console.log(`[MCP DEBUG] Model ${model}: apiKeyForModel =`, apiKeyForModel ? { provider: apiKeyForModel.provider, model: apiKeyForModel.default_model } : 'NOT FOUND')
+      
       if (!apiKeyForModel) return true // Keep models without config (will error later anyway)
       
       const providerLower = apiKeyForModel.provider?.toLowerCase()
       const isExcluded = excludeSet.has(providerLower)
+      
+      console.log(`[MCP DEBUG] Model ${model}: provider=${providerLower}, isExcluded=${isExcluded}`)
       
       if (isExcluded) {
         console.log(`[MCP] Excluding model ${model} (provider ${providerLower} succeeded via local CLI)`)
@@ -1486,7 +1506,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       return !isExcluded
     })
     
-    console.log(`[MCP] After exclude_providers filter: ${originalCount} → ${models.length} models`)
+    console.log(`[MCP DEBUG] After exclude_providers filter: ${originalCount} → ${models.length} models`)
     
     // If all models were excluded, return early success with skip indication
     if (models.length === 0) {
@@ -3328,7 +3348,7 @@ function getModelsFromPreferences(modelPreferences: any): string[] {
   
   // Extract first model from each provider in order
   const models = sortedProviders
-    .map(([provider, pref]: [string, any]) => pref.models[0]) // No hardcoded fallback
+    .map(([provider, pref]: any) => pref.models[0]) // No hardcoded fallback
     .filter(Boolean) // Filter out null/undefined values
 
   return models.length > 0 ? models : []
