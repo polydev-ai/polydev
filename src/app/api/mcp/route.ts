@@ -49,7 +49,7 @@ async function callLLMAPI(
   maxTokens?: number
 ): Promise<APIResponse> {
   const temp = temperature || 0.7
-  const tokens = maxTokens || 1000
+  const tokens = maxTokens || 20000
   
   // Build request configuration based on provider
   const requestConfig = buildRequestConfig(
@@ -177,6 +177,21 @@ function buildRequestConfig(
     case 'openai-native':
       const isGPT5Model = model.startsWith('gpt-5')
       
+      // Check if this is a completions model (legacy text models)
+      // These models use /completions endpoint instead of /chat/completions
+      const isCompletionsModel = (
+        model.startsWith('davinci') ||
+        model.startsWith('curie') ||
+        model.startsWith('babbage') ||
+        model.startsWith('ada') ||
+        model.startsWith('text-davinci') ||
+        model.startsWith('text-curie') ||
+        model.startsWith('text-babbage') ||
+        model.startsWith('text-ada') ||
+        model.includes('instruct') ||
+        model.startsWith('gpt-3.5-turbo-instruct')
+      )
+      
       if (isGPT5Model) {
         // Use GPT-5 with proper Responses API (this was working before)
         console.log(`[MCP] Using GPT-5 with Responses API: ${model}`)
@@ -191,6 +206,24 @@ function buildRequestConfig(
             input: prompt,  // Use 'input' for responses endpoint
             max_output_tokens: maxTokens,  // Use max_output_tokens for responses
             // Note: GPT-5 doesn't support temperature parameter
+          },
+        }
+      }
+      
+      if (isCompletionsModel) {
+        // Use legacy Completions API for older text models
+        console.log(`[MCP] Using OpenAI Completions API for legacy model: ${model}`)
+        return {
+          url: `${baseUrl}/completions`,
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: {
+            model,
+            prompt,  // Completions API uses 'prompt' not 'messages'
+            temperature,
+            max_tokens: maxTokens,
           },
         }
       }
@@ -397,6 +430,30 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
 
         return { content, tokens_used }
       }
+      
+      // Handle legacy Completions API format (for davinci, text-davinci, etc.)
+      // Completions API returns choices[0].text instead of choices[0].message.content
+      const isCompletionsModel = (
+        model?.startsWith('davinci') ||
+        model?.startsWith('curie') ||
+        model?.startsWith('babbage') ||
+        model?.startsWith('ada') ||
+        model?.startsWith('text-davinci') ||
+        model?.startsWith('text-curie') ||
+        model?.startsWith('text-babbage') ||
+        model?.startsWith('text-ada') ||
+        model?.includes('instruct') ||
+        model?.startsWith('gpt-3.5-turbo-instruct')
+      )
+      
+      if (isCompletionsModel && data.choices?.[0]?.text !== undefined) {
+        console.log(`[MCP] Parsing Completions API response for model: ${model}`)
+        return {
+          content: data.choices[0].text || 'No response',
+          tokens_used: data.usage?.total_tokens || 0
+        }
+      }
+      
       console.log(`[MCP] Parsing standard OpenAI response for model: ${model}`)
       // Fall through to standard OpenAI format
     case 'openrouter':
@@ -781,6 +838,11 @@ function handleToolsList(id: string) {
                 max_tokens: { type: 'number', minimum: 1, maximum: 32000 }
               }
             }
+          },
+          exclude_providers: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Array of provider names to exclude (e.g., ["anthropic", "openai"]) - used when local CLIs already returned results for these providers'
           }
         },
         required: ['prompt']
@@ -1399,8 +1461,49 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.log(`[MCP] No API keys found, using fallback model:`, models)
   }
 
+  // Handle exclude_providers parameter - filter out providers that succeeded via local CLI
+  // This prevents redundant remote API calls when local CLIs already returned results
+  if (args.exclude_providers && Array.isArray(args.exclude_providers) && args.exclude_providers.length > 0) {
+    console.log(`[MCP] Excluding providers that succeeded locally:`, args.exclude_providers)
+    
+    // Map provider names to lowercase for comparison
+    const excludeSet = new Set(args.exclude_providers.map((p: string) => p.toLowerCase()))
+    
+    // Filter out models from excluded providers
+    const originalCount = models.length
+    models = models.filter((model: string) => {
+      // Find the API key config for this model to get its provider
+      const apiKeyForModel = apiKeys?.find(key => key.default_model === model)
+      if (!apiKeyForModel) return true // Keep models without config (will error later anyway)
+      
+      const providerLower = apiKeyForModel.provider?.toLowerCase()
+      const isExcluded = excludeSet.has(providerLower)
+      
+      if (isExcluded) {
+        console.log(`[MCP] Excluding model ${model} (provider ${providerLower} succeeded via local CLI)`)
+      }
+      return !isExcluded
+    })
+    
+    console.log(`[MCP] After exclude_providers filter: ${originalCount} → ${models.length} models`)
+    
+    // If all models were excluded, return early success with skip indication
+    if (models.length === 0) {
+      console.log(`[MCP] All models excluded by local CLI success - returning early`)
+      return JSON.stringify({
+        content: [{
+          type: 'text',
+          text: 'All requested providers were successfully handled by local CLI tools.'
+        }],
+        skipped: true,
+        reason: 'all_providers_handled_locally',
+        excluded_providers: args.exclude_providers
+      })
+    }
+  }
+
   // Fetch default max_tokens from admin config
-  let defaultMaxTokens = 10000 // Fallback default
+  let defaultMaxTokens = 20000 // Default 20K tokens for comprehensive responses
   try {
     const { data: mcpConfig } = await serviceRoleSupabase
       .from('admin_pricing_config')
@@ -1531,7 +1634,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                   subscription_based: true // No API cost - uses user's subscription
                 }
               } else {
-                // CLI failed - log and fall through to API
+                // CLI failed - log and fall through to API key path below
                 console.log(`[MCP] ⚠️ CLI execution failed for ${cliToolName}, falling back to API:`, cliResult.error)
                 cliFailureReason = cliResult.error || 'CLI execution returned no content'
               }
@@ -3160,7 +3263,7 @@ function getTopModelsFromPreferences(preferences: any, count: number = 3): strin
     // Sort providers by 'order'
     const providersSorted = Object.entries(modelPrefs)
       .filter(([, pref]: [string, any]) => pref && typeof pref === 'object')
-      .sort(([_, a]: any, [, b]: any) => (a.order || 0) - (b.order || 0))
+      .sort(([_, a]: any, [__, b]: any) => (a.order || 0) - (b.order || 0))
 
     console.log('[MCP] getTopModelsFromPreferences - Sorted providers:',
       providersSorted.map(([p, pref]: any) => `${p}(order:${pref.order}, models:${pref.models})`))

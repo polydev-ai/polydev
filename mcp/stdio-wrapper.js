@@ -567,9 +567,39 @@ class StdioMCPWrapper {
 
   /**
    * Call remote perspectives for CLI prompts
+   * Only calls remote APIs for providers NOT covered by successful local CLIs
    */
   async callPerspectivesForCli(args, localResults) {
-    console.error(`[Stdio Wrapper] Calling remote perspectives for CLI prompt`);
+    // Determine which providers succeeded locally
+    const successfulLocalProviders = localResults
+      .filter(r => r.success)
+      .map(r => r.provider_id);
+    
+    // Map CLI provider IDs to API provider names for exclusion
+    const cliToApiProvider = {
+      'claude_code': 'anthropic',
+      'codex_cli': 'openai', 
+      'gemini_cli': 'google'
+    };
+    
+    const excludeProviders = successfulLocalProviders
+      .map(cli => cliToApiProvider[cli])
+      .filter(Boolean);
+    
+    // If all major providers are covered locally, skip remote call entirely
+    if (excludeProviders.length >= 3 || 
+        (excludeProviders.includes('anthropic') && excludeProviders.includes('openai') && excludeProviders.includes('google'))) {
+      console.error(`[Stdio Wrapper] All providers covered by local CLIs, skipping remote perspectives`);
+      return {
+        success: true,
+        content: '',
+        skipped: true,
+        reason: 'All providers covered by local CLIs',
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    console.error(`[Stdio Wrapper] Calling remote perspectives (excluding: ${excludeProviders.join(', ') || 'none'})`);
     
     try {
       const perspectivesRequest = {
@@ -580,11 +610,11 @@ class StdioMCPWrapper {
           arguments: {
             prompt: args.prompt,
             user_token: this.userToken,
-            // Let the remote server use user's configured preferences for models
-            // Don't specify models to use dashboard defaults
+            // Exclude providers that succeeded locally
+            exclude_providers: excludeProviders,
             project_memory: 'none',
             temperature: 0.7,
-            max_tokens: 2000
+            max_tokens: 20000
           }
         },
         id: `perspectives-${Date.now()}`
