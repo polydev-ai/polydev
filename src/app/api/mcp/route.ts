@@ -189,6 +189,7 @@ function buildRequestConfig(
         model.startsWith('text-babbage') ||
         model.startsWith('text-ada') ||
         model.includes('instruct') ||
+        model.includes('codex') ||  // Codex models use completions API
         model.startsWith('gpt-3.5-turbo-instruct')
       )
       
@@ -245,7 +246,7 @@ function buildRequestConfig(
     
     case 'anthropic':
       return {
-        url: `${baseUrl}/v1/messages`,
+        url: `${baseUrl}/messages`,  // baseUrl already includes /v1
         headers: {
           'x-api-key': apiKey,
           'Content-Type': 'application/json',
@@ -2259,7 +2260,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
         const latency = Date.now() - startTime
 
-        // Debug: Log if response content looks like it contains formatted output
+        // Debug: Log if response.content looks like it contains formatted output
         if (response.content && typeof response.content === 'string') {
           if (response.content.includes('# Multiple AI Perspectives') ||
               response.content.includes('Got ') && response.content.includes('perspectives in')) {
