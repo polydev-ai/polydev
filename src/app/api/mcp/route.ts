@@ -1292,19 +1292,53 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     availableProviders: cliSummary.availableProviders,
     authenticatedProviders: cliSummary.authenticatedProviders
   });
+
+  // SERVER-SIDE CLI EXCLUSION: If client didn't send exclude_providers but we have
+  // authenticated CLIs, automatically exclude those providers from remote API calls.
+  // This ensures CLI-first behavior works even when called via mcp-execution tools
+  // that bypass stdio-wrapper's CLI logic.
+  const cliToApiProviderMap: Record<string, string> = {
+    'claude_code': 'anthropic',
+    'codex_cli': 'openai',
+    'gemini_cli': 'google'
+  };
+
+  // Check if user is on pro tier (required to use CLI features)
+  const canUseCLI = userSubscription?.tier === 'pro' && userSubscription?.status === 'active';
+  
+  if (canUseCLI && cliSummary.hasAnyCli && cliSummary.totalAuthenticated > 0) {
+    // Map authenticated CLI providers to API provider names
+    const cliExclusions = cliSummary.authenticatedProviders
+      .map((cli: string) => cliToApiProviderMap[cli])
+      .filter(Boolean);
+    
+    if (cliExclusions.length > 0) {
+      // If client already sent exclude_providers, merge with CLI-based exclusions
+      const existingExclusions = args.exclude_providers || [];
+      const mergedExclusions = [...new Set([...existingExclusions, ...cliExclusions])];
+      
+      console.log(`[MCP] SERVER-SIDE CLI EXCLUSION:`, {
+        authenticatedCLIs: cliSummary.authenticatedProviders,
+        cliExclusions,
+        clientExclusions: existingExclusions,
+        mergedExclusions
+      });
+      
+      // Update args with merged exclusions
+      args.exclude_providers = mergedExclusions;
+    }
+  } else {
+    console.log(`[MCP] CLI exclusion skipped:`, {
+      canUseCLI,
+      hasAnyCli: cliSummary.hasAnyCli,
+      totalAuthenticated: cliSummary.totalAuthenticated,
+      reason: !canUseCLI ? 'User not on pro tier' : 
+              !cliSummary.hasAnyCli ? 'No CLIs available' : 
+              'No authenticated CLIs'
+    });
+  }
   
   console.log(`[MCP] Service role client created successfully`)
-  console.log(`[MCP] Service role key starts with:`, serviceRoleKey.substring(0, 20))
-  console.log(`[MCP] Testing service role client with simple query...`)
-  
-  try {
-    const { count, error } = await serviceRoleSupabase
-      .from('mcp_conversation_memory')
-      .select('*', { count: 'exact', head: true })
-    console.log(`[MCP] Service role test query result - count: ${count}, error:`, error)
-  } catch (testError) {
-    console.error(`[MCP] Service role test query failed:`, testError)
-  }
 
   // Initialize memory manager with service role client and get relevant context
   const memoryManager = new MCPMemoryManager({}, serviceRoleSupabase)
