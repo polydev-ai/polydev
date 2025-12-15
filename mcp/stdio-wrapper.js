@@ -632,14 +632,19 @@ class StdioMCPWrapper {
 
   /**
    * Get default model name for a CLI tool (used when model not specified in result)
+   * These are just display labels - actual model selection is done by:
+   * 1. User's configured default_model in dashboard API keys
+   * 2. CLI tool's own default if no preference set
    */
   getDefaultModelForCli(providerId) {
+    // Return a display label indicating CLI default was used
+    // The actual model depends on the CLI tool's configuration
     const defaults = {
-      'claude_code': 'claude-sonnet-4-20250514',
-      'codex_cli': 'gpt-4.1',
-      'gemini_cli': 'gemini-2.5-pro'
+      'claude_code': 'CLI Default',
+      'codex_cli': 'CLI Default',
+      'gemini_cli': 'CLI Default'
     };
-    return defaults[providerId] || providerId;
+    return defaults[providerId] || 'CLI Default';
   }
 
   /**
