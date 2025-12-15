@@ -116,6 +116,11 @@ class StdioMCPWrapper {
     
     // Smart refresh scheduler (will be started after initialization)
     this.refreshScheduler = null;
+    
+    // Cache for user model preferences (provider -> model)
+    this.userModelPreferences = null;
+    this.modelPreferencesCacheTime = null;
+    this.MODEL_PREFERENCES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
   }
 
   loadManifest() {
@@ -452,12 +457,26 @@ class StdioMCPWrapper {
       // Use reasonable timeout for CLI responses (180 seconds for complex prompts)
       const gracefulTimeout = Math.min(timeout_ms, 180000);
 
+      // Fetch user's model preferences (cached, non-blocking on failure)
+      let modelPreferences = {};
+      try {
+        modelPreferences = await this.fetchUserModelPreferences();
+      } catch (prefError) {
+        console.error('[Stdio Wrapper] Model preferences fetch failed (will use CLI defaults):', prefError.message);
+      }
+
       let localResults = [];
 
       if (provider_id) {
         // Specific provider requested - use only that one
         console.error(`[Stdio Wrapper] Using specific provider: ${provider_id}`);
-        const result = await this.cliManager.sendCliPrompt(provider_id, prompt, mode, gracefulTimeout);
+        const model = modelPreferences[provider_id] || null;
+        if (model) {
+          console.error(`[Stdio Wrapper] Using user's preferred model for ${provider_id}: ${model}`);
+        } else {
+          console.error(`[Stdio Wrapper] No model preference for ${provider_id}, using CLI default`);
+        }
+        const result = await this.cliManager.sendCliPrompt(provider_id, prompt, mode, gracefulTimeout, model);
         localResults = [{ provider_id, ...result }];
       } else {
         // No specific provider - use ALL available local CLIs
@@ -473,7 +492,11 @@ class StdioMCPWrapper {
           // Run all CLI prompts concurrently
           const cliPromises = availableProviders.map(async (providerId) => {
             try {
-              const result = await this.cliManager.sendCliPrompt(providerId, prompt, mode, gracefulTimeout);
+              const model = modelPreferences[providerId] || null;
+              if (model) {
+                console.error(`[Stdio Wrapper] Using user's preferred model for ${providerId}: ${model}`);
+              }
+              const result = await this.cliManager.sendCliPrompt(providerId, prompt, mode, gracefulTimeout, model);
               return { provider_id: providerId, ...result };
             } catch (error) {
               console.error(`[Stdio Wrapper] CLI ${providerId} failed:`, error.message);
@@ -1018,6 +1041,87 @@ class StdioMCPWrapper {
       formatted += `\n*${result.local_only ? 'Local execution' : 'Remote execution'} | ${result.timestamp}*`;
       return formatted;
     }
+  }
+
+  /**
+   * Fetch user's model preferences from API keys
+   * Returns a map of CLI provider -> default_model
+   */
+  async fetchUserModelPreferences() {
+    // Check cache first
+    if (this.userModelPreferences && this.modelPreferencesCacheTime) {
+      const cacheAge = Date.now() - this.modelPreferencesCacheTime;
+      if (cacheAge < this.MODEL_PREFERENCES_CACHE_TTL) {
+        console.error('[Stdio Wrapper] Using cached model preferences');
+        return this.userModelPreferences;
+      }
+    }
+
+    console.error('[Stdio Wrapper] Fetching user model preferences from API...');
+    
+    try {
+      // Call the dedicated model-preferences endpoint
+      const response = await fetch('https://www.polydev.ai/api/model-preferences', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.userToken}`,
+          'User-Agent': 'polydev-stdio-wrapper/1.0.0'
+        }
+      });
+
+      if (!response.ok) {
+        console.error('[Stdio Wrapper] Failed to fetch model preferences:', response.status);
+        return this.userModelPreferences || {};
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.modelPreferences) {
+        // Cache the preferences
+        this.userModelPreferences = result.modelPreferences;
+        this.modelPreferencesCacheTime = Date.now();
+        
+        console.error('[Stdio Wrapper] Model preferences loaded:', JSON.stringify(result.modelPreferences));
+        return result.modelPreferences;
+      } else {
+        console.error('[Stdio Wrapper] No model preferences in response');
+        return this.userModelPreferences || {};
+      }
+
+    } catch (error) {
+      console.error('[Stdio Wrapper] Error fetching model preferences:', error.message);
+      return this.userModelPreferences || {};
+    }
+  }
+
+  /**
+   * Map provider name to CLI provider ID
+   */
+  mapProviderToCli(provider) {
+    const providerLower = (provider || '').toLowerCase().trim();
+    
+    // Map provider names to CLI tool IDs
+    const providerMap = {
+      'anthropic': 'claude_code',
+      'anthropic-ai': 'claude_code',
+      'claude': 'claude_code',
+      'openai': 'codex_cli',
+      'open-ai': 'codex_cli',
+      'gpt': 'codex_cli',
+      'google': 'gemini_cli',
+      'google-ai': 'gemini_cli',
+      'gemini': 'gemini_cli'
+    };
+    
+    return providerMap[providerLower] || null;
+  }
+
+  /**
+   * Get model for a specific CLI provider
+   */
+  async getModelForProvider(providerId) {
+    const preferences = await this.fetchUserModelPreferences();
+    return preferences[providerId] || null;
   }
 
   async start() {
