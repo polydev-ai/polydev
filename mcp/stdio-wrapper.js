@@ -678,6 +678,17 @@ class StdioMCPWrapper {
     
     console.error(`[Stdio Wrapper] Calling remote perspectives (excluding: ${excludeProviders.join(', ') || 'none'})`);
     
+    // Format CLI responses for logging on the server
+    const cliResponses = localResults.map(result => ({
+      provider_id: result.provider_id,
+      model: result.model || this.getDefaultModelForCli(result.provider_id),
+      content: result.content || '',
+      tokens_used: result.tokens_used || 0,
+      latency_ms: result.latency_ms || 0,
+      success: result.success || false,
+      error: result.error || null
+    }));
+    
     try {
       const perspectivesRequest = {
         jsonrpc: '2.0',
@@ -689,6 +700,8 @@ class StdioMCPWrapper {
             user_token: this.userToken,
             // Exclude providers that succeeded locally
             exclude_providers: excludeProviders,
+            // Pass CLI responses for dashboard logging
+            cli_responses: cliResponses,
             project_memory: 'none',
             temperature: 0.7,
             max_tokens: 20000
