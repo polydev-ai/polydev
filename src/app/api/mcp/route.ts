@@ -844,6 +844,21 @@ function handleToolsList(id: string) {
             type: 'array',
             items: { type: 'string' },
             description: 'Array of provider names to exclude (e.g., ["anthropic", "openai"]) - used when local CLIs already returned results for these providers'
+          },
+          cli_responses: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                provider_id: { type: 'string', description: 'CLI provider ID (e.g., "claude_code", "codex_cli", "gemini_cli")' },
+                model: { type: 'string', description: 'Model name used by the CLI' },
+                content: { type: 'string', description: 'Response content from CLI' },
+                tokens_used: { type: 'number', description: 'Tokens used in response' },
+                latency_ms: { type: 'number', description: 'Response latency in milliseconds' },
+                success: { type: 'boolean', description: 'Whether the CLI call succeeded' }
+              }
+            },
+            description: 'Array of CLI responses to log alongside API responses for dashboard display'
           }
         },
         required: ['prompt']
@@ -2354,12 +2369,15 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         if (finalContent && typeof finalContent === 'string') {
           const trimCheck = finalContent.trim()
           if (trimCheck.startsWith('{') && trimCheck.includes('"choices"')) {
-            console.error(`[MCP RETURN ERROR] STILL JSON at return point for ${cleanModel}!`)
+            console.error(`[MCP RETURN ERROR] STILL JSON at return point for ${cleanModel}! Extracting...`)
+            console.error(`[MCP RETURN ERROR] Full JSON:`, trimCheck.substring(0, 300))
             try {
               const parsed = JSON.parse(finalContent)
               if (parsed.choices?.[0]?.message?.content !== undefined) {
                 finalContent = parsed.choices[0].message.content
                 console.log(`[MCP RETURN FIX] Extracted at return: "${finalContent}"`)
+              } else {
+                console.error(`[MCP RETURN ERROR] No content field in parsed JSON`)
               }
             } catch (e) {
               console.error(`[MCP RETURN ERROR] Failed to parse:`, e)
@@ -2556,6 +2574,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         failed_providers: responses.length - successCount,
         store_responses: true,
         provider_responses: providerResponses,
+        cli_responses: args.cli_responses || null, // Store CLI responses from client
         created_at: new Date().toISOString()
       })
 
@@ -2685,10 +2704,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     if (cliCheck.canUse) {
       statusDisplay += `\n🖥️ **CLI Access**: ✅ Available`
     } else {
+      // CLI access is now available to all users (free and pro)
       statusDisplay += `\n🖥️ **CLI Access**: ❌ Not available`
     }
-    
-    // CLI access is now available to all users (free and pro)
     
     statusDisplay += '\n'
     

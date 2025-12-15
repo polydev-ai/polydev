@@ -8,7 +8,8 @@ import {
   MessageSquare, Zap, DollarSign, Database,
   Activity, Clock, CheckCircle, TrendingUp,
   ChevronRight, RefreshCw, Filter, Download,
-  Terminal, Key, Coins, CreditCard, Sparkles
+  Terminal, Key, Coins, CreditCard, Sparkles,
+  Monitor  // Add Monitor icon for CLI
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AnimatedDashboard, { AnimatedCard } from '@/components/dashboard/AnimatedDashboard'
@@ -91,6 +92,11 @@ export default function Dashboard() {
     if (!providerName || !providersRegistry || providersRegistry.length === 0) return null
 
     const normalized = providerName.toLowerCase()
+
+    // CLI tools don't have logos in the registry - return special marker
+    if (normalized.includes('cli')) {
+      return 'CLI_TOOL' // Special marker for CLI tools
+    }
 
     // Helper function to normalize provider IDs for matching
     const normalizeId = (id: string) => {
@@ -510,9 +516,9 @@ export default function Dashboard() {
             </div>
             
             {modelAnalytics && modelAnalytics.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-6">
                 {modelAnalytics.slice(0, 4).map((model: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
+                  <div key={idx} className="flex items-center justify-between p-4 bg-white rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
                     <div className="flex items-center gap-3">
                       {model.providerLogo ? (
                         <img 
@@ -850,7 +856,19 @@ export default function Dashboard() {
                           <div className="flex -space-x-2 shrink-0">
                             {log.providers.slice(0, 5).map((provider: any, pIdx: number) => {
                               const logoUrl = getProviderLogoUrl(provider.provider)
-                              return logoUrl ? (
+                              const isCliTool = logoUrl === 'CLI_TOOL' || provider.source === 'cli' || provider.paymentMethod === 'cli'
+                              
+                              // CLI tool - show terminal icon with green background
+                              if (isCliTool) {
+                                return (
+                                  <div key={pIdx} className="w-8 h-8 rounded-full border-2 border-white bg-green-500 flex items-center justify-center shadow-sm" title={`${provider.provider} (CLI)`}>
+                                    <Terminal className="h-4 w-4 text-white" />
+                                  </div>
+                                )
+                              }
+                              
+                              // Regular provider with logo
+                              return logoUrl && logoUrl !== 'CLI_TOOL' ? (
                                 <img
                                   key={pIdx}
                                   src={logoUrl}
@@ -897,9 +915,18 @@ export default function Dashboard() {
                           </span>
 
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                              log.status === 'success' || log.totalTokens > 0 ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-700'
+                            }`}>
                               {log.status === 'success' || log.totalTokens > 0 ? 'Success' : 'Error'}
                             </span>
+                            {/* CLI indicator badge */}
+                            {(log.hasCliResponse || log.cliCount > 0) && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                <Terminal className="h-3 w-3" />
+                                CLI
+                              </span>
+                            )}
                             {log.source && (
                               <span className="text-xs text-slate-500">
                                 {log.source === 'mcp' ? 'MCP' : 'Chat'}
@@ -1262,7 +1289,18 @@ export default function Dashboard() {
                               <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
                                 {(() => {
                                   const logoUrl = getProviderLogoUrl(provider.provider)
-                                  if (logoUrl) {
+                                  const isCliTool = logoUrl === 'CLI_TOOL' || provider.source === 'cli' || provider.paymentMethod === 'cli'
+                                  
+                                  // CLI tool - show terminal icon with green background
+                                  if (isCliTool) {
+                                    return (
+                                      <div className="w-8 h-8 rounded-full border-2 border-white bg-green-500 flex items-center justify-center">
+                                        <Terminal className="h-4 w-4 text-white" />
+                                      </div>
+                                    )
+                                  }
+                                  
+                                  if (logoUrl && logoUrl !== 'CLI_TOOL') {
                                     return (
                                       <img
                                         src={logoUrl}
@@ -1279,20 +1317,31 @@ export default function Dashboard() {
                                   }
                                   return null
                                 })()}
-                                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ display: getProviderLogoUrl(provider.provider) ? 'none' : 'flex' }}>
+                                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ display: (getProviderLogoUrl(provider.provider) && getProviderLogoUrl(provider.provider) !== 'CLI_TOOL') ? 'none' : (provider.source === 'cli' || provider.paymentMethod === 'cli') ? 'none' : 'flex' }}>
                                   {(provider.provider || 'P').charAt(0).toUpperCase()}
                                 </div>
                               </div>
                               <div>
                                 <div className="text-sm font-medium text-slate-900">{provider.model || provider.provider}</div>
-                                <div className="text-xs text-slate-500">{provider.provider}</div>
+                                <div className="text-xs text-slate-500">
+                                  {provider.provider}
+                                  {provider.cli_tool && <span className="ml-1 text-green-600">via {provider.cli_tool}</span>}
+                                </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                                {provider.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                provider.paymentMethod === 'cli' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : provider.paymentMethod === 'credits' 
+                                    ? 'bg-blue-100 text-blue-800' 
+                                    : 'bg-slate-100 text-slate-800'
+                              }`}>
+                                {provider.paymentMethod === 'cli' ? '🖥️ CLI' : provider.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
                               </span>
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                provider.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                              }`}>
                                 {provider.success ? 'Success' : 'Error'}
                               </span>
                             </div>

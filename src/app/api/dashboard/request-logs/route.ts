@@ -166,6 +166,7 @@ export async function GET(request: NextRequest) {
         provider_costs,
         provider_responses,
         provider_latencies,
+        cli_responses,
         created_at,
         client_id,
         temperature,
@@ -242,12 +243,43 @@ export async function GET(request: NextRequest) {
       const providerLatencies = log.provider_latencies || {}
       const providerCosts = log.provider_costs || {}
       const providerResponses = log.provider_responses || {}
+      const cliResponses = log.cli_responses || []
 
       // Cache latency calculations
       const latencyValues = Object.values(providerLatencies) as number[]
       const avgLatency = latencyValues.length > 0
         ? Math.round(latencyValues.reduce((a, b) => a + b, 0) / latencyValues.length)
         : 0
+
+      // Transform CLI responses into provider format
+      const cliProviders = Array.isArray(cliResponses) ? cliResponses.map((cli: any) => {
+        // Map CLI provider_id to display names
+        const cliDisplayNames: Record<string, string> = {
+          'claude_code': 'Claude Code CLI',
+          'codex_cli': 'Codex CLI',
+          'gemini_cli': 'Gemini CLI'
+        }
+        const cliProviderNames: Record<string, string> = {
+          'claude_code': 'anthropic',
+          'codex_cli': 'openai',
+          'gemini_cli': 'google'
+        }
+        
+        return {
+          provider: cliDisplayNames[cli.provider_id] || cli.provider_id,
+          model: cli.model || 'CLI Default',
+          cost: 0, // CLI responses are free (use your own API keys)
+          latency: cli.latency_ms || 0,
+          tokens: cli.tokens_used || 0,
+          success: cli.success !== false,
+          response: cli.content || null,
+          fullResponse: cli,
+          paymentMethod: 'cli',
+          source: 'cli',
+          cli_tool: cli.provider_id,
+          underlyingProvider: cliProviderNames[cli.provider_id] || null
+        }
+      }) : []
 
       return {
         id: log.id,
@@ -269,8 +301,12 @@ export async function GET(request: NextRequest) {
         maxTokens: log.max_tokens_requested,
         source: 'mcp',
 
-        // OPTIMIZED provider breakdown - reduce object operations
-        providers: Object.entries(providerCosts).map(([key, cost]) => {
+        // OPTIMIZED provider breakdown - CLI providers first, then API providers
+        providers: [
+          // CLI providers first (primary source)
+          ...cliProviders,
+          // Then API providers
+          ...Object.entries(providerCosts).map(([key, cost]) => {
           const parts = key.split(':')
           const provider = parts[0]
           const modelName = parts.length === 1 ? provider : (parts[1] || provider)
@@ -326,17 +362,20 @@ export async function GET(request: NextRequest) {
             source: response?.source || 'api',
             cli_tool: response?.cli_tool || null
           }
-        }),
+        })
+        ],
 
         fullPromptContent: log.prompt,
         allProviderResponses: providerResponses,
+        cliResponses: cliResponses, // Include raw CLI responses
         avgLatency,
         tokensPerSecond: log.response_time_ms && log.total_tokens
           ? parseFloat((log.total_tokens / (log.response_time_ms / 1000)).toFixed(1))
           : 0,
         paymentMethod: 'api_key',
         // Request-level CLI indicator (if any provider is CLI)
-        hasCliResponse: Object.values(providerResponses).some((r: any) => r?.source === 'cli')
+        hasCliResponse: cliProviders.length > 0 || Object.values(providerResponses).some((r: any) => r?.source === 'cli'),
+        cliCount: cliProviders.length
       }
     }) || []
 
