@@ -321,7 +321,10 @@ export async function GET(request: NextRequest) {
             success: !!response,
             response: response?.content || null,
             fullResponse: response || null,
-            paymentMethod: 'api_key'
+            paymentMethod: 'api_key',
+            // CLI indicator fields
+            source: response?.source || 'api',
+            cli_tool: response?.cli_tool || null
           }
         }),
 
@@ -331,7 +334,9 @@ export async function GET(request: NextRequest) {
         tokensPerSecond: log.response_time_ms && log.total_tokens
           ? parseFloat((log.total_tokens / (log.response_time_ms / 1000)).toFixed(1))
           : 0,
-        paymentMethod: 'api_key'
+        paymentMethod: 'api_key',
+        // Request-level CLI indicator (if any provider is CLI)
+        hasCliResponse: Object.values(providerResponses).some((r: any) => r?.source === 'cli')
       }
     }) || []
 

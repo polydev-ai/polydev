@@ -513,6 +513,11 @@ class StdioMCPWrapper {
         }
       }
 
+      // Report CLI results to server for dashboard storage (non-blocking)
+      this.reportCliResultsToServer(prompt, localResults, args).catch(err => {
+        console.error('[Stdio Wrapper] CLI results reporting failed (non-critical):', err.message);
+      });
+
       // Get remote perspectives (only for models not covered by local CLIs)
       const perspectivesResult = await this.callPerspectivesForCli(args, localResults);
 
@@ -563,6 +568,78 @@ class StdioMCPWrapper {
       console.error('[Stdio Wrapper] Failed to get available providers:', error);
       return [];
     }
+  }
+
+  /**
+   * Report CLI results to server for dashboard storage
+   * This stores CLI results in Supabase so they appear in the dashboard
+   */
+  async reportCliResultsToServer(prompt, localResults, args = {}) {
+    // Only report if we have successful CLI results
+    const successfulResults = localResults.filter(r => r.success);
+    if (successfulResults.length === 0) {
+      console.error('[Stdio Wrapper] No successful CLI results to report');
+      return;
+    }
+
+    if (!this.userToken) {
+      console.error('[Stdio Wrapper] No user token available for CLI results reporting');
+      return;
+    }
+
+    try {
+      const cliResults = localResults.map(result => ({
+        provider_id: result.provider_id,
+        model: result.model || this.getDefaultModelForCli(result.provider_id),
+        content: result.content || '',
+        tokens_used: result.tokens_used || 0,
+        latency_ms: result.latency_ms || 0,
+        success: result.success || false,
+        error: result.error || null
+      }));
+
+      const reportPayload = {
+        prompt: prompt,
+        cli_results: cliResults,
+        temperature: args.temperature || 0.7,
+        max_tokens: args.max_tokens || 20000
+      };
+
+      const response = await fetch(`${this.serverUrl.replace('/mcp', '')}/api/mcp/report-cli-results`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.userToken}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'polydev-stdio-wrapper/1.0.0'
+        },
+        body: JSON.stringify(reportPayload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Stdio Wrapper] Failed to report CLI results:', response.status, errorText);
+        return;
+      }
+
+      const result = await response.json();
+      console.error(`[Stdio Wrapper] CLI results reported to dashboard: ${result.stored} results stored`);
+      
+    } catch (error) {
+      // Non-critical - log and continue
+      console.error('[Stdio Wrapper] Error reporting CLI results (non-critical):', error.message);
+    }
+  }
+
+  /**
+   * Get default model name for a CLI tool (used when model not specified in result)
+   */
+  getDefaultModelForCli(providerId) {
+    const defaults = {
+      'claude_code': 'claude-sonnet-4-20250514',
+      'codex_cli': 'gpt-4.1',
+      'gemini_cli': 'gemini-2.5-pro'
+    };
+    return defaults[providerId] || providerId;
   }
 
   /**

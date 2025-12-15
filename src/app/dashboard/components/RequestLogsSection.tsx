@@ -41,6 +41,7 @@ export default function RequestLogsSection({
             <option value="partial_success">Partial Success</option>
             <option value="credits">Credits Only</option>
             <option value="api_key">API Keys Only</option>
+            <option value="cli">CLI Responses</option>
           </select>
           
           {/* Refresh Button */}
@@ -110,11 +111,18 @@ export default function RequestLogsSection({
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        log.paymentMethod === 'credits' ? 'bg-slate-100 text-slate-800' : 'bg-slate-100 text-slate-800'
-                      }`}>
-                        {log.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
-                      </span>
+                      <div className="flex items-center space-x-1">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          log.paymentMethod === 'credits' ? 'bg-slate-100 text-slate-800' : 'bg-slate-100 text-slate-800'
+                        }`}>
+                          {log.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
+                        </span>
+                        {log.hasCliResponse && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800" title="Response from local CLI tool">
+                            ⚡ CLI
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -452,6 +460,11 @@ export default function RequestLogsSection({
                             }`}>
                               {provider.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
                             </span>
+                            {provider.source === 'cli' && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800" title={`Via ${provider.cli_tool || 'CLI tool'}`}>
+                                ⚡ CLI
+                              </span>
+                            )}
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               provider.success ? 'bg-slate-100 text-slate-800' : 'bg-slate-100 text-slate-800'
                             }`}>
