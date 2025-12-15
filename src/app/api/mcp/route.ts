@@ -1303,10 +1303,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     'gemini_cli': 'google'
   };
 
-  // Check if user is on pro tier (required to use CLI features)
-  const canUseCLI = userSubscription?.tier === 'pro' && userSubscription?.status === 'active';
+  // CLI exclusion works for any user with authenticated CLIs in the database
+  // The enabled=true flag indicates the user has working CLIs, regardless of subscription tier
+  // (mcp-execution runs CLIs locally without tier checks)
   
-  if (canUseCLI && cliSummary.hasAnyCli && cliSummary.totalAuthenticated > 0) {
+  if (cliSummary.hasAnyCli && cliSummary.totalAuthenticated > 0) {
     // Map authenticated CLI providers to API provider names
     const cliExclusions = cliSummary.authenticatedProviders
       .map((cli: string) => cliToApiProviderMap[cli])
@@ -1329,12 +1330,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     }
   } else {
     console.log(`[MCP] CLI exclusion skipped:`, {
-      canUseCLI,
       hasAnyCli: cliSummary.hasAnyCli,
       totalAuthenticated: cliSummary.totalAuthenticated,
-      reason: !canUseCLI ? 'User not on pro tier' : 
-              !cliSummary.hasAnyCli ? 'No CLIs available' : 
-              'No authenticated CLIs'
+      reason: !cliSummary.hasAnyCli ? 'No CLIs available' : 'No authenticated CLIs'
     });
   }
   
@@ -3263,7 +3261,7 @@ function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): s
         } else if (matchingApiKey.default_model) {
           selectedModel = matchingApiKey.default_model
         }
-        // No hardcoded fallback - user must set default_model in API key
+        // No hardcoded fallback - user must set default_model in dashboard
 
         if (selectedModel) {
           models.push(selectedModel)
