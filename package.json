@@ -1,6 +1,6 @@
 {
   "name": "polydev-ai",
-  "version": "1.8.8",
+  "version": "1.8.9",
   "description": "Agentic workflow assistant with CLI integration - get diverse perspectives from multiple LLMs when stuck or need enhanced reasoning",
   "keywords": [
     "mcp",
@@ -67,7 +67,7 @@
     "lucide-react": "^0.542.0",
     "marked": "^16.2.1",
     "next": "^15.5.7",
-    "polydev-ai": "^1.8.7",
+    "polydev-ai": "^1.8.9",
     "posthog-js": "^1.157.2",
     "prismjs": "^1.30.0",
     "react": "^18.3.1",
