@@ -826,7 +826,11 @@ class StdioMCPWrapper {
     if (successfulClis.length > 0) {
       // Show successful CLI responses
       for (const cliResult of successfulClis) {
-        formatted += `🟢 **Local CLI Response** (${cliResult.provider_id} - ${cliResult.mode || 'args'} mode)\n\n`;
+        // Display actual model name if detected, otherwise show provider ID
+        const modelDisplay = cliResult.model_used && cliResult.model_used !== 'cli_default' && cliResult.model_used !== 'cli_default_fallback'
+          ? cliResult.model_used 
+          : cliResult.provider_id;
+        formatted += `🟢 **Local CLI Response** (${modelDisplay})\n\n`;
         formatted += `${cliResult.content}\n\n`;
         formatted += `*Latency: ${cliResult.latency_ms || 0}ms | Tokens: ${cliResult.tokens_used || 0}*\n\n`;
         formatted += `---\n\n`;
