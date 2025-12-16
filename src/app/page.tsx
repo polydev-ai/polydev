@@ -283,7 +283,7 @@ export default function LandingPage() {
               <Link href="/docs" className="text-slate-600 hover:text-slate-900 transition-colors">Docs</Link>
               <Link href="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
               <Link
-                href="/auth"
+                href={user ? '/dashboard' : '/auth'}
                 className="px-4 py-2 bg-gradient-to-r from-slate-900 to-slate-700 text-white rounded-lg hover:from-slate-800 hover:to-slate-600 transition-all transform hover:scale-105"
               >
                 {user ? 'Dashboard' : 'Get Started'}
@@ -326,7 +326,7 @@ export default function LandingPage() {
                   Pricing
                 </Link>
                 <Link
-                  href="/auth"
+                  href={user ? '/dashboard' : '/auth'}
                   className="block px-4 py-3 bg-gradient-to-r from-slate-900 to-slate-700 text-white text-center rounded-lg font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
