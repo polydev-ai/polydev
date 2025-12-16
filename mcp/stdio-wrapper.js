@@ -559,6 +559,11 @@ class StdioMCPWrapper {
       for (const providerId of priorityOrder) {
         const status = results[providerId];
         if (status && status.available && status.authenticated) {
+          // Skip providers with quota exhausted - they'll use API fallback
+          if (status.quota_exhausted) {
+            console.error(`[Stdio Wrapper] Skipping ${providerId} - quota exhausted, will use API fallback`);
+            continue;
+          }
           availableProviders.push(providerId);
         }
       }
