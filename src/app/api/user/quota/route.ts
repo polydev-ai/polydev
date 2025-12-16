@@ -109,6 +109,25 @@ export async function GET() {
       })
     }
 
+    // Also fetch MCP request logs for CLI usage stats
+    // MCP requests come from CLI tools like Claude Code, Cursor, etc.
+    const { data: mcpLogs, error: mcpError } = await supabase
+      .from('mcp_request_logs')
+      .select('total_cost, total_tokens, successful_providers, created_at')
+      .eq('user_id', user.id)
+      .gte('created_at', quota.current_month_start || new Date().toISOString())
+      .eq('status', 'success')
+    
+    if (mcpLogs && !mcpError && mcpLogs.length > 0) {
+      // Aggregate MCP request stats into CLI usage
+      mcpLogs.forEach(log => {
+        sourceUsage.cli.requests += 1
+        sourceUsage.cli.count += log.successful_providers || 1 // perspectives = successful providers
+        sourceUsage.cli.cost += parseFloat(log.total_cost) || 0
+        // MCP requests don't deduct credits (user pays via their own keys or admin key)
+      })
+    }
+
     // Use ACTUAL message count instead of quota table's messages_used
     const actualMessagesUsed = actualMessageCount.totalMessages
 
