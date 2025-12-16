@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
       // 6. Request logs (this month only) - for message counting and API calls
       supabase
         .from('mcp_request_logs')
-        .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs')
+        .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs, source_type')
         .eq('user_id', user.id)
         .gte('created_at', monthStart.toISOString())
         .limit(500), // Limit to prevent excessive processing
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
       // 9. All-time request logs for all-time metrics calculation
       supabase
         .from('mcp_request_logs')
-        .select('total_tokens, provider_responses, successful_providers, total_cost')
+        .select('total_tokens, provider_responses, successful_providers, total_cost, source_type')
         .eq('user_id', user.id),
 
       // 10. All-time chat logs for all-time metrics calculation
@@ -447,26 +447,14 @@ export async function GET(request: NextRequest) {
     const allTimeStandardTokens = allTimeMcpTokenCount + allTimeChatTokens
     const allTimeTotalTokens = allTimeStandardTokens + allTimeEphemeralTokens
 
-    // Calculate costs - ONLY from user API keys and CLI (NOT admin credits)
-    // Query perspective_usage to get source_type information
-    const { data: perspectiveUsage } = await supabase
-      .from('perspective_usage')
-      .select('estimated_cost, request_metadata, created_at')
-      .eq('user_id', user.id)
-      .gte('created_at', monthStart.toISOString())
-
-    // Query ALL-TIME perspective_usage for all-time cost
-    const { data: allTimePerspectiveUsage } = await supabase
-      .from('perspective_usage')
-      .select('estimated_cost, request_metadata, created_at')
-      .eq('user_id', user.id)
-
-    // Calculate user-paid costs (API keys + CLI only)
-    const userPaidCost = (perspectiveUsage || []).reduce((sum, usage) => {
-      const sourceType = usage.request_metadata?.source_type
-      // Only count costs from user_key and user_cli (NOT admin_credits or web)
-      if (sourceType === 'user_key' || sourceType === 'user_cli') {
-        const cost = parseFloat(usage.estimated_cost) || 0
+    // Calculate costs - ONLY from user API keys (NOT admin credits)
+    // Use mcp_request_logs which has source_type field directly
+    
+    // Calculate user-paid costs from request logs (API keys only, NOT admin_key)
+    const userPaidCost = (requestLogs || []).reduce((sum, log: any) => {
+      // Only count costs from user_key (user's own API keys)
+      if (log.source_type === 'user_key') {
+        const cost = parseFloat(log.total_cost) || 0
         if (cost <= 10) { // Skip unrealistic costs
           return sum + cost
         }
@@ -474,12 +462,11 @@ export async function GET(request: NextRequest) {
       return sum
     }, 0) || 0
 
-    // Calculate ALL-TIME user-paid costs (API keys + CLI only)
-    const allTimeUserPaidCost = (allTimePerspectiveUsage || []).reduce((sum, usage) => {
-      const sourceType = usage.request_metadata?.source_type
-      // Only count costs from user_key and user_cli (NOT admin_credits or web)
-      if (sourceType === 'user_key' || sourceType === 'user_cli') {
-        const cost = parseFloat(usage.estimated_cost) || 0
+    // Calculate ALL-TIME user-paid costs from all-time request logs
+    const allTimeUserPaidCost = (allTimeRequestLogs || []).reduce((sum, log: any) => {
+      // Only count costs from user_key (user's own API keys)
+      if (log.source_type === 'user_key') {
+        const cost = parseFloat(log.total_cost) || 0
         if (cost <= 10) { // Skip unrealistic costs
           return sum + cost
         }
@@ -487,12 +474,13 @@ export async function GET(request: NextRequest) {
       return sum
     }, 0) || 0
 
-    // Calculate total tokens from ALL sources (including admin credits)
+    // Calculate total cost from ALL sources (for reference/logging)
     const mcpCost = (requestLogs || []).reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0
     const chatCost = (chatLogs || []).reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0
     const totalCostFromLogs = mcpCost + chatCost
 
-    console.log(`[Dashboard Stats] Calculated total cost THIS MONTH: $${totalCostFromLogs.toFixed(4)} (MCP: $${mcpCost.toFixed(4)} + Chat: $${chatCost.toFixed(4)}) from ${mcpApiCalls} MCP + ${chatApiCalls} chat requests = ${totalMessages} total messages`)
+    console.log(`[Dashboard Stats] User-paid cost THIS MONTH: $${userPaidCost.toFixed(4)} (from user_key source_type)`)
+    console.log(`[Dashboard Stats] Total cost (all sources) THIS MONTH: $${totalCostFromLogs.toFixed(4)} (MCP: $${mcpCost.toFixed(4)} + Chat: $${chatCost.toFixed(4)})`)
     console.log(`[Dashboard Stats] Total tokens THIS MONTH: ${totalUsageTokens} (MCP: ${mcpTokenCount} + Chat: ${chatTokens})`)
 
     // Calculate average response time from BOTH MCP and chat data - only from successful requests
@@ -754,12 +742,12 @@ export async function GET(request: NextRequest) {
         const logDate = new Date(log.created_at)
         return logDate >= todayStart
       }).length || 0),
-      costToday: parseFloat(((perspectiveUsage || []).filter(usage => {
-        const usageDate = new Date(usage.created_at)
-        const sourceType = usage.request_metadata?.source_type
-        return usageDate >= todayStart && (sourceType === 'user_key' || sourceType === 'user_cli')
-      }).reduce((sum, usage) => {
-        const cost = parseFloat(usage.estimated_cost) || 0
+      costToday: parseFloat(((requestLogs || []).filter(log => {
+        const logDate = new Date(log.created_at)
+        // Only count costs from user_key (user's own API keys)
+        return logDate >= todayStart && log.source_type === 'user_key'
+      }).reduce((sum, log) => {
+        const cost = parseFloat(log.total_cost) || 0
         return cost > 10 ? sum : sum + cost // Skip unrealistic costs
       }, 0) || 0).toFixed(4)),
       avgResponseTime: avgResponseTime,
@@ -791,7 +779,7 @@ export async function GET(request: NextRequest) {
           }
         })
         // Add admin-provided providers from perspective_usage
-        ;(perspectiveUsage || []).forEach(usage => {
+        ;(usageLogs || []).forEach(usage => {
           const sourceType = usage.request_metadata?.source_type
           const provider = usage.request_metadata?.provider
           if (sourceType === 'admin_credits' && provider) {
@@ -805,14 +793,14 @@ export async function GET(request: NextRequest) {
         Math.min(...allTokens.map(t => new Date(t.created_at).getTime())) :
         Date.now(),
 
-      // Cost breakdown by source (user-paid only)
+      // Cost breakdown by source (user-paid only) - from mcp_request_logs
       costBreakdown: {
-        userApiKeys: (perspectiveUsage || [])
-          .filter(u => u.request_metadata?.source_type === 'user_key')
-          .reduce((sum, u) => sum + (parseFloat(u.estimated_cost) || 0), 0),
-        userCli: (perspectiveUsage || [])
-          .filter(u => u.request_metadata?.source_type === 'user_cli')
-          .reduce((sum, u) => sum + (parseFloat(u.estimated_cost) || 0), 0),
+        userApiKeys: (requestLogs || [])
+          .filter(log => log.source_type === 'user_key')
+          .reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0),
+        userCli: (requestLogs || [])
+          .filter(log => log.source_type === 'user_cli')
+          .reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0),
         adminCredits: 0 // Don't show admin credit costs
       },
 
@@ -841,7 +829,7 @@ export async function GET(request: NextRequest) {
         })
 
         // Add admin-provided providers
-        ;(perspectiveUsage || []).forEach(usage => {
+        ;(usageLogs || []).forEach(usage => {
           const sourceType = usage.request_metadata?.source_type
           const provider = usage.request_metadata?.provider
           if (sourceType === 'admin_credits' && provider) {
