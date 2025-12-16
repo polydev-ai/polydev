@@ -259,15 +259,21 @@ export async function GET(request: NextRequest) {
           'codex_cli': 'Codex CLI',
           'gemini_cli': 'Gemini CLI'
         }
+        // Map CLI provider_id to actual provider names (for logo lookup)
         const cliProviderNames: Record<string, string> = {
-          'claude_code': 'anthropic',
-          'codex_cli': 'openai',
-          'gemini_cli': 'google'
+          'claude_code': 'Anthropic',
+          'codex_cli': 'OpenAI',
+          'gemini_cli': 'Google'
         }
         
         return {
-          provider: cliDisplayNames[cli.provider_id] || cli.provider_id,
-          model: cli.model || 'CLI Default',
+          provider: cliProviderNames[cli.provider_id] || cli.provider_id, // Use actual provider name for logo
+          model: cli.model && cli.model !== 'cli_default' && cli.model !== 'CLI Default' 
+            ? cli.model 
+            : (cli.provider_id === 'claude_code' ? 'claude-sonnet-4' 
+              : cli.provider_id === 'codex_cli' ? 'gpt-4.1' 
+              : cli.provider_id === 'gemini_cli' ? 'gemini-2.5-pro' 
+              : 'CLI Default'),
           cost: 0, // CLI responses are free (use your own API keys)
           latency: cli.latency_ms || 0,
           tokens: cli.tokens_used || 0,
@@ -277,6 +283,7 @@ export async function GET(request: NextRequest) {
           paymentMethod: 'cli',
           source: 'cli',
           cli_tool: cli.provider_id,
+          cli_display_name: cliDisplayNames[cli.provider_id] || cli.provider_id, // Keep CLI display name
           underlyingProvider: cliProviderNames[cli.provider_id] || null
         }
       }) : []

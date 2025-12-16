@@ -856,32 +856,41 @@ export default function Dashboard() {
                           <div className="flex -space-x-2 shrink-0">
                             {log.providers.slice(0, 5).map((provider: any, pIdx: number) => {
                               const logoUrl = getProviderLogoUrl(provider.provider)
-                              const isCliTool = logoUrl === 'CLI_TOOL' || provider.source === 'cli' || provider.paymentMethod === 'cli'
+                              const isCliTool = provider.source === 'cli' || provider.paymentMethod === 'cli'
                               
-                              // CLI tool - show terminal icon with green background
-                              if (isCliTool) {
+                              // For CLI tools, show provider logo with CLI indicator ring
+                              // Provider name is now "Anthropic", "OpenAI", "Google" so logos will resolve
+                              if (logoUrl && logoUrl !== 'CLI_TOOL') {
                                 return (
-                                  <div key={pIdx} className="w-8 h-8 rounded-full border-2 border-white bg-green-500 flex items-center justify-center shadow-sm" title={`${provider.provider} (CLI)`}>
-                                    <Terminal className="h-4 w-4 text-white" />
+                                  <div key={pIdx} className="relative">
+                                    <img
+                                      src={logoUrl}
+                                      alt={provider.provider}
+                                      className={`w-8 h-8 rounded-full border-2 ${isCliTool ? 'border-green-500' : 'border-white'} object-contain bg-white shadow-sm`}
+                                      title={isCliTool ? `${provider.provider} (CLI: ${provider.cli_display_name || provider.cli_tool})` : provider.provider}
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement
+                                        target.style.display = 'none'
+                                      }}
+                                    />
+                                    {isCliTool && (
+                                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border border-white">
+                                        <Terminal className="h-2.5 w-2.5 text-white" />
+                                      </div>
+                                    )}
                                   </div>
                                 )
                               }
                               
-                              // Regular provider with logo
-                              return logoUrl && logoUrl !== 'CLI_TOOL' ? (
-                                <img
-                                  key={pIdx}
-                                  src={logoUrl}
-                                  alt={provider.provider}
-                                  className="w-8 h-8 rounded-full border-2 border-white object-contain bg-white shadow-sm"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement
-                                    target.style.display = 'none'
-                                  }}
-                                />
-                              ) : (
-                                <div key={pIdx} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600 shadow-sm">
+                              // Fallback for providers without logos
+                              return (
+                                <div key={pIdx} className={`w-8 h-8 rounded-full border-2 ${isCliTool ? 'border-green-500' : 'border-white'} bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600 shadow-sm relative`}>
                                   {(provider.provider || 'P').charAt(0).toUpperCase()}
+                                  {isCliTool && (
+                                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border border-white">
+                                      <Terminal className="h-2.5 w-2.5 text-white" />
+                                    </div>
+                                  )}
                                 </div>
                               )
                             })}
@@ -1286,38 +1295,37 @@ export default function Dashboard() {
                         <div key={index} className="border border-slate-200 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden relative">
                                 {(() => {
                                   const logoUrl = getProviderLogoUrl(provider.provider)
-                                  const isCliTool = logoUrl === 'CLI_TOOL' || provider.source === 'cli' || provider.paymentMethod === 'cli'
+                                  const isCliTool = provider.source === 'cli' || provider.paymentMethod === 'cli'
                                   
-                                  // CLI tool - show terminal icon with green background
-                                  if (isCliTool) {
-                                    return (
-                                      <div className="w-8 h-8 rounded-full border-2 border-white bg-green-500 flex items-center justify-center">
-                                        <Terminal className="h-4 w-4 text-white" />
-                                      </div>
-                                    )
-                                  }
-                                  
+                                  // Show provider logo (works for both API and CLI responses now)
                                   if (logoUrl && logoUrl !== 'CLI_TOOL') {
                                     return (
-                                      <img
-                                        src={logoUrl}
-                                        alt={`${provider.provider} logo`}
-                                        className="w-8 h-8 object-contain"
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement
-                                          target.style.display = 'none'
-                                          const fallback = target.nextElementSibling as HTMLElement
-                                          if (fallback) fallback.style.display = 'flex'
-                                        }}
-                                      />
+                                      <>
+                                        <img
+                                          src={logoUrl}
+                                          alt={`${provider.provider} logo`}
+                                          className={`w-8 h-8 object-contain rounded-lg ${isCliTool ? 'ring-2 ring-green-500' : ''}`}
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement
+                                            target.style.display = 'none'
+                                            const fallback = target.nextElementSibling as HTMLElement
+                                            if (fallback) fallback.style.display = 'flex'
+                                          }}
+                                        />
+                                        {isCliTool && (
+                                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border border-white">
+                                            <Terminal className="h-2.5 w-2.5 text-white" />
+                                          </div>
+                                        )}
+                                      </>
                                     )
                                   }
                                   return null
                                 })()}
-                                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ display: (getProviderLogoUrl(provider.provider) && getProviderLogoUrl(provider.provider) !== 'CLI_TOOL') ? 'none' : (provider.source === 'cli' || provider.paymentMethod === 'cli') ? 'none' : 'flex' }}>
+                                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-xs" style={{ display: (getProviderLogoUrl(provider.provider) && getProviderLogoUrl(provider.provider) !== 'CLI_TOOL') ? 'none' : 'flex' }}>
                                   {(provider.provider || 'P').charAt(0).toUpperCase()}
                                 </div>
                               </div>
@@ -1325,7 +1333,7 @@ export default function Dashboard() {
                                 <div className="text-sm font-medium text-slate-900">{provider.model || provider.provider}</div>
                                 <div className="text-xs text-slate-500">
                                   {provider.provider}
-                                  {provider.cli_tool && <span className="ml-1 text-green-600">via {provider.cli_tool}</span>}
+                                  {provider.cli_tool && <span className="ml-1 text-green-600">via {provider.cli_display_name || provider.cli_tool}</span>}
                                 </div>
                               </div>
                             </div>
