@@ -100,6 +100,75 @@ if (writableTmp) {
   console.error(`[Stdio Wrapper] Using TMP directory: ${writableTmp}`);
 }
 
+/**
+ * Clean CLI response by removing metadata and debug info
+ * Strips: provider info, approval, sandbox, reasoning, session id, MCP errors, etc.
+ */
+function cleanCliResponse(content) {
+  if (!content || typeof content !== 'string') {
+    return content || '';
+  }
+  
+  const lines = content.split('\n');
+  const cleanedLines = [];
+  let skipUntilContent = true;
+  let inThinkingSection = false;
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Skip metadata lines at the start
+    if (skipUntilContent) {
+      // Skip empty lines
+      if (!trimmed) continue;
+      
+      // Skip known metadata patterns
+      if (trimmed.startsWith('provider:')) continue;
+      if (trimmed.startsWith('approval:')) continue;
+      if (trimmed.startsWith('sandbox:')) continue;
+      if (trimmed.startsWith('reasoning effort:')) continue;
+      if (trimmed.startsWith('reasoning summaries:')) continue;
+      if (trimmed.startsWith('session id:')) continue;
+      if (trimmed.match(/^-{4,}$/)) continue; // Skip separator lines like --------
+      if (trimmed === 'user') continue; // Skip role markers
+      if (trimmed === 'assistant') continue;
+      
+      // Skip MCP client errors
+      if (trimmed.startsWith('ERROR: MCP client for')) continue;
+      if (trimmed.includes('failed to start')) continue;
+      
+      // Found actual content - stop skipping
+      skipUntilContent = false;
+    }
+    
+    // Handle thinking sections (optional: can show or hide)
+    if (trimmed === 'thinking') {
+      inThinkingSection = true;
+      continue; // Skip the "thinking" marker
+    }
+    
+    // End of thinking section on empty line after content
+    if (inThinkingSection && !trimmed) {
+      inThinkingSection = false;
+      continue;
+    }
+    
+    // Skip more MCP errors anywhere in output
+    if (trimmed.startsWith('ERROR: MCP client for')) continue;
+    if (trimmed.includes('failed to start') && trimmed.includes('MCP')) continue;
+    
+    // Keep this line
+    cleanedLines.push(line);
+  }
+  
+  // Trim trailing empty lines and return
+  while (cleanedLines.length > 0 && !cleanedLines[cleanedLines.length - 1].trim()) {
+    cleanedLines.pop();
+  }
+  
+  return cleanedLines.join('\n');
+}
+
 class StdioMCPWrapper {
   constructor() {
     this.userToken = process.env.POLYDEV_USER_TOKEN;
@@ -837,7 +906,7 @@ class StdioMCPWrapper {
           ? cliResult.model_used 
           : cliResult.provider_id;
         formatted += `🟢 **Local CLI Response** (${modelDisplay})\n\n`;
-        formatted += `${cliResult.content}\n\n`;
+        formatted += `${cleanCliResponse(cliResult.content)}\n\n`;
         formatted += `*Latency: ${cliResult.latency_ms || 0}ms | Tokens: ${cliResult.tokens_used || 0}*\n\n`;
         formatted += `---\n\n`;
       }
