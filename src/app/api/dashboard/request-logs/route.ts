@@ -266,11 +266,15 @@ export async function GET(request: NextRequest) {
           'gemini_cli': 'Google'
         }
         
+        // Get model - check model_used first (from cliManager), then model field, then fallback
+        const cliModel = cli.model_used || cli.model
+        const displayModel = cliModel && cliModel !== 'cli_default' && cliModel !== 'CLI Default' && cliModel !== 'cli_default_fallback'
+          ? cliModel 
+          : 'CLI Default'
+        
         return {
           provider: cliProviderNames[cli.provider_id] || cli.provider_id, // Use actual provider name for logo
-          model: cli.model && cli.model !== 'cli_default' && cli.model !== 'CLI Default' 
-            ? cli.model 
-            : 'CLI Default', // Don't hardcode model names - actual model is from user's API key config
+          model: displayModel,
           cost: 0, // CLI responses are free (use your own API keys)
           latency: cli.latency_ms || 0,
           tokens: cli.tokens_used || 0,
