@@ -582,8 +582,15 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-slate-900">{quotaData?.sourceUsage?.cli?.requests || 0}</p>
               <p className="text-sm text-slate-500">requests</p>
             </div>
-            <div className="mt-2 text-xs text-slate-500">
-              Cost: <span className="font-medium text-slate-900">$0.00</span> (your API keys)
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-slate-50 rounded-lg p-2">
+                <p className="text-slate-500">Messages</p>
+                <p className="font-medium text-slate-900">{quotaData?.sourceUsage?.cli?.count || 0}</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-2">
+                <p className="text-slate-500">Cost</p>
+                <p className="font-medium text-slate-900">$0.00</p>
+              </div>
             </div>
             {/* Tooltip */}
             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-64 bg-white text-slate-900 border border-slate-200 rounded-xl p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
@@ -615,8 +622,15 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-slate-900">{quotaData?.sourceUsage?.user_key?.requests || 0}</p>
               <p className="text-sm text-slate-500">requests</p>
             </div>
-            <div className="mt-2 text-xs text-slate-500">
-              Cost: <span className="font-medium text-slate-900">${(quotaData?.sourceUsage?.user_key?.cost || 0).toFixed(4)}</span>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-slate-50 rounded-lg p-2">
+                <p className="text-slate-500">Messages</p>
+                <p className="font-medium text-slate-900">{quotaData?.sourceUsage?.user_key?.count || 0}</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-2">
+                <p className="text-slate-500">Cost</p>
+                <p className="font-medium text-slate-900">${(quotaData?.sourceUsage?.user_key?.cost || 0).toFixed(4)}</p>
+              </div>
             </div>
             {/* Tooltip */}
             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-64 bg-white text-slate-900 border border-slate-200 rounded-xl p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
@@ -648,8 +662,15 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-slate-900">{(quotaData?.sourceUsage?.admin_credits?.requests || 0) + (quotaData?.sourceUsage?.web?.requests || 0)}</p>
               <p className="text-sm text-slate-500">requests</p>
             </div>
-            <div className="mt-2 text-xs text-slate-500">
-              Credits used: <span className="font-medium text-slate-900">{(quotaData?.sourceUsage?.admin_credits?.credits || 0) + (quotaData?.sourceUsage?.web?.credits || 0)}</span>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-slate-50 rounded-lg p-2">
+                <p className="text-slate-500">Messages</p>
+                <p className="font-medium text-slate-900">{(quotaData?.sourceUsage?.admin_credits?.count || 0) + (quotaData?.sourceUsage?.web?.count || 0)}</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-2">
+                <p className="text-slate-500">Credits Used</p>
+                <p className="font-medium text-slate-900">{(quotaData?.sourceUsage?.admin_credits?.credits || 0) + (quotaData?.sourceUsage?.web?.credits || 0)}</p>
+              </div>
             </div>
             {/* Tooltip */}
             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 w-64 bg-white text-slate-900 border border-slate-200 rounded-xl p-4 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-xl z-20">
