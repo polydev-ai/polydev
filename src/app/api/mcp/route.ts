@@ -2392,6 +2392,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           content: finalContent,
           tokens_used: response.tokens_used,
           latency_ms: latency,
+          source_type: 'user_key', // Track that user's own API key was used
           // CLI tracking metadata - helps users understand routing decisions
           ...(cliAttempted && {
             cli_attempted: true,
@@ -2546,6 +2547,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       providerLatencies[`${provider}:${response.model}`] = response.latency_ms || 0
     })
 
+    // Determine primary source_type from responses (user_key or admin_key)
+    // If any response used user_key, mark the whole request as user_key
+    const sourceTypes = responses
+      .filter(r => !r.content?.error && r.source_type)
+      .map(r => r.source_type)
+    const primarySourceType = sourceTypes.includes('user_key') ? 'user_key' :
+                              sourceTypes.includes('admin_key') ? 'admin_key' : 'admin_key'
+
     // Insert comprehensive log
     await serviceRoleSupabase
       .from('mcp_request_logs')
@@ -2567,7 +2576,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         response_time_ms: totalLatency,
         first_token_time_ms: Math.min(...responses.map(r => r.latency_ms || totalLatency)),
         provider_latencies: providerLatencies,
-        status: successCount === responses.length ? 'success' : 
+        status: successCount === responses.length ? 'success' :
                 successCount > 0 ? 'partial_success' : 'error',
         error_message: responses.filter(r => r.content?.error).map(r => r.content?.error).join('; ') || null,
         successful_providers: successCount,
@@ -2575,6 +2584,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         store_responses: true,
         provider_responses: providerResponses,
         cli_responses: args.cli_responses || null, // Store CLI responses from client
+        source_type: primarySourceType, // Track whether user_key or admin_key was used
         created_at: new Date().toISOString()
       })
 

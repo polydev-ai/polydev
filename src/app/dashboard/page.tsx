@@ -583,13 +583,13 @@ export default function Dashboard() {
               <p className="text-sm text-slate-500">requests</p>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-slate-50 rounded-lg p-2">
-                <p className="text-slate-500">Messages</p>
-                <p className="font-medium text-slate-900">{quotaData?.sourceUsage?.cli?.count || 0}</p>
+              <div className="bg-slate-50 rounded-lg p-2 min-h-[48px]">
+                <p className="text-slate-500 mb-0.5">Messages</p>
+                <p className="font-semibold text-slate-900 text-sm">{quotaData?.sourceUsage?.cli?.count || 0}</p>
               </div>
-              <div className="bg-slate-50 rounded-lg p-2">
-                <p className="text-slate-500">Cost</p>
-                <p className="font-medium text-slate-900">$0.00</p>
+              <div className="bg-slate-50 rounded-lg p-2 min-h-[48px]">
+                <p className="text-slate-500 mb-0.5">Est. Cost</p>
+                <p className="font-semibold text-slate-900 text-sm">${(quotaData?.sourceUsage?.cli?.cost || 0).toFixed(4)}</p>
               </div>
             </div>
             {/* Tooltip */}
@@ -623,13 +623,13 @@ export default function Dashboard() {
               <p className="text-sm text-slate-500">requests</p>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-slate-50 rounded-lg p-2">
-                <p className="text-slate-500">Messages</p>
-                <p className="font-medium text-slate-900">{quotaData?.sourceUsage?.user_key?.count || 0}</p>
+              <div className="bg-slate-50 rounded-lg p-2 min-h-[48px]">
+                <p className="text-slate-500 mb-0.5">Messages</p>
+                <p className="font-semibold text-slate-900 text-sm">{quotaData?.sourceUsage?.user_key?.count || 0}</p>
               </div>
-              <div className="bg-slate-50 rounded-lg p-2">
-                <p className="text-slate-500">Cost</p>
-                <p className="font-medium text-slate-900">${(quotaData?.sourceUsage?.user_key?.cost || 0).toFixed(4)}</p>
+              <div className="bg-slate-50 rounded-lg p-2 min-h-[48px]">
+                <p className="text-slate-500 mb-0.5">Est. Cost</p>
+                <p className="font-semibold text-slate-900 text-sm">${(quotaData?.sourceUsage?.user_key?.cost || 0).toFixed(4)}</p>
               </div>
             </div>
             {/* Tooltip */}
@@ -663,13 +663,13 @@ export default function Dashboard() {
               <p className="text-sm text-slate-500">requests</p>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-slate-50 rounded-lg p-2">
-                <p className="text-slate-500">Messages</p>
-                <p className="font-medium text-slate-900">{(quotaData?.sourceUsage?.admin_credits?.count || 0) + (quotaData?.sourceUsage?.web?.count || 0)}</p>
+              <div className="bg-slate-50 rounded-lg p-2 min-h-[48px]">
+                <p className="text-slate-500 mb-0.5">Messages</p>
+                <p className="font-semibold text-slate-900 text-sm">{(quotaData?.sourceUsage?.admin_credits?.count || 0) + (quotaData?.sourceUsage?.web?.count || 0)}</p>
               </div>
-              <div className="bg-slate-50 rounded-lg p-2">
-                <p className="text-slate-500">Credits Used</p>
-                <p className="font-medium text-slate-900">{(quotaData?.sourceUsage?.admin_credits?.credits || 0) + (quotaData?.sourceUsage?.web?.credits || 0)}</p>
+              <div className="bg-slate-50 rounded-lg p-2 min-h-[48px]">
+                <p className="text-slate-500 mb-0.5">Credits Used</p>
+                <p className="font-semibold text-slate-900 text-sm">{(quotaData?.sourceUsage?.admin_credits?.credits || 0) + (quotaData?.sourceUsage?.web?.credits || 0)}</p>
               </div>
             </div>
             {/* Tooltip */}

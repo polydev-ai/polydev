@@ -111,20 +111,37 @@ export async function GET() {
 
     // Also fetch MCP request logs for CLI usage stats
     // MCP requests come from CLI tools like Claude Code, Cursor, etc.
+    // Now with source_type tracking to distinguish user_key vs admin_key
     const { data: mcpLogs, error: mcpError } = await supabase
       .from('mcp_request_logs')
-      .select('total_cost, total_tokens, successful_providers, created_at')
+      .select('total_cost, total_tokens, successful_providers, created_at, source_type')
       .eq('user_id', user.id)
       .gte('created_at', quota.current_month_start || new Date().toISOString())
       .eq('status', 'success')
-    
+
     if (mcpLogs && !mcpError && mcpLogs.length > 0) {
-      // Aggregate MCP request stats into CLI usage
+      // Aggregate MCP request stats by source type
       mcpLogs.forEach(log => {
+        const cost = parseFloat(log.total_cost) || 0
+        const perspectives = log.successful_providers || 1
+
+        // Always add to CLI stats (all MCP requests come from CLI)
         sourceUsage.cli.requests += 1
-        sourceUsage.cli.count += log.successful_providers || 1 // perspectives = successful providers
-        sourceUsage.cli.cost += parseFloat(log.total_cost) || 0
-        // MCP requests don't deduct credits (user pays via their own keys or admin key)
+        sourceUsage.cli.count += perspectives
+        sourceUsage.cli.cost += cost
+
+        // Also track by source type for "Your API Keys" vs "Credits" breakdown
+        if (log.source_type === 'user_key') {
+          // User's own API key was used
+          sourceUsage.user_key.requests += 1
+          sourceUsage.user_key.count += perspectives
+          sourceUsage.user_key.cost += cost
+        } else if (log.source_type === 'admin_key' || !log.source_type) {
+          // Admin key was used (credits path) - default for older logs without source_type
+          sourceUsage.admin_credits.requests += 1
+          sourceUsage.admin_credits.count += perspectives
+          sourceUsage.admin_credits.cost += cost
+        }
       })
     }
 
