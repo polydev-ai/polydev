@@ -270,10 +270,7 @@ export async function GET(request: NextRequest) {
           provider: cliProviderNames[cli.provider_id] || cli.provider_id, // Use actual provider name for logo
           model: cli.model && cli.model !== 'cli_default' && cli.model !== 'CLI Default' 
             ? cli.model 
-            : (cli.provider_id === 'claude_code' ? 'claude-sonnet-4' 
-              : cli.provider_id === 'codex_cli' ? 'gpt-4.1' 
-              : cli.provider_id === 'gemini_cli' ? 'gemini-2.5-pro' 
-              : 'CLI Default'),
+            : 'CLI Default', // Don't hardcode model names - actual model is from user's API key config
           cost: 0, // CLI responses are free (use your own API keys)
           latency: cli.latency_ms || 0,
           tokens: cli.tokens_used || 0,
