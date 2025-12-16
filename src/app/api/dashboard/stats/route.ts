@@ -778,12 +778,12 @@ export async function GET(request: NextRequest) {
             providerSet.add(key.provider.toLowerCase())
           }
         })
-        // Add admin-provided providers from perspective_usage
-        ;(usageLogs || []).forEach(usage => {
-          const sourceType = usage.request_metadata?.source_type
-          const provider = usage.request_metadata?.provider
-          if (sourceType === 'admin_credits' && provider) {
-            providerSet.add(provider.toLowerCase())
+        // Add admin-provided providers from mcp_request_logs
+        ;(requestLogs || []).forEach(log => {
+          if (log.source_type === 'admin_key' && log.provider_responses) {
+            Object.keys(log.provider_responses).forEach(providerKey => {
+              providerSet.add(providerKey.toLowerCase())
+            })
           }
         })
         return providerSet.size
@@ -828,18 +828,18 @@ export async function GET(request: NextRequest) {
           }
         })
 
-        // Add admin-provided providers
-        ;(usageLogs || []).forEach(usage => {
-          const sourceType = usage.request_metadata?.source_type
-          const provider = usage.request_metadata?.provider
-          if (sourceType === 'admin_credits' && provider) {
-            const id = provider.toLowerCase()
-            const existing = providerMap.get(id)
-            if (existing) {
-              if (!existing.source.includes('admin')) existing.source.push('admin')
-            } else {
-              providerMap.set(id, { name: provider, source: ['admin'] })
-            }
+        // Add admin-provided providers from mcp_request_logs
+        ;(requestLogs || []).forEach(log => {
+          if (log.source_type === 'admin_key' && log.provider_responses) {
+            Object.keys(log.provider_responses).forEach(providerKey => {
+              const id = providerKey.toLowerCase()
+              const existing = providerMap.get(id)
+              if (existing) {
+                if (!existing.source.includes('admin')) existing.source.push('admin')
+              } else {
+                providerMap.set(id, { name: providerKey, source: ['admin'] })
+              }
+            })
           }
         })
 
