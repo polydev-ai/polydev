@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '../app/utils/supabase/client'
 import { User } from '@supabase/supabase-js'
 
@@ -9,26 +9,47 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
-  useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+  // Use getUser() to validate session with server (ensures sync with middleware)
+  const refreshAuth = useCallback(async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error) {
+        console.log('[useAuth] Session validation error:', error.message)
+        setUser(null)
+      } else {
+        setUser(user)
+      }
+    } catch (err) {
+      console.error('[useAuth] Auth check failed:', err)
+      setUser(null)
+    } finally {
       setLoading(false)
     }
+  }, [supabase.auth])
 
-    getInitialSession()
+  useEffect(() => {
+    // Validate session with server on mount
+    refreshAuth()
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
-        setLoading(false)
+        console.log('[useAuth] Auth state changed:', event)
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          setUser(session?.user ?? null)
+          setLoading(false)
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setLoading(false)
+        } else {
+          // For other events, revalidate with server
+          await refreshAuth()
+        }
       }
     )
 
     return () => subscription.unsubscribe()
-  }, [supabase.auth])
+  }, [supabase.auth, refreshAuth])
 
 
   const signOut = async () => {
@@ -44,6 +65,7 @@ export function useAuth() {
     user,
     loading,
     signOut,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    refreshAuth
   }
 }
