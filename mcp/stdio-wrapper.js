@@ -103,6 +103,12 @@ if (writableTmp) {
 /**
  * Clean CLI response by removing metadata and debug info
  * Strips: provider info, approval, sandbox, reasoning, session id, MCP errors, etc.
+ * 
+ * Codex CLI output structure:
+ *   [metadata] → user → [echoed prompt] → thinking → [status] → codex → [RESPONSE]
+ * 
+ * Claude Code output structure:
+ *   [may include JSON or plain text response]
  */
 function cleanCliResponse(content) {
   if (!content || typeof content !== 'string') {
@@ -111,57 +117,108 @@ function cleanCliResponse(content) {
   
   const lines = content.split('\n');
   const cleanedLines = [];
-  let skipUntilContent = true;
-  let inThinkingSection = false;
   
-  for (const line of lines) {
+  // State machine for Codex CLI output parsing
+  // States: 'metadata' | 'user_section' | 'thinking_section' | 'response'
+  let state = 'metadata';
+  let foundCodexMarker = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmed = line.trim();
     
-    // Skip metadata lines at the start
-    if (skipUntilContent) {
-      // Skip empty lines
-      if (!trimmed) continue;
-      
+    // Always skip MCP errors anywhere
+    if (trimmed.startsWith('ERROR: MCP client for')) continue;
+    if (trimmed.includes('failed to start') && trimmed.includes('MCP')) continue;
+    if (trimmed.includes('handshake') && trimmed.includes('failed')) continue;
+    if (trimmed.includes('connection closed')) continue;
+    
+    // State: metadata - skip until we hit a section marker
+    if (state === 'metadata') {
       // Skip known metadata patterns
+      if (!trimmed) continue;
       if (trimmed.startsWith('provider:')) continue;
       if (trimmed.startsWith('approval:')) continue;
       if (trimmed.startsWith('sandbox:')) continue;
       if (trimmed.startsWith('reasoning effort:')) continue;
       if (trimmed.startsWith('reasoning summaries:')) continue;
       if (trimmed.startsWith('session id:')) continue;
-      if (trimmed.match(/^-{4,}$/)) continue; // Skip separator lines like --------
-      if (trimmed === 'user') continue; // Skip role markers
-      if (trimmed === 'assistant') continue;
+      if (trimmed.match(/^-{4,}$/)) continue; // Separator lines
       
-      // Skip MCP client errors
-      if (trimmed.startsWith('ERROR: MCP client for')) continue;
-      if (trimmed.includes('failed to start')) continue;
+      // Transition to user section
+      if (trimmed === 'user') {
+        state = 'user_section';
+        continue;
+      }
       
-      // Found actual content - stop skipping
-      skipUntilContent = false;
-    }
-    
-    // Handle thinking sections (optional: can show or hide)
-    if (trimmed === 'thinking') {
-      inThinkingSection = true;
-      continue; // Skip the "thinking" marker
-    }
-    
-    // End of thinking section on empty line after content
-    if (inThinkingSection && !trimmed) {
-      inThinkingSection = false;
+      // If we hit 'codex' directly (no user section), go to response
+      if (trimmed === 'codex') {
+        state = 'response';
+        foundCodexMarker = true;
+        continue;
+      }
+      
+      // If we hit 'assistant' (Claude Code), this might be actual content
+      if (trimmed === 'assistant') {
+        state = 'response';
+        continue;
+      }
+      
+      // If no Codex markers found and we have content, it might be Claude Code output
+      // Check if it looks like actual content (not metadata)
+      if (!trimmed.includes(':') || trimmed.length > 100) {
+        state = 'response';
+        cleanedLines.push(line);
+        continue;
+      }
+      
       continue;
     }
     
-    // Skip more MCP errors anywhere in output
-    if (trimmed.startsWith('ERROR: MCP client for')) continue;
-    if (trimmed.includes('failed to start') && trimmed.includes('MCP')) continue;
+    // State: user_section - skip echoed prompt until thinking/codex
+    if (state === 'user_section') {
+      if (trimmed === 'thinking') {
+        state = 'thinking_section';
+        continue;
+      }
+      if (trimmed === 'codex') {
+        state = 'response';
+        foundCodexMarker = true;
+        continue;
+      }
+      // Skip everything in user section (echoed prompt, errors)
+      continue;
+    }
     
-    // Keep this line
-    cleanedLines.push(line);
+    // State: thinking_section - skip until codex marker
+    if (state === 'thinking_section') {
+      if (trimmed === 'codex') {
+        state = 'response';
+        foundCodexMarker = true;
+        continue;
+      }
+      // Skip thinking content (bold status messages, reasoning)
+      continue;
+    }
+    
+    // State: response - keep actual response content
+    if (state === 'response') {
+      // Skip footer patterns
+      if (trimmed === 'tokens used') continue;
+      if (trimmed.match(/^[\d,]+$/) && i === lines.length - 1) continue; // Token count at end
+      
+      // Skip any remaining bold status markers
+      if (trimmed.match(/^\*\*.*\*\*$/)) continue;
+      
+      // Keep this line
+      cleanedLines.push(line);
+    }
   }
   
-  // Trim trailing empty lines and return
+  // Trim leading/trailing empty lines
+  while (cleanedLines.length > 0 && !cleanedLines[0].trim()) {
+    cleanedLines.shift();
+  }
   while (cleanedLines.length > 0 && !cleanedLines[cleanedLines.length - 1].trim()) {
     cleanedLines.pop();
   }
