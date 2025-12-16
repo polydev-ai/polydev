@@ -443,19 +443,20 @@ class StdioMCPWrapper {
     console.error(`[Stdio Wrapper] Local CLI prompt sending with perspectives`);
     
     try {
-      let { provider_id, prompt, mode = 'args', timeout_ms = 180000 } = args;
+      let { provider_id, prompt, mode = 'args', timeout_ms = 300000 } = args;
       
       // Ensure timeout_ms is valid (not undefined, null, Infinity, or negative)
-      if (!timeout_ms || timeout_ms === Infinity || timeout_ms < 1 || timeout_ms > 300000) {
-        timeout_ms = 180000; // Default to 180 seconds for CLI responses
+      // Default to 5 minutes (300 seconds) for complex CLI responses
+      if (!timeout_ms || timeout_ms === Infinity || timeout_ms < 1 || timeout_ms > 600000) {
+        timeout_ms = 300000; // Default to 5 minutes for CLI responses
       }
       
       if (!prompt) {
         throw new Error('prompt is required');
       }
 
-      // Use configured timeout but cap at 5 minutes max
-      const gracefulTimeout = Math.min(timeout_ms, 300000);
+      // Use configured timeout but cap at 10 minutes max for safety
+      const gracefulTimeout = Math.min(timeout_ms, 600000);
 
       // Fetch user's model preferences (cached, non-blocking on failure)
       let modelPreferences = {};
