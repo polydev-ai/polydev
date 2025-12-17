@@ -92,24 +92,33 @@ export async function GET(request: NextRequest) {
     }
 
     const modelPreferences: Record<string, string> = {}
+    const providerOrder: string[] = [] // CLI provider IDs in user's display_order
 
     for (const key of apiKeys || []) {
       if (key.provider && key.default_model) {
         const providerLower = key.provider.toLowerCase()
         const cliId = providerToCliMap[providerLower]
 
-        if (cliId && !modelPreferences[cliId]) {
-          // Only set the first match (respects display_order)
-          modelPreferences[cliId] = key.default_model
+        if (cliId) {
+          // Track the order of CLI providers (respects display_order from query)
+          if (!providerOrder.includes(cliId)) {
+            providerOrder.push(cliId)
+          }
+          
+          if (!modelPreferences[cliId]) {
+            // Only set the first match (respects display_order)
+            modelPreferences[cliId] = key.default_model
+          }
         }
       }
     }
 
-    console.log('[Model Preferences] Returning preferences:', modelPreferences, 'perspectives_per_message:', perspectivesPerMessage)
+    console.log('[Model Preferences] Returning preferences:', modelPreferences, 'providerOrder:', providerOrder, 'perspectives_per_message:', perspectivesPerMessage)
 
     return NextResponse.json({
       success: true,
       modelPreferences,
+      providerOrder, // CLI provider IDs in user's preferred order from dashboard
       perspectivesPerMessage,
       timestamp: new Date().toISOString()
     })

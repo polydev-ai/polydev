@@ -613,21 +613,29 @@ class StdioMCPWrapper {
         const result = await this.cliManager.sendCliPrompt(provider_id, prompt, mode, gracefulTimeout, model);
         localResults = [{ provider_id, ...result }];
       } else {
-        // No specific provider - use available local CLIs up to maxPerspectives limit
-        console.error(`[Stdio Wrapper] Using available local CLIs (max: ${maxPerspectives})`);
-        const allAvailableProviders = await this.getAllAvailableProviders();
+        // No specific provider - use providers in user's preferred order
+        // Mix CLI (where available) + API fallback (where CLI unavailable)
+        console.error(`[Stdio Wrapper] Using providers in user's preferred order (max: ${maxPerspectives})`);
+        const { available: availableClis, unavailable: unavailableClis } = await this.getAllAvailableProviders();
         
-        // Limit to maxPerspectives
-        const availableProviders = allAvailableProviders.slice(0, maxPerspectives);
+        // Build ordered list: use CLI if available, otherwise mark for API fallback
+        const userOrder = this.userProviderOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
+        const providersToUse = userOrder.slice(0, maxPerspectives);
         
-        if (availableProviders.length === 0) {
-          console.error(`[Stdio Wrapper] No local CLIs available, will use remote perspectives only`);
+        // Separate into CLI vs API fallback
+        const cliProviders = providersToUse.filter(p => availableClis.includes(p));
+        const apiProviders = providersToUse.filter(p => unavailableClis.includes(p));
+        
+        console.error(`[Stdio Wrapper] Provider breakdown: CLI=${cliProviders.join(', ') || 'none'}, API fallback=${apiProviders.join(', ') || 'none'}`);
+        
+        if (cliProviders.length === 0 && apiProviders.length === 0) {
+          console.error(`[Stdio Wrapper] No providers available, will use remote perspectives only`);
           localResults = [];
         } else {
-          console.error(`[Stdio Wrapper] Found ${allAvailableProviders.length} available CLIs, using ${availableProviders.length}: ${availableProviders.join(', ')}`);
+          console.error(`[Stdio Wrapper] Using ${cliProviders.length} CLIs + ${apiProviders.length} API fallbacks`);
           
           // Run all CLI prompts concurrently
-          const cliPromises = availableProviders.map(async (providerId) => {
+          const cliPromises = cliProviders.map(async (providerId) => {
             try {
               const model = modelPreferences[providerId] || null;
               if (model) {
@@ -700,14 +708,19 @@ class StdioMCPWrapper {
 
   /**
    * Get all available and authenticated CLI providers
+   * Uses user's provider order from dashboard (display_order) instead of hardcoded order
+   * Falls back to API for providers where CLI is not available/authenticated
    */
   async getAllAvailableProviders() {
     try {
       const results = await this.cliManager.forceCliDetection();
       const availableProviders = [];
+      const unavailableProviders = [];
       
-      // Priority order: claude_code > codex_cli > gemini_cli
-      const priorityOrder = ['claude_code', 'codex_cli', 'gemini_cli'];
+      // Use user's provider order from dashboard (fetched via model-preferences API)
+      // Falls back to default order if not yet loaded
+      const priorityOrder = this.userProviderOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
+      console.error(`[Stdio Wrapper] Using provider order: ${priorityOrder.join(' > ')}`);
       
       for (const providerId of priorityOrder) {
         const status = results[providerId];
@@ -715,17 +728,25 @@ class StdioMCPWrapper {
           // Skip providers with quota exhausted - they'll use API fallback
           if (status.quota_exhausted) {
             console.error(`[Stdio Wrapper] Skipping ${providerId} - quota exhausted, will use API fallback`);
+            unavailableProviders.push(providerId);
             continue;
           }
           availableProviders.push(providerId);
+        } else {
+          // CLI not available - will fall back to API for this provider
+          const reason = !status ? 'not detected' : (!status.available ? 'not installed' : 'not authenticated');
+          console.error(`[Stdio Wrapper] CLI ${providerId} ${reason}, will use API fallback`);
+          unavailableProviders.push(providerId);
         }
       }
       
-      return availableProviders;
+      // Return available CLIs first, then unavailable ones (for API fallback)
+      // The caller will handle mixing CLI + API based on availability
+      return { available: availableProviders, unavailable: unavailableProviders };
       
     } catch (error) {
       console.error('[Stdio Wrapper] Failed to get available providers:', error);
-      return [];
+      return { available: [], unavailable: [] };
     }
   }
 
@@ -1379,7 +1400,12 @@ class StdioMCPWrapper {
         // Also cache perspectives_per_message setting (default 2)
         this.perspectivesPerMessage = result.perspectivesPerMessage || 2;
         
+        // Cache provider order from user's dashboard (respects display_order)
+        // This determines which CLIs/APIs to use first
+        this.userProviderOrder = result.providerOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
+        
         console.error('[Stdio Wrapper] Model preferences loaded:', JSON.stringify(result.modelPreferences));
+        console.error('[Stdio Wrapper] Provider order:', JSON.stringify(this.userProviderOrder));
         console.error('[Stdio Wrapper] Perspectives per message:', this.perspectivesPerMessage);
         return result.modelPreferences;
       } else {
