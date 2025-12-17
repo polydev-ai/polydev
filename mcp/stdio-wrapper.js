@@ -245,6 +245,7 @@ class StdioMCPWrapper {
     
     // Cache for user model preferences (provider -> model)
     this.userModelPreferences = null;
+    this.perspectivesPerMessage = 2; // Default to 2 perspectives
     this.modelPreferencesCacheTime = null;
     this.MODEL_PREFERENCES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
   }
@@ -564,6 +565,7 @@ class StdioMCPWrapper {
 
   /**
    * Local CLI prompt sending with ALL available CLIs + remote perspectives
+   * Respects user's perspectives_per_message setting for total perspectives
    */
   async localSendCliPrompt(args) {
     console.error(`[Stdio Wrapper] Local CLI prompt sending with perspectives`);
@@ -585,12 +587,17 @@ class StdioMCPWrapper {
       const gracefulTimeout = Math.min(timeout_ms, 600000);
 
       // Fetch user's model preferences (cached, non-blocking on failure)
+      // This also fetches perspectivesPerMessage setting
       let modelPreferences = {};
       try {
         modelPreferences = await this.fetchUserModelPreferences();
       } catch (prefError) {
         console.error('[Stdio Wrapper] Model preferences fetch failed (will use CLI defaults):', prefError.message);
       }
+
+      // Get the user's perspectives_per_message setting (default 2)
+      const maxPerspectives = this.perspectivesPerMessage || 2;
+      console.error(`[Stdio Wrapper] Max perspectives per message: ${maxPerspectives}`);
 
       let localResults = [];
 
@@ -606,15 +613,18 @@ class StdioMCPWrapper {
         const result = await this.cliManager.sendCliPrompt(provider_id, prompt, mode, gracefulTimeout, model);
         localResults = [{ provider_id, ...result }];
       } else {
-        // No specific provider - use ALL available local CLIs
-        console.error(`[Stdio Wrapper] Using all available local CLIs`);
-        const availableProviders = await this.getAllAvailableProviders();
+        // No specific provider - use available local CLIs up to maxPerspectives limit
+        console.error(`[Stdio Wrapper] Using available local CLIs (max: ${maxPerspectives})`);
+        const allAvailableProviders = await this.getAllAvailableProviders();
+        
+        // Limit to maxPerspectives
+        const availableProviders = allAvailableProviders.slice(0, maxPerspectives);
         
         if (availableProviders.length === 0) {
           console.error(`[Stdio Wrapper] No local CLIs available, will use remote perspectives only`);
           localResults = [];
         } else {
-          console.error(`[Stdio Wrapper] Found ${availableProviders.length} available CLIs: ${availableProviders.join(', ')}`);
+          console.error(`[Stdio Wrapper] Found ${allAvailableProviders.length} available CLIs, using ${availableProviders.length}: ${availableProviders.join(', ')}`);
           
           // Run all CLI prompts concurrently
           const cliPromises = availableProviders.map(async (providerId) => {
@@ -645,8 +655,25 @@ class StdioMCPWrapper {
         console.error('[Stdio Wrapper] CLI results reporting failed (non-critical):', err.message);
       });
 
-      // Get remote perspectives (only for models not covered by local CLIs)
-      const perspectivesResult = await this.callPerspectivesForCli(args, localResults);
+      // Calculate how many successful local perspectives we got
+      const successfulLocalCount = localResults.filter(r => r.success).length;
+      const remainingPerspectives = maxPerspectives - successfulLocalCount;
+
+      // Get remote perspectives only if we need more perspectives to reach maxPerspectives
+      let perspectivesResult;
+      if (remainingPerspectives > 0) {
+        console.error(`[Stdio Wrapper] Need ${remainingPerspectives} more perspectives from remote`);
+        perspectivesResult = await this.callPerspectivesForCli(args, localResults, remainingPerspectives);
+      } else {
+        console.error(`[Stdio Wrapper] Already have ${successfulLocalCount} perspectives, skipping remote call`);
+        perspectivesResult = {
+          success: true,
+          content: '',
+          skipped: true,
+          reason: `Already have ${successfulLocalCount} perspectives (max: ${maxPerspectives})`,
+          timestamp: new Date().toISOString()
+        };
+      }
 
       // Record usage for all CLI responses
       for (const localResult of localResults) {
@@ -782,8 +809,11 @@ class StdioMCPWrapper {
   /**
    * Call remote perspectives for CLI prompts
    * Only calls remote APIs for providers NOT covered by successful local CLIs
+   * @param {Object} args - Original request arguments
+   * @param {Array} localResults - Results from local CLIs
+   * @param {number} maxPerspectives - Maximum number of remote perspectives to fetch
    */
-  async callPerspectivesForCli(args, localResults) {
+  async callPerspectivesForCli(args, localResults, maxPerspectives = 2) {
     // Determine which providers succeeded locally
     const successfulLocalProviders = localResults
       .filter(r => r.success)
@@ -800,20 +830,21 @@ class StdioMCPWrapper {
       .map(cli => cliToApiProvider[cli])
       .filter(Boolean);
     
-    // If all major providers are covered locally, skip remote call entirely
-    if (excludeProviders.length >= 3 || 
+    // If all major providers are covered locally OR we don't need more perspectives, skip remote call
+    if (maxPerspectives <= 0 ||
+        excludeProviders.length >= 3 || 
         (excludeProviders.includes('anthropic') && excludeProviders.includes('openai') && excludeProviders.includes('google'))) {
-      console.error(`[Stdio Wrapper] All providers covered by local CLIs, skipping remote perspectives`);
+      console.error(`[Stdio Wrapper] All providers covered by local CLIs or max perspectives reached, skipping remote perspectives`);
       return {
         success: true,
         content: '',
         skipped: true,
-        reason: 'All providers covered by local CLIs',
+        reason: 'All providers covered by local CLIs or max perspectives reached',
         timestamp: new Date().toISOString()
       };
     }
     
-    console.error(`[Stdio Wrapper] Calling remote perspectives (excluding: ${excludeProviders.join(', ') || 'none'})`);
+    console.error(`[Stdio Wrapper] Calling remote perspectives (excluding: ${excludeProviders.join(', ') || 'none'}, max: ${maxPerspectives})`);
     
     // Format CLI responses for logging on the server
     const cliResponses = localResults.map(result => ({
@@ -839,6 +870,8 @@ class StdioMCPWrapper {
             exclude_providers: excludeProviders,
             // Pass CLI responses for dashboard logging
             cli_responses: cliResponses,
+            // Limit remote perspectives to what we need
+            max_perspectives: maxPerspectives,
             project_memory: 'none',
             temperature: 0.7,
             max_tokens: 20000
@@ -1307,6 +1340,7 @@ class StdioMCPWrapper {
   /**
    * Fetch user's model preferences from API keys
    * Returns a map of CLI provider -> default_model
+   * Also fetches and caches perspectivesPerMessage setting
    */
   async fetchUserModelPreferences() {
     // Check cache first
@@ -1342,7 +1376,11 @@ class StdioMCPWrapper {
         this.userModelPreferences = result.modelPreferences;
         this.modelPreferencesCacheTime = Date.now();
         
+        // Also cache perspectives_per_message setting (default 2)
+        this.perspectivesPerMessage = result.perspectivesPerMessage || 2;
+        
         console.error('[Stdio Wrapper] Model preferences loaded:', JSON.stringify(result.modelPreferences));
+        console.error('[Stdio Wrapper] Perspectives per message:', this.perspectivesPerMessage);
         return result.modelPreferences;
       } else {
         console.error('[Stdio Wrapper] No model preferences in response');

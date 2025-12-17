@@ -4,6 +4,7 @@ import { createAdminClient } from '@/app/utils/supabase/server'
 /**
  * GET /api/model-preferences
  * Returns user's model preferences (provider -> default_model mapping)
+ * and perspectives_per_message setting
  * Used by stdio-wrapper to pass user's preferred models to local CLIs
  *
  * Requires: Authorization header with MCP token (pd_xxx or polydev_xxx)
@@ -64,6 +65,21 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Get user preferences for perspectives_per_message setting
+    const { data: userPrefs, error: prefsError } = await supabase
+      .from('user_preferences')
+      .select('mcp_settings')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (prefsError) {
+      console.error('[Model Preferences] User preferences fetch failed:', prefsError.message)
+      // Non-fatal - continue with default
+    }
+
+    // Get perspectives_per_message from user settings (default 2, range 1-10)
+    const perspectivesPerMessage = (userPrefs?.mcp_settings as any)?.perspectives_per_message || 2
+
     // Build provider -> model mapping
     // Maps provider names to CLI tool IDs
     const providerToCliMap: Record<string, string> = {
@@ -89,11 +105,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('[Model Preferences] Returning preferences:', modelPreferences)
+    console.log('[Model Preferences] Returning preferences:', modelPreferences, 'perspectives_per_message:', perspectivesPerMessage)
 
     return NextResponse.json({
       success: true,
       modelPreferences,
+      perspectivesPerMessage,
       timestamp: new Date().toISOString()
     })
 

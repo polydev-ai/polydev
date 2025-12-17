@@ -1422,7 +1422,16 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     .maybeSingle()
 
   // Get perspectives_per_message from user settings (default 2, range 1-10)
-  const perspectivesPerMessage = (userPrefs?.mcp_settings as any)?.perspectives_per_message || 2
+  // Can be overridden by args.max_perspectives from stdio-wrapper
+  let perspectivesPerMessage = (userPrefs?.mcp_settings as any)?.perspectives_per_message || 2
+  
+  // If stdio-wrapper explicitly passes max_perspectives, use that instead
+  // This happens when CLI already got some perspectives and needs fewer from remote
+  if (args.max_perspectives && typeof args.max_perspectives === 'number' && args.max_perspectives > 0) {
+    console.log(`[MCP] Using max_perspectives from request: ${args.max_perspectives} (user setting: ${perspectivesPerMessage})`)
+    perspectivesPerMessage = args.max_perspectives
+  }
+  
   console.log(`[MCP] User preferences: perspectives_per_message = ${perspectivesPerMessage}`)
 
   // Get user API keys from database - SAME AS CHAT API
