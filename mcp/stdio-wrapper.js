@@ -1369,6 +1369,8 @@ class StdioMCPWrapper {
       const cacheAge = Date.now() - this.modelPreferencesCacheTime;
       if (cacheAge < this.MODEL_PREFERENCES_CACHE_TTL) {
         console.error('[Stdio Wrapper] Using cached model preferences');
+        // Also restore cached userProviderOrder when using cache
+        // (userProviderOrder was set during the initial API fetch)
         return this.userModelPreferences;
       }
     }
@@ -1402,6 +1404,7 @@ class StdioMCPWrapper {
         
         // Cache provider order from user's dashboard (respects display_order)
         // This determines which CLIs/APIs to use first
+        // IMPORTANT: This is cached alongside modelPreferences and restored when cache is used
         this.userProviderOrder = result.providerOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
         
         console.error('[Stdio Wrapper] Model preferences loaded:', JSON.stringify(result.modelPreferences));
