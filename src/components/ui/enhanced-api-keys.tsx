@@ -5,12 +5,11 @@ import { useAuth } from '../../hooks/useAuth'
 import { usePreferences } from '../../hooks/usePreferences'
 import { useEnhancedApiKeysData } from '../../hooks/useEnhancedApiKeysData'
 import { createClient } from '../../app/utils/supabase/client'
-import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, AlertCircle, Check, ChevronDown, ChevronRight, GripVertical, Terminal, CheckCircle, XCircle, Clock, RefreshCw, Copy, BarChart3, Activity, TrendingUp } from 'lucide-react'
+import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, AlertCircle, Check, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Terminal, CheckCircle, XCircle, Clock, RefreshCw, Copy, BarChart3, Activity, TrendingUp } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import { ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/provider-icons'
 // Use API endpoint instead of direct modelsDevService import to avoid server-side imports in client component
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { getModelTier } from '../../lib/model-tiers'
 import ModelSourcePriorityPicker from '../ModelSourcePriorityPicker'
 import ModelPriorityWaterfall from '../ModelPriorityWaterfall'
@@ -692,16 +691,24 @@ export default function EnhancedApiKeysPage() {
         body: JSON.stringify({ apiKeyIds })
       })
       if (!response.ok) throw new Error('Failed to reorder API keys')
+      await refresh() // Refresh the list after reordering
     } catch (err: any) {
       setError(err.message)
     }
   }
-  const handleDragEnd = async (result: DropResult) => {
-    if (!result.destination) return
 
+  // Handle moving API key up or down in priority
+  const handleMoveKey = async (keyId: string, direction: 'up' | 'down') => {
+    const currentIndex = apiKeys.findIndex(key => key.id === keyId)
+    if (currentIndex === -1) return
+    
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (newIndex < 0 || newIndex >= apiKeys.length) return
+
+    // Create new array with swapped positions
     const items = Array.from(apiKeys)
-    const [reorderedItem] = items.splice(result.source.index, 1)
-    items.splice(result.destination.index, 0, reorderedItem)
+    const [movedItem] = items.splice(currentIndex, 1)
+    items.splice(newIndex, 0, movedItem)
 
     // Send the new order to the server
     const orderedIds = items.map(item => item.id)
@@ -1098,204 +1105,207 @@ export default function EnhancedApiKeysPage() {
                 <Settings className="w-5 h-5" />
                 <span>API Keys</span>
                 <span className="text-sm text-slate-600 font-normal">
-                  (Drag to reorder for MCP priority)
+                  (Use arrows to reorder for MCP priority)
                 </span>
               </h2>
 
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <Droppable droppableId="api-keys">
-                  {(provided) => (
+              <div className="space-y-3">
+                {apiKeys.map((key, index) => {
+                  const providerConfig = legacyProviders[key.provider]
+                  return (
                     <div
-                      className="space-y-3"
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
+                      key={key.id}
+                      className="border rounded-lg p-4 bg-slate-50 border-slate-200"
                     >
-                      {apiKeys.map((key, index) => {
-                        const providerConfig = legacyProviders[key.provider]
-                        return (
-                          <Draggable key={key.id} draggableId={key.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                className={`border rounded-lg p-4 bg-slate-50 border-slate-200 ${
-                                  snapshot.isDragging ? 'shadow-lg bg-white' : ''
-                                }`}
-                              >
-                                <div className="flex items-center space-x-3">
-                                  <div
-                                    {...provided.dragHandleProps}
-                                    className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing"
-                                  >
-                                    <GripVertical className="w-5 h-5" />
-                                  </div>
-                                  <div className="flex-1">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center space-x-3">
-                                        <span className="bg-slate-100 text-slate-900 px-2 py-1 rounded text-sm font-medium">
-                                          #{index + 1}
-                                        </span>
-                                        <div className="flex items-center space-x-2">
-                                          {(() => {
-                                            const providerData = getProviderDisplayData(key.provider)
-                                            return providerData?.logoUrl && (
-                                              <img
-                                                src={providerData.logoUrl}
-                                                alt={providerConfig?.name || key.provider}
-                                                className="w-5 h-5 rounded"
-                                                onError={(e) => {
-                                                  e.currentTarget.style.display = 'none'
-                                                }}
-                                              />
-                                            )
-                                          })()}
-                                          <span className="font-medium text-slate-900 capitalize">
-                                            {providerConfig?.name || key.provider}
-                                          </span>
-                                        </div>
-                                        {key.is_preferred && (
-                                          <span
-                                            title="Preferred provider"
-                                            className="bg-slate-900 text-white px-2 py-0.5 rounded text-xs font-medium"
-                                          >
-                                            Preferred
-                                          </span>
-                                        )}
-                                        {key.is_primary && (
-                                          <span
-                                            title="Primary key for this provider"
-                                            className="bg-slate-700 text-white px-2 py-0.5 rounded text-xs font-medium"
-                                          >
-                                            Primary
-                                          </span>
-                                        )}
-                                        <button
-                                          onClick={() => toggleProviderExpanded(key.id)}
-                                          className="text-slate-400 hover:text-slate-600"
-                                        >
-                                          {expandedProviders[key.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                        </button>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        {key.monthly_budget && (
-                                          <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
-                                            ${key.monthly_budget}/month
-                                          </span>
-                                        )}
-                                        {apiKeyUsage[key.id] && (
-                                          <div className="flex items-center space-x-2">
-                                            <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
-                                              ${apiKeyUsage[key.id].monthly_cost.toFixed(4)} used
-                                            </span>
-                                            {key.monthly_budget && (
-                                              <span className="text-xs text-slate-600">
-                                                ({((apiKeyUsage[key.id].monthly_cost / key.monthly_budget) * 100).toFixed(1)}%)
-                                              </span>
-                                            )}
-                                          </div>
-                                        )}
-                                        <div className="flex items-center space-x-2">
-                                          <span className="text-sm text-slate-600 font-mono">
-                                            {showApiKey[key.id] && key.encrypted_key
-                                              ? atob(key.encrypted_key)
-                                              : key.key_preview
-                                            }
-                                          </span>
-                                          {key.encrypted_key && (
-                                            <div className="flex items-center space-x-1">
-                                              <button
-                                                onClick={() => setShowApiKey(prev => ({...prev, [key.id]: !prev[key.id]}))}
-                                                className="text-slate-400 hover:text-slate-600 p-1"
-                                                title={showApiKey[key.id] ? "Hide API key" : "Show API key"}
-                                              >
-                                                {showApiKey[key.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                                              </button>
-                                              <button
-                                                onClick={() => copyApiKey(key)}
-                                                className="text-slate-400 hover:text-slate-600 p-1"
-                                                title="Copy API key"
-                                              >
-                                                <Copy className="w-3 h-3" />
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {expandedProviders[key.id] && (
-                                      <div className="mt-3 space-y-2 pl-8">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                          <div>API URL: <span className="font-mono text-xs">{key.api_base || providerConfig?.baseUrl}</span></div>
-                                          <div>Default Model: <span className="font-mono text-xs">{key.default_model}</span></div>
-                                        </div>
-                                        <div className="flex space-x-2 pt-2">
-                                          <button
-                                            className={`text-sm flex items-center space-x-1 px-2 py-1 rounded ${
-                                              key.is_primary
-                                                ? 'bg-slate-900 text-white hover:bg-slate-700'
-                                                : 'text-slate-600 hover:text-slate-900 border border-slate-200'
-                                            }`}
-                                            onClick={async () => {
-                                              try {
-                                                const response = await fetch(`/api/api-keys/${key.id}`, {
-                                                  method: 'PUT',
-                                                  headers: { 'Content-Type': 'application/json' },
-                                                  body: JSON.stringify({ is_primary: !key.is_primary })
-                                                })
-                                                if (response.ok) {
-                                                  refresh()
-                                                }
-                                              } catch (error) {
-                                                console.error('Error toggling primary key:', error)
-                                              }
-                                            }}
-                                            title={key.is_primary ? 'Remove as primary' : 'Mark as primary'}
-                                          >
-                                            <span>{key.is_primary ? 'Primary' : 'Set Primary'}</span>
-                                          </button>
-                                          <button
-                                            className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
-                                            onClick={() => {
-                                              setEditingKey(key)
-                                              setUpdateApiKey(false)
-                                              setFormData({
-                                                provider: key.provider,
-                                                api_key: '',
-                                                api_base: key.api_base || '',
-                                                default_model: key.default_model || '',
-                                                is_preferred: key.is_preferred || false,
-                                                monthly_budget: key.monthly_budget ?? null,
-                                                reasoning_level: (key as any).reasoning_level || 1
-                                              })
-                                              setShowAddForm(true)
-                                            }}
-                                          >
-                                            <Edit3 className="w-3 h-3" />
-                                            <span>Edit</span>
-                                          </button>
-                                          <button
-                                            className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
-                                            onClick={() => deleteApiKey(key.id)}
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                            <span>Delete</span>
-                                          </button>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
+                      <div className="flex items-center space-x-3">
+                        {/* Arrow buttons for reordering */}
+                        <div className="flex flex-col space-y-1">
+                          <button
+                            onClick={() => handleMoveKey(key.id, 'up')}
+                            disabled={index === 0}
+                            className={`p-1 rounded ${
+                              index === 0
+                                ? 'text-slate-300 cursor-not-allowed'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'
+                            }`}
+                            title="Move up"
+                          >
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveKey(key.id, 'down')}
+                            disabled={index === apiKeys.length - 1}
+                            className={`p-1 rounded ${
+                              index === apiKeys.length - 1
+                                ? 'text-slate-300 cursor-not-allowed'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'
+                            }`}
+                            title="Move down"
+                          >
+                            <ArrowDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <span className="bg-slate-100 text-slate-900 px-2 py-1 rounded text-sm font-medium">
+                                #{index + 1}
+                              </span>
+                              <div className="flex items-center space-x-2">
+                                {(() => {
+                                  const providerData = getProviderDisplayData(key.provider)
+                                  return providerData?.logoUrl && (
+                                    <img
+                                      src={providerData.logoUrl}
+                                      alt={providerConfig?.name || key.provider}
+                                      className="w-5 h-5 rounded"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none'
+                                      }}
+                                    />
+                                  )
+                                })()}
+                                <span className="font-medium text-slate-900 capitalize">
+                                  {providerConfig?.name || key.provider}
+                                </span>
                               </div>
-                            )}
-                          </Draggable>
-                        )
-                      })}
-                      {provided.placeholder}
+                              {key.is_preferred && (
+                                <span
+                                  title="Preferred provider"
+                                  className="bg-slate-900 text-white px-2 py-0.5 rounded text-xs font-medium"
+                                >
+                                  Preferred
+                                </span>
+                              )}
+                              {key.is_primary && (
+                                <span
+                                  title="Primary key for this provider"
+                                  className="bg-slate-700 text-white px-2 py-0.5 rounded text-xs font-medium"
+                                >
+                                  Primary
+                                </span>
+                              )}
+                              <button
+                                onClick={() => toggleProviderExpanded(key.id)}
+                                className="text-slate-400 hover:text-slate-600"
+                              >
+                                {expandedProviders[key.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              </button>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {key.monthly_budget && (
+                                <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                                  ${key.monthly_budget}/month
+                                </span>
+                              )}
+                              {apiKeyUsage[key.id] && (
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                                    ${apiKeyUsage[key.id].monthly_cost.toFixed(4)} used
+                                  </span>
+                                  {key.monthly_budget && (
+                                    <span className="text-xs text-slate-600">
+                                      ({((apiKeyUsage[key.id].monthly_cost / key.monthly_budget) * 100).toFixed(1)}%)
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm text-slate-600 font-mono">
+                                  {showApiKey[key.id] && key.encrypted_key
+                                    ? atob(key.encrypted_key)
+                                    : key.key_preview
+                                  }
+                                </span>
+                                {key.encrypted_key && (
+                                  <div className="flex items-center space-x-1">
+                                    <button
+                                      onClick={() => setShowApiKey(prev => ({...prev, [key.id]: !prev[key.id]}))}
+                                      className="text-slate-400 hover:text-slate-600 p-1"
+                                      title={showApiKey[key.id] ? "Hide API key" : "Show API key"}
+                                    >
+                                      {showApiKey[key.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                    </button>
+                                    <button
+                                      onClick={() => copyApiKey(key)}
+                                      className="text-slate-400 hover:text-slate-600 p-1"
+                                      title="Copy API key"
+                                    >
+                                      <Copy className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {expandedProviders[key.id] && (
+                            <div className="mt-3 space-y-2 pl-8">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>API URL: <span className="font-mono text-xs">{key.api_base || providerConfig?.baseUrl}</span></div>
+                                <div>Default Model: <span className="font-mono text-xs">{key.default_model}</span></div>
+                              </div>
+                              <div className="flex space-x-2 pt-2">
+                                <button
+                                  className={`text-sm flex items-center space-x-1 px-2 py-1 rounded ${
+                                    key.is_primary
+                                      ? 'bg-slate-900 text-white hover:bg-slate-700'
+                                      : 'text-slate-600 hover:text-slate-900 border border-slate-200'
+                                  }`}
+                                  onClick={async () => {
+                                    try {
+                                      const response = await fetch(`/api/api-keys/${key.id}`, {
+                                        method: 'PUT',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ is_primary: !key.is_primary })
+                                      })
+                                      if (response.ok) {
+                                        refresh()
+                                      }
+                                    } catch (error) {
+                                      console.error('Error toggling primary key:', error)
+                                    }
+                                  }}
+                                  title={key.is_primary ? 'Remove as primary' : 'Mark as primary'}
+                                >
+                                  <span>{key.is_primary ? 'Primary' : 'Set Primary'}</span>
+                                </button>
+                                <button
+                                  className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
+                                  onClick={() => {
+                                    setEditingKey(key)
+                                    setUpdateApiKey(false)
+                                    setFormData({
+                                      provider: key.provider,
+                                      api_key: '',
+                                      api_base: key.api_base || '',
+                                      default_model: key.default_model || '',
+                                      is_preferred: key.is_preferred || false,
+                                      monthly_budget: key.monthly_budget ?? null,
+                                      reasoning_level: (key as any).reasoning_level || 1
+                                    })
+                                    setShowAddForm(true)
+                                  }}
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
+                                  onClick={() => deleteApiKey(key.id)}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+                  )
+                })}
+              </div>
             </div>
           )}
 
@@ -1466,208 +1476,207 @@ export default function EnhancedApiKeysPage() {
             <Settings className="w-5 h-5" />
             <span>API Keys</span>
             <span className="text-sm text-slate-600 font-normal">
-              (Drag to reorder for MCP priority)
+              (Use arrows to reorder for MCP priority)
             </span>
           </h2>
           
-          <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="api-keys">
-              {(provided) => (
-                <div 
-                  className="space-y-3"
-                  {...provided.droppableProps}
-                  ref={provided.innerRef}
+          <div className="space-y-3">
+            {apiKeys.map((key, index) => {
+              const providerConfig = legacyProviders[key.provider]
+              return (
+                <div
+                  key={key.id}
+                  className="border rounded-lg p-4 bg-slate-50 border-slate-200"
                 >
-                  {apiKeys.map((key, index) => {
-                    const providerConfig = legacyProviders[key.provider]
-                    return (
-                      <Draggable key={key.id} draggableId={key.id} index={index}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            className={`border rounded-lg p-4 bg-slate-50 border-slate-200 ${
-                              snapshot.isDragging ? 'shadow-lg bg-white' : ''
-                            }`}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div
-                                {...provided.dragHandleProps}
-                                className="text-slate-400 hover:text-slate-600 cursor-grab active:cursor-grabbing"
-                              >
-                                <GripVertical className="w-5 h-5" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3">
-                                    <span className="bg-slate-100 text-slate-900 px-2 py-1 rounded text-sm font-medium">
-                                      #{index + 1}
-                                    </span>
-                                    <div className="flex items-center space-x-2">
-                                      {(() => {
-                                        const providerData = getProviderDisplayData(key.provider)
-                                        return providerData?.logoUrl && (
-                                          <img
-                                            src={providerData.logoUrl}
-                                            alt={providerConfig?.name || key.provider}
-                                            className="w-5 h-5 rounded"
-                                            onError={(e) => {
-                                              console.error(`Failed to load provider logo: ${providerData.logoUrl}`)
-                                              e.currentTarget.style.display = 'none'
-                                            }}
-                                          />
-                                        )
-                                      })()}
-                                      <span className="font-medium text-slate-900 capitalize">
-                                        {providerConfig?.name || key.provider}
-                                      </span>
-                                    </div>
-                                    {key.is_preferred && (
-                                      <span
-                                        title="Preferred provider"
-                                        className="bg-slate-900 text-white px-2 py-0.5 rounded text-xs font-medium"
-                                      >
-                                        Preferred
-                                      </span>
-                                    )}
-                                    {key.is_primary && (
-                                      <span
-                                        title="Primary key for this provider"
-                                        className="bg-slate-700 text-white px-2 py-0.5 rounded text-xs font-medium"
-                                      >
-                                        Primary
-                                      </span>
-                                    )}
-                                    <button
-                                      onClick={() => toggleProviderExpanded(key.id)}
-                                      className="text-slate-400 hover:text-slate-600"
-                                    >
-                                      {expandedProviders[key.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                    </button>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    {/* Monthly Budget and Usage */}
-                                    <div className="flex items-center space-x-3">
-                                      {key.monthly_budget && (
-                                        <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
-                                          ${key.monthly_budget}/month
-                                        </span>
-                                      )}
-                                      {apiKeyUsage[key.id] && (
-                                        <div className="flex items-center space-x-2">
-                                          <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
-                                            ${apiKeyUsage[key.id].monthly_cost.toFixed(4)} used
-                                          </span>
-                                          {key.monthly_budget && (
-                                            <span className="text-xs text-slate-600">
-                                              ({((apiKeyUsage[key.id].monthly_cost / key.monthly_budget) * 100).toFixed(1)}%)
-                                            </span>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <span className="text-sm text-slate-600 font-mono">
-                                        {showApiKey[key.id] && key.encrypted_key
-                                          ? atob(key.encrypted_key)
-                                          : key.key_preview
-                                        }
-                                      </span>
-                                      {key.encrypted_key && (
-                                        <div className="flex items-center space-x-1">
-                                          <button
-                                            onClick={() => setShowApiKey(prev => ({...prev, [key.id]: !prev[key.id]}))}
-                                            className="text-slate-400 hover:text-slate-600 p-1"
-                                            title={showApiKey[key.id] ? "Hide API key" : "Show API key"}
-                                          >
-                                            {showApiKey[key.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                                          </button>
-                                          <button
-                                            onClick={() => copyApiKey(key)}
-                                            className="text-slate-400 hover:text-slate-600 p-1"
-                                            title="Copy API key"
-                                          >
-                                            <Copy className="w-3 h-3" />
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                {expandedProviders[key.id] && (
-                                  <div className="mt-3 space-y-2 pl-8">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                      <div>API URL: <span className="font-mono text-xs">{key.api_base || providerConfig?.baseUrl}</span></div>
-                                      <div>Default Model: <span className="font-mono text-xs">{key.default_model}</span></div>
-                                    </div>
-                                    <div className="flex space-x-2 pt-2">
-                                      <button
-                                        className={`text-sm flex items-center space-x-1 px-2 py-1 rounded ${
-                                          key.is_primary
-                                            ? 'bg-slate-900 text-white hover:bg-slate-700'
-                                            : 'text-slate-600 hover:text-slate-900 border border-slate-200'
-                                        }`}
-                                        onClick={async () => {
-                                          try {
-                                            const response = await fetch(`/api/api-keys/${key.id}`, {
-                                              method: 'PUT',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ is_primary: !key.is_primary })
-                                            })
-                                            if (response.ok) {
-                                              refresh()
-                                            }
-                                          } catch (error) {
-                                            console.error('Error toggling primary key:', error)
-                                          }
-                                        }}
-                                        title={key.is_primary ? 'Remove as primary' : 'Mark as primary'}
-                                      >
-                                        <span>{key.is_primary ? 'Primary' : 'Set Primary'}</span>
-                                      </button>
-                                      <button
-                                        className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
-                                        onClick={() => {
-                                          setEditingKey(key)
-                                          setUpdateApiKey(false) // Start with not updating the key
-                                          setFormData({
-                                            provider: key.provider,
-                                            api_key: '', // Don't pre-fill for security
-                                            api_base: key.api_base || '',
-                                            default_model: key.default_model || '',
-                                            is_preferred: key.is_preferred || false,
-                                            monthly_budget: key.monthly_budget ?? null,
-                                            reasoning_level: (key as any).reasoning_level || 1
-                                          })
-                                          setShowAddForm(true)
-                                        }}
-                                      >
-                                        <Edit3 className="w-3 h-3" />
-                                        <span>Edit</span>
-                                      </button>
-                                      <button
-                                        className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
-                                        onClick={() => deleteApiKey(key.id)}
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                        <span>Delete</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                  <div className="flex items-center space-x-3">
+                    {/* Arrow buttons for reordering */}
+                    <div className="flex flex-col space-y-1">
+                      <button
+                        onClick={() => handleMoveKey(key.id, 'up')}
+                        disabled={index === 0}
+                        className={`p-1 rounded ${
+                          index === 0
+                            ? 'text-slate-300 cursor-not-allowed'
+                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'
+                        }`}
+                        title="Move up"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleMoveKey(key.id, 'down')}
+                        disabled={index === apiKeys.length - 1}
+                        className={`p-1 rounded ${
+                          index === apiKeys.length - 1
+                            ? 'text-slate-300 cursor-not-allowed'
+                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200'
+                        }`}
+                        title="Move down"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="bg-slate-100 text-slate-900 px-2 py-1 rounded text-sm font-medium">
+                            #{index + 1}
+                          </span>
+                          <div className="flex items-center space-x-2">
+                            {(() => {
+                              const providerData = getProviderDisplayData(key.provider)
+                              return providerData?.logoUrl && (
+                                <img
+                                  src={providerData.logoUrl}
+                                  alt={providerConfig?.name || key.provider}
+                                  className="w-5 h-5 rounded"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                              )
+                            })()}
+                            <span className="font-medium text-slate-900 capitalize">
+                              {providerConfig?.name || key.provider}
+                            </span>
                           </div>
-                        )}
-                      </Draggable>
-                    )
-                  })}
-                  {provided.placeholder}
+                          {key.is_preferred && (
+                            <span
+                              title="Preferred provider"
+                              className="bg-slate-900 text-white px-2 py-0.5 rounded text-xs font-medium"
+                            >
+                              Preferred
+                            </span>
+                          )}
+                          {key.is_primary && (
+                            <span
+                              title="Primary key for this provider"
+                              className="bg-slate-700 text-white px-2 py-0.5 rounded text-xs font-medium"
+                            >
+                              Primary
+                            </span>
+                          )}
+                          <button
+                            onClick={() => toggleProviderExpanded(key.id)}
+                            className="text-slate-400 hover:text-slate-600"
+                          >
+                            {expandedProviders[key.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {key.monthly_budget && (
+                            <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                              ${key.monthly_budget}/month
+                            </span>
+                          )}
+                          {apiKeyUsage[key.id] && (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-slate-900 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                                ${apiKeyUsage[key.id].monthly_cost.toFixed(4)} used
+                              </span>
+                              {key.monthly_budget && (
+                                <span className="text-xs text-slate-600">
+                                  ({((apiKeyUsage[key.id].monthly_cost / key.monthly_budget) * 100).toFixed(1)}%)
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-slate-600 font-mono">
+                              {showApiKey[key.id] && key.encrypted_key
+                                ? atob(key.encrypted_key)
+                                : key.key_preview
+                                }
+                            </span>
+                            {key.encrypted_key && (
+                              <div className="flex items-center space-x-1">
+                                <button
+                                  onClick={() => setShowApiKey(prev => ({...prev, [key.id]: !prev[key.id]}))}
+                                  className="text-slate-400 hover:text-slate-600 p-1"
+                                  title={showApiKey[key.id] ? "Hide API key" : "Show API key"}
+                                >
+                                  {showApiKey[key.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                </button>
+                                <button
+                                  onClick={() => copyApiKey(key)}
+                                  className="text-slate-400 hover:text-slate-600 p-1"
+                                  title="Copy API key"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {expandedProviders[key.id] && (
+                        <div className="mt-3 space-y-2 pl-8">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>API URL: <span className="font-mono text-xs">{key.api_base || providerConfig?.baseUrl}</span></div>
+                            <div>Default Model: <span className="font-mono text-xs">{key.default_model}</span></div>
+                          </div>
+                          <div className="flex space-x-2 pt-2">
+                            <button
+                              className={`text-sm flex items-center space-x-1 px-2 py-1 rounded ${
+                                key.is_primary
+                                  ? 'bg-slate-900 text-white hover:bg-slate-700'
+                                  : 'text-slate-600 hover:text-slate-900 border border-slate-200'
+                              }`}
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/api/api-keys/${key.id}`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ is_primary: !key.is_primary })
+                                  })
+                                  if (response.ok) {
+                                    refresh()
+                                  }
+                                } catch (error) {
+                                  console.error('Error toggling primary key:', error)
+                                }
+                              }}
+                              title={key.is_primary ? 'Remove as primary' : 'Mark as primary'}
+                            >
+                              <span>{key.is_primary ? 'Primary' : 'Set Primary'}</span>
+                            </button>
+                            <button
+                              className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
+                              onClick={() => {
+                                setEditingKey(key)
+                                setUpdateApiKey(false)
+                                setFormData({
+                                  provider: key.provider,
+                                  api_key: '',
+                                  api_base: key.api_base || '',
+                                  default_model: key.default_model || '',
+                                  is_preferred: key.is_preferred || false,
+                                  monthly_budget: key.monthly_budget ?? null,
+                                  reasoning_level: (key as any).reasoning_level || 1
+                                })
+                                setShowAddForm(true)
+                              }}
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
+                              onClick={() => deleteApiKey(key.id)}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </Droppable>
-          </DragDropContext>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -2074,8 +2083,8 @@ export default function EnhancedApiKeysPage() {
                     api_base: '',
                     default_model: '',
                     is_preferred: false,
-                                monthly_budget: null,
-                    reasoning_level: 5
+                    monthly_budget: null,
+                    reasoning_level: 1
                   })
                 }}
                 className="text-slate-600 px-4 py-2 hover:text-slate-900"
