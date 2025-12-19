@@ -11,7 +11,7 @@ interface GetPerspectivesRequest {
   max_messages?: number
   temperature?: number
   max_tokens?: number
-  num_perspectives?: number  // Limit to first N perspectives by priority order
+  // num_perspectives is DEPRECATED - value is now read from user_preferences.mcp_settings.perspectives_per_message
   project_context?: {
     root_path?: string
     includes?: string[]
@@ -387,7 +387,7 @@ export async function POST(request: NextRequest) {
       max_messages = 10,
       temperature = 0.7,
       max_tokens = 2000,
-      num_perspectives,  // Limit to first N perspectives by priority
+      // num_perspectives is deprecated - we read from user preferences instead
       project_context = {}
     } = body
 
@@ -397,6 +397,7 @@ export async function POST(request: NextRequest) {
 
     let userId: string | null = null
     let availableKeys: Record<string, any> = {}
+    let perspectivesPerMessage = 2  // Default
 
     if (mode === 'user_keys') {
       // User must be authenticated to use their own keys
@@ -410,6 +411,11 @@ export async function POST(request: NextRequest) {
       }
       
       userId = user.id
+      
+      // Fetch user preferences to get perspectives_per_message setting
+      const userPreferences = await getUserPreferences(userId)
+      perspectivesPerMessage = (userPreferences?.mcp_settings as any)?.perspectives_per_message || 2
+      console.log(`[Perspectives API] User ${userId} - perspectives_per_message: ${perspectivesPerMessage}`)
       
       // Check message limits for authenticated user
       try {
@@ -513,9 +519,11 @@ export async function POST(request: NextRequest) {
             model: k.default_model 
           }))
         
-        // Apply num_perspectives limit if specified (first N by priority order)
-        if (num_perspectives && num_perspectives > 0) {
-          modelsWithProviders = modelsWithProviders.slice(0, num_perspectives)
+        // Apply perspectives_per_message limit from user settings (first N by priority order)
+        // perspectivesPerMessage is read from user_preferences.mcp_settings at the start of the request
+        if (perspectivesPerMessage > 0) {
+          console.log(`[Perspectives API] Limiting to first ${perspectivesPerMessage} models from ${modelsWithProviders.length} available`)
+          modelsWithProviders = modelsWithProviders.slice(0, perspectivesPerMessage)
         }
         
         modelsToUse = modelsWithProviders.map(m => m.model)
