@@ -1442,6 +1442,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     .select('provider, encrypted_key, key_preview, api_base, default_model, monthly_budget, current_usage, max_tokens, display_order')
     .eq('user_id', user.id)
     .eq('active', true)
+    .eq('is_admin_key', false)  // Only use user's personal keys, not admin keys
     .order('display_order', { ascending: true })
 
   console.log(`[MCP] API Keys Query Result:`, { apiKeys, error: apiKeysError })
