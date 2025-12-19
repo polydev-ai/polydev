@@ -1455,8 +1455,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     })))
   }
 
-  // SIMPLIFIED: Use models from args OR directly from user_api_keys (like chat API)
-  // No more complex preferences logic
+  // ============================================================================
+  // MODEL SELECTION: user_api_keys.default_model is the SINGLE SOURCE OF TRUTH
+  // ============================================================================
+  // The dashboard (/dashboard/models) writes directly to user_api_keys table.
+  // We read models from user_api_keys.default_model, ordered by display_order.
+  // The old user_preferences.model_preferences is DEPRECATED and not used here.
+  // ============================================================================
   let models: string[] = []
 
   // DEBUG: Log incoming args to trace exclude_providers
@@ -3259,8 +3264,11 @@ function getDefaultModelForProvider(provider: string): string | null {
   return null
 }
 
-// Get models from available API keys and user preferences
-function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): string[] {
+// DEPRECATED: Legacy function - no longer called
+// Model selection now happens directly in callPerspectivesAPI() using user_api_keys.default_model
+// as the single source of truth. See lines ~1471-1524.
+// This function is kept only for reference and will be removed in a future cleanup.
+function getModelsFromApiKeysAndPreferences_DEPRECATED(apiKeys: any[], preferences: any): string[] {
   if (!apiKeys || apiKeys.length === 0) {
     console.log('[MCP] No API keys available')
     return [] // User must configure API keys in dashboard
@@ -3339,8 +3347,9 @@ function getModelsFromApiKeysAndPreferences(apiKeys: any[], preferences: any): s
   return models
 }
 
-// Get top N models directly from user's Models page (preferences), in provider order
-function getTopModelsFromPreferences(preferences: any, count: number = 3): string[] {
+// DEPRECATED: Legacy function - no longer called
+// Model selection now uses user_api_keys.default_model directly. See callPerspectivesAPI().
+function getTopModelsFromPreferences_DEPRECATED(preferences: any, count: number = 3): string[] {
   try {
     const modelPrefs = preferences?.model_preferences
     console.log('[MCP] getTopModelsFromPreferences - Input preferences:', JSON.stringify(modelPrefs, null, 2))
@@ -3404,8 +3413,9 @@ function normalizeProviderName(provider: string): string {
   return mappings[normalized] || normalized
 }
 
-// Get ordered models from new preference structure (keeping for backward compatibility)
-function getModelsFromPreferences(modelPreferences: any): string[] {
+// DEPRECATED: Legacy function - no longer called
+// Model selection now uses user_api_keys.default_model directly. See callPerspectivesAPI().
+function getModelsFromPreferences_DEPRECATED(modelPreferences: any): string[] {
   if (!modelPreferences || typeof modelPreferences !== 'object') {
     return []
   }

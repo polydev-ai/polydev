@@ -92,11 +92,49 @@ export async function POST(request: NextRequest) {
       active: true
     }
     
-    const { data: newApiKey, error } = await supabase
+    // UPSERT PATTERN: Check if entry already exists for this user+provider
+    const { data: existingEntry } = await supabase
       .from('user_api_keys')
-      .insert(keyData)
-      .select()
-      .single()
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('provider', provider)
+      .maybeSingle()
+    
+    let newApiKey
+    let error
+    
+    if (existingEntry) {
+      // UPDATE existing entry instead of creating duplicate
+      const { data, error: updateError } = await supabase
+        .from('user_api_keys')
+        .update({
+          key_name: keyData.key_name,
+          encrypted_key: keyData.encrypted_key,
+          key_preview: keyData.key_preview,
+          api_base: keyData.api_base,
+          default_model: keyData.default_model,
+          is_preferred: keyData.is_preferred,
+          monthly_budget: keyData.monthly_budget,
+          active: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingEntry.id)
+        .select()
+        .single()
+      
+      newApiKey = data
+      error = updateError
+    } else {
+      // INSERT new entry (first time for this provider)
+      const { data, error: insertError } = await supabase
+        .from('user_api_keys')
+        .insert(keyData)
+        .select()
+        .single()
+      
+      newApiKey = data
+      error = insertError
+    }
 
     if (error) {
       console.error('Error creating API key:', error)
