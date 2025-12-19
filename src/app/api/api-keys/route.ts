@@ -89,15 +89,18 @@ export async function POST(request: NextRequest) {
       is_preferred,
       monthly_budget,
       display_order: maxOrder + 1,
-      active: true
+      active: true,
+      is_admin_key: false  // User keys from dashboard are never admin keys
     }
     
-    // UPSERT PATTERN: Check if entry already exists for this user+provider
+    // UPSERT PATTERN: Check if USER entry already exists for this user+provider
+    // Only check user keys (is_admin_key = false), not admin keys
     const { data: existingEntry } = await supabase
       .from('user_api_keys')
       .select('id')
       .eq('user_id', user.id)
       .eq('provider', provider)
+      .eq('is_admin_key', false)  // Only look for user keys, not admin keys
       .maybeSingle()
     
     let newApiKey
