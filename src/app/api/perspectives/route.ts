@@ -11,6 +11,7 @@ interface GetPerspectivesRequest {
   max_messages?: number
   temperature?: number
   max_tokens?: number
+  num_perspectives?: number  // Limit to first N perspectives by priority order
   project_context?: {
     root_path?: string
     includes?: string[]
@@ -31,6 +32,27 @@ interface PerspectivesResponse {
   total_tokens?: number
   total_latency_ms?: number
   cached?: boolean
+}
+
+// Normalize provider names to match code expectations
+// Database may store "x-ai" but code expects "xai"
+function normalizeProviderName(provider: string): string {
+  const providerMap: Record<string, string> = {
+    'x-ai': 'xai',
+    'xai': 'xai',
+    'open-ai': 'openai',
+    'openai': 'openai',
+    'anthropic': 'anthropic',
+    'google': 'google',
+    'deepseek': 'deepseek',
+    'groq': 'groq',
+    'together': 'together',
+    'perplexity': 'perplexity',
+    'openrouter': 'openrouter',
+    'cerebras': 'cerebras',
+    'azure': 'azure',
+  }
+  return providerMap[provider.toLowerCase()] || provider.toLowerCase()
 }
 
 async function getUserPreferences(userId: string) {
@@ -281,7 +303,10 @@ async function getUserApiKeys(userId: string): Promise<Record<string, { key: str
     // Decrypt the key (simple base64 for now - use proper encryption in production)
     const decryptedKey = Buffer.from(key.encrypted_key, 'base64').toString('utf-8')
     
-    userKeys[key.provider] = {
+    // Normalize provider name (e.g., "x-ai" -> "xai")
+    const normalizedProvider = normalizeProviderName(key.provider)
+    
+    userKeys[normalizedProvider] = {
       key: decryptedKey,
       config: {
         api_base: key.api_base,
@@ -362,6 +387,7 @@ export async function POST(request: NextRequest) {
       max_messages = 10,
       temperature = 0.7,
       max_tokens = 2000,
+      num_perspectives,  // Limit to first N perspectives by priority
       project_context = {}
     } = body
 
@@ -462,23 +488,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine which models to use from API keys or saved chat models
+    // Store as provider+model pairs to ensure correct routing
+    let modelsWithProviders: Array<{ provider: string, model: string }> = []
     let modelsToUse = models
+    
     if (!modelsToUse && userId) {
       const supabase = await createClient()
 
       // First try: Get models from user's API keys (dashboard/models page)
       const { data: apiKeys } = await supabase
         .from('user_api_keys')
-        .select('default_model, active')
+        .select('default_model, provider, active')
         .eq('user_id', userId)
         .eq('active', true)
         .eq('is_admin_key', false)
-        .order('priority_order', { ascending: true })
+        .order('display_order', { ascending: true })
 
       if (apiKeys && apiKeys.length > 0) {
-        modelsToUse = apiKeys
-          .map(k => k.default_model)
-          .filter(Boolean) as string[]
+        // Keep provider+model pairs for correct routing
+        modelsWithProviders = apiKeys
+          .filter(k => k.default_model)
+          .map(k => ({ 
+            provider: normalizeProviderName(k.provider), 
+            model: k.default_model 
+          }))
+        
+        // Apply num_perspectives limit if specified (first N by priority order)
+        if (num_perspectives && num_perspectives > 0) {
+          modelsWithProviders = modelsWithProviders.slice(0, num_perspectives)
+        }
+        
+        modelsToUse = modelsWithProviders.map(m => m.model)
       }
 
       // Second try: Get from saved_chat_models in mcp_settings
@@ -508,40 +548,88 @@ export async function POST(request: NextRequest) {
     // Fan out to multiple models in parallel
     const modelCalls: Promise<ModelResponse>[] = []
     
-    modelsToUse.forEach(model => {
-      // OpenAI models
-      if (model.startsWith('gpt-') && availableKeys.openai) {
-        modelCalls.push(callOpenAI(enhancedPrompt, availableKeys.openai, model, { temperature, max_tokens }))
-      }
-      // Anthropic models 
-      else if (model.startsWith('claude-') && availableKeys.anthropic) {
-        modelCalls.push(callAnthropic(enhancedPrompt, availableKeys.anthropic, model, { temperature, max_tokens }))
-      }
-      // Google models
-      else if (model.startsWith('gemini-') && availableKeys.google) {
-        modelCalls.push(callGemini(enhancedPrompt, availableKeys.google, model, { temperature, max_tokens }))
-      }
-      // xAI models (OpenAI-compatible)
-      else if ((model.startsWith('grok-') || model.includes('grok')) && availableKeys.xai) {
-        modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.xai, model, 'https://api.x.ai/v1/', { temperature, max_tokens }))
-      }
-      // DeepSeek models (OpenAI-compatible)
-      else if ((model.startsWith('deepseek-') || model.includes('deep-seek') || model.includes('deepseek')) && availableKeys.deepseek) {
-        modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.deepseek, model, 'https://api.deepseek.com/v1/', { temperature, max_tokens }))
-      }
-      // Groq models (OpenAI-compatible)
-      else if ((model.includes('llama') || model.includes('mixtral') || model.includes('gemma')) && availableKeys.groq) {
-        modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.groq, model, 'https://api.groq.com/openai/v1/', { temperature, max_tokens }))
-      }
-      // Together AI models (OpenAI-compatible)
-      else if (availableKeys.together && model.includes('/')) {
-        modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.together, model, 'https://api.together.xyz/v1/', { temperature, max_tokens }))
-      }
-      // Perplexity models (OpenAI-compatible)
-      else if (model.includes('sonar') && availableKeys.perplexity) {
-        modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.perplexity, model, 'https://api.perplexity.ai/', { temperature, max_tokens }))
-      }
-    })
+    // Use provider-based routing when we have provider information
+    if (modelsWithProviders.length > 0) {
+      modelsWithProviders.forEach(({ provider, model }) => {
+        const key = availableKeys[provider]
+        if (!key) {
+          console.log(`No API key for provider: ${provider}, skipping model: ${model}`)
+          return
+        }
+        
+        switch (provider) {
+          case 'openai':
+            modelCalls.push(callOpenAI(enhancedPrompt, key, model, { temperature, max_tokens }))
+            break
+          case 'anthropic':
+            modelCalls.push(callAnthropic(enhancedPrompt, key, model, { temperature, max_tokens }))
+            break
+          case 'google':
+            modelCalls.push(callGemini(enhancedPrompt, key, model, { temperature, max_tokens }))
+            break
+          case 'xai':
+            modelCalls.push(callOpenAICompatible(enhancedPrompt, key, model, 'https://api.x.ai/v1/', { temperature, max_tokens }))
+            break
+          case 'deepseek':
+            modelCalls.push(callOpenAICompatible(enhancedPrompt, key, model, 'https://api.deepseek.com/v1/', { temperature, max_tokens }))
+            break
+          case 'groq':
+            modelCalls.push(callOpenAICompatible(enhancedPrompt, key, model, 'https://api.groq.com/openai/v1/', { temperature, max_tokens }))
+            break
+          case 'together':
+            modelCalls.push(callOpenAICompatible(enhancedPrompt, key, model, 'https://api.together.xyz/v1/', { temperature, max_tokens }))
+            break
+          case 'perplexity':
+            modelCalls.push(callOpenAICompatible(enhancedPrompt, key, model, 'https://api.perplexity.ai/', { temperature, max_tokens }))
+            break
+          case 'openrouter':
+            modelCalls.push(callOpenAICompatible(enhancedPrompt, key, model, 'https://openrouter.ai/api/v1/', { temperature, max_tokens }))
+            break
+          case 'cerebras':
+            modelCalls.push(callOpenAICompatible(enhancedPrompt, key, model, 'https://api.cerebras.ai/v1/', { temperature, max_tokens }))
+            break
+          default:
+            console.log(`Unknown provider: ${provider}, trying OpenAI-compatible format for model: ${model}`)
+            modelCalls.push(callOpenAICompatible(enhancedPrompt, key, model, 'https://api.openai.com/v1/', { temperature, max_tokens }))
+        }
+      })
+    } else {
+      // Fallback: pattern-match for models without provider info (legacy/saved_chat_models)
+      modelsToUse.forEach(model => {
+        // OpenAI models
+        if (model.startsWith('gpt-') && availableKeys.openai) {
+          modelCalls.push(callOpenAI(enhancedPrompt, availableKeys.openai, model, { temperature, max_tokens }))
+        }
+        // Anthropic models 
+        else if (model.startsWith('claude-') && availableKeys.anthropic) {
+          modelCalls.push(callAnthropic(enhancedPrompt, availableKeys.anthropic, model, { temperature, max_tokens }))
+        }
+        // Google models
+        else if (model.startsWith('gemini-') && availableKeys.google) {
+          modelCalls.push(callGemini(enhancedPrompt, availableKeys.google, model, { temperature, max_tokens }))
+        }
+        // xAI models (OpenAI-compatible)
+        else if ((model.startsWith('grok-') || model.includes('grok')) && availableKeys.xai) {
+          modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.xai, model, 'https://api.x.ai/v1/', { temperature, max_tokens }))
+        }
+        // DeepSeek models (OpenAI-compatible)
+        else if ((model.startsWith('deepseek-') || model.includes('deep-seek') || model.includes('deepseek')) && availableKeys.deepseek) {
+          modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.deepseek, model, 'https://api.deepseek.com/v1/', { temperature, max_tokens }))
+        }
+        // Groq models (OpenAI-compatible)
+        else if ((model.includes('llama') || model.includes('mixtral') || model.includes('gemma')) && availableKeys.groq) {
+          modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.groq, model, 'https://api.groq.com/openai/v1/', { temperature, max_tokens }))
+        }
+        // Together AI models (OpenAI-compatible)
+        else if (availableKeys.together && model.includes('/')) {
+          modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.together, model, 'https://api.together.xyz/v1/', { temperature, max_tokens }))
+        }
+        // Perplexity models (OpenAI-compatible)
+        else if (model.includes('sonar') && availableKeys.perplexity) {
+          modelCalls.push(callOpenAICompatible(enhancedPrompt, availableKeys.perplexity, model, 'https://api.perplexity.ai/', { temperature, max_tokens }))
+        }
+      })
+    }
 
     if (modelCalls.length === 0) {
       return NextResponse.json({ 
