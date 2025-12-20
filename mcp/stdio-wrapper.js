@@ -234,6 +234,9 @@ class StdioMCPWrapper {
       process.exit(1);
     }
     
+    // Server URL for API calls
+    this.serverUrl = 'https://www.polydev.ai/api/mcp';
+    
     // Initialize CLI Manager for local CLI functionality
     this.cliManager = new CLIManager();
     
@@ -296,7 +299,7 @@ class StdioMCPWrapper {
           // Handle get_perspectives with local CLIs + remote perspectives
           const toolName = params.name;
           
-          if (toolName === 'get_perspectives') {
+          if (toolName === 'get_perspectives' || toolName === 'polydev.get_perspectives') {
             return await this.handleGetPerspectivesWithCLIs(params, id);
           }
           
