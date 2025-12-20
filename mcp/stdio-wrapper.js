@@ -105,7 +105,7 @@ if (writableTmp) {
  * Strips: provider info, approval, sandbox, reasoning, session id, MCP errors, etc.
  * 
  * Codex CLI output structure:
- *   [metadata] → user → [echoed prompt] → thinking → [status] → codex → [RESPONSE]
+ *   [metadata] → user → [echoed prompt] → thinking → [status] → codex → [RESPONSE] → tokens used → [count]
  * 
  * Claude Code output structure:
  *   [may include JSON or plain text response]
@@ -119,7 +119,7 @@ function cleanCliResponse(content) {
   const cleanedLines = [];
   
   // State machine for Codex CLI output parsing
-  // States: 'metadata' | 'user_section' | 'thinking_section' | 'response'
+  // States: 'metadata' | 'user_section' | 'thinking_section' | 'response' | 'footer'
   let state = 'metadata';
   let foundCodexMarker = false;
   
@@ -127,11 +127,16 @@ function cleanCliResponse(content) {
     const line = lines[i];
     const trimmed = line.trim();
     
-    // Always skip MCP errors anywhere
+    // Always skip these patterns anywhere in the output
     if (trimmed.startsWith('ERROR: MCP client for')) continue;
     if (trimmed.includes('failed to start') && trimmed.includes('MCP')) continue;
     if (trimmed.includes('handshake') && trimmed.includes('failed')) continue;
     if (trimmed.includes('connection closed')) continue;
+    if (trimmed.startsWith('mcp:')) continue;  // MCP startup logs
+    if (trimmed.startsWith('mcp startup:')) continue;  // MCP startup summary
+    if (trimmed.includes('rmcp::transport')) continue;  // RMCP transport errors
+    if (trimmed.includes('ERROR rmcp')) continue;
+    if (trimmed.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) continue;  // Timestamp logs
     
     // State: metadata - skip until we hit a section marker
     if (state === 'metadata') {
@@ -186,13 +191,7 @@ function cleanCliResponse(content) {
         foundCodexMarker = true;
         continue;
       }
-      // Skip MCP startup logs (mcp: xxx starting/ready/failed)
-      if (trimmed.startsWith('mcp:')) continue;
-      if (trimmed.startsWith('mcp startup:')) continue;
-      // Skip RMCP transport errors
-      if (trimmed.includes('rmcp::transport')) continue;
-      if (trimmed.includes('ERROR rmcp')) continue;
-      // Skip everything in user section (echoed prompt, errors)
+      // Skip everything in user section (echoed prompt)
       continue;
     }
     
@@ -209,15 +208,23 @@ function cleanCliResponse(content) {
     
     // State: response - keep actual response content
     if (state === 'response') {
-      // Skip footer patterns
-      if (trimmed === 'tokens used') continue;
-      if (trimmed.match(/^[\d,]+$/) && i === lines.length - 1) continue; // Token count at end
+      // Transition to footer when we see "tokens used"
+      if (trimmed === 'tokens used') {
+        state = 'footer';
+        continue;
+      }
       
-      // Skip any remaining bold status markers
+      // Skip any bold status markers like **Processing...**
       if (trimmed.match(/^\*\*.*\*\*$/)) continue;
       
-      // Keep this line
+      // Keep this line - it's the actual response
       cleanedLines.push(line);
+    }
+    
+    // State: footer - skip token count and anything after
+    if (state === 'footer') {
+      // Skip everything in footer (token counts, etc.)
+      continue;
     }
   }
   
