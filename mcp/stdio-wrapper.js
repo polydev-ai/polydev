@@ -848,7 +848,9 @@ class StdioMCPWrapper {
         max_tokens: args.max_tokens || 20000
       };
 
-      const response = await fetch(`${this.serverUrl.replace('/mcp', '')}/api/mcp/report-cli-results`, {
+      // serverUrl is 'https://www.polydev.ai/api/mcp'
+      // We need 'https://www.polydev.ai/api/mcp/report-cli-results'
+      const response = await fetch(`${this.serverUrl}/report-cli-results`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.userToken}`,
