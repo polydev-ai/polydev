@@ -845,6 +845,17 @@ function handleToolsList(id: string) {
             items: { type: 'string' },
             description: 'Array of provider names to exclude (e.g., ["anthropic", "openai"]) - used when local CLIs already returned results for these providers'
           },
+          request_providers: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                provider: { type: 'string', description: 'Provider name (e.g., "x-ai", "cerebras", "groq")' },
+                model: { type: 'string', description: 'Specific model to use for this provider' }
+              }
+            },
+            description: 'Array of specific providers to request perspectives from (used for API-only providers that have no CLI)'
+          },
           cli_responses: {
             type: 'array',
             items: {
@@ -1584,6 +1595,45 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         reason: 'all_providers_handled_locally',
         excluded_providers: args.exclude_providers
       })
+    }
+  }
+
+  // Handle request_providers parameter - prioritize specific providers for API-only perspectives
+  // This is used when stdio-wrapper needs perspectives from providers without CLI support
+  if (args.request_providers && Array.isArray(args.request_providers) && args.request_providers.length > 0) {
+    console.log(`[MCP] Prioritizing requested providers:`, args.request_providers)
+    
+    const requestedModels: string[] = []
+    
+    for (const reqProvider of args.request_providers) {
+      const providerLower = reqProvider.provider?.toLowerCase()
+      
+      // If a specific model is requested, use that
+      if (reqProvider.model) {
+        // Check if this model exists in user's API keys
+        const hasKey = apiKeys?.find(k => k.default_model === reqProvider.model)
+        if (hasKey) {
+          requestedModels.push(reqProvider.model)
+          console.log(`[MCP] Added requested model: ${reqProvider.model} (provider: ${providerLower})`)
+        } else {
+          console.log(`[MCP] Requested model ${reqProvider.model} not found in user's API keys`)
+        }
+      } else {
+        // Find any model from this provider
+        const providerKey = apiKeys?.find(k => k.provider?.toLowerCase() === providerLower)
+        if (providerKey?.default_model) {
+          requestedModels.push(providerKey.default_model)
+          console.log(`[MCP] Added model for provider ${providerLower}: ${providerKey.default_model}`)
+        } else {
+          console.log(`[MCP] No API key found for provider: ${providerLower}`)
+        }
+      }
+    }
+    
+    // If we found requested models, use those instead of the general models list
+    if (requestedModels.length > 0) {
+      console.log(`[MCP] Using ${requestedModels.length} specifically requested models:`, requestedModels)
+      models = requestedModels
     }
   }
 
@@ -3271,7 +3321,7 @@ async function handleSelectModelsInteractive(args: any, user: any, request: Next
 // Helper function to get default model for a provider
 // Returns null if no default_model is configured - user must set it in dashboard/models
 function getDefaultModelForProvider(provider: string): string | null {
-  // No hardcoded defaults - user must configure default_model in dashboard/models
+  // No hardcoded defaults - user must configure default_model in dashboard
   return null
 }
 

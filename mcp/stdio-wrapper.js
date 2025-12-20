@@ -566,6 +566,7 @@ class StdioMCPWrapper {
   /**
    * Local CLI prompt sending with ALL available CLIs + remote perspectives
    * Respects user's perspectives_per_message setting for total perspectives
+   * Uses allProviders from dashboard - tries CLI first, falls back to API
    */
   async localSendCliPrompt(args) {
     console.error(`[Stdio Wrapper] Local CLI prompt sending with perspectives`);
@@ -587,7 +588,7 @@ class StdioMCPWrapper {
       const gracefulTimeout = Math.min(timeout_ms, 600000);
 
       // Fetch user's model preferences (cached, non-blocking on failure)
-      // This also fetches perspectivesPerMessage setting
+      // This also fetches perspectivesPerMessage setting and allProviders list
       let modelPreferences = {};
       try {
         modelPreferences = await this.fetchUserModelPreferences();
@@ -613,48 +614,85 @@ class StdioMCPWrapper {
         const result = await this.cliManager.sendCliPrompt(provider_id, prompt, mode, gracefulTimeout, model);
         localResults = [{ provider_id, ...result }];
       } else {
-        // No specific provider - use providers in user's preferred order
-        // Mix CLI (where available) + API fallback (where CLI unavailable)
-        console.error(`[Stdio Wrapper] Using providers in user's preferred order (max: ${maxPerspectives})`);
-        const { available: availableClis, unavailable: unavailableClis } = await this.getAllAvailableProviders();
+        // No specific provider - use allProviders from dashboard in order
+        // For each provider: try CLI first if available, otherwise use API
+        console.error(`[Stdio Wrapper] Using allProviders from dashboard (max: ${maxPerspectives})`);
         
-        // Build ordered list: use CLI if available, otherwise mark for API fallback
-        const userOrder = this.userProviderOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
-        const providersToUse = userOrder.slice(0, maxPerspectives);
+        // Get available CLIs for checking
+        const { available: availableClis } = await this.getAllAvailableProviders();
+        console.error(`[Stdio Wrapper] Available CLIs: ${availableClis.join(', ') || 'none'}`);
         
-        // Separate into CLI vs API fallback
-        const cliProviders = providersToUse.filter(p => availableClis.includes(p));
-        const apiProviders = providersToUse.filter(p => unavailableClis.includes(p));
+        // Use allProviders from API (full list including API-only providers)
+        // Falls back to CLI-only providers if allProviders not available
+        const allProviders = this.allProviders || [];
         
-        console.error(`[Stdio Wrapper] Provider breakdown: CLI=${cliProviders.join(', ') || 'none'}, API fallback=${apiProviders.join(', ') || 'none'}`);
-        
-        if (cliProviders.length === 0 && apiProviders.length === 0) {
-          console.error(`[Stdio Wrapper] No providers available, will use remote perspectives only`);
-          localResults = [];
-        } else {
-          console.error(`[Stdio Wrapper] Using ${cliProviders.length} CLIs + ${apiProviders.length} API fallbacks`);
+        if (allProviders.length === 0) {
+          // Fallback: use legacy CLI-only flow
+          console.error(`[Stdio Wrapper] No allProviders, using legacy CLI-only flow`);
+          const userOrder = this.userProviderOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
+          const cliProviders = userOrder.slice(0, maxPerspectives).filter(p => availableClis.includes(p));
           
-          // Run all CLI prompts concurrently
           const cliPromises = cliProviders.map(async (providerId) => {
             try {
               const model = modelPreferences[providerId] || null;
-              if (model) {
-                console.error(`[Stdio Wrapper] Using user's preferred model for ${providerId}: ${model}`);
-              }
               const result = await this.cliManager.sendCliPrompt(providerId, prompt, mode, gracefulTimeout, model);
               return { provider_id: providerId, ...result };
             } catch (error) {
-              console.error(`[Stdio Wrapper] CLI ${providerId} failed:`, error.message);
-              return {
-                provider_id: providerId,
-                success: false,
-                error: error.message,
-                latency_ms: gracefulTimeout
-              };
+              return { provider_id: providerId, success: false, error: error.message };
             }
           });
-
           localResults = await Promise.all(cliPromises);
+        } else {
+          // NEW: Use allProviders list (includes CLI + API-only providers)
+          const providersToUse = allProviders.slice(0, maxPerspectives);
+          console.error(`[Stdio Wrapper] Using ${providersToUse.length} providers from dashboard`);
+          
+          // Separate into CLI providers vs API-only providers
+          const cliProviderEntries = [];
+          const apiOnlyProviders = [];
+          
+          for (const p of providersToUse) {
+            if (p.cliId && availableClis.includes(p.cliId)) {
+              // Has CLI and CLI is available
+              cliProviderEntries.push(p);
+            } else {
+              // No CLI or CLI unavailable - needs API
+              apiOnlyProviders.push(p);
+            }
+          }
+          
+          console.error(`[Stdio Wrapper] Provider breakdown: CLI=${cliProviderEntries.map(p => p.cliId).join(', ') || 'none'}, API-only=${apiOnlyProviders.map(p => p.provider).join(', ') || 'none'}`);
+          
+          // Run all CLI prompts concurrently
+          if (cliProviderEntries.length > 0) {
+            const cliPromises = cliProviderEntries.map(async (providerEntry) => {
+              try {
+                const model = providerEntry.model || modelPreferences[providerEntry.cliId] || null;
+                if (model) {
+                  console.error(`[Stdio Wrapper] Using model for ${providerEntry.cliId}: ${model}`);
+                }
+                const result = await this.cliManager.sendCliPrompt(providerEntry.cliId, prompt, mode, gracefulTimeout, model);
+                return { 
+                  provider_id: providerEntry.cliId, 
+                  original_provider: providerEntry.provider,
+                  ...result 
+                };
+              } catch (error) {
+                console.error(`[Stdio Wrapper] CLI ${providerEntry.cliId} failed:`, error.message);
+                return {
+                  provider_id: providerEntry.cliId,
+                  original_provider: providerEntry.provider,
+                  success: false,
+                  error: error.message,
+                  latency_ms: gracefulTimeout
+                };
+              }
+            });
+            localResults = await Promise.all(cliPromises);
+          }
+          
+          // Store API-only providers info for remote API call
+          this._apiOnlyProviders = apiOnlyProviders;
         }
       }
 
@@ -665,15 +703,26 @@ class StdioMCPWrapper {
 
       // Calculate how many successful local perspectives we got
       const successfulLocalCount = localResults.filter(r => r.success).length;
-      const remainingPerspectives = maxPerspectives - successfulLocalCount;
+      const failedCliCount = localResults.filter(r => !r.success).length;
+      
+      // Need API for: API-only providers + failed CLIs
+      const apiOnlyCount = (this._apiOnlyProviders || []).length;
+      const remainingPerspectives = apiOnlyCount + failedCliCount;
 
-      // Get remote perspectives only if we need more perspectives to reach maxPerspectives
+      // Get remote perspectives for API-only providers and failed CLIs
       let perspectivesResult;
       if (remainingPerspectives > 0) {
-        console.error(`[Stdio Wrapper] Need ${remainingPerspectives} more perspectives from remote`);
-        perspectivesResult = await this.callPerspectivesForCli(args, localResults, remainingPerspectives);
+        console.error(`[Stdio Wrapper] Need ${remainingPerspectives} perspectives from remote API (${apiOnlyCount} API-only + ${failedCliCount} failed CLIs)`);
+        
+        // Pass API-only provider info to help remote API choose correct models
+        const apiProvidersInfo = (this._apiOnlyProviders || []).map(p => ({
+          provider: p.provider,
+          model: p.model
+        }));
+        
+        perspectivesResult = await this.callPerspectivesForCli(args, localResults, remainingPerspectives, apiProvidersInfo);
       } else {
-        console.error(`[Stdio Wrapper] Already have ${successfulLocalCount} perspectives, skipping remote call`);
+        console.error(`[Stdio Wrapper] Already have ${successfulLocalCount} perspectives from CLIs, skipping remote call`);
         perspectivesResult = {
           success: true,
           content: '',
@@ -859,8 +908,9 @@ class StdioMCPWrapper {
    * @param {Object} args - Original request arguments
    * @param {Array} localResults - Results from local CLIs
    * @param {number} maxPerspectives - Maximum number of remote perspectives to fetch
+   * @param {Array} apiProvidersInfo - Optional array of API-only providers to request (from allProviders)
    */
-  async callPerspectivesForCli(args, localResults, maxPerspectives = 2) {
+  async callPerspectivesForCli(args, localResults, maxPerspectives = 2, apiProvidersInfo = []) {
     // Determine which providers succeeded locally
     const successfulLocalProviders = localResults
       .filter(r => r.success)
@@ -877,21 +927,25 @@ class StdioMCPWrapper {
       .map(cli => cliToApiProvider[cli])
       .filter(Boolean);
     
-    // If all major providers are covered locally OR we don't need more perspectives, skip remote call
-    if (maxPerspectives <= 0 ||
-        excludeProviders.length >= 3 || 
-        (excludeProviders.includes('anthropic') && excludeProviders.includes('openai') && excludeProviders.includes('google'))) {
-      console.error(`[Stdio Wrapper] All providers covered by local CLIs or max perspectives reached, skipping remote perspectives`);
+    // If we don't need any perspectives, skip remote call
+    if (maxPerspectives <= 0) {
+      console.error(`[Stdio Wrapper] Max perspectives is 0, skipping remote perspectives`);
       return {
         success: true,
         content: '',
         skipped: true,
-        reason: 'All providers covered by local CLIs or max perspectives reached',
+        reason: 'No perspectives needed',
         timestamp: new Date().toISOString()
       };
     }
     
-    console.error(`[Stdio Wrapper] Calling remote perspectives (excluding: ${excludeProviders.join(', ') || 'none'}, max: ${maxPerspectives})`);
+    // Build list of specific providers to request (from API-only providers)
+    const requestProviders = apiProvidersInfo.map(p => ({
+      provider: p.provider,
+      model: p.model
+    }));
+    
+    console.error(`[Stdio Wrapper] Calling remote perspectives (excluding: ${excludeProviders.join(', ') || 'none'}, requesting: ${requestProviders.map(p => p.provider).join(', ') || 'any'}, max: ${maxPerspectives})`);
     
     // Format CLI responses for logging on the server
     const cliResponses = localResults.map(result => ({
@@ -915,6 +969,8 @@ class StdioMCPWrapper {
             user_token: this.userToken,
             // Exclude providers that succeeded locally
             exclude_providers: excludeProviders,
+            // NEW: Specific providers to request (from API-only list)
+            request_providers: requestProviders.length > 0 ? requestProviders : undefined,
             // Pass CLI responses for dashboard logging
             cli_responses: cliResponses,
             // Limit remote perspectives to what we need
@@ -1387,7 +1443,7 @@ class StdioMCPWrapper {
   /**
    * Fetch user's model preferences from API keys
    * Returns a map of CLI provider -> default_model
-   * Also fetches and caches perspectivesPerMessage setting
+   * Also fetches and caches perspectivesPerMessage setting and allProviders list
    */
   async fetchUserModelPreferences() {
     // Check cache first
@@ -1433,8 +1489,13 @@ class StdioMCPWrapper {
         // IMPORTANT: This is cached alongside modelPreferences and restored when cache is used
         this.userProviderOrder = result.providerOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
         
+        // NEW: Cache full list of all providers (CLI + API-only) from dashboard
+        // Format: [{ provider: 'openai', model: 'gpt-52-codex', cliId: 'codex_cli' }, { provider: 'x-ai', model: 'grok-4', cliId: null }, ...]
+        this.allProviders = result.allProviders || [];
+        
         console.error('[Stdio Wrapper] Model preferences loaded:', JSON.stringify(result.modelPreferences));
         console.error('[Stdio Wrapper] Provider order:', JSON.stringify(this.userProviderOrder));
+        console.error('[Stdio Wrapper] All providers:', JSON.stringify(this.allProviders));
         console.error('[Stdio Wrapper] Perspectives per message:', this.perspectivesPerMessage);
         return result.modelPreferences;
       } else {

@@ -80,8 +80,7 @@ export async function GET(request: NextRequest) {
     // Get perspectives_per_message from user settings (default 2, range 1-10)
     const perspectivesPerMessage = (userPrefs?.mcp_settings as any)?.perspectives_per_message || 2
 
-    // Build provider -> model mapping
-    // Maps provider names to CLI tool IDs
+    // Maps provider names to CLI tool IDs (only these have local CLI support)
     const providerToCliMap: Record<string, string> = {
       'anthropic': 'claude_code',
       'anthropic-ai': 'claude_code',
@@ -93,32 +92,53 @@ export async function GET(request: NextRequest) {
 
     const modelPreferences: Record<string, string> = {}
     const providerOrder: string[] = [] // CLI provider IDs in user's display_order
+    
+    // NEW: Full list of all providers (CLI + API-only) in user's order
+    // Each entry: { provider: string, model: string, cliId: string | null }
+    const allProviders: Array<{ provider: string; model: string; cliId: string | null }> = []
+    const seenProviders = new Set<string>() // Track unique providers
 
     for (const key of apiKeys || []) {
       if (key.provider && key.default_model) {
         const providerLower = key.provider.toLowerCase()
-        const cliId = providerToCliMap[providerLower]
+        
+        // Skip duplicate providers (keep first occurrence per display_order)
+        if (seenProviders.has(providerLower)) {
+          continue
+        }
+        seenProviders.add(providerLower)
+        
+        const cliId = providerToCliMap[providerLower] || null
+
+        // Add to allProviders list (includes API-only providers)
+        allProviders.push({
+          provider: providerLower,
+          model: key.default_model,
+          cliId: cliId
+        })
 
         if (cliId) {
-          // Track the order of CLI providers (respects display_order from query)
+          // Track CLI providers separately for backwards compatibility
           if (!providerOrder.includes(cliId)) {
             providerOrder.push(cliId)
           }
           
           if (!modelPreferences[cliId]) {
-            // Only set the first match (respects display_order)
             modelPreferences[cliId] = key.default_model
           }
         }
       }
     }
 
-    console.log('[Model Preferences] Returning preferences:', modelPreferences, 'providerOrder:', providerOrder, 'perspectives_per_message:', perspectivesPerMessage)
+    console.log('[Model Preferences] Returning preferences:', modelPreferences)
+    console.log('[Model Preferences] All providers:', allProviders)
+    console.log('[Model Preferences] perspectives_per_message:', perspectivesPerMessage)
 
     return NextResponse.json({
       success: true,
       modelPreferences,
-      providerOrder, // CLI provider IDs in user's preferred order from dashboard
+      providerOrder, // CLI provider IDs only (backwards compatibility)
+      allProviders,  // NEW: Full list of all providers with CLI info
       perspectivesPerMessage,
       timestamp: new Date().toISOString()
     })
