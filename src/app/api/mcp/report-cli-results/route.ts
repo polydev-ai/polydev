@@ -155,12 +155,13 @@ export async function POST(request: NextRequest) {
       .from('mcp_request_logs')
       .insert({
         user_id: userId,
+        client_id: 'cli',  // Required NOT NULL field
         prompt: body.prompt,
         prompt_tokens: Math.floor(body.prompt.length / 4),
         max_tokens_requested: body.max_tokens || 20000,
         temperature: body.temperature || 0.7,
         models_requested: modelsRequested,
-        provider_requests: body.cli_results.length,
+        provider_requests: {},  // jsonb field, not integer
         total_completion_tokens: totalTokens,
         total_prompt_tokens: Math.floor(body.prompt.length / 4) * successCount,
         total_tokens: totalTokens,
@@ -176,7 +177,7 @@ export async function POST(request: NextRequest) {
         failed_providers: failedCount,
         store_responses: true,
         provider_responses: providerResponses,
-        source: 'cli',  // Mark entire request as CLI source
+        source_type: 'cli',  // Correct column name (not 'source')
         created_at: new Date().toISOString()
       })
 
