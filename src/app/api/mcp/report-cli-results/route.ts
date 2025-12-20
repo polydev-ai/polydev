@@ -123,7 +123,8 @@ export async function POST(request: NextRequest) {
       providerResponses[responseKey] = {
         model: result.model,
         provider: providerInfo.provider,
-        display_name: providerInfo.displayName,
+        // Show both provider/CLI tool AND model name for clarity
+        display_name: `${providerInfo.displayName} (${result.model})`,
         content: result.content,
         tokens_used: result.tokens_used || 0,
         latency_ms: result.latency_ms || 0,
