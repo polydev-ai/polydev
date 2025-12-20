@@ -186,6 +186,12 @@ function cleanCliResponse(content) {
         foundCodexMarker = true;
         continue;
       }
+      // Skip MCP startup logs (mcp: xxx starting/ready/failed)
+      if (trimmed.startsWith('mcp:')) continue;
+      if (trimmed.startsWith('mcp startup:')) continue;
+      // Skip RMCP transport errors
+      if (trimmed.includes('rmcp::transport')) continue;
+      if (trimmed.includes('ERROR rmcp')) continue;
       // Skip everything in user section (echoed prompt, errors)
       continue;
     }
@@ -804,10 +810,11 @@ class StdioMCPWrapper {
 
   /**
    * Report CLI results to server for dashboard storage
-   * This stores CLI results in Supabase so they appear in the dashboard
+   * This stores ONLY SUCCESSFUL CLI results in Supabase so they appear in the dashboard
+   * Failed CLI results are not stored - they will get API fallback instead
    */
   async reportCliResultsToServer(prompt, localResults, args = {}) {
-    // Only report if we have successful CLI results
+    // Only report successful CLI results (failed ones will get API fallback)
     const successfulResults = localResults.filter(r => r.success);
     if (successfulResults.length === 0) {
       console.error('[Stdio Wrapper] No successful CLI results to report');
@@ -820,11 +827,14 @@ class StdioMCPWrapper {
     }
 
     try {
-      const cliResults = localResults.map(result => ({
+      // IMPORTANT: Only send successful results to dashboard
+      // Failed CLI results will have API fallback, so we don't want to show both
+      const cliResults = successfulResults.map(result => ({
         provider_id: result.provider_id,
         // IMPORTANT: cliManager returns model_used, not model
         model: result.model_used || result.model || this.getModelPreferenceForCli(result.provider_id),
-        content: result.content || '',
+        // Clean the content before sending to dashboard (remove metadata, MCP logs, etc.)
+        content: cleanCliResponse(result.content || ''),
         tokens_used: result.tokens_used || 0,
         latency_ms: result.latency_ms || 0,
         success: result.success || false,
