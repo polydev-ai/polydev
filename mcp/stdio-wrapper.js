@@ -814,7 +814,7 @@ class StdioMCPWrapper {
    * Failed CLI results are not stored - they will get API fallback instead
    */
   async reportCliResultsToServer(prompt, localResults, args = {}) {
-    // Only report successful CLI results (failed ones will get API fallback)
+    // Only report successful results to dashboard
     const successfulResults = localResults.filter(r => r.success);
     if (successfulResults.length === 0) {
       console.error('[Stdio Wrapper] No successful CLI results to report');
@@ -960,11 +960,13 @@ class StdioMCPWrapper {
     
     console.error(`[Stdio Wrapper] Calling remote perspectives (excluding: ${excludeProviders.join(', ') || 'none'}, requesting: ${requestProviders.map(p => p.provider).join(', ') || 'any'}, max: ${maxPerspectives})`);
     
-    // Format CLI responses for logging on the server
-    const cliResponses = localResults.map(result => ({
+    // Format ONLY SUCCESSFUL CLI responses for logging on the server
+    // Failed CLI results should not be sent - they will get API fallback
+    const successfulCliResults = localResults.filter(r => r.success);
+    const cliResponses = successfulCliResults.map(result => ({
       provider_id: result.provider_id,
       model: result.model_used || this.getDefaultModelForCli(result.provider_id),
-      content: result.content || '',
+      content: cleanCliResponse(result.content || ''),
       tokens_used: result.tokens_used || 0,
       latency_ms: result.latency_ms || 0,
       success: result.success || false,
