@@ -770,7 +770,8 @@ class StdioMCPWrapper {
     try {
       const cliResults = localResults.map(result => ({
         provider_id: result.provider_id,
-        model: result.model || this.getDefaultModelForCli(result.provider_id),
+        // IMPORTANT: cliManager returns model_used, not model
+        model: result.model_used || result.model || this.getModelPreferenceForCli(result.provider_id),
         content: result.content || '',
         tokens_used: result.tokens_used || 0,
         latency_ms: result.latency_ms || 0,
@@ -811,20 +812,45 @@ class StdioMCPWrapper {
   }
 
   /**
+   * Get model preference for a CLI provider from cached user preferences
+   * Falls back to a descriptive default if not available
+   */
+  getModelPreferenceForCli(providerId) {
+    // Try to get from cached user model preferences first
+    if (this.userModelPreferences && this.userModelPreferences[providerId]) {
+      return this.userModelPreferences[providerId];
+    }
+    
+    // Map CLI provider to API provider for lookup
+    const cliToApiProvider = {
+      'claude_code': 'anthropic',
+      'codex_cli': 'openai',
+      'gemini_cli': 'google'
+    };
+    
+    const apiProvider = cliToApiProvider[providerId];
+    if (apiProvider && this.userModelPreferences && this.userModelPreferences[apiProvider]) {
+      return this.userModelPreferences[apiProvider];
+    }
+    
+    // Fallback to descriptive defaults based on typical CLI models
+    const defaults = {
+      'claude_code': 'claude-sonnet-4',
+      'codex_cli': 'gpt-4.1',
+      'gemini_cli': 'gemini-2.5-pro'
+    };
+    return defaults[providerId] || 'unknown';
+  }
+
+  /**
    * Get default model name for a CLI tool (used when model not specified in result)
    * These are just display labels - actual model selection is done by:
    * 1. User's configured default_model in dashboard API keys
    * 2. CLI tool's own default if no preference set
    */
   getDefaultModelForCli(providerId) {
-    // Return a display label indicating CLI default was used
-    // The actual model depends on the CLI tool's configuration
-    const defaults = {
-      'claude_code': 'CLI Default',
-      'codex_cli': 'CLI Default',
-      'gemini_cli': 'CLI Default'
-    };
-    return defaults[providerId] || 'CLI Default';
+    // Prefer user's model preference if available
+    return this.getModelPreferenceForCli(providerId);
   }
 
   /**
