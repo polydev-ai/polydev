@@ -1507,9 +1507,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       order: k.display_order
     })))
 
-    const sortedKeys = afterSort.slice(0, maxModels)
+    // IMPORTANT: Don't slice here! We need all models available for exclude_providers filtering
+    // The slice will happen AFTER exclude_providers filter to ensure we get the right count
+    const sortedKeys = afterSort // No slice - take all models
 
-    console.log(`[MCP DEBUG] After slice(0, ${maxModels}):`, sortedKeys.map(k => ({
+    console.log(`[MCP DEBUG] All sorted keys (no slice yet, will slice after exclude filter):`, sortedKeys.map(k => ({
       provider: k.provider,
       model: k.default_model,
       order: k.display_order
@@ -1517,7 +1519,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
     models = sortedKeys.map(key => key.default_model)
 
-    console.log(`[MCP] Using models from API keys (top ${maxModels}, ordered by display_order):`, models)
+    console.log(`[MCP] All models from API keys (ordered by display_order, will be filtered and sliced later):`, models)
     console.log(`[MCP] API key display orders:`, sortedKeys.map(k => ({
       model: k.default_model,
       provider: k.provider,
@@ -1584,6 +1586,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       })
     }
   }
+
+  // NOW apply the slice to limit to maxModels (perspectivesPerMessage)
+  // This happens AFTER exclude_providers filtering to ensure we get the right count
+  if (models.length > perspectivesPerMessage) {
+    console.log(`[MCP] Slicing models to perspectivesPerMessage (${perspectivesPerMessage}): ${models.length} → ${perspectivesPerMessage}`)
+    models = models.slice(0, perspectivesPerMessage)
+  }
+  console.log(`[MCP] Final models after slice: ${models.length} models:`, models)
 
   // Fetch default max_tokens from admin config
   let defaultMaxTokens = 20000 // Default 20K tokens for comprehensive responses
@@ -2683,7 +2693,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     //     statusDisplay += ` | Lifetime spent: ${lifetimeSpent.toFixed(3)} credits`
         
     //     // Calculate cost for this specific request with 10% markup
-    //     const requestCosts = responses
+    //     const requestCosts = successfulResponses
     //       .filter(r => !r.error && r.tokens_used)
     //       .map(r => {
     //         const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
