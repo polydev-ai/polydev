@@ -72,7 +72,7 @@ async function executeCliCommand(
   provider: 'claude_code' | 'codex_cli' | 'gemini_cli',
   prompt: string,
   model?: string,
-  timeoutMs: number = 60000
+  timeoutMs: number = 90000 // 90 seconds for CLI-within-CLI scenarios
 ): Promise<CLICommandResult> {
   const startTime = Date.now()
   const config = CLI_CONFIGS[provider]

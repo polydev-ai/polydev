@@ -595,12 +595,13 @@ class MCPServer {
     console.log('[MCP Server] Send CLI prompt requested');
     
     try {
-      const { provider_id, prompt, mode = 'args', timeout_ms = 30000, user_id } = args;
-      
+      const { provider_id, prompt, mode = 'args', timeout_ms = 90000, user_id } = args;
+
       // Ensure timeout_ms is valid (not undefined, null, Infinity, or negative)
+      // 90 seconds default for CLI-within-CLI scenarios (Claude Code calling Claude Code)
       let validTimeout = timeout_ms;
-      if (!validTimeout || validTimeout === Infinity || validTimeout < 1 || validTimeout > 300000) {
-        validTimeout = 30000 // Default to 30 seconds
+      if (!validTimeout || validTimeout === Infinity || validTimeout < 1 || validTimeout > 600000) {
+        validTimeout = 90000 // Default to 90 seconds for CLI responses
       }
       
       if (!provider_id || !prompt) {

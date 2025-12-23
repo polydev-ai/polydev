@@ -370,10 +370,10 @@
           },
           "timeout_ms": {
             "type": "integer",
-            "description": "Timeout in milliseconds",
+            "description": "Timeout in milliseconds (90 seconds default for CLI-within-CLI scenarios)",
             "minimum": 1000,
-            "maximum": 300000,
-            "default": 30000
+            "maximum": 600000,
+            "default": 90000
           },
           "user_id": {
             "type": "string",

@@ -1,6 +1,6 @@
 {
   "name": "polydev-ai",
-  "version": "1.8.31",
+  "version": "1.8.32",
   "description": "Agentic workflow assistant with CLI integration - get diverse perspectives from multiple LLMs when stuck or need enhanced reasoning",
   "keywords": [
     "mcp",
@@ -16,7 +16,7 @@
   "author": "Polydev AI",
   "license": "MIT",
   "private": false,
-  "main": "mcp/server.js",
+  "main": "mcp/stdio-wrapper.js",
   "bin": {
     "polydev-stdio": "mcp/stdio-wrapper.js"
   },
@@ -43,7 +43,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/polydev-ai/perspectives-mcp.git"
+    "url": "git+https://github.com/polydev-ai/perspectives-mcp.git"
   },
   "homepage": "https://polydev.ai",
   "bugs": {

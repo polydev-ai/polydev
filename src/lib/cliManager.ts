@@ -53,9 +53,9 @@ export class CLIManager {
       {
         id: 'claude_code',
         name: 'Claude Code',
-        command: process.env.CLAUDE_CODE_PATH || 'claude',
+        command: process.env.CLAUDE_CODE_PATH || '/Users/puji/.local/bin/claude',
         subcommands: {
-          chat: ['chat'],
+          chat: ['-p'],
           version: ['--version'],
           auth_status: ['auth', 'status']
         },
@@ -252,11 +252,12 @@ export class CLIManager {
     providerId: string,
     prompt: string,
     mode: 'stdin' | 'args' = 'args',
-    timeoutMs: number = 30000
+    timeoutMs: number = 90000
   ): Promise<CLIResponse> {
     // Ensure timeoutMs is valid (not undefined, null, Infinity, or negative)
-    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
-      timeoutMs = 30000 // Default to 30 seconds
+    // 90 seconds default for CLI-within-CLI scenarios (Claude Code calling Claude Code)
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 600000) {
+      timeoutMs = 90000 // Default to 90 seconds for CLI responses
     }
     
     const startTime = Date.now();
@@ -351,12 +352,13 @@ export class CLIManager {
     command: string,
     args: string[],
     mode: 'stdin' | 'args' = 'args',
-    timeoutMs: number = 30000,
+    timeoutMs: number = 90000,
     stdinInput?: string
   ): Promise<{ stdout: string; stderr: string; error?: string }> {
     // Ensure timeoutMs is valid (not undefined, null, Infinity, or negative)
-    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
-      timeoutMs = 30000 // Default to 30 seconds
+    // 90 seconds default for CLI-within-CLI scenarios
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 600000) {
+      timeoutMs = 90000 // Default to 90 seconds
     }
     
     return new Promise((resolve, reject) => {
