@@ -9,15 +9,15 @@ interface ApiKey {
   id: string
   provider: string
   key_preview: string
-  display_order?: number
+  encrypted_key: string | null
   active: boolean
-  default_model?: string
   api_base?: string
-  encrypted_key?: string | null
+  default_model?: string
   is_preferred?: boolean
   is_primary?: boolean
   monthly_budget?: number
-  created_at?: string
+  display_order?: number
+  created_at: string
   last_used_at?: string
 }
 
