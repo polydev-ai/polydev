@@ -304,11 +304,11 @@ export default function MCPToolsPage() {
             <pre className="bg-slate-100 border border-slate-200 rounded p-3 overflow-x-auto text-xs">
 {`{
   "mcpServers": {
-    "polydev-perspectives": {
-      "command": "node",
-      "args": ["/path/to/polydev/mcp/server.js"],
+    "polydev": {
+      "command": "npx",
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
-        "POLYDEV_API_URL": "https://polydev.ai/api/perspectives"
+        "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
     }
   }
@@ -322,10 +322,7 @@ export default function MCPToolsPage() {
 {`{
   "name": "get_perspectives",
   "arguments": {
-    "prompt": "I'm stuck debugging this React performance issue. The component re-renders too often but I can't identify the cause.",
-    "user_token": "poly_your_generated_token_here",
-    "models": ["gpt-4", "claude-3-sonnet", "gemini-pro"],
-    "project_memory": "light"
+    "prompt": "I'm stuck debugging this React performance issue. The component re-renders too often but I can't identify the cause."
   }
 }`}
             </pre>

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { ChevronUp, ChevronDown, Terminal, Key, Crown, Info, Workflow, Settings } from 'lucide-react'
+import { useState, useCallback, useMemo } from 'react'
+import { ChevronUp, ChevronDown, ChevronRight, Terminal, Key, Coins, Info, Sparkles, Check, Zap, AlertCircle, Crown, Edit3, Plus, Trash2 } from 'lucide-react'
 import { usePreferences } from '../hooks/usePreferences'
 import { useDebouncedCallback } from 'use-debounce'
 
@@ -9,15 +9,15 @@ interface ApiKey {
   id: string
   provider: string
   key_preview: string
-  display_order?: number
+  encrypted_key: string | null
   active: boolean
-  default_model?: string
   api_base?: string
-  encrypted_key?: string | null
+  default_model?: string
   is_preferred?: boolean
   is_primary?: boolean
   monthly_budget?: number
-  created_at?: string
+  display_order?: number
+  created_at: string
   last_used_at?: string
 }
 
@@ -47,6 +47,7 @@ interface ModelTier {
 interface CLIStatus {
   provider: string
   status: 'available' | 'unavailable' | 'not_installed' | 'unchecked' | 'checking'
+  enabled?: boolean
 }
 
 interface ModelsDevProvider {
@@ -64,16 +65,26 @@ interface Props {
   cliStatuses: CLIStatus[]
   modelsDevProviders: ModelsDevProvider[]
   onRefresh: () => Promise<void>
+  onEditKey?: (key: ApiKey) => void
+  onAddKey?: () => void
+  onDeleteKey?: (keyId: string) => void
   viewMode?: 'simple' | 'advanced'
 }
 
-export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cliStatuses, modelsDevProviders, onRefresh, viewMode = 'simple' }: Props) {
+// Provider to CLI mapping
+const PROVIDER_CLI_MAP: Record<string, { cliId: string; cliName: string; model: string }> = {
+  'anthropic': { cliId: 'claude_code', cliName: 'Claude Code', model: 'claude-sonnet-4' },
+  'openai': { cliId: 'codex_cli', cliName: 'Codex CLI', model: 'gpt-4.1' },
+  'google': { cliId: 'gemini_cli', cliName: 'Gemini CLI', model: 'gemini-2.5-flash' }
+}
+
+export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cliStatuses, modelsDevProviders, onRefresh, onEditKey, onAddKey, onDeleteKey, viewMode = 'simple' }: Props) {
   const { preferences, updatePreferences } = usePreferences()
   const [saving, setSaving] = useState(false)
+  const [creditsExpanded, setCreditsExpanded] = useState(false)
 
   const perspectivesPerMessage = (preferences?.mcp_settings as any)?.perspectives_per_message || 2
   const tierPriority = (preferences?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
-  const providerPriority = (preferences?.mcp_settings as any)?.provider_priority || []
   const modelOrder = (preferences?.mcp_settings as any)?.model_order || {} as { [tier: string]: string[] }
 
   // Debounced perspective slider update
@@ -91,17 +102,36 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     }
   }, 500)
 
+  // Get API keys sorted by display_order
+  const sortedApiKeys = useMemo(() => {
+    return [...apiKeys]
+      .filter(key => key.active)
+      .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+  }, [apiKeys])
+
+  // Check if CLI is available for a provider
+  const getCliStatus = (providerId: string) => {
+    const cliMapping = PROVIDER_CLI_MAP[providerId]
+    if (!cliMapping) return null
+    
+    const cliStatus = (cliStatuses || []).find(cli => cli.provider === cliMapping.cliId)
+    return {
+      ...cliMapping,
+      available: cliStatus?.status === 'available' && cliStatus?.enabled !== false,
+      status: cliStatus?.status || 'unchecked'
+    }
+  }
+
   // API key reordering
   const moveApiKey = useCallback(async (index: number, direction: 'up' | 'down') => {
     if (direction === 'up' && index === 0) return
-    if (direction === 'down' && index === apiKeys.length - 1) return
+    if (direction === 'down' && index === sortedApiKeys.length - 1) return
 
     const newIndex = direction === 'up' ? index - 1 : index + 1
-    const reordered = [...apiKeys]
+    const reordered = [...sortedApiKeys]
     const [moved] = reordered.splice(index, 1)
     reordered.splice(newIndex, 0, moved)
 
-    // API expects just an array of IDs - order determines display_order
     const apiKeyIds = reordered.map(key => key.id)
 
     try {
@@ -117,7 +147,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     } finally {
       setSaving(false)
     }
-  }, [apiKeys, onRefresh])
+  }, [sortedApiKeys, onRefresh])
 
   // Tier reordering
   const moveTier = useCallback(async (tier: string, direction: 'up' | 'down') => {
@@ -143,25 +173,18 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     }
   }, [tierPriority, preferences, updatePreferences])
 
-  // Helper to get sorted models for a tier (respects user order preference, then admin display_order)
+  // Helper to get sorted models for a tier
   const getSortedModelsForTier = useCallback((tier: string): ModelTier[] => {
-    const tierModels = (modelTiers || []).filter(m => m.tier === tier)
+    const tierModels = (modelTiers || []).filter(m => m.tier === tier && m.active)
     const userOrder = modelOrder[tier] || []
 
-    // Sort by user preference first, then by admin display_order for new models
     return [...tierModels].sort((a, b) => {
       const aUserIdx = userOrder.indexOf(a.id)
       const bUserIdx = userOrder.indexOf(b.id)
 
-      // If both have user order, use that
-      if (aUserIdx !== -1 && bUserIdx !== -1) {
-        return aUserIdx - bUserIdx
-      }
-      // If only a has user order, a comes first
+      if (aUserIdx !== -1 && bUserIdx !== -1) return aUserIdx - bUserIdx
       if (aUserIdx !== -1) return -1
-      // If only b has user order, b comes first
       if (bUserIdx !== -1) return 1
-      // Neither has user order, use admin display_order
       return (a.display_order || 0) - (b.display_order || 0)
     })
   }, [modelTiers, modelOrder])
@@ -179,7 +202,6 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     const [moved] = reordered.splice(currentIndex, 1)
     reordered.splice(newIndex, 0, moved)
 
-    // Save the new order to preferences
     const newModelOrder = {
       ...modelOrder,
       [tier]: reordered.map(m => m.id)
@@ -198,62 +220,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     }
   }, [getSortedModelsForTier, modelOrder, preferences, updatePreferences])
 
-  // Get unique providers from active tiers (these are ALL admin-provided models)
-  const activeProviders = [...new Set((modelTiers || []).map(t => t.provider))]
-
-  // Provider reordering (GLOBAL across all tiers)
-  // Works with allProviders (all admin providers), not just providerPriority
-  const moveProvider = useCallback(async (provider: string, direction: 'up' | 'down') => {
-    // Build current full list: providers in priority order + new unsorted providers
-    const currentSorted = providerPriority.filter((p: string) => activeProviders.includes(p))
-    const currentUnsorted = activeProviders.filter(p => !providerPriority.includes(p))
-    const currentAll = [...currentSorted, ...currentUnsorted]
-
-    const index = currentAll.indexOf(provider)
-    if (direction === 'up' && index === 0) return
-    if (direction === 'down' && index === currentAll.length - 1) return
-
-    const newIndex = direction === 'up' ? index - 1 : index + 1
-    const reordered = [...currentAll]
-    const [moved] = reordered.splice(index, 1)
-    reordered.splice(newIndex, 0, moved)
-
-    try {
-      setSaving(true)
-      await updatePreferences({
-        mcp_settings: {
-          ...(preferences?.mcp_settings as any),
-          provider_priority: reordered  // Save complete new order
-        }
-      })
-    } finally {
-      setSaving(false)
-    }
-  }, [providerPriority, activeProviders, preferences, updatePreferences])
-
-  const detectedCLI = (cliStatuses || []).filter(cli => cli.status === 'available')
-
-  const getTierQuota = (tier: string) => {
-    if (!quota) return { total: 0, used: 0 }
-    switch (tier) {
-      case 'premium':
-        return { total: quota.premium_perspectives_limit, used: quota.premium_perspectives_used }
-      case 'normal':
-        return { total: quota.normal_perspectives_limit, used: quota.normal_perspectives_used }
-      case 'eco':
-        return { total: quota.eco_perspectives_limit, used: quota.eco_perspectives_used }
-      default:
-        return { total: 0, used: 0 }
-    }
-  }
-
-  // Show ALL admin providers, sorted by providerPriority where available
-  // Providers in providerPriority come first (in that order), then any new providers at the end
-  const sortedProviders = providerPriority.filter((p: string) => activeProviders.includes(p))
-  const unsortedProviders = activeProviders.filter(p => !providerPriority.includes(p))
-  const allProviders = [...sortedProviders, ...unsortedProviders]
-
-  // Helper to get provider logo - improved matching
+  // Get provider logo
   const getProviderLogo = (providerId: string) => {
     const pid = providerId.toLowerCase().replace(/[-_\s]/g, '')
     const provider = modelsDevProviders.find(p => {
@@ -264,200 +231,422 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     return provider?.logo || provider?.logo_url
   }
 
-  // Helper to get provider display name - improved matching
+  // Get provider display name
   const getProviderDisplayName = (providerId: string) => {
-    const pid = providerId.toLowerCase().replace(/[-_\s]/g, '')
-    const provider = modelsDevProviders.find(p => {
-      const pId = p.id.toLowerCase().replace(/[-_\s]/g, '')
-      const pName = p.name.toLowerCase().replace(/[-_\s]/g, '')
-      return pId === pid || pName === pid || pId.includes(pid) || pid.includes(pId)
-    })
-    return provider?.display_name || provider?.name || providerId
+    const displayNames: Record<string, string> = {
+      'openai': 'OpenAI',
+      'anthropic': 'Anthropic',
+      'google': 'Google',
+      'x-ai': 'xAI',
+      'groq': 'Groq',
+      'cerebras': 'Cerebras',
+      'together': 'Together',
+      'openrouter': 'OpenRouter'
+    }
+    return displayNames[providerId] || providerId
   }
 
-  // Helper to get unique providers for a tier
+  // Get unique providers for a tier
   const getProvidersForTier = (tier: string) => {
-    const providers = [...new Set((modelTiers || [])
-      .filter(m => m.tier === tier)
+    return [...new Set((modelTiers || [])
+      .filter(m => m.tier === tier && m.active)
       .map(m => m.provider))]
-    return providers
   }
+
+  const getTierQuota = (tier: string) => {
+    if (!quota) return { total: 0, used: 0 }
+    switch (tier) {
+      case 'premium': return { total: quota.premium_perspectives_limit, used: quota.premium_perspectives_used }
+      case 'normal': return { total: quota.normal_perspectives_limit, used: quota.normal_perspectives_used }
+      case 'eco': return { total: quota.eco_perspectives_limit, used: quota.eco_perspectives_used }
+      default: return { total: 0, used: 0 }
+    }
+  }
+
+  // Build selection preview based on perspectives count
+  const selectionPreview = useMemo(() => {
+    const selected: Array<{ provider: string; source: 'cli' | 'api' | 'credits'; name: string; tier?: string }> = []
+    let remaining = perspectivesPerMessage
+
+    // First: CLI/API from user's API keys (CLI preferred if available)
+    for (const key of sortedApiKeys) {
+      if (remaining <= 0) break
+      const cli = getCliStatus(key.provider)
+      if (cli?.available) {
+        selected.push({ provider: key.provider, source: 'cli', name: cli.cliName })
+      } else {
+        selected.push({ provider: key.provider, source: 'api', name: `${getProviderDisplayName(key.provider)} API` })
+      }
+      remaining--
+    }
+
+    // Then: Credits by tier priority
+    for (const tier of tierPriority) {
+      if (remaining <= 0) break
+      const tierModels = getSortedModelsForTier(tier)
+      for (const model of tierModels) {
+        if (remaining <= 0) break
+        // Skip if already covered
+        if (selected.some(s => s.provider === model.provider)) continue
+        selected.push({ provider: model.provider, source: 'credits', name: model.display_name, tier })
+        remaining--
+      }
+    }
+
+    return selected
+  }, [perspectivesPerMessage, sortedApiKeys, tierPriority, modelTiers, cliStatuses])
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm hover:shadow-md transition-shadow duration-200 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg">
-            <Workflow className="w-5 h-5 text-slate-700" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">Model Routing Priority</h3>
-            <p className="text-xs text-slate-500 mt-0.5">How your requests are routed in order</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Settings */}
-      <div className="mb-6 p-5 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl border border-slate-200/60">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="p-1.5 bg-white rounded-lg shadow-sm">
-            <Settings className="w-3.5 h-3.5 text-slate-600" />
-          </div>
-          <h4 className="text-sm font-semibold text-slate-700">Settings</h4>
-        </div>
-        <div className="flex items-center gap-4">
-          <label className="text-sm text-slate-600 font-medium">Perspectives per message</label>
-          <div className="flex-1 flex items-center gap-3">
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={perspectivesPerMessage}
-              onChange={(e) => debouncedUpdatePerspectives(parseInt(e.target.value))}
-              className="flex-1 max-w-xs h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider:bg-slate-700"
-              disabled={saving}
-            />
-            <span className="text-sm font-bold text-slate-900 bg-white px-3 py-1 rounded-lg shadow-sm border border-slate-200 min-w-[2.5rem] text-center">
-              {perspectivesPerMessage}
-            </span>
-          </div>
-          <div className="group relative">
-            <Info className="w-4 h-4 text-slate-400 cursor-help" />
-            <div className="absolute hidden group-hover:block bottom-full right-0 mb-2 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg shadow-lg">
-              Number of models to query simultaneously
+    <div className="space-y-4">
+      {/* Perspectives Selector - Hero Section */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/10 rounded-xl backdrop-blur">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Perspectives per Request</h2>
+              <p className="text-sm text-slate-400">How many AI models respond to each query</p>
             </div>
           </div>
+          <div className="text-4xl font-bold tabular-nums bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+            {perspectivesPerMessage}
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-slate-400 font-medium">1</span>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={perspectivesPerMessage}
+            onChange={(e) => debouncedUpdatePerspectives(parseInt(e.target.value))}
+            className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-white"
+            disabled={saving}
+          />
+          <span className="text-sm text-slate-400 font-medium">10</span>
+        </div>
+
+        {/* Selected Models Preview */}
+        <div className="mt-4 pt-4 border-t border-slate-700/50">
+          <div className="flex items-center gap-2 mb-3">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span className="text-sm font-medium text-slate-300">Will query these {perspectivesPerMessage} model{perspectivesPerMessage > 1 ? 's' : ''}:</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {selectionPreview.map((item, idx) => (
+              <div 
+                key={idx} 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium ${
+                  item.source === 'cli' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                  item.source === 'api' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                  'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                }`}
+              >
+                {getProviderLogo(item.provider) && <img src={getProviderLogo(item.provider)} alt="" className="w-4 h-4 rounded" />}
+                <span>{getProviderDisplayName(item.provider)}</span>
+                <span className="text-[10px] opacity-60">
+                  {item.source === 'cli' ? 'CLI' : item.source === 'api' ? 'API' : item.tier}
+                </span>
+              </div>
+            ))}
+            {selectionPreview.length === 0 && (
+              <span className="text-slate-500 text-sm">No models configured</span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Credits - Tier Priority */}
-      <div className="p-5 bg-slate-50 rounded-xl border border-slate-200">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-100">
-            <Crown className="w-4 h-4 text-slate-700" />
-          </div>
-          <div className="flex-1">
-            <h4 className="text-sm font-semibold text-slate-900">Credits Tier Priority</h4>
-            <p className="text-xs text-slate-600">Perspective quota usage order</p>
+      {/* Your API Keys - Priority Order */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div className="p-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Key className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-slate-900">Your API Keys</h3>
+              <p className="text-xs text-slate-500">Reorder to set priority. CLI auto-selected when available.</p>
+            </div>
+            {onAddKey && (
+              <button
+                onClick={onAddKey}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Tier Priority */}
-        <div className="space-y-2">
-          {tierPriority.map((tier: string, idx: number) => {
-              const { total, used } = getTierQuota(tier)
-              const percentage = total > 0 ? (used / total) * 100 : 0
-              const remaining = total - used
-              const tierProviders = getProvidersForTier(tier)
+        <div className="p-4 space-y-2">
+          {sortedApiKeys.length > 0 ? (
+            sortedApiKeys.map((key, idx) => {
+              const cli = getCliStatus(key.provider)
+              const hasCli = !!cli
+              const cliAvailable = cli?.available
+              const isSelected = idx < perspectivesPerMessage
+              
               return (
-                <div key={tier} className="bg-white border border-purple-200/60 rounded-lg p-3 shadow-sm hover:shadow-md transition-all">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-1 rounded">{idx + 1}</span>
-                    <span className="text-sm capitalize font-semibold text-slate-900">{tier}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
-                          <div
-                            className={`h-2 rounded-full transition-all ${
-                              percentage >= 90 ? 'bg-red-400' : percentage >= 70 ? 'bg-amber-400' : 'bg-emerald-400'
-                            }`}
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          />
-                        </div>
-                        <div className="text-xs font-medium text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-200">
-                          {remaining} / {total}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => moveTier(tier, 'up')}
-                        disabled={idx === 0 || saving}
-                        className="p-1.5 hover:bg-purple-50 rounded-lg disabled:opacity-30 transition-colors"
-                        title="Move up"
-                      >
-                        <ChevronUp className="w-4 h-4 text-slate-600" />
-                      </button>
-                      <button
-                        onClick={() => moveTier(tier, 'down')}
-                        disabled={idx === tierPriority.length - 1 || saving}
-                        className="p-1.5 hover:bg-purple-50 rounded-lg disabled:opacity-30 transition-colors"
-                        title="Move down"
-                      >
-                        <ChevronDown className="w-4 h-4 text-slate-600" />
-                      </button>
-                    </div>
+                <div 
+                  key={key.id}
+                  className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                    isSelected 
+                      ? cliAvailable 
+                        ? 'bg-emerald-50 border-emerald-200' 
+                        : 'bg-blue-50 border-blue-200'
+                      : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  {/* Position number */}
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${
+                    isSelected ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-500'
+                  }`}>
+                    {idx + 1}
                   </div>
-                  {tierProviders.length > 0 && (
-                    <div className="ml-9 mb-2 flex items-center gap-2 flex-wrap">
-                      {tierProviders.map(provider => {
-                        const logo = getProviderLogo(provider)
-                        return (
-                          <div key={provider} className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-slate-200">
-                            {logo ? (
-                              <img src={logo} alt={provider} className="w-4 h-4 object-contain" />
-                            ) : (
-                              <div className="w-4 h-4 bg-slate-200 rounded flex items-center justify-center text-[8px] font-bold text-slate-600">
-                                {provider.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <span className="text-xs text-slate-700 font-medium">{getProviderDisplayName(provider)}</span>
-                          </div>
-                        )
-                      })}
+
+                  {/* Provider logo */}
+                  {getProviderLogo(key.provider) && (
+                    <img src={getProviderLogo(key.provider)} alt="" className="w-8 h-8 rounded-lg" />
+                  )}
+
+                  {/* Provider info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-900">{getProviderDisplayName(key.provider)}</span>
+                      {isSelected && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          cliAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          WILL USE
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500">{key.key_preview}</div>
+                  </div>
+
+                  {/* CLI Status */}
+                  {hasCli && (
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
+                      cliAvailable 
+                        ? 'bg-emerald-100 border border-emerald-200' 
+                        : 'bg-slate-100 border border-slate-200'
+                    }`}>
+                      <Terminal className={`w-4 h-4 ${cliAvailable ? 'text-emerald-600' : 'text-slate-400'}`} />
+                      <span className={`text-xs font-medium ${cliAvailable ? 'text-emerald-700' : 'text-slate-500'}`}>
+                        {cli.cliName}
+                      </span>
+                      {cliAvailable ? (
+                        <Check className="w-3 h-3 text-emerald-600" />
+                      ) : (
+                        <AlertCircle className="w-3 h-3 text-slate-400" />
+                      )}
                     </div>
                   )}
-                  {/* Reorderable Models */}
-                  {getSortedModelsForTier(tier).length > 0 && (
-                    <div className="ml-9 space-y-1">
-                      <div className="text-xs font-medium text-slate-500 mb-1">Models (drag to reorder):</div>
-                      {getSortedModelsForTier(tier).map((model, modelIdx) => {
-                        const sortedModels = getSortedModelsForTier(tier)
-                        const logo = getProviderLogo(model.provider)
-                        return (
-                          <div key={model.id} className="flex items-center gap-2 bg-slate-50 px-2 py-1.5 rounded border border-slate-200 hover:border-purple-300 transition-colors group">
-                            <span className="text-[10px] font-bold text-slate-400 w-4 text-center">{modelIdx + 1}</span>
-                            {logo ? (
-                              <img src={logo} alt={model.provider} className="w-3.5 h-3.5 object-contain" />
-                            ) : (
-                              <div className="w-3.5 h-3.5 bg-slate-200 rounded flex items-center justify-center text-[7px] font-bold text-slate-500">
-                                {model.provider.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                            <span className="text-xs text-slate-700 flex-1">{model.display_name}</span>
-                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => moveModelInTier(tier, model.id, 'up')}
-                                disabled={modelIdx === 0 || saving}
-                                className="p-1 hover:bg-purple-100 rounded disabled:opacity-30 transition-colors"
-                                title="Move up"
-                              >
-                                <ChevronUp className="w-3 h-3 text-slate-500" />
-                              </button>
-                              <button
-                                onClick={() => moveModelInTier(tier, model.id, 'down')}
-                                disabled={modelIdx === sortedModels.length - 1 || saving}
-                                className="p-1 hover:bg-purple-100 rounded disabled:opacity-30 transition-colors"
-                                title="Move down"
-                              >
-                                <ChevronDown className="w-3 h-3 text-slate-500" />
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+
+                  {/* Edit/Delete buttons */}
+                  <div className="flex gap-1">
+                    {onEditKey && (
+                      <button
+                        onClick={() => onEditKey(key)}
+                        className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"
+                        title="Edit API key"
+                      >
+                        <Edit3 className="w-4 h-4 text-slate-500" />
+                      </button>
+                    )}
+                    {onDeleteKey && (
+                      <button
+                        onClick={() => onDeleteKey(key.id)}
+                        className="p-1.5 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Delete API key"
+                      >
+                        <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Reorder buttons */}
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => moveApiKey(idx, 'up')}
+                      disabled={idx === 0 || saving}
+                      className="p-1.5 hover:bg-slate-200 rounded-lg disabled:opacity-30 transition-colors"
+                      title="Move up"
+                    >
+                      <ChevronUp className="w-4 h-4 text-slate-600" />
+                    </button>
+                    <button
+                      onClick={() => moveApiKey(idx, 'down')}
+                      disabled={idx === sortedApiKeys.length - 1 || saving}
+                      className="p-1.5 hover:bg-slate-200 rounded-lg disabled:opacity-30 transition-colors"
+                      title="Move down"
+                    >
+                      <ChevronDown className="w-4 h-4 text-slate-600" />
+                    </button>
+                  </div>
                 </div>
               )
-            })}
+            })
+          ) : (
+            <div className="text-center py-6 text-slate-400 text-sm bg-slate-50 rounded-lg">
+              <p>No API keys configured.</p>
+              {onAddKey && (
+                <button
+                  onClick={onAddKey}
+                  className="mt-2 text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Add your first API key →
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Credits Section - Collapsible */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <button
+          onClick={() => setCreditsExpanded(!creditsExpanded)}
+          className="w-full p-4 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors"
+        >
+          <div className="p-2 bg-purple-50 rounded-lg">
+            <Crown className="w-5 h-5 text-purple-600" />
           </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-slate-900">Credits Tier Priority</h3>
+            <p className="text-xs text-slate-500">Perspective quota usage order</p>
+          </div>
+          <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${creditsExpanded ? 'rotate-90' : ''}`} />
+        </button>
+
+        {creditsExpanded && (
+          <div className="p-4 pt-0 border-t border-slate-100">
+            <div className="space-y-3 mt-3">
+              {tierPriority.map((tier: string, tierIdx: number) => {
+                const { total, used } = getTierQuota(tier)
+                const remaining = total - used
+                const percentage = total > 0 ? (used / total) * 100 : 0
+                const tierProviders = getProvidersForTier(tier)
+                const sortedModels = getSortedModelsForTier(tier)
+                
+                return (
+                  <div key={tier} className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    {/* Tier Header */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="text-sm font-bold text-slate-400 bg-white px-2 py-1 rounded border border-slate-200">{tierIdx + 1}</span>
+                      <span className="text-base font-semibold text-slate-900 capitalize">{tier}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div
+                              className={`h-2 rounded-full transition-all ${
+                                percentage >= 90 ? 'bg-red-400' : percentage >= 70 ? 'bg-amber-400' : 'bg-emerald-400'
+                              }`}
+                              style={{ width: `${Math.min(percentage, 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-slate-600 tabular-nums">
+                            {remaining} / {total}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => moveTier(tier, 'up')}
+                          disabled={tierIdx === 0 || saving}
+                          className="p-1.5 hover:bg-white rounded-lg disabled:opacity-30 transition-colors border border-transparent hover:border-slate-200"
+                          title="Move up"
+                        >
+                          <ChevronUp className="w-4 h-4 text-slate-600" />
+                        </button>
+                        <button
+                          onClick={() => moveTier(tier, 'down')}
+                          disabled={tierIdx === tierPriority.length - 1 || saving}
+                          className="p-1.5 hover:bg-white rounded-lg disabled:opacity-30 transition-colors border border-transparent hover:border-slate-200"
+                          title="Move down"
+                        >
+                          <ChevronDown className="w-4 h-4 text-slate-600" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tier Providers */}
+                    {tierProviders.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap mb-3">
+                        {tierProviders.map(provider => {
+                          const logo = getProviderLogo(provider)
+                          return (
+                            <div key={provider} className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-slate-200">
+                              {logo ? (
+                                <img src={logo} alt={provider} className="w-4 h-4 object-contain" />
+                              ) : (
+                                <div className="w-4 h-4 bg-slate-200 rounded flex items-center justify-center text-[8px] font-bold text-slate-600">
+                                  {provider.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-xs text-slate-700 font-medium">{getProviderDisplayName(provider)}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {/* Models (drag to reorder) */}
+                    {sortedModels.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-xs font-medium text-slate-500 mb-2">Models (drag to reorder):</div>
+                        {sortedModels.map((model, modelIdx) => {
+                          const logo = getProviderLogo(model.provider)
+                          return (
+                            <div key={model.id} className="flex items-center gap-2 bg-white px-3 py-2 rounded border border-slate-200 hover:border-slate-300 transition-colors group">
+                              <span className="text-xs font-bold text-slate-400 w-5 text-center">{modelIdx + 1}</span>
+                              {logo ? (
+                                <img src={logo} alt={model.provider} className="w-4 h-4 object-contain" />
+                              ) : (
+                                <div className="w-4 h-4 bg-slate-200 rounded flex items-center justify-center text-[7px] font-bold text-slate-500">
+                                  {model.provider.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-sm text-slate-700 flex-1">{model.display_name}</span>
+                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => moveModelInTier(tier, model.id, 'up')}
+                                  disabled={modelIdx === 0 || saving}
+                                  className="p-1 hover:bg-slate-100 rounded disabled:opacity-30 transition-colors"
+                                  title="Move up"
+                                >
+                                  <ChevronUp className="w-3 h-3 text-slate-500" />
+                                </button>
+                                <button
+                                  onClick={() => moveModelInTier(tier, model.id, 'down')}
+                                  disabled={modelIdx === sortedModels.length - 1 || saving}
+                                  className="p-1 hover:bg-slate-100 rounded disabled:opacity-30 transition-colors"
+                                  title="Move down"
+                                >
+                                  <ChevronDown className="w-3 h-3 text-slate-500" />
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {saving && (
-        <div className="mt-6 flex items-center justify-center gap-3 px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
-          <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-300 border-t-slate-900"></div>
-          <span className="text-sm font-medium text-slate-700">Saving changes...</span>
+        <div className="flex items-center justify-center gap-2 py-2 text-sm text-slate-500">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-300 border-t-slate-600" />
+          <span>Saving...</span>
         </div>
       )}
     </div>

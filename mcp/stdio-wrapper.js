@@ -6,6 +6,12 @@ const path = require('path');
 const os = require('os');
 const { CLIManager } = require('../lib/cliManager');
 
+// MCP stdio servers must only emit JSON-RPC on stdout.
+// Redirect any accidental console output to stderr to avoid handshake failures.
+console.log = console.error;
+console.info = console.error;
+console.debug = console.error;
+
 // Simple .env file loader (no external dependencies)
 function loadEnvFile(filePath) {
   try {
@@ -1564,20 +1570,8 @@ class StdioMCPWrapper {
   }
 
   async start() {
-    console.log('Starting Polydev Stdio MCP Wrapper...');
-    
-    // Run initial CLI detection on startup
-    console.error('[Stdio Wrapper] Running initial CLI detection...');
-    try {
-      await this.localForceCliDetection({});
-      console.error('[Stdio Wrapper] Initial CLI detection completed');
-    } catch (error) {
-      console.error('[Stdio Wrapper] Initial CLI detection failed:', error);
-    }
-    
-    // Start smart refresh scheduler for automatic updates
-    this.startSmartRefreshScheduler();
-    
+    console.error('Starting Polydev Stdio MCP Wrapper...');
+
     process.stdin.setEncoding('utf8');
     let buffer = '';
     
@@ -1601,25 +1595,39 @@ class StdioMCPWrapper {
     });
 
     process.stdin.on('end', () => {
-      console.log('Stdio MCP Wrapper shutting down...');
+      console.error('Stdio MCP Wrapper shutting down...');
       this.stopSmartRefreshScheduler();
       process.exit(0);
     });
 
     // Handle process signals
     process.on('SIGINT', () => {
-      console.log('Received SIGINT, shutting down...');
+      console.error('Received SIGINT, shutting down...');
       this.stopSmartRefreshScheduler();
       process.exit(0);
     });
 
     process.on('SIGTERM', () => {
-      console.log('Received SIGTERM, shutting down...');
+      console.error('Received SIGTERM, shutting down...');
       this.stopSmartRefreshScheduler();
       process.exit(0);
     });
 
-    console.log('Stdio MCP Wrapper ready and listening on stdin...');
+    console.error('Stdio MCP Wrapper ready and listening on stdin...');
+
+    // Run initial CLI detection in the background so MCP handshake isn't blocked.
+    console.error('[Stdio Wrapper] Running initial CLI detection...');
+    this.localForceCliDetection({})
+      .then(() => {
+        console.error('[Stdio Wrapper] Initial CLI detection completed');
+      })
+      .catch((error) => {
+        console.error('[Stdio Wrapper] Initial CLI detection failed:', error);
+      })
+      .finally(() => {
+        // Start smart refresh scheduler after initial detection attempt
+        this.startSmartRefreshScheduler();
+      });
   }
 }
 
