@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { randomBytes, createHash } from 'crypto'
+import { encryptApiKey, decryptApiKey } from '@/lib/crypto/server-crypto'
 
 export async function GET() {
   try {
@@ -32,6 +33,31 @@ export async function GET() {
       return NextResponse.json({ error: `Database error: ${userTokensError.message}` }, { status: 500 })
     }
 
+    // Transform tokens to include full token if encrypted_token is available
+    const transformedUserTokens = (userTokens || []).map(token => {
+      let fullToken = null
+      
+      // Try to decrypt the full token if it's stored
+      if (token.encrypted_token) {
+        try {
+          const metadata = typeof token.encryption_metadata === 'string' 
+            ? JSON.parse(token.encryption_metadata) 
+            : token.encryption_metadata
+          if (metadata) {
+            fullToken = decryptApiKey(token.encrypted_token, metadata, user.id)
+          }
+        } catch (e) {
+          console.error('Error decrypting token:', e)
+        }
+      }
+      
+      return {
+        ...token,
+        token_type: 'api',
+        full_token: fullToken // Include full token for copying
+      }
+    })
+
     // Get OAuth access tokens (polydev_) from mcp_access_tokens
     const { data: oauthTokens, error: oauthTokensError } = await supabase
       .from('mcp_access_tokens')
@@ -58,7 +84,7 @@ export async function GET() {
     }))
 
     // Combine both token types
-    const allTokens = [...(userTokens || []).map(t => ({ ...t, token_type: 'api' })), ...transformedOauthTokens]
+    const allTokens = [...transformedUserTokens, ...transformedOauthTokens]
     
     console.log('All tokens fetched successfully, count:', allTokens?.length || 0)
     
@@ -91,7 +117,7 @@ export async function POST(request: NextRequest) {
     
     console.log('MCP tokens POST - User authenticated:', user.id)
     
-    const { token_name, token_type = 'api' } = await request.json()
+    const { token_name, expires_in_days = 365 } = await request.json()
     
     if (!token_name || token_name.trim().length === 0) {
       return NextResponse.json({ error: 'Token name is required' }, { status: 400 })
@@ -118,24 +144,17 @@ export async function POST(request: NextRequest) {
       ? tierMapping[userProfile.subscription_tier as keyof typeof tierMapping] || 'standard'
       : 'standard'
     
-    if (!['api', 'cli'].includes(token_type)) {
-      return NextResponse.json({ error: 'Invalid token type. Must be "api" or "cli"' }, { status: 400 })
-    }
-    
-    // Generate a secure token based on type
-    let token: string
-    if (token_type === 'api') {
-      token = `pd_${randomBytes(32).toString('hex')}`
-    } else if (token_type === 'cli') {
-      token = `cli_${Buffer.from(`${user.id}_${Date.now()}_${Math.random()}`).toString('base64url')}`
-    } else {
-      return NextResponse.json({ error: 'Invalid token type' }, { status: 400 })
-    }
-    
+    // Generate a secure API token (only api type now)
+    const token = `pd_${randomBytes(32).toString('hex')}`
     const tokenHash = createHash('sha256').update(token).digest('hex')
-    const tokenPreview = token_type === 'api' 
-      ? `${token.slice(0, 12)}...${token.slice(-8)}`
-      : token.substring(0, 8) + '...'
+    const tokenPreview = `${token.slice(0, 12)}...${token.slice(-8)}`
+    
+    // Calculate expiry date
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + Math.min(Math.max(expires_in_days, 1), 365 * 2)) // Max 2 years
+    
+    // Encrypt the full token for storage
+    const { encryptedData, metadata } = encryptApiKey(token, user.id)
     
     // Insert the token
     const { data: newToken, error } = await supabase
@@ -146,7 +165,10 @@ export async function POST(request: NextRequest) {
         token_hash: tokenHash,
         token_preview: tokenPreview,
         rate_limit_tier,
-        active: true
+        active: true,
+        expires_at: expiresAt.toISOString(),
+        encrypted_token: encryptedData,
+        encryption_metadata: metadata
       })
       .select()
       .single()
@@ -161,9 +183,9 @@ export async function POST(request: NextRequest) {
     
     // Return the token only once (for security)
     return NextResponse.json({ 
-      token: newToken, 
+      token: { ...newToken, full_token: token }, 
       api_key: token,
-      message: 'Token created successfully. Save this API key securely - it won\'t be shown again.'
+      message: 'Token created successfully. You can copy this token anytime from the tokens page.'
     })
   } catch (error) {
     console.error('Unexpected error in POST /api/mcp/tokens:', error)
@@ -185,16 +207,35 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { id, active, token_name, rate_limit_tier } = await request.json()
+    const { id, active, token_name, rate_limit_tier, extend_days } = await request.json()
     
     if (!id) {
       return NextResponse.json({ error: 'Token ID is required' }, { status: 400 })
     }
     
-    const updates: any = {}
+    const updates: any = { updated_at: new Date().toISOString() }
     if (typeof active === 'boolean') updates.active = active
     if (token_name) updates.token_name = token_name.trim()
     if (rate_limit_tier) updates.rate_limit_tier = rate_limit_tier
+    
+    // Handle expiry extension
+    if (extend_days && extend_days > 0) {
+      // First get the current token to check expiry
+      const { data: currentToken } = await supabase
+        .from('mcp_user_tokens')
+        .select('expires_at')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single()
+      
+      if (currentToken) {
+        const currentExpiry = currentToken.expires_at ? new Date(currentToken.expires_at) : new Date()
+        const baseDate = currentExpiry > new Date() ? currentExpiry : new Date()
+        const newExpiry = new Date(baseDate)
+        newExpiry.setDate(newExpiry.getDate() + Math.min(extend_days, 365)) // Max 1 year extension at a time
+        updates.expires_at = newExpiry.toISOString()
+      }
+    }
     
     const { data: updatedToken, error } = await supabase
       .from('mcp_user_tokens')

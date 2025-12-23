@@ -95,6 +95,7 @@ export default function Navigation() {
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Chat', href: '/chat' },
     { name: 'Models', href: '/dashboard/models' },
+    { name: 'API Tokens', href: '/dashboard/mcp-tokens' },
     { name: 'Activity', href: '/dashboard/activity' },
     { name: 'Docs', href: '/docs' },
   ]
@@ -340,6 +341,13 @@ export default function Navigation() {
                       className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     >
                       Profile
+                    </Link>
+                    <Link
+                      href="/dashboard/mcp-tokens"
+                      onClick={() => setIsOpen(false)}
+                      className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    >
+                      API Tokens
                     </Link>
                     <Link
                       href="/dashboard/subscription"
