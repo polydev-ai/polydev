@@ -488,14 +488,13 @@ export default function MCPTokensPage() {
                               </p>
                               <button
                                 onClick={() => copyToClipboard(getTokenToCopy(token), token.id)}
-                                className={`${canCopyFullToken ? 'text-slate-700 hover:text-slate-900' : 'text-slate-400'}`}
-                                title={canCopyFullToken ? 'Copy full token' : 'Full token not available'}
-                                disabled={!canCopyFullToken}
+                                className="text-slate-600 hover:text-slate-900"
+                                title={canCopyFullToken ? 'Copy full token' : 'Copy token preview (legacy token - full token not available)'}
                               >
                                 {copiedToken === token.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                               </button>
                               {!canCopyFullToken && (
-                                <span className="text-xs text-slate-400">(legacy token)</span>
+                                <span className="text-xs text-orange-500">(regenerate for full copy)</span>
                               )}
                             </div>
                           </div>
