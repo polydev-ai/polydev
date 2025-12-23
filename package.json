@@ -67,7 +67,7 @@
     "lucide-react": "^0.542.0",
     "marked": "^16.2.1",
     "next": "^15.5.7",
-    "polydev-ai": "^1.8.15",
+    "polydev-ai": "^1.8.31",
     "posthog-js": "^1.157.2",
     "prismjs": "^1.30.0",
     "react": "^18.3.1",

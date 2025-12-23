@@ -56,13 +56,13 @@ export default function Documentation() {
 
   const configs: Record<TabId, { command: string; config: string; configPath: string }> = {
     'claude-code': {
-      command: 'claude mcp add polydev --scope user -- npx -y polydev-ai',
+      command: 'claude mcp add polydev --scope user -- npx --yes --package=polydev-ai@latest -- polydev-stdio',
       configPath: '~/.claude.json',
       config: `{
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -77,7 +77,7 @@ export default function Documentation() {
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -92,7 +92,7 @@ export default function Documentation() {
   "cline.mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -107,7 +107,7 @@ export default function Documentation() {
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -122,7 +122,7 @@ export default function Documentation() {
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }

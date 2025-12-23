@@ -91,7 +91,7 @@ export default function MCPIntegrationPage() {
             <div className="space-y-4">
               <p className="text-slate-600">Use the built-in command to add Polydev as an MCP server:</p>
               <CodeBlock
-                code={`claude mcp add polydev --scope user -- npx -y polydev-ai`}
+                code={`claude mcp add polydev --scope user -- npx --yes --package=polydev-ai@latest -- polydev-stdio`}
                 id="cc-add"
               />
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -163,7 +163,7 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"`}
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -228,7 +228,7 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"`}
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -272,7 +272,7 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"`}
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -324,7 +324,7 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"`}
   "cline.mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -364,7 +364,7 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"`}
   "cline.mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -425,7 +425,7 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"`}
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -461,7 +461,7 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"`}
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -517,7 +517,7 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"`}
               <CodeBlock
                 code={`[mcp_servers.polydev]
 command = "npx"
-args = ["-y", "polydev-ai"]
+args = ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"]
 
 [mcp_servers.polydev.env]
 POLYDEV_USER_TOKEN = "pd_your_token_here"`}
@@ -550,7 +550,7 @@ POLYDEV_USER_TOKEN = "pd_your_token_here"`}
         path: '~/.codex/config.toml',
         content: `[mcp_servers.polydev]
 command = "npx"
-args = ["-y", "polydev-ai"]
+args = ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"]
 
 [mcp_servers.polydev.env]
 POLYDEV_USER_TOKEN = "pd_your_token_here"`
@@ -596,7 +596,7 @@ POLYDEV_USER_TOKEN = "pd_your_token_here"`
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
@@ -625,7 +625,7 @@ POLYDEV_USER_TOKEN = "pd_your_token_here"`
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": {
         "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }

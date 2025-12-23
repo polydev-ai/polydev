@@ -52,10 +52,11 @@ export async function GET(request: NextRequest) {
     // Get user's API keys with default_model
     const { data: apiKeys, error: apiKeysError } = await supabase
       .from('user_api_keys')
-      .select('provider, default_model')
+      .select('provider, default_model, display_order')
       .eq('user_id', userId)
       .eq('active', true)
-      .order('display_order', { ascending: true })
+      .neq('is_admin_key', true) // Only fetch user's personal keys (exclude admin keys)
+      .order('display_order', { ascending: true, nullsFirst: false })
 
     if (apiKeysError) {
       console.error('[Model Preferences] API keys fetch failed:', apiKeysError.message)

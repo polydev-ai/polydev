@@ -727,7 +727,7 @@ export default function LandingPage() {
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai@latest"],
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
       "env": { "POLYDEV_USER_TOKEN": "pd_xxx" }
     }
   }

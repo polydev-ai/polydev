@@ -241,7 +241,7 @@ export default function MCPTokensPage() {
               </div>
               <h3 className="font-semibold text-slate-900">Claude Desktop</h3>
             </div>
-            <p className="text-xs text-slate-600 mb-2">Best experience with OAuth authentication</p>
+            <p className="text-xs text-slate-600 mb-2">Best experience with stdio wrapper</p>
             <code className="text-xs bg-slate-100 px-2 py-1 rounded block truncate">polydev_*</code>
           </div>
 
@@ -263,7 +263,7 @@ export default function MCPTokensPage() {
               </div>
               <h3 className="font-semibold text-slate-900">NPM Package</h3>
             </div>
-            <p className="text-xs text-slate-600 mb-2">For polydev-perspectives-mcp</p>
+            <p className="text-xs text-slate-600 mb-2">For polydev-ai (stdio)</p>
             <code className="text-xs bg-slate-100 px-2 py-1 rounded block truncate">POLYDEV_USER_TOKEN</code>
           </div>
         </div>
@@ -561,10 +561,9 @@ export default function MCPTokensPage() {
 {`{
   "mcpServers": {
     "polydev": {
-      "remote": {
-        "transport": { "type": "http", "url": "https://www.polydev.ai/api/mcp" },
-        "auth": { "type": "oauth", "provider": "polydev" }
-      }
+      "command": "npx",
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
+      "env": { "POLYDEV_USER_TOKEN": "pd_your_token_here" }
     }
   }
 }`}
@@ -581,15 +580,14 @@ export default function MCPTokensPage() {
               </div>
             </div>
             <div className="p-4">
-              <p className="text-sm text-slate-600 mb-3">Use a <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">pd_*</code> API token with bearer auth:</p>
+              <p className="text-sm text-slate-600 mb-3">Use your <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">pd_*</code> token with the stdio wrapper:</p>
               <pre className="bg-slate-900 text-slate-100 p-3 rounded text-xs overflow-x-auto">
 {`{
   "mcpServers": {
     "polydev": {
-      "remote": {
-        "transport": { "type": "http", "url": "https://www.polydev.ai/api/mcp" },
-        "auth": { "type": "bearer", "token": "pd_your_token_here" }
-      }
+      "command": "npx",
+      "args": ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"],
+      "env": { "POLYDEV_USER_TOKEN": "pd_your_token_here" }
     }
   }
 }`}
@@ -602,16 +600,16 @@ export default function MCPTokensPage() {
             <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Key className="w-4 h-4 text-slate-700" />
-                <h4 className="font-medium text-slate-900">NPM Package (polydev-perspectives-mcp)</h4>
+                <h4 className="font-medium text-slate-900">NPM Package (polydev-ai)</h4>
               </div>
-              <a href="https://www.npmjs.com/package/polydev-perspectives-mcp" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-600 hover:text-slate-900 flex items-center space-x-1">
+              <a href="https://www.npmjs.com/package/polydev-ai" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-600 hover:text-slate-900 flex items-center space-x-1">
                 <span>npm</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
             <div className="p-4">
               <pre className="bg-slate-900 text-slate-100 p-3 rounded text-xs overflow-x-auto">
-{`npm install -g polydev-perspectives-mcp
+{`npm install -g polydev-ai
 
 # Set your token as an environment variable
 export POLYDEV_USER_TOKEN="pd_your_token_here"`}
