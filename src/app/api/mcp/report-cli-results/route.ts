@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createHash } from 'crypto'
 
 export const dynamic = 'force-dynamic'
+
+// Hash token for secure lookup in mcp_user_tokens table
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
 
 interface CliResult {
   provider_id: string  // claude_code, codex_cli, gemini_cli
@@ -76,23 +82,38 @@ export async function POST(request: NextRequest) {
       }
     )
 
-    // Find user by MCP token
+    // FIXED: Use hash-based lookup in mcp_user_tokens table (same as model-preferences)
+    const tokenHash = hashToken(mcpToken)
     const { data: tokenData, error: tokenError } = await supabase
-      .from('mcp_tokens')
-      .select('user_id')
-      .eq('token', mcpToken)
-      .eq('revoked', false)
+      .from('mcp_user_tokens')
+      .select('user_id, active')
+      .eq('token_hash', tokenHash)
+      .eq('active', true)
       .maybeSingle()
 
-    if (tokenError || !tokenData) {
-      console.error('[Report CLI] Token lookup failed:', tokenError?.message || 'Token not found')
+    // Fallback: Also check legacy mcp_tokens table for backwards compatibility
+    let userId: string | null = tokenData?.user_id || null
+    
+    if (!userId) {
+      const { data: legacyToken, error: legacyError } = await supabase
+        .from('mcp_tokens')
+        .select('user_id')
+        .eq('token', mcpToken)
+        .eq('revoked', false)
+        .maybeSingle()
+      
+      if (legacyToken) {
+        userId = legacyToken.user_id
+      }
+    }
+
+    if (!userId) {
+      console.error('[Report CLI] Token lookup failed:', tokenError?.message || 'Token not found in either table')
       return NextResponse.json(
         { error: 'Invalid or revoked token' },
         { status: 401 }
       )
     }
-
-    const userId = tokenData.user_id
 
     // Map CLI provider IDs to display names
     const cliToProviderMap: Record<string, { provider: string; displayName: string }> = {
