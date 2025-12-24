@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/app/utils/supabase/server'
+import { createHash } from 'crypto'
 
 /**
  * GET /api/model-preferences
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     const mcpToken = authHeader.replace(/^Bearer\s+/i, '').trim()
-    if (!mcpToken || (!mcpToken.startsWith('pd_') && !mcpToken.startsWith('polydev_'))) {
+    if (!mcpToken || (!mcpToken.startsWith('pd_') && !mcpToken.startsWith('polydev_') && !mcpToken.startsWith('poly_'))) {
       return NextResponse.json(
         { error: 'Invalid MCP token format' },
         { status: 401 }
@@ -31,23 +32,66 @@ export async function GET(request: NextRequest) {
     // Use admin client for service role access
     const supabase = createAdminClient()
 
-    // Find user by MCP token
-    const { data: tokenData, error: tokenError } = await supabase
-      .from('mcp_tokens')
-      .select('user_id')
-      .eq('token', mcpToken)
-      .eq('revoked', false)
-      .maybeSingle()
+    let userId: string | null = null
 
-    if (tokenError || !tokenData) {
-      console.error('[Model Preferences] Token lookup failed:', tokenError?.message || 'Token not found')
+    // Check if it's an OAuth access token (starts with polydev_)
+    if (mcpToken.startsWith('polydev_')) {
+      const { data: tokenData, error: tokenError } = await supabase
+        .from('mcp_access_tokens')
+        .select('user_id, expires_at, revoked')
+        .eq('token', mcpToken)
+        .eq('revoked', false)
+        .single()
+
+      if (tokenError || !tokenData) {
+        console.error('[Model Preferences] OAuth token lookup failed:', tokenError?.message || 'Token not found')
+        return NextResponse.json(
+          { error: 'Invalid or expired OAuth token' },
+          { status: 401 }
+        )
+      }
+
+      // Check if token is expired
+      const tokenExpiry = new Date(tokenData.expires_at)
+      if (tokenExpiry < new Date()) {
+        console.error('[Model Preferences] OAuth token expired')
+        return NextResponse.json(
+          { error: 'Token expired' },
+          { status: 401 }
+        )
+      }
+
+      userId = tokenData.user_id
+    }
+    // Check if it's an MCP token (starts with pd_ or legacy poly_)
+    else if (mcpToken.startsWith('pd_') || mcpToken.startsWith('poly_')) {
+      // Use token hash for lookup (matches main MCP route)
+      const tokenHash = createHash('sha256').update(mcpToken).digest('hex')
+
+      const { data: tokenData, error: tokenError } = await supabase
+        .from('mcp_user_tokens')
+        .select('user_id, active')
+        .eq('token_hash', tokenHash)
+        .eq('active', true)
+        .single()
+
+      if (tokenError || !tokenData) {
+        console.error('[Model Preferences] MCP token lookup failed:', tokenError?.message || 'Token not found')
+        return NextResponse.json(
+          { error: 'Invalid or revoked MCP token' },
+          { status: 401 }
+        )
+      }
+
+      userId = tokenData.user_id
+    }
+
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Invalid or revoked token' },
+        { error: 'Unable to authenticate token' },
         { status: 401 }
       )
     }
-
-    const userId = tokenData.user_id
 
     // Get user's API keys with default_model
     const { data: apiKeys, error: apiKeysError } = await supabase
