@@ -718,11 +718,6 @@ class StdioMCPWrapper {
         }
       }
 
-      // Report CLI results to server for dashboard storage (non-blocking)
-      this.reportCliResultsToServer(prompt, localResults, args).catch(err => {
-        console.error('[Stdio Wrapper] CLI results reporting failed (non-critical):', err.message);
-      });
-
       // Calculate how many successful local perspectives we got
       const successfulLocalCount = localResults.filter(r => r.success).length;
       const failedCliCount = localResults.filter(r => !r.success).length;
@@ -742,9 +737,18 @@ class StdioMCPWrapper {
           model: p.model
         }));
         
+        // Note: Remote API will handle logging of CLI + API results together
+        // We do NOT call reportCliResultsToServer() here to avoid duplicate logs
         perspectivesResult = await this.callPerspectivesForCli(args, localResults, remainingPerspectives, apiProvidersInfo);
       } else {
         console.error(`[Stdio Wrapper] Already have ${successfulLocalCount} perspectives from CLIs, skipping remote call`);
+        
+        // ONLY report CLI results when NOT calling remote API
+        // (When we call remote API, it handles logging CLI + API results together)
+        this.reportCliResultsToServer(prompt, localResults, args).catch(err => {
+          console.error('[Stdio Wrapper] CLI results reporting failed (non-critical):', err.message);
+        });
+        
         perspectivesResult = {
           success: true,
           content: '',

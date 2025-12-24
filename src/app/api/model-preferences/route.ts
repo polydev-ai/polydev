@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/app/utils/supabase/server'
 import { createHash } from 'crypto'
 
+// Hash token for secure lookup in mcp_user_tokens table
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
+
 /**
  * GET /api/model-preferences
  * Returns user's model preferences (provider -> default_model mapping)
