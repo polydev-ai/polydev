@@ -569,6 +569,14 @@ export default function EnhancedApiKeysPage() {
           monthly_budget: formData.monthly_budget
         }
 
+        console.log('[EnhancedApiKeys] Saving API key update:', {
+          id: editingKey.id,
+          provider: editingKey.provider,
+          oldModel: editingKey.default_model,
+          newModel: formData.default_model,
+          updateData
+        })
+
         // Only include API key if user chose to update it
         if (updateApiKey && formData.api_key.trim()) {
           updateData.encrypted_key = btoa(formData.api_key)
@@ -582,6 +590,8 @@ export default function EnhancedApiKeysPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updateData)
         })
+
+        console.log('[EnhancedApiKeys] API key update response:', response.status, response.ok)
 
         if (response.ok) {
           // Handle model preference changes for existing API key
@@ -949,7 +959,7 @@ export default function EnhancedApiKeysPage() {
           cliStatuses={cliStatuses}
           modelsDevProviders={modelsDevProviders}
           onRefresh={refresh}
-          onEditKey={(key) => {
+          onEditKey={async (key) => {
             setEditingKey(key)
             setUpdateApiKey(false)
             setFormData({
@@ -962,6 +972,10 @@ export default function EnhancedApiKeysPage() {
               reasoning_level: (key as any).reasoning_level || 1
             })
             setShowAddForm(true)
+            // Fetch models for this provider so dropdown is populated
+            if (key.provider) {
+              await fetchProviderModels(key.provider)
+            }
           }}
           onAddKey={() => setShowAddForm(true)}
           onDeleteKey={deleteApiKey}
@@ -1288,7 +1302,7 @@ export default function EnhancedApiKeysPage() {
                                 </button>
                                 <button
                                   className="text-slate-600 hover:text-slate-900 text-sm flex items-center space-x-1"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     setEditingKey(key)
                                     setUpdateApiKey(false)
                                     setFormData({
@@ -1301,6 +1315,10 @@ export default function EnhancedApiKeysPage() {
                                       reasoning_level: (key as any).reasoning_level || 1
                                     })
                                     setShowAddForm(true)
+                                    // Fetch models for this provider so dropdown is populated
+                                    if (key.provider) {
+                                      await fetchProviderModels(key.provider)
+                                    }
                                   }}
                                 >
                                   <Edit3 className="w-3 h-3" />
@@ -1684,6 +1702,15 @@ export default function EnhancedApiKeysPage() {
                 <label className="block text-sm font-medium text-slate-900 mb-1">
                   Default Model
                 </label>
+                {/* Show warning if current model is not in the options list */}
+                {formData.default_model &&
+                 !loadingModels[formData.provider] &&
+                 (providerModels[formData.provider] || []).length > 0 &&
+                 !(providerModels[formData.provider] || []).some(m => m.id === formData.default_model) && (
+                  <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-800">
+                    Current model "{formData.default_model}" is outdated or not available. Please select a new model.
+                  </div>
+                )}
                 <select
                   value={formData.default_model}
                   onChange={(e) => setFormData(prev => ({...prev, default_model: e.target.value}))}
@@ -1696,6 +1723,13 @@ export default function EnhancedApiKeysPage() {
                   <option value="">Select model</option>
                   {loadingModels[formData.provider] && (
                     <option disabled>Loading models...</option>
+                  )}
+                  {/* Show current model if not in the list (for backwards compatibility) */}
+                  {formData.default_model &&
+                   !(providerModels[formData.provider] || []).some(m => m.id === formData.default_model) && (
+                    <option value={formData.default_model} className="text-amber-600">
+                      {formData.default_model} (outdated - please select new)
+                    </option>
                   )}
                   {(providerModels[formData.provider] || []).map(model => {
                     const inputCost = (model.input_cost_per_million || 0) // Already per 1M tokens
