@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/app/utils/supabase/server'
+import { createHash } from 'crypto'
+
+// Hash token for secure lookup in mcp_user_tokens table
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
 
 /**
  * GET /api/model-preferences
@@ -31,23 +37,44 @@ export async function GET(request: NextRequest) {
     // Use admin client for service role access
     const supabase = createAdminClient()
 
-    // Find user by MCP token
+    // FIXED: Use hash-based lookup in mcp_user_tokens table (same as cli-status-update)
+    const tokenHash = hashToken(mcpToken)
     const { data: tokenData, error: tokenError } = await supabase
-      .from('mcp_tokens')
-      .select('user_id')
-      .eq('token', mcpToken)
-      .eq('revoked', false)
+      .from('mcp_user_tokens')
+      .select('user_id, active')
+      .eq('token_hash', tokenHash)
+      .eq('active', true)
       .maybeSingle()
 
-    if (tokenError || !tokenData) {
-      console.error('[Model Preferences] Token lookup failed:', tokenError?.message || 'Token not found')
+    // Fallback: Also check legacy mcp_tokens table for backwards compatibility
+    let userId: string | null = tokenData?.user_id || null
+    
+    if (!userId) {
+      const { data: legacyToken, error: legacyError } = await supabase
+        .from('mcp_tokens')
+        .select('user_id')
+        .eq('token', mcpToken)
+        .eq('revoked', false)
+        .maybeSingle()
+      
+      if (legacyToken) {
+        userId = legacyToken.user_id
+      }
+    }
+
+    if (!userId) {
+      console.error('[Model Preferences] Token lookup failed:', tokenError?.message || 'Token not found in either table')
       return NextResponse.json(
         { error: 'Invalid or revoked token' },
         { status: 401 }
       )
     }
 
-    const userId = tokenData.user_id
+    // Update last_used_at for the token
+    await supabase
+      .from('mcp_user_tokens')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('token_hash', tokenHash)
 
     // Get user's API keys with default_model
     const { data: apiKeys, error: apiKeysError } = await supabase
