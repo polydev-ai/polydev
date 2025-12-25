@@ -57,12 +57,44 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"
 Add to your Claude Code MCP configuration:
 
 ```json
- "polydev": {
-          "disabled": false,
-          "timeout": 120,
-          "type": "http",
-          "url": "https://www.polydev.ai/api/mcp"
-        },
+"polydev": {
+  "disabled": false,
+  "timeout": 120,
+  "type": "http",
+  "url": "https://www.polydev.ai/api/mcp"
+}
+```
+
+### Codex CLI Integration (OpenAI)
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.polydev]
+command = "/path/to/node"
+args = ["/path/to/node_modules/polydev-ai/mcp/stdio-wrapper.js"]
+env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }
+
+[mcp_servers.polydev.timeouts]
+tool_timeout = 180
+session_timeout = 600
+```
+
+**Important for Codex CLI:**
+- Use direct `node` path instead of `npx` for faster startup
+- Find your node path with: `which node`
+- Find polydev path with: `npm root -g`
+
+Example with typical paths:
+```toml
+[mcp_servers.polydev]
+command = "/Users/yourname/.nvm/versions/node/v22.20.0/bin/node"
+args = ["/Users/yourname/.nvm/versions/node/v22.20.0/lib/node_modules/polydev-ai/mcp/stdio-wrapper.js"]
+env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }
+
+[mcp_servers.polydev.timeouts]
+tool_timeout = 180
+session_timeout = 600
 ```
 
 ## Available Tools
@@ -129,6 +161,34 @@ The MCP server automatically detects CLI status changes:
 
 ## Troubleshooting
 
+### Codex CLI: "Transport closed" Error
+
+This error occurs when the MCP handshake fails. Common causes and fixes:
+
+1. **Use direct node path instead of npx**
+   ```toml
+   # Wrong - npx has startup overhead
+   command = "npx"
+   args = ["-y", "polydev-ai"]
+
+   # Correct - direct node path
+   command = "/path/to/node"
+   args = ["/path/to/polydev-ai/mcp/stdio-wrapper.js"]
+   ```
+
+2. **Use inline env format**
+   ```toml
+   # Correct format
+   env = { POLYDEV_USER_TOKEN = "pd_xxx" }
+   ```
+
+3. **Protocol version mismatch**: Ensure polydev-ai version >= 1.8.36 which supports MCP protocol 2025-06-18
+
+4. **Check Codex logs** for details:
+   ```bash
+   cat ~/.codex/log/codex-tui.log | tail -50
+   ```
+
 ### CLI Not Detected
 
 1. Ensure the CLI is installed and in your PATH
@@ -148,6 +208,16 @@ The MCP server automatically detects CLI status changes:
 npm config set prefix '~/.npm-global'
 export PATH=~/.npm-global/bin:$PATH
 ```
+
+### Debugging MCP Connection
+
+Test the wrapper manually:
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | \
+  POLYDEV_USER_TOKEN="pd_xxx" node /path/to/stdio-wrapper.js
+```
+
+You should see a JSON response with `protocolVersion: "2025-06-18"`
 
 ## Support
 

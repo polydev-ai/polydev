@@ -490,46 +490,59 @@ export POLYDEV_USER_TOKEN="pd_your_token_here"`}
           )
         },
         {
-          title: 'Locate Config File',
+          title: 'Install Polydev Globally',
           content: (
-            <div className="space-y-4">
-              <p className="text-slate-600">Codex CLI uses a TOML configuration file:</p>
-              <div className="bg-slate-50 p-3 rounded-lg">
-                <p className="text-sm font-medium text-slate-700">All platforms</p>
-                <code className="text-sm text-slate-600">~/.codex/config.toml</code>
-              </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-blue-800">
-                    The same config file is shared between Codex CLI and VS Code extension.
-                  </p>
-                </div>
-              </div>
+            <div className="space-y-3">
+              <p className="text-slate-600">Install polydev-ai to get the stdio wrapper:</p>
+              <CodeBlock code="npm install -g polydev-ai" id="codex-polydev" />
+              <p className="text-sm text-slate-500">This provides the optimized wrapper for Codex CLI compatibility.</p>
             </div>
           )
         },
         {
-          title: 'Add Polydev Configuration',
+          title: 'Find Your Paths',
           content: (
             <div className="space-y-4">
-              <p className="text-slate-600">Add the following TOML configuration:</p>
+              <p className="text-slate-600">You'll need the paths to node and the wrapper:</p>
+              <CodeBlock code={`# Find your node path
+which node
+# Example: /Users/you/.nvm/versions/node/v22.20.0/bin/node
+
+# Find polydev wrapper path
+npm root -g
+# Example: /Users/you/.nvm/versions/node/v22.20.0/lib/node_modules
+# Wrapper is at: [npm root -g]/polydev-ai/mcp/stdio-wrapper.js`} id="codex-paths" />
+            </div>
+          )
+        },
+        {
+          title: 'Add to Config File',
+          content: (
+            <div className="space-y-4">
+              <p className="text-slate-600">Edit <code className="bg-slate-100 px-2 py-0.5 rounded">~/.codex/config.toml</code> and add:</p>
               <CodeBlock
                 code={`[mcp_servers.polydev]
-command = "npx"
-args = ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"]
+command = "/Users/YOU/.nvm/versions/node/v22.20.0/bin/node"
+args = ["/Users/YOU/.nvm/versions/node/v22.20.0/lib/node_modules/polydev-ai/mcp/stdio-wrapper.js"]
+env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }
 
-[mcp_servers.polydev.env]
-POLYDEV_USER_TOKEN = "pd_your_token_here"`}
+[mcp_servers.polydev.timeouts]
+tool_timeout = 180
+session_timeout = 600`}
                 id="codex-config"
                 language="toml"
               />
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-800">
-                    TOML syntax is different from JSON! Use <code className="bg-amber-100 px-1 rounded">=</code> instead of <code className="bg-amber-100 px-1 rounded">:</code>, and section headers in <code className="bg-amber-100 px-1 rounded">[brackets]</code>.
-                  </p>
+                  <div className="text-sm text-amber-800">
+                    <p className="font-medium mb-1">Important TOML syntax notes:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Use <code className="bg-amber-100 px-1 rounded">env = {'{ KEY = "value" }'}</code> inline format</li>
+                      <li>Timeouts go in a separate <code className="bg-amber-100 px-1 rounded">[mcp_servers.polydev.timeouts]</code> section</li>
+                      <li>Replace paths with your actual paths from step 3</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
@@ -539,9 +552,18 @@ POLYDEV_USER_TOKEN = "pd_your_token_here"`}
           title: 'Verify Setup',
           content: (
             <div className="space-y-3">
-              <p className="text-slate-600">Start Codex CLI and check available servers:</p>
-              <CodeBlock code="codex" id="codex-start" />
-              <p className="text-slate-600">Polydev tools should now be accessible in your Codex sessions.</p>
+              <p className="text-slate-600">Start Codex CLI and verify the MCP server:</p>
+              <CodeBlock code={`codex
+# Then run: codex mcp get polydev
+# Should show: tool_timeout: 180`} id="codex-verify" />
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-green-800">
+                    Polydev tools should now be accessible in your Codex sessions!
+                  </p>
+                </div>
+              </div>
             </div>
           )
         },
@@ -549,16 +571,19 @@ POLYDEV_USER_TOKEN = "pd_your_token_here"`}
       configFile: {
         path: '~/.codex/config.toml',
         content: `[mcp_servers.polydev]
-command = "npx"
-args = ["--yes", "--package=polydev-ai@latest", "--", "polydev-stdio"]
+command = "/path/to/node"
+args = ["/path/to/node_modules/polydev-ai/mcp/stdio-wrapper.js"]
+env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }
 
-[mcp_servers.polydev.env]
-POLYDEV_USER_TOKEN = "pd_your_token_here"`
+[mcp_servers.polydev.timeouts]
+tool_timeout = 180
+session_timeout = 600`
       },
       troubleshooting: [
-        { issue: 'TOML parse error', solution: 'Check for syntax errors - TOML is stricter than JSON. Use a TOML validator.' },
-        { issue: 'Server not loading', solution: 'Ensure the config file is in the correct location (~/.codex/config.toml).' },
-        { issue: 'VS Code extension also broken', solution: 'They share the same config - fix the TOML syntax and both will work.' },
+        { issue: '"Transport closed" error', solution: 'Ensure you\'re using polydev-ai >= 1.8.36 which supports MCP protocol 2025-06-18. Use direct node path, not npx.' },
+        { issue: 'TOML parse error', solution: 'Use inline env format: env = { KEY = "value" }. Timeouts must be in [mcp_servers.polydev.timeouts] section.' },
+        { issue: 'Server not loading', solution: 'Verify paths are correct. Run "which node" and "npm root -g" to find your paths.' },
+        { issue: 'Timeout during tool calls', solution: 'Increase tool_timeout to 180 or higher for complex queries.' },
       ]
     },
     'continue': {

@@ -292,7 +292,7 @@ class StdioMCPWrapper {
             jsonrpc: '2.0',
             id,
             result: {
-              protocolVersion: '2024-11-05',
+              protocolVersion: '2025-06-18',
               capabilities: { tools: {} },
               serverInfo: {
                 name: this.manifest.name,
@@ -1581,14 +1581,19 @@ class StdioMCPWrapper {
     
     process.stdin.on('data', async (chunk) => {
       buffer += chunk;
-      
+
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
-      
+
       for (const line of lines) {
         if (line.trim()) {
           try {
             const request = JSON.parse(line);
+            // Notifications have no id - don't respond to them (JSON-RPC spec)
+            if (request.id === undefined) {
+              console.error(`[Stdio Wrapper] Received notification: ${request.method}`);
+              continue;
+            }
             const response = await this.handleRequest(request);
             process.stdout.write(JSON.stringify(response) + '\n');
           } catch (error) {
