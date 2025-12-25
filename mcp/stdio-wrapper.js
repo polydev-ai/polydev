@@ -959,6 +959,22 @@ class StdioMCPWrapper {
       .map(cli => cliToApiProvider[cli])
       .filter(Boolean);
     
+    // Get failed CLI providers and map them to their API equivalents
+    const failedCliProviders = localResults
+      .filter(r => !r.success && r.provider_id)
+      .map(r => r.provider_id);
+    
+    const failedCliApiProviders = failedCliProviders
+      .map(cli => {
+        const apiProvider = cliToApiProvider[cli];
+        if (apiProvider) {
+          console.error(`[Stdio Wrapper] CLI ${cli} failed, will request API fallback: ${apiProvider}`);
+          return { provider: apiProvider, model: null };  // Let server choose model
+        }
+        return null;
+      })
+      .filter(Boolean);
+    
     // If we don't need any perspectives, skip remote call
     if (maxPerspectives <= 0) {
       console.error(`[Stdio Wrapper] Max perspectives is 0, skipping remote perspectives`);
@@ -971,11 +987,15 @@ class StdioMCPWrapper {
       };
     }
     
-    // Build list of specific providers to request (from API-only providers)
-    const requestProviders = apiProvidersInfo.map(p => ({
+    // Build list of specific providers to request (from API-only providers + failed CLI fallbacks)
+    const apiOnlyProvidersList = apiProvidersInfo.map(p => ({
       provider: p.provider,
       model: p.model
     }));
+    
+    // Combine API-only providers with failed CLI fallback providers
+    // Failed CLI providers get priority (they're the ones user expected to work)
+    const requestProviders = [...failedCliApiProviders, ...apiOnlyProvidersList];
     
     console.error(`[Stdio Wrapper] Calling remote perspectives (excluding: ${excludeProviders.join(', ') || 'none'}, requesting: ${requestProviders.map(p => p.provider).join(', ') || 'any'}, max: ${maxPerspectives})`);
     
