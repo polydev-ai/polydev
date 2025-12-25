@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Copy, Check, Terminal, Code2, Box, Sparkles, Cpu, ArrowRight, Key, AlertCircle, CheckCircle2 } from 'lucide-react'
 
-type TabId = 'claude-code' | 'cursor' | 'cline' | 'windsurf' | 'continue' | 'api'
+type TabId = 'claude-code' | 'cursor' | 'cline' | 'windsurf' | 'codex' | 'continue' | 'api'
 
 export default function Documentation() {
   const [activeTab, setActiveTab] = useState<TabId>('claude-code')
@@ -50,6 +50,7 @@ export default function Documentation() {
     { id: 'cursor' as TabId, label: 'Cursor', icon: Code2 },
     { id: 'cline' as TabId, label: 'Cline', icon: Box },
     { id: 'windsurf' as TabId, label: 'Windsurf', icon: Sparkles },
+    { id: 'codex' as TabId, label: 'Codex CLI', icon: Terminal },
     { id: 'continue' as TabId, label: 'Continue', icon: Cpu },
     { id: 'api' as TabId, label: 'REST API', icon: Code2 },
   ]
@@ -129,6 +130,18 @@ export default function Documentation() {
     }
   }
 }`
+    },
+    'codex': {
+      command: 'npm install -g polydev-ai',
+      configPath: '~/.codex/config.toml',
+      config: `[mcp_servers.polydev]
+command = "/path/to/node"
+args = ["/path/to/node_modules/polydev-ai/mcp/stdio-wrapper.js"]
+env = { POLYDEV_USER_TOKEN = "pd_your_token_here" }
+
+[mcp_servers.polydev.timeouts]
+tool_timeout = 180
+session_timeout = 600`
     },
     'api': {
       command: '',
@@ -239,6 +252,49 @@ export default function Documentation() {
               </div>
             )}
 
+            {/* Codex CLI specific - uses TOML */}
+            {activeTab === 'codex' && (
+              <div className="space-y-4 mb-6">
+                <div>
+                  <p className="text-sm font-medium text-slate-700 mb-2">1. Install polydev-ai globally:</p>
+                  <CodeBlock code={currentConfig.command} id="codex-install" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-700 mb-2">2. Find your paths:</p>
+                  <CodeBlock
+                    code={`# Find your node path
+which node
+# Example: /Users/yourname/.nvm/versions/node/v22.20.0/bin/node
+
+# Find polydev package path
+npm root -g
+# Example: /Users/yourname/.nvm/versions/node/v22.20.0/lib/node_modules`}
+                    id="codex-paths"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-slate-700 mb-2">
+                    3. Add to <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 text-xs">{currentConfig.configPath}</code>:
+                  </p>
+                  <CodeBlock code={currentConfig.config} id="codex-config" />
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-amber-800">
+                      <p className="font-medium">Important for Codex CLI:</p>
+                      <ul className="list-disc list-inside mt-1 space-y-1">
+                        <li>Use direct node path (not npx) for faster startup</li>
+                        <li>Replace <code className="bg-amber-100 px-1 rounded">/path/to/node</code> with your actual node path</li>
+                        <li>Replace <code className="bg-amber-100 px-1 rounded">/path/to/node_modules</code> with your npm root path</li>
+                        <li>Requires polydev-ai v1.8.36+ for MCP protocol 2025-06-18</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* API tab */}
             {activeTab === 'api' && (
               <div className="space-y-4 mb-6">
@@ -250,7 +306,7 @@ export default function Documentation() {
             )}
 
             {/* Config file for other IDEs */}
-            {activeTab !== 'claude-code' && activeTab !== 'api' && (
+            {activeTab !== 'claude-code' && activeTab !== 'api' && activeTab !== 'codex' && (
               <div className="space-y-4 mb-6">
                 <div>
                   <p className="text-sm font-medium text-slate-700 mb-2">
