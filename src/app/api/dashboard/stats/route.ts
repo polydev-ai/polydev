@@ -76,8 +76,76 @@ export async function GET(request: NextRequest) {
       todayStart: todayStart.toISOString(),
       userId: user.id
     })
-    console.log('[Dashboard Stats] Executing parallel database queries with monthStart:', monthStartISO)
+    console.log('[Dashboard Stats] Executing optimized parallel database queries with monthStart:', monthStartISO)
 
+    // PHASE 1: Fast COUNT queries for accurate totals (no data transfer, just counts)
+    const [
+      // Monthly COUNT queries - accurate totals without fetching all records
+      mcpRequestCountResult,
+      chatLogCountResult,
+      ephemeralCountResult,
+      // All-time COUNT queries
+      allTimeMcpCountResult,
+      allTimeChatCountResult,
+      allTimeEphemeralCountResult,
+    ] = await Promise.allSettled([
+      // Monthly MCP request count
+      supabase
+        .from('mcp_request_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', monthStartISO),
+      
+      // Monthly chat log count  
+      supabase
+        .from('chat_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', monthStartISO),
+      
+      // Monthly ephemeral usage count
+      supabase
+        .from('ephemeral_usage')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('used_byok', true)
+        .gte('created_at', monthStartISO),
+
+      // All-time MCP request count
+      supabase
+        .from('mcp_request_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+      
+      // All-time chat log count
+      supabase
+        .from('chat_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+      
+      // All-time ephemeral usage count
+      supabase
+        .from('ephemeral_usage')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('used_byok', true),
+    ])
+
+    // Extract accurate counts from COUNT queries
+    const mcpMessagesCount = mcpRequestCountResult.status === 'fulfilled' ? (mcpRequestCountResult.value.count || 0) : 0
+    const chatMessagesCount = chatLogCountResult.status === 'fulfilled' ? (chatLogCountResult.value.count || 0) : 0
+    const ephemeralRequestsCount = ephemeralCountResult.status === 'fulfilled' ? (ephemeralCountResult.value.count || 0) : 0
+    
+    const allTimeMcpCount = allTimeMcpCountResult.status === 'fulfilled' ? (allTimeMcpCountResult.value.count || 0) : 0
+    const allTimeChatCount = allTimeChatCountResult.status === 'fulfilled' ? (allTimeChatCountResult.value.count || 0) : 0
+    const allTimeEphemeralCount = allTimeEphemeralCountResult.status === 'fulfilled' ? (allTimeEphemeralCountResult.value.count || 0) : 0
+
+    console.log('[Dashboard Stats] Accurate COUNT results:', {
+      monthly: { mcp: mcpMessagesCount, chat: chatMessagesCount, ephemeral: ephemeralRequestsCount },
+      allTime: { mcp: allTimeMcpCount, chat: allTimeChatCount, ephemeral: allTimeEphemeralCount }
+    })
+
+    // PHASE 2: Aggregated queries for sums and analytics (uses database-level aggregation)
     const [
       userCreditsResult,
       mcpTokensResult,
@@ -85,14 +153,18 @@ export async function GET(request: NextRequest) {
       userTokensResult,
       apiKeysResult,
       providersResult,
-      requestLogsResult,
-      usageLogsResult,
-      chatLogsResult,
-      allTimeRequestLogsResult,
-      allTimeChatLogsResult,
+      // Monthly aggregates - SUM queries for tokens/cost (more efficient than fetching all rows)
+      mcpMonthlyAggResult,
+      chatMonthlyAggResult,
+      ephemeralMonthlyAggResult,
+      // All-time aggregates
+      mcpAllTimeAggResult,
+      chatAllTimeAggResult,
+      ephemeralAllTimeAggResult,
+      // Limited recent data for analytics and activity display
+      recentRequestLogsResult,
+      recentChatLogsResult,
       providersRegistryResult,
-      ephemeralUsageResult,
-      allTimeEphemeralUsageResult
     ] = await Promise.allSettled([
       // 0. User credits
       supabase
@@ -131,63 +203,76 @@ export async function GET(request: NextRequest) {
         .from('provider_configurations')
         .select('*'),
 
-      // 6. Request logs (this month only) - for message counting and API calls
+      // 6. Monthly MCP aggregates (SUM tokens, SUM cost)
+      supabase
+        .from('mcp_request_logs')
+        .select('total_tokens.sum(), total_cost.sum()')
+        .eq('user_id', user.id)
+        .gte('created_at', monthStartISO)
+        .single(),
+
+      // 7. Monthly chat aggregates
+      supabase
+        .from('chat_logs')
+        .select('total_tokens.sum(), total_cost.sum()')
+        .eq('user_id', user.id)
+        .gte('created_at', monthStartISO)
+        .single(),
+
+      // 8. Monthly ephemeral aggregates
+      supabase
+        .from('ephemeral_usage')
+        .select('total_tokens.sum(), estimated_cost_usd.sum()')
+        .eq('user_id', user.id)
+        .eq('used_byok', true)
+        .gte('created_at', monthStartISO)
+        .single(),
+
+      // 9. All-time MCP aggregates
+      supabase
+        .from('mcp_request_logs')
+        .select('total_tokens.sum(), total_cost.sum()')
+        .eq('user_id', user.id)
+        .single(),
+
+      // 10. All-time chat aggregates
+      supabase
+        .from('chat_logs')
+        .select('total_tokens.sum(), total_cost.sum()')
+        .eq('user_id', user.id)
+        .single(),
+
+      // 11. All-time ephemeral aggregates
+      supabase
+        .from('ephemeral_usage')
+        .select('total_tokens.sum(), estimated_cost_usd.sum()')
+        .eq('user_id', user.id)
+        .eq('used_byok', true)
+        .single(),
+
+      // 12. Recent request logs for analytics and activity (limited for performance)
       supabase
         .from('mcp_request_logs')
         .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs, source_type')
         .eq('user_id', user.id)
-        .gte('created_at', monthStart.toISOString())
-        .limit(500), // Limit to prevent excessive processing
+        .gte('created_at', monthStartISO)
+        .order('created_at', { ascending: false })
+        .limit(200), // Reduced from 500, used only for analytics breakdown
 
-      // 7. Usage logs fallback (this month only)
-      supabase
-        .from('mcp_usage_logs')
-        .select('total_tokens, total_cost, created_at, models_used, response_time_ms, status')
-        .eq('user_id', user.id)
-        .gte('created_at', monthStart.toISOString())
-        .limit(500),
-
-      // 8. Chat logs (this month only) - 1 row = 1 user message
+      // 13. Recent chat logs for analytics (limited for performance)
       supabase
         .from('chat_logs')
         .select('total_tokens, total_cost, created_at, models_used')
         .eq('user_id', user.id)
-        .gte('created_at', monthStart.toISOString())
-        .limit(500),
+        .gte('created_at', monthStartISO)
+        .order('created_at', { ascending: false })
+        .limit(200),
 
-      // 9. All-time request logs for all-time metrics calculation
-      supabase
-        .from('mcp_request_logs')
-        .select('total_tokens, provider_responses, successful_providers, total_cost, source_type')
-        .eq('user_id', user.id),
-
-      // 10. All-time chat logs for all-time metrics calculation
-      supabase
-        .from('chat_logs')
-        .select('total_tokens, models_used, total_cost')
-        .eq('user_id', user.id),
-
-      // 11. Providers registry for display names/logos
+      // 14. Providers registry for display names/logos
       supabase
         .from('providers_registry')
         .select('*')
         .eq('is_active', true),
-
-      // 12. Ephemeral usage (BYOK mode) - this month only
-      supabase
-        .from('ephemeral_usage')
-        .select('total_tokens, estimated_cost_usd, provider, model, created_at, prompt_tokens, completion_tokens, session_id')
-        .eq('user_id', user.id)
-        .eq('used_byok', true)
-        .gte('created_at', monthStart.toISOString())
-        .limit(500),
-
-      // 13. All-time ephemeral usage for all-time metrics
-      supabase
-        .from('ephemeral_usage')
-        .select('total_tokens, estimated_cost_usd, provider, model, created_at, session_id')
-        .eq('user_id', user.id)
-        .eq('used_byok', true)
     ])
 
     // Extract data from parallel results
@@ -211,674 +296,58 @@ export async function GET(request: NextRequest) {
     const userTokens = userTokensResult.status === 'fulfilled' ? userTokensResult.value.data : []
     const apiKeys = apiKeysResult.status === 'fulfilled' ? apiKeysResult.value.data : []
     const providers = providersResult.status === 'fulfilled' ? providersResult.value.data : []
-    const requestLogs = requestLogsResult.status === 'fulfilled' ? requestLogsResult.value.data : []
-    const usageLogs = usageLogsResult.status === 'fulfilled' ? usageLogsResult.value.data : []
-    const chatLogs = chatLogsResult.status === 'fulfilled' ? chatLogsResult.value.data : []
     
-    // DEBUG: Log chat logs query result in detail
-    console.log('[Dashboard Stats] CHAT LOGS DEBUG:', {
-      status: chatLogsResult.status,
-      hasError: chatLogsResult.status === 'fulfilled' ? !!chatLogsResult.value.error : 'rejected',
-      error: chatLogsResult.status === 'fulfilled' ? chatLogsResult.value.error : chatLogsResult.reason,
-      dataLength: chatLogs?.length || 0,
-      firstRecord: chatLogs?.[0] || null
-    })
-    
-    const allTimeRequestLogs = allTimeRequestLogsResult.status === 'fulfilled' ? allTimeRequestLogsResult.value.data : []
-    const allTimeChatLogs = allTimeChatLogsResult.status === 'fulfilled' ? allTimeChatLogsResult.value.data : []
+    // Recent logs for analytics (limited dataset)
+    const requestLogs = recentRequestLogsResult.status === 'fulfilled' ? recentRequestLogsResult.value.data : []
+    const chatLogs = recentChatLogsResult.status === 'fulfilled' ? recentChatLogsResult.value.data : []
     const modelsDevProviders = providersRegistryResult.status === 'fulfilled' ? providersRegistryResult.value.data : []
-    const ephemeralUsage = ephemeralUsageResult.status === 'fulfilled' ? ephemeralUsageResult.value.data : []
-    const allTimeEphemeralUsage = allTimeEphemeralUsageResult.status === 'fulfilled' ? allTimeEphemeralUsageResult.value.data : []
+
+    // Extract aggregated sums
+    const mcpMonthlyAgg = mcpMonthlyAggResult.status === 'fulfilled' && !mcpMonthlyAggResult.value.error 
+      ? mcpMonthlyAggResult.value.data : null
+    const chatMonthlyAgg = chatMonthlyAggResult.status === 'fulfilled' && !chatMonthlyAggResult.value.error
+      ? chatMonthlyAggResult.value.data : null
+    const ephemeralMonthlyAgg = ephemeralMonthlyAggResult.status === 'fulfilled' && !ephemeralMonthlyAggResult.value.error
+      ? ephemeralMonthlyAggResult.value.data : null
+    const mcpAllTimeAgg = mcpAllTimeAggResult.status === 'fulfilled' && !mcpAllTimeAggResult.value.error
+      ? mcpAllTimeAggResult.value.data : null
+    const chatAllTimeAgg = chatAllTimeAggResult.status === 'fulfilled' && !chatAllTimeAggResult.value.error
+      ? chatAllTimeAggResult.value.data : null
+    const ephemeralAllTimeAgg = ephemeralAllTimeAggResult.status === 'fulfilled' && !ephemeralAllTimeAggResult.value.error
+      ? ephemeralAllTimeAggResult.value.data : null
+
+    console.log('[Dashboard Stats] Aggregated sums:', {
+      mcpMonthly: mcpMonthlyAgg,
+      chatMonthly: chatMonthlyAgg,
+      ephemeralMonthly: ephemeralMonthlyAgg,
+      mcpAllTime: mcpAllTimeAgg,
+      chatAllTime: chatAllTimeAgg,
+      ephemeralAllTime: ephemeralAllTimeAgg
+    })
 
     // Log any errors from the queries
-    if (chatLogsResult.status === 'rejected' || (chatLogsResult.status === 'fulfilled' && chatLogsResult.value.error)) {
-      console.error('[Dashboard Stats] Chat logs query error:', chatLogsResult.status === 'rejected' ? chatLogsResult.reason : chatLogsResult.value.error)
+    if (recentChatLogsResult.status === 'rejected' || (recentChatLogsResult.status === 'fulfilled' && recentChatLogsResult.value.error)) {
+      console.error('[Dashboard Stats] Chat logs query error:', recentChatLogsResult.status === 'rejected' ? recentChatLogsResult.reason : recentChatLogsResult.value.error)
     }
-    if (requestLogsResult.status === 'rejected' || (requestLogsResult.status === 'fulfilled' && requestLogsResult.value.error)) {
-      console.error('[Dashboard Stats] Request logs query error:', requestLogsResult.status === 'rejected' ? requestLogsResult.reason : requestLogsResult.value.error)
-    }
-    if (allTimeRequestLogsResult.status === 'rejected' || (allTimeRequestLogsResult.status === 'fulfilled' && allTimeRequestLogsResult.value.error)) {
-      console.error('[Dashboard Stats] ALL-TIME request logs query error:', allTimeRequestLogsResult.status === 'rejected' ? allTimeRequestLogsResult.reason : allTimeRequestLogsResult.value.error)
-    }
-    if (allTimeChatLogsResult.status === 'rejected' || (allTimeChatLogsResult.status === 'fulfilled' && allTimeChatLogsResult.value.error)) {
-      console.error('[Dashboard Stats] ALL-TIME chat logs query error:', allTimeChatLogsResult.status === 'rejected' ? allTimeChatLogsResult.reason : allTimeChatLogsResult.value.error)
+    if (recentRequestLogsResult.status === 'rejected' || (recentRequestLogsResult.status === 'fulfilled' && recentRequestLogsResult.value.error)) {
+      console.error('[Dashboard Stats] Request logs query error:', recentRequestLogsResult.status === 'rejected' ? recentRequestLogsResult.reason : recentRequestLogsResult.value.error)
     }
 
-    console.log('[Dashboard Stats] Parallel queries completed (MONTHLY + ALL-TIME DATA):', {
+    console.log('[Dashboard Stats] Parallel queries completed (OPTIMIZED with COUNT + AGG):', {
       userCredits: !!userCredits,
       mcpTokens: mcpTokens?.length || 0,
       allTokens: allTokens?.length || 0,
       userTokens: userTokens?.length || 0,
       apiKeys: apiKeys?.length || 0,
       providers: providers?.length || 0,
-      requestLogsMonthly: requestLogs?.length || 0,
-      chatLogsMonthly: chatLogs?.length || 0,
-      requestLogsAllTime: allTimeRequestLogs?.length || 0,
-      chatLogsAllTime: allTimeChatLogs?.length || 0,
+      // Accurate counts from COUNT queries
+      mcpMessagesCountAccurate: mcpMessagesCount,
+      chatMessagesCountAccurate: chatMessagesCount,
+      // Limited logs for analytics only
+      recentRequestLogs: requestLogs?.length || 0,
+      recentChatLogs: chatLogs?.length || 0,
       modelsDevProviders: modelsDevProviders?.length || 0,
-      sampleChatLog: chatLogs?.[0]?.created_at,
-      monthStartUsed: monthStartISO
     })
-
-    const currentBalance = parseFloat(userCredits?.balance || '0')
-    const currentPromoBalance = parseFloat(userCredits?.promotional_balance || '0')
-    const totalUserCredits = currentBalance + currentPromoBalance
-
-    // Calculate active connections
-    const activeTokens = mcpTokens?.filter(token => {
-      const expiresAt = new Date(token.expires_at)
-      const lastUsed = token.last_used_at ? new Date(token.last_used_at) : null
-      const recentlyUsed = lastUsed ? (now.getTime() - lastUsed.getTime()) < 7 * 24 * 60 * 60 * 1000 : false // 7 days
-      return expiresAt > now && recentlyUsed
-    }) || []
-
-    // Use detailed logs if available, otherwise fallback to simple logs
-    const usageData = requestLogs && requestLogs.length > 0 ? requestLogs : usageLogs
-    console.log('[Dashboard Stats] Using data source:', requestLogs && requestLogs.length > 0 ? 'detailed request logs' : 'simple usage logs')
-
-    // Use the most comprehensive data source available, prioritizing detailed request logs
-    let primaryDataSource: any[] = []
-    let dataSourceName = 'none'
-
-    if (requestLogs && requestLogs.length > 0) {
-      primaryDataSource = requestLogs
-      dataSourceName = 'detailed request logs'
-    } else if (usageLogs && usageLogs.length > 0) {
-      primaryDataSource = usageLogs
-      dataSourceName = 'usage logs'
-    } else if (chatLogs && chatLogs.length > 0) {
-      primaryDataSource = chatLogs
-      dataSourceName = 'chat logs'
-    }
-
-    console.log(`[Dashboard Stats] Using primary data source: ${dataSourceName} with ${primaryDataSource.length} entries`)
-
-    // Calculate real statistics from primary data source to avoid duplication
-    const totalTokens = (allTokens?.length || 0) + (userTokens?.length || 0)
-    const activeConnections = activeTokens.length
-
-    // Calculate EPHEMERAL (BYOK) mode stats FIRST - THIS MONTH
-    const ephemeralRequests = (ephemeralUsage || []).length
-    const ephemeralSessions = new Set((ephemeralUsage || []).filter(u => u.session_id).map(u => u.session_id)).size
-    const ephemeralTokens = (ephemeralUsage || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
-    const ephemeralCost = (ephemeralUsage || []).reduce((sum, log) => sum + (parseFloat(log.estimated_cost_usd) || 0), 0) || 0
-
-    // Calculate ALL-TIME ephemeral stats
-    const allTimeEphemeralRequests = (allTimeEphemeralUsage || []).length
-    const allTimeEphemeralSessions = new Set((allTimeEphemeralUsage || []).filter(u => u.session_id).map(u => u.session_id)).size
-    const allTimeEphemeralTokens = (allTimeEphemeralUsage || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
-    const allTimeEphemeralCost = (allTimeEphemeralUsage || []).reduce((sum, log) => sum + (parseFloat(log.estimated_cost_usd) || 0), 0) || 0
-
-    // Calculate TOTAL messages from ALL sources THIS MONTH (Standard + BYOK modes)
-    // Use monthly-filtered logs to match subscription and profile pages
-    const mcpMessages = (requestLogs || []).length
-    const chatMessages_count = (chatLogs || []).length
-    const standardModeMessages = mcpMessages + chatMessages_count // Standard mode (Polydev API keys)
-    const totalMessages = standardModeMessages + ephemeralRequests // Total user interactions (Standard + BYOK modes)
-
-    // Calculate ALL-TIME message counts for display (Standard + BYOK modes)
-    const allTimeMcpMessages = (allTimeRequestLogs || []).length
-    const allTimeChatMessages = (allTimeChatLogs || []).length
-    const allTimeStandardMessages = allTimeMcpMessages + allTimeChatMessages
-    const allTimeTotalMessages = allTimeStandardMessages + allTimeEphemeralRequests
-
-    console.log('[Dashboard Stats] Ephemeral usage (BYOK mode) THIS MONTH:', {
-      ephemeralRequests,
-      ephemeralSessions,
-      ephemeralTokens,
-      ephemeralCost: `$${ephemeralCost.toFixed(4)}`
-    })
-
-    console.log('[Dashboard Stats] Ephemeral usage (BYOK mode) ALL-TIME:', {
-      allTimeEphemeralRequests,
-      allTimeEphemeralSessions,
-      allTimeEphemeralTokens,
-      allTimeEphemeralCost: `$${allTimeEphemeralCost.toFixed(4)}`
-    })
-
-    // Calculate ACTUAL API calls (sum of all model/provider calls THIS MONTH)
-    // Use monthly-filtered logs for API calls count
-    const mcpApiCalls = (requestLogs || []).reduce((sum, log) => {
-      // Count providers in provider_responses format (this is what we select in the query)
-      if (log.provider_responses && typeof log.provider_responses === 'object') {
-        return sum + Object.keys(log.provider_responses).length
-      }
-      // Count from successful_providers array
-      if (log.successful_providers && Array.isArray(log.successful_providers)) {
-        return sum + log.successful_providers.length
-      }
-      // Fallback: count as 1 API call if we have cost/tokens
-      if (log.total_cost || log.total_tokens) {
-        return sum + 1
-      }
-      return sum
-    }, 0)
-
-    const chatApiCalls = (chatLogs || []).reduce((sum, log) => {
-      // Count models in models_used format
-      if (log.models_used && typeof log.models_used === 'object') {
-        const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
-        return sum + modelsUsed.length
-      }
-      // Fallback: count as 1 API call if we have cost/tokens
-      if (log.total_cost || log.total_tokens) {
-        return sum + 1
-      }
-      return sum
-    }, 0)
-
-    const totalApiCalls = mcpApiCalls + chatApiCalls // Total model/provider calls (this month)
-
-    // Calculate ALL-TIME API calls
-    const allTimeMcpApiCalls = (allTimeRequestLogs || []).reduce((sum, log) => {
-      // provider_responses is an object with provider keys
-      if (log.provider_responses && typeof log.provider_responses === 'object') {
-        const count = Object.keys(log.provider_responses).length
-        if (count > 0) return sum + count
-      }
-      // successful_providers is a NUMBER, not an array!
-      if (typeof log.successful_providers === 'number' && log.successful_providers > 0) {
-        return sum + log.successful_providers
-      }
-      // Fallback: count as 1 API call if we have cost/tokens data
-      if ((log.total_cost && log.total_cost > 0) || (log.total_tokens && log.total_tokens > 0)) {
-        return sum + 1
-      }
-      return sum
-    }, 0)
-
-    const allTimeChatApiCalls = (allTimeChatLogs || []).reduce((sum, log, index) => {
-      if (index === 0) console.log('[ALL-TIME DEBUG] First chat log:', JSON.stringify(log, null, 2).substring(0, 500))
-      if (log.models_used && typeof log.models_used === 'object') {
-        const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
-        if (modelsUsed.length > 0) {
-          return sum + modelsUsed.length
-        }
-      }
-      // Fallback: count as 1 API call if we have cost/tokens data
-      if ((log.total_cost && log.total_cost > 0) || (log.total_tokens && log.total_tokens > 0)) {
-        return sum + 1
-      }
-      return sum
-    }, 0)
-
-    const allTimeTotalApiCalls = allTimeMcpApiCalls + allTimeChatApiCalls
-
-    console.log('[Dashboard Stats] ALL-TIME data sample:', {
-      mcpSample: allTimeRequestLogs?.slice(0, 2),
-      chatSample: allTimeChatLogs?.slice(0, 2),
-      mcpCount: allTimeRequestLogs?.length,
-      chatCount: allTimeChatLogs?.length,
-      mcpFirst: allTimeRequestLogs?.[0],
-      chatFirst: allTimeChatLogs?.[0]
-    })
-
-    console.log('[Dashboard Stats] Messages vs API calls breakdown (THIS MONTH):', {
-      userId: user.id,
-      mcpMessages,
-      chatMessages: chatMessages_count,
-      totalMessages: totalMessages,
-      mcpApiCalls,
-      chatApiCalls,
-      totalApiCalls,
-      requestLogsRaw: requestLogs?.slice(0, 2),
-      chatLogsRaw: chatLogs?.slice(0, 2),
-      description: `${totalMessages} user requests this month resulted in ${totalApiCalls} model/provider API calls`
-    })
-
-    console.log('[Dashboard Stats] ALL-TIME API calls:', {
-      allTimeMcpApiCalls,
-      allTimeChatApiCalls,
-      allTimeTotalApiCalls
-    })
-
-    // Count MCP token usage for reference (not the same as client calls)
-    const mcpTokenUsage = (allTokens?.filter(token => token.last_used_at).length || 0) + (userTokens?.filter(token => token.last_used_at).length || 0)
-
-    // Calculate total tokens from ALL sources (THIS MONTH) - Standard + BYOK modes
-    const mcpTokenCount = (requestLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
-    const chatTokens = (chatLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
-    const standardModeTokens = mcpTokenCount + chatTokens
-    const totalUsageTokens = standardModeTokens + ephemeralTokens
-
-    // Calculate ALL-TIME tokens from ALL sources - Standard + BYOK modes
-    const allTimeMcpTokenCount = (allTimeRequestLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
-    const allTimeChatTokens = (allTimeChatLogs || []).reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0
-    const allTimeStandardTokens = allTimeMcpTokenCount + allTimeChatTokens
-    const allTimeTotalTokens = allTimeStandardTokens + allTimeEphemeralTokens
-
-    // Calculate costs - ONLY from user API keys (NOT admin credits)
-    // Use mcp_request_logs which has source_type field directly
-    
-    // Calculate user-paid costs from request logs (API keys only, NOT admin_key)
-    const userPaidCost = (requestLogs || []).reduce((sum, log: any) => {
-      // Only count costs from user_key (user's own API keys)
-      if (log.source_type === 'user_key') {
-        const cost = parseFloat(log.total_cost) || 0
-        if (cost <= 10) { // Skip unrealistic costs
-          return sum + cost
-        }
-      }
-      return sum
-    }, 0) || 0
-
-    // Calculate ALL-TIME user-paid costs from all-time request logs
-    const allTimeUserPaidCost = (allTimeRequestLogs || []).reduce((sum, log: any) => {
-      // Only count costs from user_key (user's own API keys)
-      if (log.source_type === 'user_key') {
-        const cost = parseFloat(log.total_cost) || 0
-        if (cost <= 10) { // Skip unrealistic costs
-          return sum + cost
-        }
-      }
-      return sum
-    }, 0) || 0
-
-    // Calculate total cost from ALL sources (for reference/logging)
-    const mcpCost = (requestLogs || []).reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0
-    const chatCost = (chatLogs || []).reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0) || 0
-    const totalCostFromLogs = mcpCost + chatCost
-
-    console.log(`[Dashboard Stats] User-paid cost THIS MONTH: $${userPaidCost.toFixed(4)} (from user_key source_type)`)
-    console.log(`[Dashboard Stats] Total cost (all sources) THIS MONTH: $${totalCostFromLogs.toFixed(4)} (MCP: $${mcpCost.toFixed(4)} + Chat: $${chatCost.toFixed(4)})`)
-    console.log(`[Dashboard Stats] Total tokens THIS MONTH: ${totalUsageTokens} (MCP: ${mcpTokenCount} + Chat: ${chatTokens})`)
-
-    // Calculate average response time from BOTH MCP and chat data - only from successful requests
-    // Use more realistic bounds: 100ms minimum (network latency), 30s max (reasonable timeout)
-    const mcpResponseTimes = (requestLogs || [])
-      .filter(log => {
-        const responseTime = log.response_time_ms as number
-        const hasResponseTime = 'response_time_ms' in log && responseTime > 0
-        const isSuccessful = (log as any).status === 'success' || (!(log as any).status && log.total_tokens > 0)
-        const isReasonableTime = responseTime >= 100 && responseTime <= 30000 // 100ms to 30 seconds
-        return hasResponseTime && isSuccessful && isReasonableTime
-      })
-      .map(log => (log as any).response_time_ms)
-
-    // Chat logs don't have response_time_ms, so skip them for response time calculation
-    const chatResponseTimes: number[] = []
-
-    const allResponseTimes = [...mcpResponseTimes, ...chatResponseTimes]
-    
-    // Use median for more accurate representation (less affected by outliers)
-    let avgResponseTime = 0
-    if (allResponseTimes.length > 0) {
-      const sorted = [...allResponseTimes].sort((a, b) => a - b)
-      const mid = Math.floor(sorted.length / 2)
-      avgResponseTime = sorted.length % 2 !== 0 
-        ? sorted[mid] 
-        : Math.round((sorted[mid - 1] + sorted[mid]) / 2)
-    }
-
-    console.log(`[Dashboard Stats] Response time calculation: ${allResponseTimes.length} samples, median: ${avgResponseTime}ms`)
-
-    // Calculate success rate from BOTH MCP and chat sources
-    // Count total requests that have any response data (not just those with tokens)
-    const mcpTotalRequests = (requestLogs || []).length
-    const mcpSuccessfulRequests = (requestLogs || []).filter(log => {
-      // Explicit success status
-      if ((log as any).status === 'success') return true
-      // Explicit failure status
-      if ((log as any).status === 'failed' || (log as any).status === 'error') return false
-      // For logs without explicit status, consider successful if has tokens or cost
-      const hasTokens = log.total_tokens && log.total_tokens > 0
-      const hasCost = log.total_cost && log.total_cost > 0
-      return hasTokens || hasCost
-    }).length
-
-    // For chat sessions - count based on actual logged entries
-    const chatTotalRequests = (chatLogs || []).length
-    const chatSuccessfulRequests = (chatLogs || []).filter(log => {
-      // Chat logs assume success if entry exists with tokens
-      const hasTokens = log.total_tokens && log.total_tokens > 0
-      const hasCost = log.total_cost && log.total_cost > 0
-      return hasTokens || hasCost
-    }).length
-
-    const totalSuccessfulRequests = mcpSuccessfulRequests + chatSuccessfulRequests
-    const totalRequestsForSuccessRate = mcpTotalRequests + chatTotalRequests
-    const systemUptime = totalRequestsForSuccessRate > 0 
-      ? `${((totalSuccessfulRequests / totalRequestsForSuccessRate) * 100).toFixed(1)}%` 
-      : 'N/A'
-
-    console.log(`[Dashboard Stats] Success rate: ${totalSuccessfulRequests}/${totalRequestsForSuccessRate} = ${systemUptime}`)
-
-    // Get provider breakdown based on actual user API keys and usage
-    const providerStats = apiKeys?.map(apiKey => {
-      // Find the provider configuration (system-wide)
-      const provider = providers?.find(p => 
-        p.provider_name?.toLowerCase() === apiKey.provider?.toLowerCase() || 
-        p.id?.toLowerCase() === apiKey.provider?.toLowerCase()
-      ) || null
-      
-      // Calculate requests for this provider from BOTH MCP and chat data
-      const mcpProviderRequests = (requestLogs || []).filter(log => {
-        // Check detailed logs format first
-        if ('provider_costs' in log && log.provider_costs) {
-          return Object.keys(log.provider_costs).some((key: string) =>
-            key.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
-            key.toLowerCase().includes((provider?.display_name || '').toLowerCase())
-          )
-        }
-        // Fallback to simple logs format
-        if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
-          const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
-          return modelsUsed.some((model: string) =>
-            model.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
-            model.toLowerCase().includes((provider?.display_name || '').toLowerCase())
-          )
-        }
-        return false
-      }).length || 0
-
-      const chatProviderRequests = (chatLogs || []).filter(log => {
-        // Check models_used in chat logs
-        if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
-          const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
-          return modelsUsed.some((model: string) =>
-            model.toLowerCase().includes(apiKey.provider.toLowerCase()) ||
-            model.toLowerCase().includes((provider?.display_name || '').toLowerCase())
-          )
-        }
-        return false
-      }).length || 0
-
-      const providerRequests = mcpProviderRequests + chatProviderRequests
-
-      // Use real current_usage if available
-      const currentUsage = apiKey.current_usage ? 
-        parseFloat(apiKey.current_usage.toString()) : 
-        0
-
-      // Calculate average latency from BOTH MCP and chat data
-      const mcpProviderUsageData = (requestLogs || []).filter(log => {
-        if ('provider_costs' in log && log.provider_costs) {
-          return Object.keys(log.provider_costs).some((key: string) =>
-            key.toLowerCase().includes(apiKey.provider.toLowerCase())
-          )
-        }
-        if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
-          const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
-          return modelsUsed.some((model: string) =>
-            model.toLowerCase().includes(apiKey.provider.toLowerCase())
-          )
-        }
-        return false
-      }) || []
-
-      const chatProviderUsageData = (chatLogs || []).filter(log => {
-        if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
-          const modelsUsed = Array.isArray(log.models_used) ? log.models_used : Object.keys(log.models_used)
-          return modelsUsed.some((model: string) =>
-            model.toLowerCase().includes(apiKey.provider.toLowerCase())
-          )
-        }
-        return false
-      }) || []
-
-      const allProviderUsageData = [...mcpProviderUsageData, ...chatProviderUsageData]
-      const avgLatency = allProviderUsageData.length > 0 ?
-        Math.round(allProviderUsageData.reduce((sum, log) => sum + ((log as any).response_time_ms || 0), 0) / allProviderUsageData.length) :
-        0
-
-      return {
-        name: provider?.display_name || provider?.provider_name || apiKey.provider || 'Unknown Provider',
-        requests: providerRequests,
-        cost: `$${currentUsage.toFixed(2)}`,
-        latency: avgLatency,
-        status: apiKey.active && apiKey.last_used_at ? 'active' : 'inactive'
-      }
-    }).filter(provider => provider.status === 'active' || provider.requests > 0 || parseFloat(provider.cost.replace('$', '')) > 0) || []
-
-    // Use user-paid cost (API keys + CLI only, NOT admin credits)
-    const totalCost = userPaidCost
-
-    console.log(`[Dashboard Stats] User-paid cost (API keys + CLI): $${userPaidCost.toFixed(4)}, Total cost (all sources): $${totalCostFromLogs.toFixed(4)}`)
-
-    // Generate recent activity from BOTH MCP and chat data
-    const recentActivity: any[] = []
-
-    // Combine both MCP and chat logs for recent activity
-    const allActivityLogs: any[] = []
-
-    // Add MCP logs
-    if (requestLogs && requestLogs.length > 0) {
-      requestLogs.forEach(log => {
-        allActivityLogs.push({ ...log, source: 'MCP' })
-      })
-    }
-
-    // Add chat logs
-    if (chatLogs && chatLogs.length > 0) {
-      chatLogs.forEach(log => {
-        allActivityLogs.push({ ...log, source: 'Chat' })
-      })
-    }
-
-    if (allActivityLogs.length > 0) {
-      // Get the most recent 5 activity entries from both sources
-      const sortedLogs = allActivityLogs
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 5)
-
-      sortedLogs.forEach(log => {
-        let providerName = 'Multiple Models'
-        let actionType = log.source === 'Chat' ? 'Chat Message' : 'MCP Request'
-
-        // Extract provider name from detailed logs
-        if ('provider_responses' in log && log.provider_responses && typeof log.provider_responses === 'object') {
-          const firstProvider = Object.keys(log.provider_responses)[0]
-          if (firstProvider) {
-            providerName = firstProvider.split(':')[1] || firstProvider // Get model name
-          }
-        }
-        // Fallback to simple logs format
-        else if ('models_used' in log && log.models_used && typeof log.models_used === 'object') {
-          providerName = Object.keys(log.models_used)[0] || 'Unknown Model'
-        }
-
-        recentActivity.push({
-          timestamp: log.created_at,
-          action: actionType,
-          provider: providerName,
-          tool: log.source === 'Chat' ? 'chat_interface' : 'get_perspectives',
-          cost: parseFloat((log.total_cost || 0).toFixed(4)),
-          duration: log.response_time_ms || 0
-        })
-      })
-    } else if (allTokens && allTokens.length > 0) {
-      // Fallback to token connection activity if no usage logs
-      const sortedTokens = allTokens
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 5)
-
-      sortedTokens.forEach(token => {
-        const clientName = token.client_id === 'claude-desktop' ? 'Claude Code' : 
-                          token.client_id === 'cursor' ? 'Cursor' :
-                          token.client_id || 'Unknown Client'
-        
-        recentActivity.push({
-          timestamp: token.created_at,
-          action: 'Client Connected',
-          provider: clientName,
-          tool: 'authentication',
-          cost: 0.00,
-          duration: 0
-        })
-      })
-    }
-
-    // Prepare real statistics response
-    const stats = {
-      // User's credits balance
-      creditsBalance: parseFloat(totalUserCredits.toFixed(2)),
-
-      // Total user interactions (both MCP calls and web chat sessions)
-      totalMessages: totalMessages, // MCP API calls + web chat sessions
-      totalApiCalls: totalApiCalls, // Same as totalMessages (each interaction = one API call)
-
-      // Legacy fields for backward compatibility
-      totalRequests: totalApiCalls,
-      totalCost: parseFloat(totalCost.toFixed(4)),
-      activeConnections: activeConnections,
-      uptime: systemUptime,
-      responseTime: avgResponseTime,
-
-      // Additional detailed stats - monthly usage from BOTH sources
-      messagesThisMonth: totalMessages, // Monthly count to match subscription/profile
-      apiCallsToday: mcpApiCalls + chatApiCalls, // Total API calls this month from both sources
-
-      // All-time counts for display
-      allTimeMessages: allTimeTotalMessages,
-      allTimeMcpMessages: allTimeMcpMessages,
-      allTimeChatMessages: allTimeChatMessages,
-      allTimeApiCalls: allTimeTotalApiCalls,
-      allTimeTokens: allTimeTotalTokens,
-      allTimeCost: allTimeUserPaidCost,
-      requestsToday: ((requestLogs || []).filter(log => {
-        const logDate = new Date(log.created_at)
-        return logDate >= todayStart
-      }).length || 0) + ((chatLogs || []).filter(log => {
-        const logDate = new Date(log.created_at)
-        return logDate >= todayStart
-      }).length || 0),
-      costToday: parseFloat(((requestLogs || []).filter(log => {
-        const logDate = new Date(log.created_at)
-        // Only count costs from user_key (user's own API keys)
-        return logDate >= todayStart && log.source_type === 'user_key'
-      }).reduce((sum, log) => {
-        const cost = parseFloat(log.total_cost) || 0
-        return cost > 10 ? sum : sum + cost // Skip unrealistic costs
-      }, 0) || 0).toFixed(4)),
-      avgResponseTime: avgResponseTime,
-      
-      // Real provider breakdown
-      providerStats: providerStats,
-
-      // Real recent activity
-      recentActivity: recentActivity,
-
-      // System health
-      systemHealth: {
-        apiStatus: 'operational',
-        databaseStatus: 'operational',
-        mcpServerStatus: activeConnections > 0 ? 'operational' : 'idle',
-        cacheStatus: 'operational',
-        lastHealthCheck: new Date().toISOString()
-      },
-
-      // Additional real metrics
-      totalApiKeys: apiKeys?.length || 0,
-      // Deduplicated providers: admin-provided + user API keys
-      activeProviders: (() => {
-        const providerSet = new Set<string>()
-        // Add user API key providers
-        apiKeys?.forEach(key => {
-          if (key.active && key.provider) {
-            providerSet.add(key.provider.toLowerCase())
-          }
-        })
-        // Add admin-provided providers from mcp_request_logs
-        ;(requestLogs || []).forEach(log => {
-          if (log.source_type === 'admin_key' && log.provider_responses) {
-            Object.keys(log.provider_responses).forEach(providerKey => {
-              providerSet.add(providerKey.toLowerCase())
-            })
-          }
-        })
-        return providerSet.size
-      })(),
-      totalMcpTokens: totalTokens,
-      oldestConnection: (allTokens && allTokens.length > 0) ?
-        Math.min(...allTokens.map(t => new Date(t.created_at).getTime())) :
-        Date.now(),
-
-      // Cost breakdown by source (user-paid only) - from mcp_request_logs
-      costBreakdown: {
-        userApiKeys: (requestLogs || [])
-          .filter(log => log.source_type === 'user_key')
-          .reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0),
-        userCli: (requestLogs || [])
-          .filter(log => log.source_type === 'user_cli')
-          .reduce((sum, log) => sum + (parseFloat(log.total_cost) || 0), 0),
-        adminCredits: 0 // Don't show admin credit costs
-      },
-
-      // Token aggregation (all sources including admin)
-      tokenBreakdown: {
-        total: totalUsageTokens,
-        mcp: mcpTokenCount,
-        chat: chatTokens
-      },
-
-      // Provider details for hover (deduplicated admin + user)
-      providerDetails: (() => {
-        const providerMap = new Map<string, { name: string; source: string[]; logo?: string }>()
-
-        // Add user API key providers
-        apiKeys?.forEach(key => {
-          if (key.active && key.provider) {
-            const id = key.provider.toLowerCase()
-            const existing = providerMap.get(id)
-            if (existing) {
-              if (!existing.source.includes('user')) existing.source.push('user')
-            } else {
-              providerMap.set(id, { name: key.provider, source: ['user'] })
-            }
-          }
-        })
-
-        // Add admin-provided providers from mcp_request_logs
-        ;(requestLogs || []).forEach(log => {
-          if (log.source_type === 'admin_key' && log.provider_responses) {
-            Object.keys(log.provider_responses).forEach(providerKey => {
-              const id = providerKey.toLowerCase()
-              const existing = providerMap.get(id)
-              if (existing) {
-                if (!existing.source.includes('admin')) existing.source.push('admin')
-              } else {
-                providerMap.set(id, { name: providerKey, source: ['admin'] })
-              }
-            })
-          }
-        })
-
-        return Array.from(providerMap.values())
-      })(),
-
-      // DUAL-MODE BREAKDOWN: Shows statistics separated by mode
-      modeBreakdown: {
-        // Standard Mode: Using Polydev's API keys
-        standard: {
-          messages: standardModeMessages,
-          tokens: standardModeTokens,
-          mode: 'Polydev API Keys (conversations saved)',
-          description: 'Tracked for billing and tier limits'
-        },
-        // BYOK Mode: Using user's own API keys
-        byok: {
-          sessions: ephemeralSessions,
-          requests: ephemeralRequests,
-          tokens: ephemeralTokens,
-          estimatedCost: parseFloat(ephemeralCost.toFixed(4)),
-          mode: 'Your API Keys (ephemeral, not saved)',
-          description: 'No conversation content saved, metadata only'
-        },
-        // All-time breakdown
-        allTime: {
-          standard: {
-            messages: allTimeStandardMessages,
-            tokens: allTimeStandardTokens
-          },
-          byok: {
-            sessions: allTimeEphemeralSessions,
-            requests: allTimeEphemeralRequests,
-            tokens: allTimeEphemeralTokens,
-            estimatedCost: parseFloat(allTimeEphemeralCost.toFixed(4))
-          }
-        }
-      }
-    }
 
     // Use already fetched providers registry data (from parallel query)
     console.log(`[Dashboard Stats] Using ${modelsDevProviders?.length || 0} providers from parallel query`)
@@ -1099,13 +568,114 @@ export async function GET(request: NextRequest) {
       costPerToken: stats.totalTokens > 0 ? (stats.totalCost / stats.totalTokens).toFixed(6) : 0,
     })).sort((a: any, b: any) => b.requests - a.requests)
 
-    // Add request logs to stats response (so dashboard can display them)
-    ;(stats as any).requestLogs = [...(requestLogs || []), ...(chatLogs || [])].slice(0, 50)
+    // ============================================================
+    // STATS OBJECT CONSTRUCTION - Using accurate COUNT + aggregated data
+    // ============================================================
+    
+    // Calculate response time from recent logs (this is fine from limited data)
+    const logsForTiming = requestLogs || []
+    const totalResponseTime = logsForTiming.reduce((sum: number, log: any) => sum + (log.response_time_ms || 0), 0)
+    const avgResponseTime = logsForTiming.length > 0 
+      ? Math.round(totalResponseTime / logsForTiming.length) 
+      : 0
 
-    // Add analytics to stats response
-    ;(stats as any).providerAnalytics = processedProviderAnalytics
-    ;(stats as any).modelAnalytics = processedModelAnalytics
+    // Calculate monthly totals using aggregated sums (database-level, no limit issues)
+    // Note: Supabase aggregate returns varying structures, so we use any-casting for safety
+    const mcpAggMonthly = mcpMonthlyAgg as any
+    const chatAggMonthly = chatMonthlyAgg as any
+    const ephAggMonthly = ephemeralMonthlyAgg as any
+    
+    const monthlyMcpTokens = mcpAggMonthly?.sum || mcpAggMonthly?.total_tokens || 0
+    const monthlyMcpCost = mcpAggMonthly?.total_cost || mcpAggMonthly?.['sum.total_cost'] || 0
+    const monthlyChatTokens = chatAggMonthly?.sum || chatAggMonthly?.total_tokens || 0
+    const monthlyChatCost = chatAggMonthly?.total_cost || chatAggMonthly?.['sum.total_cost'] || 0
+    const monthlyEphemeralTokens = ephAggMonthly?.sum || ephAggMonthly?.total_tokens || 0
+    const monthlyEphemeralCost = ephAggMonthly?.estimated_cost_usd || ephAggMonthly?.['sum.estimated_cost_usd'] || 0
 
+    const monthlyTotalTokens = monthlyMcpTokens + monthlyChatTokens + monthlyEphemeralTokens
+    const monthlyTotalCost = monthlyMcpCost + monthlyChatCost + monthlyEphemeralCost
+
+    // Calculate all-time totals using aggregated sums
+    const mcpAggAllTime = mcpAllTimeAgg as any
+    const chatAggAllTime = chatAllTimeAgg as any
+    const ephAggAllTime = ephemeralAllTimeAgg as any
+    
+    const allTimeMcpTokens = mcpAggAllTime?.sum || mcpAggAllTime?.total_tokens || 0
+    const allTimeMcpCost = mcpAggAllTime?.total_cost || mcpAggAllTime?.['sum.total_cost'] || 0
+    const allTimeChatTokens = chatAggAllTime?.sum || chatAggAllTime?.total_tokens || 0
+    const allTimeChatCost = chatAggAllTime?.total_cost || chatAggAllTime?.['sum.total_cost'] || 0
+    const allTimeEphemeralTokens = ephAggAllTime?.sum || ephAggAllTime?.total_tokens || 0
+    const allTimeEphemeralCost = ephAggAllTime?.estimated_cost_usd || ephAggAllTime?.['sum.estimated_cost_usd'] || 0
+
+    const allTimeTotalTokens = allTimeMcpTokens + allTimeChatTokens + allTimeEphemeralTokens
+    const allTimeTotalCost = allTimeMcpCost + allTimeChatCost + allTimeEphemeralCost
+
+    // Get subscription info
+    const subscriptionInfo = await subscriptionManager.getUserSubscription(user.id, true)
+    const currentPlan = subscriptionInfo?.tier || 'free'
+
+    // Process API keys for provider stats
+    const providerStats = (apiKeys || []).map((key: any) => ({
+      provider: key.provider,
+      active: key.active !== false,
+      lastUsed: key.last_used_at,
+      currentUsage: key.current_usage || 0,
+      monthlyBudget: key.monthly_budget,
+      maxTokens: key.max_tokens
+    }))
+
+    // Build the complete stats object
+    const stats = {
+      // Credits
+      creditsBalance: userCredits?.balance || 0,
+      promotionalBalance: userCredits?.promotional_balance || 0,
+      
+      // Monthly stats - using ACCURATE COUNT queries
+      totalMessages: mcpMessagesCount + chatMessagesCount,  // Accurate count from COUNT query
+      totalApiCalls: mcpMessagesCount + ephemeralRequestsCount,  // Accurate count from COUNT query
+      totalTokens: monthlyTotalTokens,
+      totalCost: monthlyTotalCost,
+      
+      // All-time stats - using ACCURATE COUNT queries
+      allTimeMessages: allTimeMcpCount + allTimeChatCount,
+      allTimeApiCalls: allTimeMcpCount + allTimeEphemeralCount,
+      allTimeTokens: allTimeTotalTokens,
+      allTimeCost: allTimeTotalCost,
+      
+      // Performance
+      responseTime: avgResponseTime,
+      
+      // Connections and API keys
+      activeConnections: (mcpTokens || []).length,
+      totalApiKeys: (apiKeys || []).length,
+      
+      // Provider stats
+      providerStats,
+      
+      // Provider/Model analytics (from limited recent logs - OK for breakdown)
+      providerAnalytics: processedProviderAnalytics,
+      modelAnalytics: processedModelAnalytics,
+      
+      // Recent request logs for activity display (limited to 50)
+      requestLogs: [...(requestLogs || []), ...(chatLogs || [])].slice(0, 50),
+      
+      // Subscription
+      subscription: {
+        plan: currentPlan,
+        status: subscriptionInfo?.status || 'active',
+      },
+      
+      // Data freshness metadata
+      _meta: {
+        countQueries: {
+          mcpMessages: mcpMessagesCount,
+          chatMessages: chatMessagesCount,
+          ephemeralRequests: ephemeralRequestsCount,
+        },
+        aggregatedFromDatabase: true,
+        analyticsBasedOnRecentLogs: (requestLogs?.length || 0) + (chatLogs?.length || 0),
+      }
+    }
 
     console.log('[Dashboard Stats] Returning real statistics:', {
       creditsBalance: stats.creditsBalance,
@@ -1118,7 +688,7 @@ export async function GET(request: NextRequest) {
       providersCount: stats.providerStats.length,
       providerAnalyticsCount: processedProviderAnalytics.length,
       modelAnalyticsCount: processedModelAnalytics.length,
-      requestLogsCount: (stats as any).requestLogs?.length,
+      requestLogsCount: stats.requestLogs?.length,
       // All-time values
       allTimeMessages: stats.allTimeMessages,
       allTimeApiCalls: stats.allTimeApiCalls,
