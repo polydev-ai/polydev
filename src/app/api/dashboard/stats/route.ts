@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     console.log('[Dashboard Stats] Fetching real statistics for user:', user.id)
 
     // Check cache first
-    const cacheKey = `dashboard-stats-v11-${user.id}` // v11: debug chat logs counting
+    const cacheKey = `dashboard-stats-v12-${user.id}` // v12: fixed tokens/cost sums + increased analytics limits
     const cachedStats = getCachedData(cacheKey)
     if (cachedStats) {
       console.log('[Dashboard Stats] Returning cached data')
@@ -153,15 +153,14 @@ export async function GET(request: NextRequest) {
       userTokensResult,
       apiKeysResult,
       providersResult,
-      // Monthly aggregates - SUM queries for tokens/cost (more efficient than fetching all rows)
-      mcpMonthlyAggResult,
-      chatMonthlyAggResult,
-      ephemeralMonthlyAggResult,
-      // All-time aggregates
-      mcpAllTimeAggResult,
-      chatAllTimeAggResult,
-      ephemeralAllTimeAggResult,
-      // Limited recent data for analytics and activity display
+      // Fetch token/cost data for accurate sums (just the columns we need, not full rows)
+      mcpMonthlySumsResult,
+      chatMonthlySumsResult,
+      ephemeralMonthlySumsResult,
+      mcpAllTimeSumsResult,
+      chatAllTimeSumsResult,
+      ephemeralAllTimeSumsResult,
+      // Recent data for analytics and activity display (increased limits for comprehensive analytics)
       recentRequestLogsResult,
       recentChatLogsResult,
       providersRegistryResult,
@@ -203,70 +202,64 @@ export async function GET(request: NextRequest) {
         .from('provider_configurations')
         .select('*'),
 
-      // 6. Monthly MCP aggregates (SUM tokens, SUM cost)
+      // 6. Monthly MCP tokens/cost (just the columns we need for summing)
       supabase
         .from('mcp_request_logs')
-        .select('total_tokens.sum(), total_cost.sum()')
+        .select('total_tokens, total_cost')
         .eq('user_id', user.id)
-        .gte('created_at', monthStartISO)
-        .single(),
+        .gte('created_at', monthStartISO),
 
-      // 7. Monthly chat aggregates
+      // 7. Monthly chat tokens/cost
       supabase
         .from('chat_logs')
-        .select('total_tokens.sum(), total_cost.sum()')
+        .select('total_tokens, total_cost')
         .eq('user_id', user.id)
-        .gte('created_at', monthStartISO)
-        .single(),
+        .gte('created_at', monthStartISO),
 
-      // 8. Monthly ephemeral aggregates
+      // 8. Monthly ephemeral tokens/cost
       supabase
         .from('ephemeral_usage')
-        .select('total_tokens.sum(), estimated_cost_usd.sum()')
+        .select('total_tokens, estimated_cost_usd')
         .eq('user_id', user.id)
         .eq('used_byok', true)
-        .gte('created_at', monthStartISO)
-        .single(),
+        .gte('created_at', monthStartISO),
 
-      // 9. All-time MCP aggregates
+      // 9. All-time MCP tokens/cost
       supabase
         .from('mcp_request_logs')
-        .select('total_tokens.sum(), total_cost.sum()')
-        .eq('user_id', user.id)
-        .single(),
+        .select('total_tokens, total_cost')
+        .eq('user_id', user.id),
 
-      // 10. All-time chat aggregates
+      // 10. All-time chat tokens/cost
       supabase
         .from('chat_logs')
-        .select('total_tokens.sum(), total_cost.sum()')
-        .eq('user_id', user.id)
-        .single(),
+        .select('total_tokens, total_cost')
+        .eq('user_id', user.id),
 
-      // 11. All-time ephemeral aggregates
+      // 11. All-time ephemeral tokens/cost
       supabase
         .from('ephemeral_usage')
-        .select('total_tokens.sum(), estimated_cost_usd.sum()')
+        .select('total_tokens, estimated_cost_usd')
         .eq('user_id', user.id)
-        .eq('used_byok', true)
-        .single(),
+        .eq('used_byok', true),
 
-      // 12. Recent request logs for analytics and activity (limited for performance)
+      // 12. Request logs for analytics (increased limit for comprehensive model breakdown)
       supabase
         .from('mcp_request_logs')
         .select('total_tokens, total_cost, created_at, provider_responses, response_time_ms, status, successful_providers, failed_providers, provider_costs, source_type')
         .eq('user_id', user.id)
         .gte('created_at', monthStartISO)
         .order('created_at', { ascending: false })
-        .limit(200), // Reduced from 500, used only for analytics breakdown
+        .limit(1000), // Increased for comprehensive model analytics
 
-      // 13. Recent chat logs for analytics (limited for performance)
+      // 13. Chat logs for analytics (increased limit)
       supabase
         .from('chat_logs')
         .select('total_tokens, total_cost, created_at, models_used')
         .eq('user_id', user.id)
         .gte('created_at', monthStartISO)
         .order('created_at', { ascending: false })
-        .limit(200),
+        .limit(1000),
 
       // 14. Providers registry for display names/logos
       supabase
@@ -303,18 +296,18 @@ export async function GET(request: NextRequest) {
     const modelsDevProviders = providersRegistryResult.status === 'fulfilled' ? providersRegistryResult.value.data : []
 
     // Extract aggregated sums
-    const mcpMonthlyAgg = mcpMonthlyAggResult.status === 'fulfilled' && !mcpMonthlyAggResult.value.error 
-      ? mcpMonthlyAggResult.value.data : null
-    const chatMonthlyAgg = chatMonthlyAggResult.status === 'fulfilled' && !chatMonthlyAggResult.value.error
-      ? chatMonthlyAggResult.value.data : null
-    const ephemeralMonthlyAgg = ephemeralMonthlyAggResult.status === 'fulfilled' && !ephemeralMonthlyAggResult.value.error
-      ? ephemeralMonthlyAggResult.value.data : null
-    const mcpAllTimeAgg = mcpAllTimeAggResult.status === 'fulfilled' && !mcpAllTimeAggResult.value.error
-      ? mcpAllTimeAggResult.value.data : null
-    const chatAllTimeAgg = chatAllTimeAggResult.status === 'fulfilled' && !chatAllTimeAggResult.value.error
-      ? chatAllTimeAggResult.value.data : null
-    const ephemeralAllTimeAgg = ephemeralAllTimeAggResult.status === 'fulfilled' && !ephemeralAllTimeAggResult.value.error
-      ? ephemeralAllTimeAggResult.value.data : null
+    const mcpMonthlyAgg = mcpMonthlySumsResult.status === 'fulfilled' && !mcpMonthlySumsResult.value.error 
+      ? mcpMonthlySumsResult.value.data : null
+    const chatMonthlyAgg = chatMonthlySumsResult.status === 'fulfilled' && !chatMonthlySumsResult.value.error
+      ? chatMonthlySumsResult.value.data : null
+    const ephemeralMonthlyAgg = ephemeralMonthlySumsResult.status === 'fulfilled' && !ephemeralMonthlySumsResult.value.error
+      ? ephemeralMonthlySumsResult.value.data : null
+    const mcpAllTimeAgg = mcpAllTimeSumsResult.status === 'fulfilled' && !mcpAllTimeSumsResult.value.error
+      ? mcpAllTimeSumsResult.value.data : null
+    const chatAllTimeAgg = chatAllTimeSumsResult.status === 'fulfilled' && !chatAllTimeSumsResult.value.error
+      ? chatAllTimeSumsResult.value.data : null
+    const ephemeralAllTimeAgg = ephemeralAllTimeSumsResult.status === 'fulfilled' && !ephemeralAllTimeSumsResult.value.error
+      ? ephemeralAllTimeSumsResult.value.data : null
 
     console.log('[Dashboard Stats] Aggregated sums:', {
       mcpMonthly: mcpMonthlyAgg,
@@ -579,36 +572,40 @@ export async function GET(request: NextRequest) {
       ? Math.round(totalResponseTime / logsForTiming.length) 
       : 0
 
-    // Calculate monthly totals using aggregated sums (database-level, no limit issues)
-    // Note: Supabase aggregate returns varying structures, so we use any-casting for safety
-    const mcpAggMonthly = mcpMonthlyAgg as any
-    const chatAggMonthly = chatMonthlyAgg as any
-    const ephAggMonthly = ephemeralMonthlyAgg as any
-    
-    const monthlyMcpTokens = mcpAggMonthly?.sum || mcpAggMonthly?.total_tokens || 0
-    const monthlyMcpCost = mcpAggMonthly?.total_cost || mcpAggMonthly?.['sum.total_cost'] || 0
-    const monthlyChatTokens = chatAggMonthly?.sum || chatAggMonthly?.total_tokens || 0
-    const monthlyChatCost = chatAggMonthly?.total_cost || chatAggMonthly?.['sum.total_cost'] || 0
-    const monthlyEphemeralTokens = ephAggMonthly?.sum || ephAggMonthly?.total_tokens || 0
-    const monthlyEphemeralCost = ephAggMonthly?.estimated_cost_usd || ephAggMonthly?.['sum.estimated_cost_usd'] || 0
+    // Helper function to sum arrays of token/cost data
+    const sumTokensAndCost = (data: any[] | null, tokenField: string = 'total_tokens', costField: string = 'total_cost') => {
+      if (!data || !Array.isArray(data)) return { tokens: 0, cost: 0 }
+      return data.reduce((acc, row) => ({
+        tokens: acc.tokens + (row[tokenField] || 0),
+        cost: acc.cost + (row[costField] || 0)
+      }), { tokens: 0, cost: 0 })
+    }
 
-    const monthlyTotalTokens = monthlyMcpTokens + monthlyChatTokens + monthlyEphemeralTokens
-    const monthlyTotalCost = monthlyMcpCost + monthlyChatCost + monthlyEphemeralCost
+    // Calculate monthly totals by summing the fetched arrays
+    const mcpMonthlyTotals = sumTokensAndCost(mcpMonthlyAgg)
+    const chatMonthlyTotals = sumTokensAndCost(chatMonthlyAgg)
+    const ephemeralMonthlyTotals = sumTokensAndCost(ephemeralMonthlyAgg, 'total_tokens', 'estimated_cost_usd')
 
-    // Calculate all-time totals using aggregated sums
-    const mcpAggAllTime = mcpAllTimeAgg as any
-    const chatAggAllTime = chatAllTimeAgg as any
-    const ephAggAllTime = ephemeralAllTimeAgg as any
-    
-    const allTimeMcpTokens = mcpAggAllTime?.sum || mcpAggAllTime?.total_tokens || 0
-    const allTimeMcpCost = mcpAggAllTime?.total_cost || mcpAggAllTime?.['sum.total_cost'] || 0
-    const allTimeChatTokens = chatAggAllTime?.sum || chatAggAllTime?.total_tokens || 0
-    const allTimeChatCost = chatAggAllTime?.total_cost || chatAggAllTime?.['sum.total_cost'] || 0
-    const allTimeEphemeralTokens = ephAggAllTime?.sum || ephAggAllTime?.total_tokens || 0
-    const allTimeEphemeralCost = ephAggAllTime?.estimated_cost_usd || ephAggAllTime?.['sum.estimated_cost_usd'] || 0
+    const monthlyTotalTokens = mcpMonthlyTotals.tokens + chatMonthlyTotals.tokens + ephemeralMonthlyTotals.tokens
+    const monthlyTotalCost = mcpMonthlyTotals.cost + chatMonthlyTotals.cost + ephemeralMonthlyTotals.cost
 
-    const allTimeTotalTokens = allTimeMcpTokens + allTimeChatTokens + allTimeEphemeralTokens
-    const allTimeTotalCost = allTimeMcpCost + allTimeChatCost + allTimeEphemeralCost
+    // Calculate all-time totals by summing the fetched arrays
+    const mcpAllTimeTotals = sumTokensAndCost(mcpAllTimeAgg)
+    const chatAllTimeTotals = sumTokensAndCost(chatAllTimeAgg)
+    const ephemeralAllTimeTotals = sumTokensAndCost(ephemeralAllTimeAgg, 'total_tokens', 'estimated_cost_usd')
+
+    const allTimeTotalTokens = mcpAllTimeTotals.tokens + chatAllTimeTotals.tokens + ephemeralAllTimeTotals.tokens
+    const allTimeTotalCost = mcpAllTimeTotals.cost + chatAllTimeTotals.cost + ephemeralAllTimeTotals.cost
+
+    console.log('[Dashboard Stats] Token/Cost sums:', {
+      monthly: { tokens: monthlyTotalTokens, cost: monthlyTotalCost },
+      allTime: { tokens: allTimeTotalTokens, cost: allTimeTotalCost },
+      breakdown: {
+        mcpMonthly: mcpMonthlyTotals,
+        chatMonthly: chatMonthlyTotals,
+        ephemeralMonthly: ephemeralMonthlyTotals
+      }
+    })
 
     // Get subscription info
     const subscriptionInfo = await subscriptionManager.getUserSubscription(user.id, true)
@@ -652,12 +649,12 @@ export async function GET(request: NextRequest) {
       // Provider stats
       providerStats,
       
-      // Provider/Model analytics (from limited recent logs - OK for breakdown)
+      // Provider/Model analytics (from recent logs - comprehensive with 1000 limit)
       providerAnalytics: processedProviderAnalytics,
       modelAnalytics: processedModelAnalytics,
       
-      // Recent request logs for activity display (limited to 50)
-      requestLogs: [...(requestLogs || []), ...(chatLogs || [])].slice(0, 50),
+      // Recent request logs for activity display (show up to 100 recent items)
+      requestLogs: [...(requestLogs || []), ...(chatLogs || [])].slice(0, 100),
       
       // Subscription
       subscription: {
