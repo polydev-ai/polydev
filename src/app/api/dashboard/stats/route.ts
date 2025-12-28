@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     console.log('[Dashboard Stats] Fetching real statistics for user:', user.id)
 
     // Check cache first
-    const cacheKey = `dashboard-stats-v13-${user.id}` // v13: fixed tokenBreakdown field for frontend compatibility
+    const cacheKey = `dashboard-stats-v14-${user.id}` // v14: fixed creditsBalance to include promotional_balance
     const cachedStats = getCachedData(cacheKey)
     if (cachedStats) {
       console.log('[Dashboard Stats] Returning cached data')
@@ -623,6 +623,15 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Debug logging for credits
+    console.log('[Dashboard Stats] Credits debug:', {
+      rawBalance: userCredits?.balance,
+      rawPromotionalBalance: userCredits?.promotional_balance,
+      parsedBalance: parseFloat(userCredits?.balance) || 0,
+      parsedPromotionalBalance: parseFloat(userCredits?.promotional_balance) || 0,
+      totalCredits: (parseFloat(userCredits?.balance) || 0) + (parseFloat(userCredits?.promotional_balance) || 0)
+    })
+
     // Get subscription info
     const subscriptionInfo = await subscriptionManager.getUserSubscription(user.id, true)
     const currentPlan = subscriptionInfo?.tier || 'free'
@@ -639,9 +648,10 @@ export async function GET(request: NextRequest) {
 
     // Build the complete stats object
     const stats = {
-      // Credits
-      creditsBalance: userCredits?.balance || 0,
-      promotionalBalance: userCredits?.promotional_balance || 0,
+      // Credits - creditsBalance should be total available (balance + promotional_balance)
+      creditsBalance: (parseFloat(userCredits?.balance) || 0) + (parseFloat(userCredits?.promotional_balance) || 0),
+      promotionalBalance: parseFloat(userCredits?.promotional_balance) || 0,
+      baseBalance: parseFloat(userCredits?.balance) || 0,
       
       // Monthly stats - using ACCURATE COUNT queries
       totalMessages: mcpMessagesCount + chatMessagesCount,  // Accurate count from COUNT query
