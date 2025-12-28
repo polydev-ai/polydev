@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 // Global cache for dashboard data to prevent duplicate fetching
-// CACHE_VERSION: Increment this to invalidate all caches (current: 12 - added allTimeCost)
-const CACHE_VERSION = 12
+// CACHE_VERSION: Increment this to invalidate all caches (current: 13 - increased request logs to 200)
+const CACHE_VERSION = 13
 const dashboardCache = {
   version: CACHE_VERSION,
   stats: null as any,
@@ -186,7 +186,7 @@ export function useDashboardData() {
       // Update request logs
 
       // Force fallback for now to get logs working
-      const mcpLogsData = await fetchWithCache('requestLogs', '/api/dashboard/request-logs?limit=50&offset=0')
+      const mcpLogsData = await fetchWithCache('requestLogs', '/api/dashboard/request-logs?limit=200&offset=0')
       if (mcpLogsData && mcpLogsData.logs) {
         setRequestLogs(mcpLogsData.logs)
 

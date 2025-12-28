@@ -396,7 +396,7 @@ export default function Dashboard() {
             </p>
             <p className="text-xs text-slate-500 mt-1">
               this month
-              {realTimeData?.allTimeCost && (
+              {realTimeData?.allTimeCost !== undefined && realTimeData.allTimeCost > 0 && (
                 <span className="text-[10px] text-slate-400 ml-2">
                   (${realTimeData.allTimeCost.toFixed(2)} all-time)
                 </span>

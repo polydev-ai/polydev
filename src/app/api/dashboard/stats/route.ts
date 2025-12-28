@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     console.log('[Dashboard Stats] Fetching real statistics for user:', user.id)
 
     // Check cache first
-    const cacheKey = `dashboard-stats-v14-${user.id}` // v14: fixed creditsBalance to include promotional_balance
+    const cacheKey = `dashboard-stats-v15-${user.id}` // v15: increased requestLogs to 200
     const cachedStats = getCachedData(cacheKey)
     if (cachedStats) {
       console.log('[Dashboard Stats] Returning cached data')
@@ -686,8 +686,8 @@ export async function GET(request: NextRequest) {
       providerAnalytics: processedProviderAnalytics,
       modelAnalytics: processedModelAnalytics,
       
-      // Recent request logs for activity display (show up to 100 recent items)
-      requestLogs: [...(requestLogs || []), ...(chatLogs || [])].slice(0, 100),
+      // Recent request logs for activity display (show up to 200 recent items)
+      requestLogs: [...(requestLogs || []), ...(chatLogs || [])].slice(0, 200),
       
       // Subscription
       subscription: {
