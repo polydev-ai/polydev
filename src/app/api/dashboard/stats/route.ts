@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     console.log('[Dashboard Stats] Fetching real statistics for user:', user.id)
 
     // Check cache first
-    const cacheKey = `dashboard-stats-v12-${user.id}` // v12: fixed tokens/cost sums + increased analytics limits
+    const cacheKey = `dashboard-stats-v13-${user.id}` // v13: fixed tokenBreakdown field for frontend compatibility
     const cachedStats = getCachedData(cacheKey)
     if (cachedStats) {
       console.log('[Dashboard Stats] Returning cached data')
@@ -561,6 +561,22 @@ export async function GET(request: NextRequest) {
       costPerToken: stats.totalTokens > 0 ? (stats.totalCost / stats.totalTokens).toFixed(6) : 0,
     })).sort((a: any, b: any) => b.requests - a.requests)
 
+    // Debug logging for model analytics
+    console.log('[Dashboard Stats] Model analytics debug:', {
+      totalLogsProcessed: allLogsForAnalytics.length,
+      uniqueModels: Object.keys(modelAnalytics).length,
+      topModels: processedModelAnalytics.slice(0, 5).map(m => ({
+        key: `${m.provider}:${m.model}`,
+        requests: m.requests,
+        cost: m.totalCost
+      })),
+      sampleLog: allLogsForAnalytics[0] ? {
+        hasProviderResponses: !!(allLogsForAnalytics[0] as any).provider_responses,
+        hasModelsUsed: !!(allLogsForAnalytics[0] as any).models_used,
+        providerResponsesKeys: (allLogsForAnalytics[0] as any).provider_responses ? Object.keys((allLogsForAnalytics[0] as any).provider_responses).slice(0, 3) : [],
+      } : 'no logs'
+    })
+
     // ============================================================
     // STATS OBJECT CONSTRUCTION - Using accurate COUNT + aggregated data
     // ============================================================
@@ -632,6 +648,13 @@ export async function GET(request: NextRequest) {
       totalApiCalls: mcpMessagesCount + ephemeralRequestsCount,  // Accurate count from COUNT query
       totalTokens: monthlyTotalTokens,
       totalCost: monthlyTotalCost,
+      
+      // Token breakdown for frontend compatibility (frontend expects tokenBreakdown.total)
+      tokenBreakdown: {
+        total: monthlyTotalTokens,
+        input: 0,  // Not tracked separately yet
+        output: 0, // Not tracked separately yet
+      },
       
       // All-time stats - using ACCURATE COUNT queries
       allTimeMessages: allTimeMcpCount + allTimeChatCount,
