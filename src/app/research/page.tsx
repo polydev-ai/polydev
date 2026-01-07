@@ -182,79 +182,79 @@ export default function ResearchPage() {
           <h2 className="text-2xl font-bold text-slate-900 mb-4">How It Works</h2>
 
           <p className="text-slate-600 leading-relaxed mb-8">
-            Instead of using one expensive model, we give a smaller model the ability to consult 
-            other AI models when it gets stuck—like a developer who can instantly poll senior 
-            colleagues for advice.
+            The principle is simple: when your AI agent faces a difficult decision, let it ask 
+            other AI models for their perspective. Different models see different solutions.
           </p>
 
-          {/* Clean numbered steps */}
-          <div className="space-y-6">
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-semibold text-slate-600">
-                1
+          {/* Visual flow diagram */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 sm:p-8">
+            <div className="grid sm:grid-cols-3 gap-6 sm:gap-8">
+              {/* Step 1 */}
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white font-semibold mx-auto mb-4">
+                  1
+                </div>
+                <h4 className="font-semibold text-slate-900 mb-2">Your agent works</h4>
+                <p className="text-sm text-slate-600">
+                  Any AI agent—coding assistant, chatbot, research tool—encounters a complex problem.
+                </p>
               </div>
-              <div className="pt-1">
-                <h4 className="font-semibold text-slate-900 mb-1">Problem arrives</h4>
-                <p className="text-sm text-slate-600">A real GitHub issue—bug report or feature request—enters the system.</p>
+
+              {/* Arrow for desktop */}
+              <div className="hidden sm:flex items-center justify-center">
+                <ArrowRight className="w-6 h-6 text-slate-300" />
+              </div>
+
+              {/* Step 2 */}
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white font-semibold mx-auto mb-4">
+                  2
+                </div>
+                <h4 className="font-semibold text-slate-900 mb-2">Consults Polydev</h4>
+                <p className="text-sm text-slate-600">
+                  With one API call, get perspectives from GPT, Claude, Gemini, and Grok simultaneously.
+                </p>
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-semibold text-slate-600">
-                2
-              </div>
-              <div className="pt-1">
-                <h4 className="font-semibold text-slate-900 mb-1">Haiku analyzes the codebase</h4>
-                <p className="text-sm text-slate-600">Claude Haiku 4.5 reads the repository, understands the issue, and starts planning a fix.</p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-sm font-semibold text-white">
-                3
-              </div>
-              <div className="pt-1 flex-1">
-                <h4 className="font-semibold text-slate-900 mb-1">Multi-model consultation</h4>
-                <p className="text-sm text-slate-600 mb-4">When uncertain, Haiku asks other models: &ldquo;What&apos;s the best approach here?&rdquo;</p>
-                
-                {/* Minimal consultation box */}
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 max-w-sm">
-                  <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
-                    <MessageSquare className="w-3 h-3" />
-                    <span className="font-medium">Polydev MCP</span>
+            {/* Center consultation visual */}
+            <div className="mt-8 pt-8 border-t border-slate-200">
+              <div className="bg-slate-900 rounded-lg p-5 max-w-md mx-auto">
+                <div className="flex items-center gap-2 text-xs text-slate-400 mb-4">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span className="font-medium">polydev.getPerspectives()</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-slate-800 rounded px-3 py-2">
+                    <span className="text-slate-400 text-xs">GPT-4o</span>
+                    <p className="text-white text-xs mt-1 truncate">&quot;Try approach A because...&quot;</p>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span>GPT 5.2 Codex</span>
-                      <span className="text-xs text-slate-400">responded</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-700">
-                      <span>Gemini 3 Flash</span>
-                      <span className="text-xs text-slate-400">responded</span>
-                    </div>
+                  <div className="bg-slate-800 rounded px-3 py-2">
+                    <span className="text-slate-400 text-xs">Claude</span>
+                    <p className="text-white text-xs mt-1 truncate">&quot;Consider option B for...&quot;</p>
+                  </div>
+                  <div className="bg-slate-800 rounded px-3 py-2">
+                    <span className="text-slate-400 text-xs">Gemini</span>
+                    <p className="text-white text-xs mt-1 truncate">&quot;The pattern here is...&quot;</p>
+                  </div>
+                  <div className="bg-slate-800 rounded px-3 py-2">
+                    <span className="text-slate-400 text-xs">Grok</span>
+                    <p className="text-white text-xs mt-1 truncate">&quot;Watch out for edge...&quot;</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-semibold text-slate-600">
-                4
+            {/* Step 3 */}
+            <div className="mt-8 pt-8 border-t border-slate-200 text-center">
+              <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center mx-auto mb-4">
+                <Check className="w-5 h-5 text-white" />
               </div>
-              <div className="pt-1">
-                <h4 className="font-semibold text-slate-900 mb-1">Synthesize and generate fix</h4>
-                <p className="text-sm text-slate-600">Haiku incorporates the perspectives, picks the best approach, and writes the patch.</p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center">
-                <Check className="w-4 h-4 text-white" />
-              </div>
-              <div className="pt-1">
-                <h4 className="font-semibold text-slate-900 mb-1">Test and submit</h4>
-                <p className="text-sm text-slate-600">Run the test suite. If it passes, submit. <span className="font-semibold text-slate-900">74.6% success rate.</span></p>
-              </div>
+              <h4 className="font-semibold text-slate-900 mb-2">Better decisions</h4>
+              <p className="text-sm text-slate-600 max-w-md mx-auto">
+                Your agent synthesizes the perspectives and makes a more informed choice.
+                In our benchmark, this improved success rate from 64.6% to 74.6%.
+              </p>
             </div>
           </div>
         </motion.section>
@@ -497,12 +497,19 @@ export default function ResearchPage() {
             If you use our work or build on these findings, please cite:
           </p>
 
-          <div className="relative bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-white">
-              <span className="text-xs font-medium text-slate-500">citation.bib</span>
+          <div className="relative bg-slate-900 rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+                </div>
+                <span className="text-xs font-medium text-slate-500 ml-2">citation.bib</span>
+              </div>
               <button
                 onClick={copyToClipboard}
-                className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
               >
                 {copied ? (
                   <>
@@ -517,7 +524,7 @@ export default function ResearchPage() {
                 )}
               </button>
             </div>
-            <pre className="p-4 text-sm text-slate-700 overflow-x-auto font-mono leading-relaxed">
+            <pre className="p-4 text-sm text-slate-300 overflow-x-auto font-mono leading-relaxed">
               {citation}
             </pre>
           </div>
