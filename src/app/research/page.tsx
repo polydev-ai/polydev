@@ -482,7 +482,7 @@ export default function ResearchPage() {
           </div>
         </motion.section>
 
-        {/* Citation - Styled with syntax highlighting */}
+        {/* Citation - Simple and clean */}
         <motion.section
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -495,66 +495,35 @@ export default function ResearchPage() {
             If you use our work or build on these findings, please cite:
           </p>
 
-          <div className="relative rounded-lg overflow-hidden border border-slate-200">
-            {/* Header bar */}
-            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-100 border-b border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-400" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                  <div className="w-3 h-3 rounded-full bg-green-400" />
-                </div>
-                <span className="text-xs font-medium text-slate-600">citation.bib</span>
-              </div>
-              <button
-                onClick={copyToClipboard}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-md text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-green-600" />
-                    <span className="text-green-600">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copy</span>
-                  </>
-                )}
-              </button>
-            </div>
-            {/* Code content with syntax highlighting */}
-            <div className="bg-slate-900 p-5 overflow-x-auto">
-              <pre className="text-sm font-mono leading-relaxed">
-                <code>
-                  <span className="text-purple-400">@article</span>
-                  <span className="text-slate-400">{'{'}</span>
-                  <span className="text-green-400">ghanta2026matching</span>
-                  <span className="text-slate-400">,</span>
-                  {'\n'}
-                  {'  '}<span className="text-blue-400">title</span>
-                  <span className="text-slate-400">=</span>
-                  <span className="text-amber-300">{'{'}Matching Frontier Code Agents with Lightweight Models via Multi-Model Consultation{'}'}</span>
-                  <span className="text-slate-400">,</span>
-                  {'\n'}
-                  {'  '}<span className="text-blue-400">author</span>
-                  <span className="text-slate-400">=</span>
-                  <span className="text-amber-300">{'{'}Ghanta, Venkata Subrhmanyam and Paladugu, Pujitha Sri Lakshmi{'}'}</span>
-                  <span className="text-slate-400">,</span>
-                  {'\n'}
-                  {'  '}<span className="text-blue-400">journal</span>
-                  <span className="text-slate-400">=</span>
-                  <span className="text-amber-300">{'{'}arXiv preprint arXiv:2501.XXXXX{'}'}</span>
-                  <span className="text-slate-400">,</span>
-                  {'\n'}
-                  {'  '}<span className="text-blue-400">year</span>
-                  <span className="text-slate-400">=</span>
-                  <span className="text-amber-300">{'{'}2026{'}'}</span>
-                  {'\n'}
-                  <span className="text-slate-400">{'}'}</span>
-                </code>
+          <div className="relative">
+            <div className="bg-slate-900 rounded-lg p-6 overflow-x-auto">
+              <pre className="text-sm font-mono text-slate-300 leading-relaxed whitespace-pre-wrap">
+{`@article{ghanta2026matching,
+  title={Matching Frontier Code Agents with Lightweight
+         Models via Multi-Model Consultation},
+  author={Ghanta, Venkata Subrhmanyam and
+          Paladugu, Pujitha Sri Lakshmi},
+  journal={arXiv preprint arXiv:2501.XXXXX},
+  year={2026}
+}`}
               </pre>
             </div>
+            <button
+              onClick={copyToClipboard}
+              className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded transition-colors"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
           </div>
         </motion.section>
 
