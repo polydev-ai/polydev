@@ -8,17 +8,15 @@ import { ArrowLeft, ExternalLink, Github, FileText, Copy, Check, MessageSquare, 
 export default function ResearchPage() {
   const [copied, setCopied] = useState(false)
 
-  const citation = `@article{ghanta2026matching,
-  title={Matching Frontier Code Agents with Lightweight
-         Models via Multi-Model Consultation},
-  author={Ghanta, Venkata Subrhmanyam and
-          Paladugu, Pujitha Sri Lakshmi},
+  const citationText = `@article{ghanta2026matching,
+  title={Matching Frontier Code Agents with Lightweight Models via Multi-Model Consultation},
+  author={Ghanta, Venkata Subrhmanyam and Paladugu, Pujitha Sri Lakshmi},
   journal={arXiv preprint arXiv:2501.XXXXX},
   year={2026}
 }`
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(citation)
+    navigator.clipboard.writeText(citationText)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -226,19 +224,19 @@ export default function ResearchPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-slate-800 rounded px-3 py-2">
-                    <span className="text-slate-400 text-xs">GPT-4o</span>
+                    <span className="text-slate-400 text-xs">GPT-5.2</span>
                     <p className="text-white text-xs mt-1 truncate">&quot;Try approach A because...&quot;</p>
                   </div>
                   <div className="bg-slate-800 rounded px-3 py-2">
-                    <span className="text-slate-400 text-xs">Claude</span>
+                    <span className="text-slate-400 text-xs">Claude Sonnet 4.5</span>
                     <p className="text-white text-xs mt-1 truncate">&quot;Consider option B for...&quot;</p>
                   </div>
                   <div className="bg-slate-800 rounded px-3 py-2">
-                    <span className="text-slate-400 text-xs">Gemini</span>
+                    <span className="text-slate-400 text-xs">Gemini 3.0 Pro</span>
                     <p className="text-white text-xs mt-1 truncate">&quot;The pattern here is...&quot;</p>
                   </div>
                   <div className="bg-slate-800 rounded px-3 py-2">
-                    <span className="text-slate-400 text-xs">Grok</span>
+                    <span className="text-slate-400 text-xs">Grok 4.1</span>
                     <p className="text-white text-xs mt-1 truncate">&quot;Watch out for edge...&quot;</p>
                   </div>
                 </div>
@@ -484,7 +482,7 @@ export default function ResearchPage() {
           </div>
         </motion.section>
 
-        {/* Citation - Clean minimal style */}
+        {/* Citation - Styled with syntax highlighting */}
         <motion.section
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -497,24 +495,25 @@ export default function ResearchPage() {
             If you use our work or build on these findings, please cite:
           </p>
 
-          <div className="relative bg-slate-900 rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-              <div className="flex items-center gap-2">
+          <div className="relative rounded-lg overflow-hidden border border-slate-200">
+            {/* Header bar */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-100 border-b border-slate-200">
+              <div className="flex items-center gap-3">
                 <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+                  <div className="w-3 h-3 rounded-full bg-red-400" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                  <div className="w-3 h-3 rounded-full bg-green-400" />
                 </div>
-                <span className="text-xs font-medium text-slate-500 ml-2">citation.bib</span>
+                <span className="text-xs font-medium text-slate-600">citation.bib</span>
               </div>
               <button
                 onClick={copyToClipboard}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-white border border-slate-200 rounded-md text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors"
               >
                 {copied ? (
                   <>
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Copied</span>
+                    <Check className="w-3.5 h-3.5 text-green-600" />
+                    <span className="text-green-600">Copied!</span>
                   </>
                 ) : (
                   <>
@@ -524,9 +523,38 @@ export default function ResearchPage() {
                 )}
               </button>
             </div>
-            <pre className="p-4 text-sm text-slate-300 overflow-x-auto font-mono leading-relaxed">
-              {citation}
-            </pre>
+            {/* Code content with syntax highlighting */}
+            <div className="bg-slate-900 p-5 overflow-x-auto">
+              <pre className="text-sm font-mono leading-relaxed">
+                <code>
+                  <span className="text-purple-400">@article</span>
+                  <span className="text-slate-400">{'{'}</span>
+                  <span className="text-green-400">ghanta2026matching</span>
+                  <span className="text-slate-400">,</span>
+                  {'\n'}
+                  {'  '}<span className="text-blue-400">title</span>
+                  <span className="text-slate-400">=</span>
+                  <span className="text-amber-300">{'{'}Matching Frontier Code Agents with Lightweight Models via Multi-Model Consultation{'}'}</span>
+                  <span className="text-slate-400">,</span>
+                  {'\n'}
+                  {'  '}<span className="text-blue-400">author</span>
+                  <span className="text-slate-400">=</span>
+                  <span className="text-amber-300">{'{'}Ghanta, Venkata Subrhmanyam and Paladugu, Pujitha Sri Lakshmi{'}'}</span>
+                  <span className="text-slate-400">,</span>
+                  {'\n'}
+                  {'  '}<span className="text-blue-400">journal</span>
+                  <span className="text-slate-400">=</span>
+                  <span className="text-amber-300">{'{'}arXiv preprint arXiv:2501.XXXXX{'}'}</span>
+                  <span className="text-slate-400">,</span>
+                  {'\n'}
+                  {'  '}<span className="text-blue-400">year</span>
+                  <span className="text-slate-400">=</span>
+                  <span className="text-amber-300">{'{'}2026{'}'}</span>
+                  {'\n'}
+                  <span className="text-slate-400">{'}'}</span>
+                </code>
+              </pre>
+            </div>
           </div>
         </motion.section>
 
