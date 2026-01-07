@@ -269,8 +269,21 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Research Announcement Banner */}
+      <Link
+        href="/research"
+        className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-purple-600 via-blue-600 to-emerald-500 text-white py-2.5 px-4 text-center text-sm font-medium hover:opacity-90 transition-opacity"
+      >
+        <span className="hidden sm:inline">🎉 New Research: </span>
+        <span className="font-semibold">74.6% on SWE-bench Verified</span>
+        <span className="hidden sm:inline"> — Matching Claude Opus at 62% lower cost</span>
+        <span className="ml-2 inline-flex items-center">
+          Read more <ArrowRight className="w-3 h-3 ml-1" />
+        </span>
+      </Link>
+
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
+      <nav className="fixed top-10 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center">
@@ -281,6 +294,7 @@ export default function LandingPage() {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
               <Link href="/docs" className="text-slate-600 hover:text-slate-900 transition-colors">Docs</Link>
+              <Link href="/research" className="text-slate-600 hover:text-slate-900 transition-colors">Research</Link>
               <Link href="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
               <Link
                 href={user ? '/dashboard' : '/auth'}
@@ -319,6 +333,13 @@ export default function LandingPage() {
                   Docs
                 </Link>
                 <Link
+                  href="/research"
+                  className="block px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Research
+                </Link>
+                <Link
                   href="/pricing"
                   className="block px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
@@ -339,7 +360,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section - Tighter, more focused */}
-      <section className="relative pt-24 pb-16 overflow-hidden">
+      <section className="relative pt-36 pb-16 overflow-hidden">
         {/* Subtle grid background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.02)_1px,transparent_1px)] bg-[size:48px_48px] opacity-50"></div>
 
