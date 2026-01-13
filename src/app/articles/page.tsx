@@ -20,46 +20,42 @@ const articles = [
   {
     slug: 'claude-code-guide',
     category: 'Integration Guide',
-    date: 'Coming Soon',
+    date: 'January 2026',
     title: 'Using Polydev with Claude Code',
     description: 'Learn how to supercharge Claude Code with multi-model perspectives. Get unstuck faster and write better code with AI consultation.',
     icon: Terminal,
     featured: false,
     tags: ['Claude Code', 'MCP', 'Tutorial'],
-    comingSoon: true,
   },
   {
     slug: 'cursor-guide',
     category: 'Integration Guide',
-    date: 'Coming Soon',
+    date: 'January 2026',
     title: 'Using Polydev with Cursor',
     description: 'Integrate Polydev into your Cursor workflow. Access GPT, Claude, Gemini, and Grok perspectives without leaving your editor.',
     icon: Code,
     featured: false,
     tags: ['Cursor', 'IDE', 'Tutorial'],
-    comingSoon: true,
   },
   {
     slug: 'codex-guide',
     category: 'Integration Guide',
-    date: 'Coming Soon',
+    date: 'January 2026',
     title: 'Using Polydev with OpenAI Codex CLI',
     description: 'Combine OpenAI Codex with multi-model consultation for enhanced code generation and debugging capabilities.',
     icon: Zap,
     featured: false,
     tags: ['Codex', 'OpenAI', 'Tutorial'],
-    comingSoon: true,
   },
   {
     slug: 'windsurf-guide',
     category: 'Integration Guide',
-    date: 'Coming Soon',
+    date: 'January 2026',
     title: 'Using Polydev with Windsurf',
     description: 'Add multi-model AI consultation to your Windsurf IDE setup for smarter code suggestions and problem-solving.',
     icon: MessageSquare,
     featured: false,
     tags: ['Windsurf', 'IDE', 'Tutorial'],
-    comingSoon: true,
   },
 ]
 
@@ -163,77 +159,8 @@ export default function ArticlesPage() {
           <div className="grid sm:grid-cols-2 gap-4">
             {otherArticles.map((article, index) => {
               const Icon = article.icon
-              const isComingSoon = article.comingSoon
 
-              const CardContent = (
-                <div className={`group relative h-full border rounded-xl p-6 transition-all ${
-                  isComingSoon
-                    ? 'border-slate-200 bg-slate-50 cursor-default'
-                    : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
-                }`}>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      isComingSoon ? 'bg-slate-200' : 'bg-slate-900'
-                    }`}>
-                      <Icon className={`w-5 h-5 ${isComingSoon ? 'text-slate-400' : 'text-white'}`} />
-                    </div>
-                    {isComingSoon && (
-                      <span className="px-2 py-1 text-xs font-medium bg-slate-200 text-slate-500 rounded">
-                        Coming Soon
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`text-xs font-medium ${isComingSoon ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {article.category}
-                    </span>
-                  </div>
-
-                  <h3 className={`text-lg font-semibold mb-2 ${
-                    isComingSoon ? 'text-slate-400' : 'text-slate-900 group-hover:text-slate-700'
-                  }`}>
-                    {article.title}
-                  </h3>
-
-                  <p className={`text-sm mb-4 ${isComingSoon ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {article.description}
-                  </p>
-
-                  <div className="flex flex-wrap gap-1.5">
-                    {article.tags.map(tag => (
-                      <span
-                        key={tag}
-                        className={`px-2 py-0.5 text-xs rounded ${
-                          isComingSoon
-                            ? 'bg-slate-200 text-slate-400'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-
-                  {!isComingSoon && (
-                    <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-slate-900 group-hover:gap-2 transition-all">
-                      Read guide
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </div>
-                  )}
-                </div>
-              )
-
-              return isComingSoon ? (
-                <motion.div
-                  key={article.slug}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.1 * index }}
-                >
-                  {CardContent}
-                </motion.div>
-              ) : (
+              return (
                 <motion.div
                   key={article.slug}
                   initial={{ opacity: 0, y: 20 }}
@@ -241,7 +168,43 @@ export default function ArticlesPage() {
                   transition={{ duration: 0.5, delay: 0.1 * index }}
                 >
                   <Link href={`/articles/${article.slug}`} className="block h-full">
-                    {CardContent}
+                    <div className="group relative h-full border rounded-xl p-6 transition-all border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-900">
+                          <Icon className="w-5 h-5 text-white" />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-medium text-slate-500">
+                          {article.category}
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg font-semibold mb-2 text-slate-900 group-hover:text-slate-700">
+                        {article.title}
+                      </h3>
+
+                      <p className="text-sm mb-4 text-slate-600">
+                        {article.description}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {article.tags.map(tag => (
+                          <span
+                            key={tag}
+                            className="px-2 py-0.5 text-xs rounded bg-slate-100 text-slate-600"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-slate-900 group-hover:gap-2 transition-all">
+                        Read guide
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
                   </Link>
                 </motion.div>
               )
