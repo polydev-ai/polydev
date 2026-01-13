@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Code, Copy, Check, ArrowRight, Zap, MessageSquare, Settings, FolderOpen, Terminal } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Copy, Check, ArrowRight } from 'lucide-react'
 
 export default function CursorGuidePage() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
@@ -16,12 +17,12 @@ export default function CursorGuidePage() {
 
   const CodeBlock = ({ code, index, language = 'bash' }: { code: string; index: number; language?: string }) => (
     <div className="relative group">
-      <pre className="bg-slate-900 rounded-lg p-4 overflow-x-auto text-sm">
-        <code className="text-slate-300 font-mono">{code}</code>
+      <pre className="bg-[#0d1117] rounded-lg p-4 overflow-x-auto text-sm border border-[#30363d]">
+        <code className="text-[#e6edf3] font-mono text-[13px]">{code}</code>
       </pre>
       <button
         onClick={() => copyToClipboard(code, index)}
-        className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+        className="absolute top-2 right-2 p-2 bg-[#21262d] hover:bg-[#30363d] rounded text-[#7d8590] hover:text-white transition-colors opacity-0 group-hover:opacity-100"
       >
         {copiedIndex === index ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
       </button>
@@ -30,9 +31,7 @@ export default function CursorGuidePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.02)_1px,transparent_1px)] bg-[size:48px_48px] opacity-50 pointer-events-none" />
-
-      <article className="relative max-w-3xl mx-auto px-6 py-16">
+      <article className="max-w-3xl mx-auto px-6 py-16">
         {/* Back link */}
         <Link
           href="/articles"
@@ -50,7 +49,7 @@ export default function CursorGuidePage() {
         >
           <div className="flex items-center gap-3 mb-4">
             <span className="px-3 py-1 text-xs font-medium bg-slate-100 text-slate-600 rounded-full">
-              Integration Guide
+              Guide
             </span>
             <span className="text-sm text-slate-400">January 2026</span>
           </div>
@@ -60,263 +59,218 @@ export default function CursorGuidePage() {
           </h1>
 
           <p className="text-lg text-slate-600 leading-relaxed mb-8">
-            Integrate Polydev into your Cursor workflow. Access GPT, Claude, Gemini, and Grok
-            perspectives without leaving your editor.
+            Get multi-model AI perspectives directly in Cursor. When you need different viewpoints on a bug,
+            architecture decision, or code review, Polydev queries GPT, Gemini, and Claude in parallel.
           </p>
-
-          <div className="flex flex-wrap gap-2 mb-8 pb-8 border-b border-slate-200">
-            <span className="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">Cursor</span>
-            <span className="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">MCP</span>
-            <span className="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded">IDE Integration</span>
-          </div>
         </motion.header>
 
-        {/* Quick Start */}
+        {/* MCP Settings Screenshot */}
         <motion.section
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="mb-12"
+          className="mb-16"
         >
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Quick Start</h2>
-
-          <p className="text-slate-600 mb-6">
-            Get Polydev running in Cursor in under 2 minutes:
-          </p>
-
-          <div className="space-y-4">
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">
-                1
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-slate-900 mb-2">Install Polydev MCP</h4>
-                <CodeBlock
-                  code="npx polydev-ai@latest --cursor"
-                  index={0}
-                />
-                <p className="text-sm text-slate-500 mt-2">
-                  This automatically configures the MCP server for Cursor.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">
-                2
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-slate-900 mb-2">Restart Cursor</h4>
-                <p className="text-slate-600">
-                  Close and reopen Cursor to load the new MCP server. You can also reload the window
-                  with <code className="px-1.5 py-0.5 bg-slate-100 rounded text-sm">Cmd+Shift+P</code> &rarr; &quot;Reload Window&quot;.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">
-                3
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-slate-900 mb-2">Use in Chat or Composer</h4>
-                <p className="text-slate-600 mb-3">
-                  Ask Cursor&apos;s AI to consult other models when you need different perspectives:
-                </p>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
-                  &quot;Use polydev to get different AI perspectives on this database schema design.&quot;
-                </div>
-              </div>
-            </div>
+          <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm">
+            <Image
+              src="/screenshots/cursor/mcp-settings.png"
+              alt="Cursor MCP settings with Polydev configured"
+              width={1200}
+              height={600}
+              className="w-full"
+            />
           </div>
+          <p className="text-sm text-slate-500 mt-3 text-center">
+            Cursor MCP settings with Polydev configured
+          </p>
         </motion.section>
 
-        {/* Manual Configuration */}
+        {/* Quick install */}
         <motion.section
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="mb-12"
+          className="mb-16"
         >
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Manual Configuration</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">Install in 60 seconds</h2>
 
-          <p className="text-slate-600 mb-6">
-            If the automatic installer doesn&apos;t work, you can manually configure Polydev:
-          </p>
+          <div className="space-y-6">
+            <div>
+              <p className="text-slate-600 mb-3">
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">1</span>
+                {' '}Get your free token from{' '}
+                <a href="https://polydev.ai/dashboard" className="underline">polydev.ai/dashboard</a>
+              </p>
+            </div>
 
-          <h3 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
-            <Settings className="w-5 h-5" />
-            Global Configuration
-          </h3>
-
-          <p className="text-slate-600 mb-3">
-            Create or edit <code className="px-1.5 py-0.5 bg-slate-100 rounded text-sm">~/.cursor/mcp.json</code>:
-          </p>
-
-          <CodeBlock
-            code={`{
+            <div>
+              <p className="text-slate-600 mb-3">
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">2</span>
+                {' '}Add Polydev to your Cursor MCP config. Edit <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">~/.cursor/mcp_settings.json</code>:
+              </p>
+              <CodeBlock
+                code={`{
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai@latest", "serve"],
+      "args": ["-y", "polydev-ai@latest"],
       "env": {
-        "POLYDEV_API_KEY": "your-api-key-here"
+        "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
     }
   }
 }`}
-            index={1}
-            language="json"
-          />
+                index={0}
+                language="json"
+              />
+            </div>
 
-          <h3 className="text-lg font-semibold text-slate-900 mb-3 mt-8 flex items-center gap-2">
-            <FolderOpen className="w-5 h-5" />
-            Project-Specific Configuration
-          </h3>
+            <div>
+              <p className="text-slate-600 mb-3">
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">3</span>
+                {' '}Restart Cursor or reload the window with <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">Cmd+Shift+P</code> → "Reload Window"
+              </p>
+            </div>
 
-          <p className="text-slate-600 mb-3">
-            For project-specific setup, create <code className="px-1.5 py-0.5 bg-slate-100 rounded text-sm">.cursor/mcp.json</code> in your project root:
+            <div>
+              <p className="text-slate-600">
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
+                {' '}Open composer with <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">Cmd+I</code> and ask for perspectives
+              </p>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* What you get */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="mb-16"
+        >
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">What Polydev adds</h2>
+
+          <div className="border border-slate-200 rounded-lg divide-y divide-slate-200">
+            <div className="p-4">
+              <p className="font-medium text-slate-900 mb-1">MCP Tool</p>
+              <p className="text-sm text-slate-600">
+                <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs">polydev.get_perspectives</code>
+                {' '}— queries multiple AI models in parallel (Gemini, Claude, GPT)
+              </p>
+            </div>
+            <div className="p-4">
+              <p className="font-medium text-slate-900 mb-1">Response time</p>
+              <p className="text-sm text-slate-600">
+                10-40 seconds (parallel queries to multiple providers)
+              </p>
+            </div>
+            <div className="p-4">
+              <p className="font-medium text-slate-900 mb-1">Use cases</p>
+              <p className="text-sm text-slate-600">
+                Debugging, architecture decisions, code reviews, security analysis
+              </p>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* Polydev Prompt Screenshot */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="mb-16"
+        >
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">Example: useEffect debugging</h2>
+
+          <p className="text-slate-600 mb-4">
+            In Cursor composer, type: <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">Use polydev to get perspectives on: What causes React useEffect infinite loops?</code>
           </p>
 
-          <CodeBlock
-            code={`{
-  "mcpServers": {
-    "polydev": {
-      "command": "npx",
-      "args": ["-y", "polydev-ai@latest", "serve"]
-    }
-  }
-}`}
-            index={2}
-            language="json"
-          />
-
-          <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-800">
-              <strong>Note:</strong> Cursor uses <code className="px-1 py-0.5 bg-amber-100 rounded">mcp.json</code> (not settings.json)
-              for MCP server configuration, unlike Claude Code.
-            </p>
+          <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm mb-4">
+            <Image
+              src="/screenshots/cursor/polydev-prompt.png"
+              alt="Polydev prompt in Cursor composer"
+              width={1200}
+              height={600}
+              className="w-full"
+            />
           </div>
+          <p className="text-sm text-slate-500 text-center mb-8">
+            Typing a polydev prompt in Cursor composer
+          </p>
+
+          <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm">
+            <Image
+              src="/screenshots/cursor/polydev-response.png"
+              alt="Polydev response in Cursor"
+              width={1200}
+              height={600}
+              className="w-full"
+            />
+          </div>
+          <p className="text-sm text-slate-500 mt-3 text-center">
+            Cursor processes the request and queries multiple AI models
+          </p>
         </motion.section>
 
-        {/* Usage Examples */}
+        {/* How to use */}
         <motion.section
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="mb-12"
+          className="mb-16"
         >
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Usage Examples</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">How to use it</h2>
 
-          <div className="space-y-6">
-            <div className="border border-slate-200 rounded-lg p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <MessageSquare className="w-5 h-5 text-slate-500" />
-                <h4 className="font-semibold text-slate-900">In Cursor Chat</h4>
-              </div>
-              <div className="bg-slate-50 rounded-lg p-4 text-sm">
-                <p className="text-slate-600 mb-2">You say:</p>
-                <p className="text-slate-900">&quot;This API is returning 500 errors intermittently. Use polydev to get perspectives from different AI models on what could cause this.&quot;</p>
-              </div>
-              <p className="text-sm text-slate-500 mt-3">
-                The AI will query GPT-4, Claude, Gemini, and Grok in parallel to provide diverse debugging perspectives.
-              </p>
+          <p className="text-slate-600 mb-6">
+            Just mention "polydev" or "perspectives" in your prompt. Cursor will call the MCP tool:
+          </p>
+
+          <div className="space-y-4 mb-8">
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <p className="text-slate-900 text-sm font-medium mb-2">Debugging</p>
+              <p className="text-slate-600 text-sm font-mono">"Use polydev to debug this infinite loop"</p>
             </div>
-
-            <div className="border border-slate-200 rounded-lg p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Code className="w-5 h-5 text-slate-500" />
-                <h4 className="font-semibold text-slate-900">In Cursor Composer</h4>
-              </div>
-              <div className="bg-slate-50 rounded-lg p-4 text-sm">
-                <p className="text-slate-600 mb-2">You say:</p>
-                <p className="text-slate-900">&quot;I need to implement real-time notifications. Get polydev perspectives on WebSockets vs Server-Sent Events vs polling for my use case.&quot;</p>
-              </div>
-              <p className="text-sm text-slate-500 mt-3">
-                Get architecture recommendations from multiple AI models before making implementation decisions.
-              </p>
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <p className="text-slate-900 text-sm font-medium mb-2">Architecture</p>
+              <p className="text-slate-600 text-sm font-mono">"Get perspectives on: Redis vs PostgreSQL for caching?"</p>
             </div>
-
-            <div className="border border-slate-200 rounded-lg p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Zap className="w-5 h-5 text-slate-500" />
-                <h4 className="font-semibold text-slate-900">Performance Review</h4>
-              </div>
-              <div className="bg-slate-50 rounded-lg p-4 text-sm">
-                <p className="text-slate-600 mb-2">You say:</p>
-                <p className="text-slate-900">&quot;Review this SQL query for performance. Use polydev to check if multiple AI models spot any optimization opportunities.&quot;</p>
-              </div>
-              <p className="text-sm text-slate-500 mt-3">
-                Different models may catch different issues - indexes, query plans, N+1 problems, etc.
-              </p>
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <p className="text-slate-900 text-sm font-medium mb-2">Code review</p>
+              <p className="text-slate-600 text-sm font-mono">"Use polydev to review this API for security issues"</p>
             </div>
           </div>
         </motion.section>
 
-        {/* Cursor-Specific Features */}
+        {/* Cursor-specific tips */}
         <motion.section
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="mb-12"
+          className="mb-16"
         >
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Cursor-Specific Tips</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">Cursor-specific tips</h2>
 
           <div className="space-y-4">
-            <div className="border-l-4 border-slate-900 pl-4 py-2">
-              <h4 className="font-semibold text-slate-900 mb-1">Use with @codebase</h4>
+            <div>
+              <p className="font-medium text-slate-900 mb-1">Use with @codebase</p>
               <p className="text-sm text-slate-600">
-                Combine Polydev with Cursor&apos;s @codebase feature for context-aware multi-model consultation.
-                The AI can reference your entire codebase when querying other models.
+                Combine Polydev with Cursor's @codebase for context-aware multi-model consultation.
               </p>
             </div>
 
-            <div className="border-l-4 border-slate-900 pl-4 py-2">
-              <h4 className="font-semibold text-slate-900 mb-1">Composer Integration</h4>
+            <div>
+              <p className="font-medium text-slate-900 mb-1">Agent mode works best</p>
               <p className="text-sm text-slate-600">
-                In multi-file edits with Composer, ask for Polydev perspectives before applying changes.
-                This helps catch issues before they&apos;re spread across multiple files.
+                Enable Agent mode in composer for Polydev to automatically call the MCP tool.
               </p>
             </div>
 
-            <div className="border-l-4 border-slate-900 pl-4 py-2">
-              <h4 className="font-semibold text-slate-900 mb-1">Diff Review</h4>
+            <div>
+              <p className="font-medium text-slate-900 mb-1">Project-specific config</p>
               <p className="text-sm text-slate-600">
-                Before accepting AI-generated diffs, you can ask Polydev to review the proposed changes
-                from multiple model perspectives.
+                Create <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs">.cursor/mcp_settings.json</code> in your project root for per-project settings.
               </p>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* When to Use */}
-        <motion.section
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="mb-12"
-        >
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">When to Use Multi-Model Consultation</h2>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="border-l-2 border-slate-900 bg-slate-50 p-4">
-              <h4 className="font-semibold text-slate-900 mb-2">Best for:</h4>
-              <ul className="text-sm text-slate-600 space-y-1">
-                <li>Complex architecture decisions</li>
-                <li>Debugging mysterious bugs</li>
-                <li>Security and performance reviews</li>
-                <li>API design discussions</li>
-                <li>Choosing between libraries/approaches</li>
-              </ul>
-            </div>
-            <div className="border-l-2 border-slate-300 bg-slate-50 p-4">
-              <h4 className="font-semibold text-slate-900 mb-2">Skip for:</h4>
-              <ul className="text-sm text-slate-600 space-y-1">
-                <li>Simple code completions</li>
-                <li>Standard CRUD operations</li>
-                <li>Well-documented library usage</li>
-                <li>Quick syntax lookups</li>
-              </ul>
             </div>
           </div>
         </motion.section>
@@ -326,58 +280,40 @@ export default function CursorGuidePage() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="mb-12"
+          className="mb-16"
         >
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Troubleshooting</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-6">Troubleshooting</h2>
 
           <div className="space-y-4">
-            <div className="border border-slate-200 rounded-lg p-4">
-              <h4 className="font-semibold text-slate-900 mb-2">MCP server not available?</h4>
+            <div>
+              <p className="font-medium text-slate-900 mb-1">MCP not available?</p>
               <p className="text-sm text-slate-600">
-                Check that <code className="px-1.5 py-0.5 bg-slate-100 rounded text-sm">~/.cursor/mcp.json</code> exists
-                and has valid JSON syntax. Restart Cursor after making changes.
+                Check <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs">~/.cursor/mcp_settings.json</code> syntax.
+                JSON is strict—ensure proper commas and quotes.
               </p>
             </div>
 
-            <div className="border border-slate-200 rounded-lg p-4">
-              <h4 className="font-semibold text-slate-900 mb-2">npx command not found?</h4>
+            <div>
+              <p className="font-medium text-slate-900 mb-1">Token not found?</p>
               <p className="text-sm text-slate-600">
-                Ensure Node.js is installed and npx is in your PATH. Run <code className="px-1.5 py-0.5 bg-slate-100 rounded text-sm">which npx</code> to
-                verify, then use the full path in your mcp.json if needed.
+                Verify your token starts with <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs">pd_</code> and is correctly set in the env section.
               </p>
             </div>
 
-            <div className="border border-slate-200 rounded-lg p-4">
-              <h4 className="font-semibold text-slate-900 mb-2">API key issues?</h4>
+            <div>
+              <p className="font-medium text-slate-900 mb-1">npx path issues?</p>
               <p className="text-sm text-slate-600">
-                Get your API key from <a href="https://polydev.ai/dashboard" className="text-slate-900 underline">polydev.ai/dashboard</a> and
-                add it to the env section of your mcp.json configuration.
+                Use the full path: find it with <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs">which npx</code>, then use that in your config.
+              </p>
+            </div>
+
+            <div>
+              <p className="font-medium text-slate-900 mb-1">Slow responses?</p>
+              <p className="text-sm text-slate-600">
+                Multi-model queries take 10-40 seconds since they call multiple APIs in parallel.
               </p>
             </div>
           </div>
-        </motion.section>
-
-        {/* Verify Installation */}
-        <motion.section
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="mb-12"
-        >
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Verify Installation</h2>
-
-          <p className="text-slate-600 mb-4">
-            To verify Polydev is properly configured, try this in Cursor Chat:
-          </p>
-
-          <CodeBlock
-            code={`"What MCP servers do you have access to? Can you list them?"`}
-            index={10}
-          />
-
-          <p className="text-sm text-slate-500 mt-3">
-            If configured correctly, the AI should mention &quot;polydev&quot; as an available MCP server.
-          </p>
         </motion.section>
 
         {/* CTA */}
@@ -387,42 +323,39 @@ export default function CursorGuidePage() {
           viewport={{ once: true }}
           className="pt-8 border-t border-slate-200"
         >
-          <div className="bg-slate-900 rounded-xl p-8 text-center">
-            <h3 className="text-xl font-bold text-white mb-2">
-              Ready to get started?
-            </h3>
-            <p className="text-slate-400 mb-6 text-sm max-w-md mx-auto">
-              Sign up for free and get your API key to start using multi-model consultation in Cursor.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div>
+              <p className="font-medium text-slate-900">Ready to try it?</p>
+              <p className="text-sm text-slate-500">Free tier: 1,000 messages/month</p>
+            </div>
+            <div className="flex gap-3">
               <Link
                 href="/auth"
-                className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-lg font-medium hover:bg-slate-100 transition-colors text-sm"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
               >
-                Get Your API Key
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                Get API Token
+                <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link
-                href="/docs"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-transparent text-white border border-slate-700 rounded-lg font-medium hover:bg-slate-800 transition-colors text-sm"
+              <a
+                href="https://www.cursor.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
               >
-                View Full Docs
-              </Link>
+                Cursor Website
+                <ExternalLink className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </motion.section>
       </article>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 py-8">
-        <div className="max-w-3xl mx-auto px-6 text-center text-sm text-slate-500">
-          <p>
-            <Link href="/articles" className="hover:text-slate-900 transition-colors">Articles</Link>
-            {' · '}
-            <Link href="/docs" className="hover:text-slate-900 transition-colors">Docs</Link>
-            {' · '}
-            <Link href="/" className="hover:text-slate-900 transition-colors">Polydev</Link>
-          </p>
+      <footer className="border-t border-slate-100 py-8">
+        <div className="max-w-3xl mx-auto px-6 text-center text-sm text-slate-400">
+          <Link href="/articles" className="hover:text-slate-600 transition-colors">Articles</Link>
+          {' · '}
+          <Link href="/" className="hover:text-slate-600 transition-colors">Polydev</Link>
         </div>
       </footer>
     </div>
