@@ -1,0 +1,26 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "polydev-marketplace",
+  "version": "1.0.0",
+  "description": "Multi-model AI consultation marketplace - get perspectives from GPT, Gemini, Grok, and Claude simultaneously",
+  "owner": {
+    "name": "Polydev AI",
+    "email": "support@polydev.ai"
+  },
+  "plugins": [
+    {
+      "name": "polydev",
+      "description": "Multi-model AI consultation for Claude Code. Query GPT, Gemini, Grok, and Claude simultaneously when stuck on bugs, making architecture decisions, or reviewing code. Achieved 74.6% on SWE-bench Verified.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Polydev AI",
+        "email": "support@polydev.ai"
+      },
+      "source": {
+        "source": "url",
+        "url": "https://github.com/backspacevenkat/polydev-ai.git"
+      },
+      "category": "productivity"
+    }
+  ]
+}

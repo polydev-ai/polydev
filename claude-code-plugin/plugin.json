@@ -1,0 +1,35 @@
+{
+  "name": "polydev",
+  "version": "1.0.0",
+  "description": "Multi-model AI consultation for Claude Code - get perspectives from GPT, Gemini, and Grok when stuck",
+  "author": "Polydev AI",
+  "repository": "https://github.com/backspacevenkat/polydev-ai",
+  "keywords": ["multi-model", "AI", "perspectives", "consultation", "MCP"],
+  "license": "MIT",
+  "skills": [
+    {
+      "name": "perspectives",
+      "description": "Get multi-model AI perspectives on your current problem",
+      "command": "/perspectives"
+    },
+    {
+      "name": "polydev-help",
+      "description": "Get help with Polydev setup and usage",
+      "command": "/polydev-help"
+    }
+  ],
+  "mcpServers": {
+    "polydev": {
+      "command": "npx",
+      "args": ["-y", "polydev-ai@latest", "serve"],
+      "env": {
+        "POLYDEV_USER_TOKEN": "${POLYDEV_USER_TOKEN}"
+      }
+    }
+  },
+  "configuration": {
+    "requiresToken": true,
+    "tokenEnvVar": "POLYDEV_USER_TOKEN",
+    "dashboardUrl": "https://polydev.ai/dashboard"
+  }
+}
