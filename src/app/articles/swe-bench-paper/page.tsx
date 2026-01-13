@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ExternalLink, Github, MessageSquare, Zap, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Github, MessageSquare, Zap, ArrowRight, Check } from 'lucide-react'
 
 export default function SWEBenchPaperPage() {
   return (
