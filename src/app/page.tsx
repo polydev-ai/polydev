@@ -271,7 +271,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white">
       {/* Research Announcement Banner */}
       <Link
-        href="/research"
+        href="/articles"
         className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-purple-600 via-blue-600 to-emerald-500 text-white py-2.5 px-4 text-center text-sm font-medium hover:opacity-90 transition-opacity"
       >
         <span className="hidden sm:inline">🎉 New Research: </span>
@@ -294,7 +294,7 @@ export default function LandingPage() {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-8">
               <Link href="/docs" className="text-slate-600 hover:text-slate-900 transition-colors">Docs</Link>
-              <Link href="/research" className="text-slate-600 hover:text-slate-900 transition-colors">Research</Link>
+              <Link href="/articles" className="text-slate-600 hover:text-slate-900 transition-colors">Articles</Link>
               <Link href="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
               <Link
                 href={user ? '/dashboard' : '/auth'}
@@ -333,11 +333,11 @@ export default function LandingPage() {
                   Docs
                 </Link>
                 <Link
-                  href="/research"
+                  href="/articles"
                   className="block px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  Research
+                  Articles
                 </Link>
                 <Link
                   href="/pricing"

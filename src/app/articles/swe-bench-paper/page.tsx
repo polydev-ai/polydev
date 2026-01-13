@@ -1,29 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ExternalLink, Github, Copy, Check, MessageSquare, Zap, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Github, MessageSquare, Zap, ArrowRight } from 'lucide-react'
 
 export default function SWEBenchPaperPage() {
-  const [copied, setCopied] = useState(false)
-
-  const citationText = `@article{ghanta2026matching,
-  title={Matching Frontier Code Agents with Lightweight
-         Models via Multi-Model Consultation},
-  author={Ghanta, Venkata Subrahmanyam and
-          Paladugu, Pujitha Sri Lakshmi},
-  journal={Preprint},
-  year={2026},
-  url={https://github.com/backspacevenkat/polydev-swe-bench}
-}`
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(citationText)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   return (
     <div className="min-h-screen bg-white">
       {/* Subtle grid background like homepage */}
@@ -32,11 +14,11 @@ export default function SWEBenchPaperPage() {
       <article className="relative max-w-3xl mx-auto px-6 py-16">
         {/* Back link */}
         <Link
-          href="/research"
+          href="/articles"
           className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-colors mb-12"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Research
+          Back to Articles
         </Link>
 
         {/* Article Header */}
@@ -479,52 +461,6 @@ export default function SWEBenchPaperPage() {
           </div>
         </motion.section>
 
-        {/* Citation - Simple and clean */}
-        <motion.section
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="mb-16"
-        >
-          <h2 className="text-2xl font-bold text-slate-900 mb-4">Citation</h2>
-
-          <p className="text-slate-600 leading-relaxed mb-4">
-            If you use our work or build on these findings, please cite:
-          </p>
-
-          <div className="relative">
-            <div className="bg-slate-900 rounded-lg p-6 overflow-x-auto">
-              <pre className="text-sm font-mono text-slate-300 leading-relaxed whitespace-pre-wrap">
-{`@article{ghanta2026matching,
-  title={Matching Frontier Code Agents with Lightweight
-         Models via Multi-Model Consultation},
-  author={Ghanta, Venkata Subrahmanyam and
-          Paladugu, Pujitha Sri Lakshmi},
-  journal={Preprint},
-  year={2026},
-  url={https://github.com/backspacevenkat/polydev-swe-bench}
-}`}
-              </pre>
-            </div>
-            <button
-              onClick={copyToClipboard}
-              className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded transition-colors"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Copied</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy</span>
-                </>
-              )}
-            </button>
-          </div>
-        </motion.section>
-
         {/* CTA */}
         <motion.section
           initial={{ opacity: 0 }}
@@ -567,7 +503,7 @@ export default function SWEBenchPaperPage() {
           <p>
             <a href="https://github.com/backspacevenkat/polydev-swe-bench" className="hover:text-slate-900 transition-colors">GitHub</a>
             {' · '}
-            <Link href="/research" className="hover:text-slate-900 transition-colors">Research</Link>
+            <Link href="/articles" className="hover:text-slate-900 transition-colors">Articles</Link>
             {' · '}
             <Link href="/" className="hover:text-slate-900 transition-colors">Polydev</Link>
           </p>

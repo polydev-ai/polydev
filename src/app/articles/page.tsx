@@ -63,7 +63,7 @@ const articles = [
   },
 ]
 
-export default function ResearchPage() {
+export default function ArticlesPage() {
   const featuredArticle = articles.find(a => a.featured)
   const otherArticles = articles.filter(a => !a.featured)
 
@@ -90,7 +90,7 @@ export default function ResearchPage() {
           className="mb-16"
         >
           <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-4">
-            Research & Guides
+            Articles
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl">
             Deep dives into multi-model AI consultation, benchmark results, and practical integration guides for your favorite tools.
@@ -106,10 +106,10 @@ export default function ResearchPage() {
             className="mb-16"
           >
             <h2 className="text-xs font-medium tracking-widest text-slate-400 uppercase mb-6">
-              Featured Research
+              Featured
             </h2>
 
-            <Link href={`/research/${featuredArticle.slug}`}>
+            <Link href={`/articles/${featuredArticle.slug}`}>
               <div className="group relative bg-slate-900 rounded-2xl p-8 sm:p-10 overflow-hidden hover:bg-slate-800 transition-colors">
                 {/* Background decoration */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-slate-800 to-transparent rounded-full -translate-y-32 translate-x-32" />
@@ -240,7 +240,7 @@ export default function ResearchPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.1 * index }}
                 >
-                  <Link href={`/research/${article.slug}`} className="block h-full">
+                  <Link href={`/articles/${article.slug}`} className="block h-full">
                     {CardContent}
                   </Link>
                 </motion.div>
