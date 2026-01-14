@@ -1909,15 +1909,15 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           // User doesn't have their own API key - try admin-provided key as fallback
           console.log(`[MCP] No user API key for ${providerName}, checking for admin-provided key...`)
 
-          // Check for admin-provided key for this provider
+          // Check for admin-provided key for this provider (use lowercase for consistent matching)
           const { data: adminKeyBudget } = await serviceRoleSupabase
             .from('user_api_keys')
             .select('encrypted_key, api_base')
-            .ilike('provider', providerName) // Case-insensitive match
+            .eq('provider', providerName.toLowerCase())
             .eq('is_admin_key', true)
             .eq('active', true)
             .single()
-
+          
           if (adminKeyBudget?.encrypted_key) {
             console.log(`[MCP] Found admin-provided key for ${providerName}, using as fallback`)
             const adminDecryptedKey = Buffer.from(adminKeyBudget.encrypted_key, 'base64').toString('utf-8')
@@ -1982,11 +1982,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
           console.log(`[MCP] Budget exceeded for ${providerName}, checking for admin key fallback...`)
 
-          // Check for admin-provided key for this provider
+          // Check for admin-provided key for this provider (use lowercase for consistent matching)
           const { data: adminKeyBudget } = await serviceRoleSupabase
             .from('user_api_keys')
             .select('encrypted_key, api_base')
-            .ilike('provider', providerName) // Case-insensitive match
+            .eq('provider', providerName.toLowerCase())
             .eq('is_admin_key', true)
             .eq('active', true)
             .single()
