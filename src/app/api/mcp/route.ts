@@ -854,7 +854,7 @@ function handleToolsList(id: string) {
                 model: { type: 'string', description: 'Specific model to use for this provider' }
               }
             },
-            description: 'Array of specific providers to request perspectives from (used for API-only providers that have no CLI)'
+            description: 'Array of specific providers to request perspectives from (used for API-only providers that have no CLI support)'
           },
           cli_responses: {
             type: 'array',
@@ -1965,7 +1965,12 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 source_type: 'admin_key'
               }
             } catch (fallbackError) {
-              console.error(`[MCP] Admin key budget fallback failed:`, fallbackError)
+              console.error(`[MCP] Admin key fallback failed for ${providerName}:`, fallbackError)
+              // Return the actual error instead of falling through to "No API key configured"
+              return {
+                model,
+                error: `Admin key API call failed for ${provider.display_name}: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`
+              }
             }
           }
 
@@ -2035,10 +2040,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 }
               }
             } catch (fallbackError) {
-              console.error(`[MCP] Admin key budget fallback failed:`, fallbackError)
+              console.error(`[MCP] Admin key budget fallback failed for ${providerName}:`, fallbackError)
             }
           }
 
+          // Budget exceeded and no admin fallback available
           return {
             model,
             error: `Monthly budget of $${apiKeyForModel!.monthly_budget} exceeded for ${providerName}. Current usage: $${apiKeyForModel!.current_usage}. Please increase your budget or add a new API key.`
