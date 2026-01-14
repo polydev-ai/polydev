@@ -125,6 +125,21 @@ node --version
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">3</span>
+                {' '}(Optional) Install the Polydev package globally:
+              </p>
+              <CodeBlock
+                code={`npm install -g polydev-ai`}
+                index={11}
+                language="bash"
+              />
+              <p className="text-sm text-slate-500 mt-2">
+                Or let npx handle it automatically in the config below.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-slate-600 mb-3">
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
                 {' '}Add Polydev to your Codex config. Edit <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">~/.codex/config.toml</code>:
               </p>
               <CodeBlock
@@ -145,7 +160,7 @@ session_timeout = 600`}
 
             <div>
               <p className="text-slate-600 mb-3">
-                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">5</span>
                 {' '}Optionally set the token in your shell:
               </p>
               <CodeBlock
@@ -156,7 +171,7 @@ session_timeout = 600`}
 
             <div>
               <p className="text-slate-600">
-                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">5</span>
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">6</span>
                 {' '}Verify with <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">codex mcp list</code>
               </p>
             </div>

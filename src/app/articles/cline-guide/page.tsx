@@ -121,13 +121,28 @@ node --version
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">3</span>
-                {' '}Open Cline settings: Click the gear icon → &quot;MCP Servers&quot; → &quot;Configure&quot;
+                {' '}(Optional) Install the Polydev package globally:
+              </p>
+              <CodeBlock
+                code={`npm install -g polydev-ai`}
+                index={10}
+                language="bash"
+              />
+              <p className="text-sm text-slate-500 mt-2">
+                Or let npx handle it automatically in the config below.
               </p>
             </div>
 
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
+                {' '}Open Cline settings: Click the gear icon → &quot;MCP Servers&quot; → &quot;Configure&quot;
+              </p>
+            </div>
+
+            <div>
+              <p className="text-slate-600 mb-3">
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">5</span>
                 {' '}Add Polydev to your Cline MCP config:
               </p>
               <CodeBlock
@@ -149,7 +164,7 @@ node --version
 
             <div>
               <p className="text-slate-600 mb-3">
-                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">5</span>
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">6</span>
                 {' '}Click &quot;Done&quot; and verify Polydev appears in the MCP Servers list with a green indicator
               </p>
             </div>
