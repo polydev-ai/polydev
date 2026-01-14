@@ -1923,7 +1923,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             const adminDecryptedKey = Buffer.from(adminKeyBudget.encrypted_key, 'base64').toString('utf-8')
 
             try {
-              const adminMaxTokens = 10000 // Fixed 10k tokens for admin key calls
+              const adminMaxTokens = 8000 // Fixed 8k tokens for admin key calls (Haiku limit is 8192)
               const apiOptions: any = {
                 model: cleanModel,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
@@ -2002,7 +2002,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             const adminDecryptedKey = Buffer.from(adminKeyBudget.encrypted_key, 'base64').toString('utf-8')
 
             try {
-              const adminMaxTokens = 10000 // Fixed 10k tokens for admin key calls
+              const adminMaxTokens = 8000 // Fixed 8k tokens for admin key calls (Haiku limit is 8192)
               const apiOptions: any = {
                 model: cleanModel,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
