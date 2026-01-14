@@ -1523,8 +1523,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     const sortedKeys = afterSort // No slice - take all models
 
     console.log(`[MCP DEBUG] All sorted keys (no slice yet, will slice after exclude filter):`, sortedKeys.map(k => ({
-      provider: k.provider,
       model: k.default_model,
+      provider: k.provider,
       order: k.display_order
     })))
 
@@ -1537,9 +1537,48 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       order: k.display_order
     })))
   } else {
-    // Fallback if no API keys configured
-    models = ['gpt-5-2025-08-07']
-    console.log(`[MCP] No API keys found, using fallback model:`, models)
+    // Fallback if no API keys configured - use credits tier models from model_tiers
+    console.log(`[MCP] No user API keys found, checking credits tier models...`)
+    
+    // Get user's tier priority preference (default: normal tier)
+    const userUsagePreference = (userPrefs?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
+    console.log(`[MCP] User tier priority:`, userUsagePreference)
+    
+    // Query model_tiers for active models in user's preferred tiers
+    const { data: tierModels, error: tierError } = await serviceRoleSupabase
+      .from('model_tiers')
+      .select('model_name, display_name, provider, tier, display_order')
+      .eq('active', true)
+      .in('tier', userUsagePreference)
+      .order('display_order', { ascending: true })
+    
+    if (tierError) {
+      console.error(`[MCP] Error fetching model_tiers:`, tierError)
+    }
+    
+    if (tierModels && tierModels.length > 0) {
+      // Sort by tier priority, then by display_order within each tier
+      const sortedTierModels = tierModels.sort((a, b) => {
+        const aTierIndex = userUsagePreference.indexOf(a.tier)
+        const bTierIndex = userUsagePreference.indexOf(b.tier)
+        if (aTierIndex !== bTierIndex) return aTierIndex - bTierIndex
+        return (a.display_order ?? 999) - (b.display_order ?? 999)
+      })
+      
+      // Take up to perspectivesPerMessage models
+      models = sortedTierModels.slice(0, perspectivesPerMessage).map(m => m.model_name)
+      console.log(`[MCP] Using ${models.length} models from credits tier:`, models)
+      console.log(`[MCP] Credits tier models detail:`, sortedTierModels.slice(0, perspectivesPerMessage).map(m => ({
+        model: m.model_name,
+        display: m.display_name,
+        provider: m.provider,
+        tier: m.tier
+      })))
+    } else {
+      // Ultimate fallback if no tier models found
+      models = ['gpt-5-2025-08-07']
+      console.log(`[MCP] No credits tier models found, using ultimate fallback:`, models)
+    }
   }
 
   // Handle exclude_providers parameter - filter out providers that succeeded via local CLI
@@ -2553,7 +2592,6 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         total_tokens: totalTokens,
         total_cost: estimatedCost,
         response_time_ms: totalLatency,
-        status: successCount > 0 ? 'success' : 'error',
         error_message: successCount === 0 ? 'All providers failed' : null,
         created_at: new Date().toISOString()
       })
@@ -3346,7 +3384,7 @@ function getModelsFromApiKeysAndPreferences_DEPRECATED(apiKeys: any[], preferenc
   if (preferences?.model_preferences && typeof preferences.model_preferences === 'object') {
     const sortedProviders = Object.entries(preferences.model_preferences)
       .filter(([_, pref]: [string, any]) => pref && typeof pref === 'object')
-      .sort(([_, a]: [string, any], [__, b]: [string, any]) => (a.order || 0) - (b.order || 0))
+      .sort(([_, a]: any, [__, b]: any) => (a.order || 0) - (b.order || 0))
     
     for (const [prefProvider, pref] of sortedProviders) {
       // Normalize provider names for matching
