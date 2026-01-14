@@ -1933,7 +1933,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               const apiModelId = modelTierInfo?.api_model_id || cleanModel
               console.log(`[MCP] Admin key: resolved ${cleanModel} to API model: ${apiModelId}`)
 
-              const adminMaxTokens = 10000 // Global 10k tokens for admin key calls
+              const adminMaxTokens = 8000 // Global 8k tokens for admin key calls (safe for all models)
               const apiOptions: any = {
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
@@ -2122,7 +2122,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               const apiModelId = modelTierInfo?.api_model_id || cleanModel
               console.log(`[MCP] Budget fallback: resolved ${cleanModel} to API model: ${apiModelId}`)
 
-              const adminMaxTokens = 10000 // Global 10k tokens for admin key calls
+              const adminMaxTokens = 8000 // Global 8k tokens for admin key calls (safe for all models)
               const apiOptions: any = {
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
