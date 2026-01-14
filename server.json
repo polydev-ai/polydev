@@ -1,0 +1,29 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.backspacevenkat/perspectives",
+  "description": "Query multiple AI models (GPT-4, Claude, Gemini, Grok) in parallel for diverse perspectives",
+  "repository": {
+    "url": "https://github.com/polydev-ai/perspectives-mcp",
+    "source": "github"
+  },
+  "version": "1.8.41",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "polydev-ai",
+      "version": "1.8.41",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Your Polydev API token from polydev.ai/dashboard/mcp-tokens",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true,
+          "name": "POLYDEV_USER_TOKEN"
+        }
+      ]
+    }
+  ]
+}
