@@ -11,6 +11,13 @@ import { apiManager } from '@/lib/api'
 import { SmartCliCache } from '@/lib/smartCliCache'
 import { CLIRouter, CLI_PROVIDER_MAP, PROVIDER_TO_CLI } from '@/lib/cliRouter'
 
+// Tier-based credit costs (eco=1, normal=4, premium=20)
+const TIER_CREDIT_COSTS: Record<string, number> = {
+  eco: 1,
+  normal: 4,
+  premium: 20
+}
+
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -1993,71 +2000,77 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               // Deduct credits for admin key usage
               if (tokensUsed > 0 && user.id) {
                 try {
-                  // Get model pricing from model_tiers (cost per 1k tokens)
-                  const { data: modelTier } = await serviceRoleSupabase
+                  // Get model tier from model_tiers table
+                  const { data: modelTierData } = await serviceRoleSupabase
                     .from('model_tiers')
-                    .select('cost_per_1k_input, cost_per_1k_output')
+                    .select('tier, cost_per_1k_input, cost_per_1k_output')
                     .eq('model_name', cleanModel)
                     .single()
 
-                  if (modelTier) {
-                    // Estimate input/output split (assume 20% input, 80% output for responses)
-                    const inputTokens = Math.floor(tokensUsed * 0.2)
-                    const outputTokens = tokensUsed - inputTokens
-                    const inputCost = (inputTokens / 1000) * (modelTier.cost_per_1k_input || 0)
-                    const outputCost = (outputTokens / 1000) * (modelTier.cost_per_1k_output || 0)
-                    const totalCost = inputCost + outputCost
+                  // Use tier-based credits (eco=1, normal=4, premium=20)
+                  const tier = modelTierData?.tier || 'normal'
+                  const creditsToDeduct = TIER_CREDIT_COSTS[tier] || 4
 
-                    // Get current balance and update atomically (FIFO: promo first, then balance)
-                    const { data: currentCredits } = await serviceRoleSupabase
+                  // Estimate input/output split for logging
+                  const inputTokens = Math.floor(tokensUsed * 0.2)
+                  const outputTokens = tokensUsed - inputTokens
+                  
+                  // Calculate USD cost for record keeping only
+                  const inputCost = modelTierData ? (inputTokens / 1000) * (modelTierData.cost_per_1k_input || 0) : 0
+                  const outputCost = modelTierData ? (outputTokens / 1000) * (modelTierData.cost_per_1k_output || 0) : 0
+                  const usdCost = inputCost + outputCost
+
+                  // Get current balance and update atomically (FIFO: promo first, then balance)
+                  const { data: currentCredits } = await serviceRoleSupabase
+                    .from('user_credits')
+                    .select('balance, promotional_balance, total_spent')
+                    .eq('user_id', user.id)
+                    .single()
+
+                  if (currentCredits) {
+                    let promo = parseFloat((currentCredits.promotional_balance ?? 0).toString())
+                    let bal = parseFloat((currentCredits.balance ?? 0).toString())
+                    const totalSpent = parseFloat((currentCredits.total_spent ?? 0).toString())
+                    
+                    // Deduct tier-based credits (FIFO: promo first, then balance)
+                    const total = Math.max(0, promo + bal)
+                    const newTotal = Math.max(0, total - creditsToDeduct)
+                    let newPromo = Math.min(promo, newTotal)
+                    let newBal = Math.max(0, newTotal - newPromo)
+
+                    await serviceRoleSupabase
                       .from('user_credits')
-                      .select('balance, promotional_balance, total_spent')
-                      .eq('user_id', user.id)
-                      .single()
-
-                    if (currentCredits) {
-                      let promo = parseFloat((currentCredits.promotional_balance ?? 0).toString())
-                      let bal = parseFloat((currentCredits.balance ?? 0).toString())
-                      const totalSpent = parseFloat((currentCredits.total_spent ?? 0).toString())
-                      
-                      // Deduct using unified total (promo + balance treated as one pool)
-                      const total = Math.max(0, promo + bal)
-                      const newTotal = Math.max(0, total - totalCost)
-                      let newPromo = Math.min(promo, newTotal)
-                      let newBal = Math.max(0, newTotal - newPromo)
-
-                      await serviceRoleSupabase
-                        .from('user_credits')
-                        .update({
-                          balance: newBal.toFixed(6),
-                          promotional_balance: newPromo.toFixed(6),
-                          total_spent: (totalSpent + totalCost).toFixed(6),
-                          updated_at: new Date().toISOString()
-                        })
-                        .eq('user_id', user.id)
-
-                      console.log(`[MCP] Deducted $${totalCost.toFixed(6)} credits for ${tokensUsed} tokens on ${cleanModel} (balance: $${newBal.toFixed(4)}, promo: $${newPromo.toFixed(4)})`)
-                      
-                      // Track usage session for dashboard visibility
-                      await serviceRoleSupabase.rpc('track_usage_session', {
-                        p_user_id: user.id,
-                        p_session_type: 'credits',
-                        p_tool_name: 'polydev_mcp',
-                        p_model_name: cleanModel,
-                        p_provider: providerName,
-                        p_message_count: 1,
-                        p_input_tokens: inputTokens,
-                        p_output_tokens: outputTokens,
-                        p_cost_usd: 0,
-                        p_cost_credits: totalCost,
-                        p_metadata: JSON.stringify({
-                          fallback_method: 'credits',
-                          usage_path: 'credits',
-                          request_source: 'mcp_api',
-                          admin_key_used: true
-                        })
+                      .update({
+                        balance: newBal.toFixed(6),
+                        promotional_balance: newPromo.toFixed(6),
+                        total_spent: (totalSpent + creditsToDeduct).toFixed(6),
+                        updated_at: new Date().toISOString()
                       })
-                    }
+                      .eq('user_id', user.id)
+
+                    console.log(`[MCP] Deducted ${creditsToDeduct} credits (${tier} tier) for ${tokensUsed} tokens on ${cleanModel} (balance: ${newBal.toFixed(2)}, promo: ${newPromo.toFixed(2)})`)
+                    
+                    // Track usage session for dashboard visibility
+                    await serviceRoleSupabase.rpc('track_usage_session', {
+                      p_user_id: user.id,
+                      p_session_type: 'credits',
+                      p_tool_name: 'polydev_mcp',
+                      p_model_name: cleanModel,
+                      p_provider: providerName,
+                      p_message_count: 1,
+                      p_input_tokens: inputTokens,
+                      p_output_tokens: outputTokens,
+                      p_cost_usd: usdCost,
+                      p_cost_credits: creditsToDeduct,
+                      p_metadata: JSON.stringify({
+                        fallback_method: 'credits',
+                        usage_path: 'credits',
+                        request_source: 'mcp_api',
+                        admin_key_used: true,
+                        model_tier: tier,
+                        credits_used: creditsToDeduct
+                      })
+                    })
                   }
                 } catch (creditError) {
                   console.error(`[MCP] Failed to deduct credits:`, creditError)
@@ -2173,68 +2186,76 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 // Deduct credits for admin key usage (budget exceeded case)
                 if (tokensUsed > 0 && user.id) {
                   try {
-                    const { data: modelTier } = await serviceRoleSupabase
+                    // Get model tier from model_tiers table
+                    const { data: modelTierData } = await serviceRoleSupabase
                       .from('model_tiers')
-                      .select('cost_per_1k_input, cost_per_1k_output')
+                      .select('tier, cost_per_1k_input, cost_per_1k_output')
                       .eq('model_name', cleanModel)
                       .single()
 
-                    if (modelTier) {
-                      const inputTokens = Math.floor(tokensUsed * 0.25)
-                      const outputTokens = tokensUsed - inputTokens
-                      const inputCost = (inputTokens / 1000) * (modelTier.cost_per_1k_input || 0)
-                      const outputCost = (outputTokens / 1000) * (modelTier.cost_per_1k_output || 0)
-                      const totalCost = inputCost + outputCost
+                    // Use tier-based credits (eco=1, normal=4, premium=20)
+                    const tier = modelTierData?.tier || 'normal'
+                    const creditsToDeduct = TIER_CREDIT_COSTS[tier] || 4
 
-                      // Get current balance and update atomically (FIFO: promo first, then balance)
-                      const { data: currentCredits } = await serviceRoleSupabase
+                    // Estimate input/output split for logging
+                    const inputTokens = Math.floor(tokensUsed * 0.25)
+                    const outputTokens = tokensUsed - inputTokens
+                    
+                    // Calculate USD cost for record keeping only
+                    const inputCost = modelTierData ? (inputTokens / 1000) * (modelTierData.cost_per_1k_input || 0) : 0
+                    const outputCost = modelTierData ? (outputTokens / 1000) * (modelTierData.cost_per_1k_output || 0) : 0
+                    const usdCost = inputCost + outputCost
+
+                    // Get current balance and update atomically (FIFO: promo first, then balance)
+                    const { data: currentCredits } = await serviceRoleSupabase
+                      .from('user_credits')
+                      .select('balance, promotional_balance, total_purchased, total_spent')
+                      .eq('user_id', user.id)
+                      .single()
+
+                    if (currentCredits) {
+                      const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
+                      const lifetimeSpent = currentCredits.total_spent || 0
+                      
+                      // Deduct tier-based credits (FIFO: promo first, then balance)
+                      const newTotal = Math.max(0, totalBalance - creditsToDeduct)
+                      let newPromo = Math.min(currentCredits.promotional_balance || 0, newTotal)
+                      let newBal = Math.max(0, newTotal - newPromo)
+                      
+                      await serviceRoleSupabase
                         .from('user_credits')
-                        .select('balance, promotional_balance, total_purchased, total_spent')
-                        .eq('user_id', user.id)
-                        .single()
-
-                      if (currentCredits) {
-                        const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
-                        const lifetimeSpent = currentCredits.total_spent || 0
-                        
-                        // Deduct from total balance (FIFO: promo first, then balance)
-                        const newTotal = Math.max(0, totalBalance - totalCost)
-                        let newPromo = Math.min(currentCredits.promotional_balance || 0, newTotal)
-                        let newBal = Math.max(0, newTotal - newPromo)
-                        
-                        await serviceRoleSupabase
-                          .from('user_credits')
-                          .update({
-                            balance: newBal.toFixed(6),
-                            promotional_balance: newPromo.toFixed(6),
-                            total_spent: (lifetimeSpent + totalCost).toFixed(6),
-                            updated_at: new Date().toISOString()
-                          })
-                          .eq('user_id', user.id)
-
-                        console.log(`[MCP] Deducted $${totalCost.toFixed(6)} credits (budget fallback) for ${tokensUsed} tokens on ${cleanModel}`)
-                        
-                        // Track usage session for dashboard visibility
-                        await serviceRoleSupabase.rpc('track_usage_session', {
-                          p_user_id: user.id,
-                          p_session_type: 'credits',
-                          p_tool_name: 'polydev_mcp',
-                          p_model_name: cleanModel,
-                          p_provider: providerName,
-                          p_message_count: 1,
-                          p_input_tokens: inputTokens,
-                          p_output_tokens: outputTokens,
-                          p_cost_usd: 0,
-                          p_cost_credits: totalCost,
-                          p_metadata: JSON.stringify({
-                            fallback_method: 'credits',
-                            usage_path: 'credits',
-                            request_source: 'mcp_api',
-                            admin_key_used: true,
-                            budget_exceeded: true
-                          })
+                        .update({
+                          balance: newBal.toFixed(6),
+                          promotional_balance: newPromo.toFixed(6),
+                          total_spent: (lifetimeSpent + creditsToDeduct).toFixed(6),
+                          updated_at: new Date().toISOString()
                         })
-                      }
+                        .eq('user_id', user.id)
+
+                      console.log(`[MCP] Deducted ${creditsToDeduct} credits (${tier} tier, budget fallback) for ${tokensUsed} tokens on ${cleanModel}`)
+                      
+                      // Track usage session for dashboard visibility
+                      await serviceRoleSupabase.rpc('track_usage_session', {
+                        p_user_id: user.id,
+                        p_session_type: 'credits',
+                        p_tool_name: 'polydev_mcp',
+                        p_model_name: cleanModel,
+                        p_provider: providerName,
+                        p_message_count: 1,
+                        p_input_tokens: inputTokens,
+                        p_output_tokens: outputTokens,
+                        p_cost_usd: usdCost,
+                        p_cost_credits: creditsToDeduct,
+                        p_metadata: JSON.stringify({
+                          fallback_method: 'credits',
+                          usage_path: 'credits',
+                          request_source: 'mcp_api',
+                          admin_key_used: true,
+                          budget_exceeded: true,
+                          model_tier: tier,
+                          credits_used: creditsToDeduct
+                        })
+                      })
                     }
                   } catch (creditError) {
                     console.error(`[MCP] Failed to deduct credits:`, creditError)
