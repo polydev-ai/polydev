@@ -1928,7 +1928,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 model: cleanModel,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                max_tokens: adminMaxTokens,
+                maxTokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -1936,7 +1936,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.max_tokens
+                delete apiOptions.maxTokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
@@ -2007,7 +2007,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 model: cleanModel,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                max_tokens: adminMaxTokens,
+                maxTokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -2015,7 +2015,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.max_tokens
+                delete apiOptions.maxTokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
