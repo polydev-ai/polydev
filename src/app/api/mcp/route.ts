@@ -1910,17 +1910,17 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           console.log(`[MCP] No user API key for ${providerName}, checking for admin-provided key...`)
 
           // Check for admin-provided key for this provider
-          const { data: adminKey } = await serviceRoleSupabase
+          const { data: adminKeyBudget } = await serviceRoleSupabase
             .from('user_api_keys')
             .select('encrypted_key, api_base')
-            .eq('provider', providerName)
+            .ilike('provider', providerName) // Case-insensitive match
             .eq('is_admin_key', true)
             .eq('active', true)
             .single()
 
-          if (adminKey?.encrypted_key) {
+          if (adminKeyBudget?.encrypted_key) {
             console.log(`[MCP] Found admin-provided key for ${providerName}, using as fallback`)
-            const adminDecryptedKey = Buffer.from(adminKey.encrypted_key, 'base64').toString('utf-8')
+            const adminDecryptedKey = Buffer.from(adminKeyBudget.encrypted_key, 'base64').toString('utf-8')
 
             try {
               const apiOptions: any = {
@@ -1930,7 +1930,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 max_tokens: providerMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
-                baseUrl: adminKey.api_base || provider.base_url
+                baseUrl: adminKeyBudget.api_base || provider.base_url
               }
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
@@ -1964,8 +1964,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 fallback: true,
                 source_type: 'admin_key'
               }
-            } catch (adminKeyError) {
-              console.error(`[MCP] Admin key fallback failed for ${providerName}:`, adminKeyError)
+            } catch (fallbackError) {
+              console.error(`[MCP] Admin key budget fallback failed:`, fallbackError)
             }
           }
 
@@ -1986,7 +1986,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           const { data: adminKeyBudget } = await serviceRoleSupabase
             .from('user_api_keys')
             .select('encrypted_key, api_base')
-            .eq('provider', providerName)
+            .ilike('provider', providerName) // Case-insensitive match
             .eq('is_admin_key', true)
             .eq('active', true)
             .single()
