@@ -2071,6 +2071,25 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                         credits_used: creditsToDeduct
                       })
                     })
+                    
+                    // Insert into perspective_usage for dashboard credits display
+                    // This is what the /api/usage/credits endpoint reads from
+                    await serviceRoleSupabase
+                      .from('perspective_usage')
+                      .insert({
+                        user_id: user.id,
+                        session_id: `mcp_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+                        model_name: cleanModel,
+                        model_tier: tier,
+                        provider: providerName,
+                        input_tokens: inputTokens,
+                        output_tokens: outputTokens,
+                        total_tokens: tokensUsed,
+                        estimated_cost: usdCost,
+                        perspectives_deducted: 1,
+                        credits_deducted: creditsToDeduct,
+                        request_metadata: { source_type: 'admin_credits' }
+                      })
                   }
                 } catch (creditError) {
                   console.error(`[MCP] Failed to deduct credits:`, creditError)
@@ -2086,10 +2105,10 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 response_time_ms: duration,
                 latency_ms: duration,
                 fallback: true,
-                source: 'credits'
+                source: 'admin_credits' // Track admin key usage for credits (was 'credits')
               }
             } catch (fallbackError) {
-              console.error(`[MCP] Admin key fallback failed for ${providerName}:`, fallbackError)
+              console.error(`[MCP] Admin key fallback failed for ${providerName}:`, fallbackError instanceof Error ? fallbackError.message : 'Unknown error')
               // Return the actual error instead of falling through to "No API key configured"
               return {
                 model,
@@ -2256,6 +2275,25 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                           credits_used: creditsToDeduct
                         })
                       })
+                      
+                      // Insert into perspective_usage for dashboard credits display
+                      // This is what the /api/usage/credits endpoint reads from
+                      await serviceRoleSupabase
+                        .from('perspective_usage')
+                        .insert({
+                          user_id: user.id,
+                          session_id: `mcp_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+                          model_name: cleanModel,
+                          model_tier: tier,
+                          provider: providerName,
+                          input_tokens: inputTokens,
+                          output_tokens: outputTokens,
+                          total_tokens: tokensUsed,
+                          estimated_cost: usdCost,
+                          perspectives_deducted: 1,
+                          credits_deducted: creditsToDeduct,
+                          request_metadata: { source_type: 'admin_credits' }
+                        })
                     }
                   } catch (creditError) {
                     console.error(`[MCP] Failed to deduct credits:`, creditError)
@@ -2270,7 +2308,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                   response_time_ms: duration,
                   latency_ms: duration,
                   fallback: true,
-                  source: 'credits'
+                  source: 'admin_credits' // Track admin key usage for credits (was 'credits')
                 }
               }
             } catch (fallbackError) {
@@ -2779,7 +2817,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           content: finalContent,
           tokens_used: response.tokens_used,
           latency_ms: latency,
-          source: 'api_key', // Track that user's own API key was used
+          source: 'user_key', // Track that user's own API key was used (was 'api_key')
           // CLI tracking metadata - helps users understand routing decisions
           ...(cliAttempted && {
             cli_attempted: true,
@@ -2933,13 +2971,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       providerLatencies[`${provider}:${response.model}`] = response.latency_ms || 0
     })
 
-    // Determine primary source_type from responses (api_key or credits)
-    // If any response used user_key (user's own key), mark the whole request as api_key
+    // Determine primary source_type from responses (user_key or admin_credits)
+    // If any response used user_key (user's own key), mark the whole request as user_key
     const sourceTypes = responses
       .filter(r => !('error' in r) && r.source)
       .map(r => r.source)
-    const primarySourceType = sourceTypes.includes('api_key') ? 'api_key' :
-                              sourceTypes.includes('credits') ? 'credits' : 'credits'
+    const primarySourceType = sourceTypes.includes('user_key') ? 'user_key' :
+                              sourceTypes.includes('admin_credits') ? 'admin_credits' : 'admin_credits'
     
     // Insert comprehensive log
     await serviceRoleSupabase
@@ -3656,7 +3694,7 @@ function getModelsFromApiKeysAndPreferences_DEPRECATED(apiKeys: any[], preferenc
   // First, try to use models from user preferences if they match available API keys
   if (preferences?.model_preferences && typeof preferences.model_preferences === 'object') {
     const sortedProviders = Object.entries(preferences.model_preferences)
-      .filter(([_, pref]: [string, any]) => pref && typeof pref === 'object')
+      .filter(([_, pref]: [string, any]) => pref && typeof pref === 'object' && Array.isArray(pref.models))
       .sort(([_, a]: any, [__, b]: any) => (a.order || 0) - (b.order || 0))
     
     for (const [prefProvider, pref] of sortedProviders) {
