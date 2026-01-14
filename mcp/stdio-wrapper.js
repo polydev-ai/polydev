@@ -265,7 +265,14 @@ class StdioMCPWrapper {
     // Smart refresh scheduler (will be started after initialization)
     this.refreshScheduler = null;
     
-    // Cache for user model preferences (provider -> model)
+    // CLI detection readiness tracking - requests will wait for this
+    // Create the promise NOW in constructor so it exists before any requests arrive
+    this._cliDetectionComplete = false;
+    this._cliDetectionReady = new Promise((resolve) => {
+      this._cliDetectionResolver = resolve;
+    });
+    
+    // Cache for user model preferences
     this.userModelPreferences = null;
     this.perspectivesPerMessage = 2; // Default to 2 perspectives
     this.modelPreferencesCacheTime = null;
@@ -788,6 +795,13 @@ class StdioMCPWrapper {
    */
   async getAllAvailableProviders() {
     try {
+      // Wait for initial CLI detection to complete if it's still running
+      if (this._cliDetectionReady && !this._cliDetectionComplete) {
+        console.error('[Stdio Wrapper] Waiting for initial CLI detection to complete...');
+        await this._cliDetectionReady;
+        console.error('[Stdio Wrapper] CLI detection ready, proceeding with request');
+      }
+      
       const results = await this.cliManager.forceCliDetection();
       const availableProviders = [];
       const unavailableProviders = [];
@@ -1645,15 +1659,23 @@ class StdioMCPWrapper {
     console.error('Stdio MCP Wrapper ready and listening on stdin...');
 
     // Run initial CLI detection in the background so MCP handshake isn't blocked.
+    // The promise was already created in constructor so requests will wait for it
     console.error('[Stdio Wrapper] Running initial CLI detection...');
+    
     this.localForceCliDetection({})
       .then(() => {
         console.error('[Stdio Wrapper] Initial CLI detection completed');
+        this._cliDetectionComplete = true;
       })
       .catch((error) => {
         console.error('[Stdio Wrapper] Initial CLI detection failed:', error);
+        this._cliDetectionComplete = true; // Mark complete even on failure
       })
       .finally(() => {
+        // Resolve the readiness promise so waiting requests can proceed
+        if (this._cliDetectionResolver) {
+          this._cliDetectionResolver();
+        }
         // Start smart refresh scheduler after initial detection attempt
         this.startSmartRefreshScheduler();
       });
