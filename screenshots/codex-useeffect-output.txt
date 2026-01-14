@@ -1,0 +1,53 @@
+OpenAI Codex v0.77.0 (research preview)
+--------
+workdir: /Users/venkat/Documents/polydev-ai
+model: gpt-5.1-codex-mini
+provider: openai
+approval: never
+sandbox: workspace-write [workdir, /tmp, $TMPDIR]
+reasoning effort: medium
+reasoning summaries: auto
+session id: 019bb96b-a485-7c43-8a89-c64782e1c080
+--------
+user
+Call polydev.get_perspectives to get multi-model AI perspectives on: Why does my React component re-render infinitely when using useEffect with an object dependency?
+mcp: seq_thinking starting
+mcp: supabase starting
+mcp: polydev starting
+mcp: vercel starting
+mcp: memory starting
+mcp: filesystem starting
+mcp: exa starting
+mcp: github starting
+mcp: polydev ready
+mcp: exa ready
+mcp: vercel ready
+mcp: memory ready
+mcp: seq_thinking ready
+mcp: supabase ready
+mcp: github ready
+mcp: filesystem ready
+mcp startup: ready: polydev, exa, vercel, memory, seq_thinking, supabase, github, filesystem
+
+thinking
+**Determining tool usage and permissions**
+tool polydev.get_perspectives({"prompt":"Why does my React component re-render infinitely when using useEffect with an object dependency?","models":["gpt-4","claude-3-sonnet","gemini-pro"],"project_context":{"root_path":"/Users/venkat/Documents/polydev-ai","project_memory":"full"},"max_tokens":3000})
+polydev.get_perspectives({"prompt":"Why does my React component re-render infinitely when using useEffect with an object dependency?","models":["gpt-4","claude-3-sonnet","gemini-pro"],"project_context":{"root_path":"/Users/venkat/Documents/polydev-ai","project_memory":"full"},"max_tokens":3000}) success in 26.50s:
+{
+  "content": [
+    {
+      "text": "🟢 **Local CLI Response** (gemini-3-flash-preview)\n\nI will search for `useEffect` usage in the `src` directory to see if there are any current examples of this issue in your codebase.\nI will use the `codebase_investigator` to find examples of `useEffect` with object dependencies in your project to provide a concrete explanation.\n\n*Latency: 18990ms | Tokens: 94*\n\n---\n\n🟢 **Local CLI Response** (gpt-5.1-codex-mini)\n\n- When you pass an object literal (even with the same values) to `useEffect`’s dependency array, React sees a new reference every render, so the effect runs again and triggers a state change, causing another render—hence the infinite loop.\n- Instead, keep the dependency stable: memoize the object with `useMemo`, keep its values in separate primitives, or derive it from stable refs/props that only change when you actually want the effect to run.\n\n*Latency: 10835ms | Tokens: 136*\n\n---\n\n🧠 **Supplemental Multi-Model Perspectives**",
+      "type": "text"
+    }
+  ]
+}
+
+thinking
+**Preparing final summary**
+codex
+- React sees object dependencies by reference, so passing a new literal (even with identical contents) to `useEffect`’s dependency array makes each render supply a different reference; the effect runs each time, and if it updates state you loop.
+- Keep that dependency stable by memoizing (`useMemo`), deriving it from primitives that only change when needed, or storing it in a ref—this way the effect only reruns when the actual data changes.
+tokens used
+13,627
+- React sees object dependencies by reference, so passing a new literal (even with identical contents) to `useEffect`’s dependency array makes each render supply a different reference; the effect runs each time, and if it updates state you loop.
+- Keep that dependency stable by memoizing (`useMemo`), deriving it from primitives that only change when needed, or storing it in a ref—this way the effect only reruns when the actual data changes.

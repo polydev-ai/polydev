@@ -1933,7 +1933,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               const apiModelId = modelTierInfo?.api_model_id || cleanModel
               console.log(`[MCP] Admin key: resolved ${cleanModel} to API model: ${apiModelId}`)
 
-              const adminMaxTokens = 8000 // Fixed 8k tokens for admin key calls (Haiku limit is 8192)
+              const adminMaxTokens = 10000 // Global 10k tokens for admin key calls
               const apiOptions: any = {
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
@@ -2037,6 +2037,26 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                         .eq('user_id', user.id)
 
                       console.log(`[MCP] Deducted $${totalCost.toFixed(6)} credits for ${tokensUsed} tokens on ${cleanModel} (balance: $${newBal.toFixed(4)}, promo: $${newPromo.toFixed(4)})`)
+                      
+                      // Track usage session for dashboard visibility
+                      await serviceRoleSupabase.rpc('track_usage_session', {
+                        p_user_id: user.id,
+                        p_session_type: 'credits',
+                        p_tool_name: 'polydev_mcp',
+                        p_model_name: cleanModel,
+                        p_provider: providerName,
+                        p_message_count: 1,
+                        p_input_tokens: inputTokens,
+                        p_output_tokens: outputTokens,
+                        p_cost_usd: 0,
+                        p_cost_credits: totalCost,
+                        p_metadata: JSON.stringify({
+                          fallback_method: 'credits',
+                          usage_path: 'credits',
+                          request_source: 'mcp_api',
+                          admin_key_used: true
+                        })
+                      })
                     }
                   }
                 } catch (creditError) {
@@ -2047,13 +2067,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               return {
                 model,
-                provider: `${provider.display_name} (Admin Key)`,
+                provider: provider.display_name,
                 content,
                 tokens_used: tokensUsed,
                 response_time_ms: duration,
                 latency_ms: duration,
                 fallback: true,
-                source_type: 'admin_key'
+                source: 'credits'
               }
             } catch (fallbackError) {
               console.error(`[MCP] Admin key fallback failed for ${providerName}:`, fallbackError)
@@ -2102,7 +2122,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               const apiModelId = modelTierInfo?.api_model_id || cleanModel
               console.log(`[MCP] Budget fallback: resolved ${cleanModel} to API model: ${apiModelId}`)
 
-              const adminMaxTokens = 8000 // Fixed 8k tokens for admin key calls (Haiku limit is 8192)
+              const adminMaxTokens = 10000 // Global 10k tokens for admin key calls
               const apiOptions: any = {
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
@@ -2193,6 +2213,27 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                           .eq('user_id', user.id)
 
                         console.log(`[MCP] Deducted $${totalCost.toFixed(6)} credits (budget fallback) for ${tokensUsed} tokens on ${cleanModel}`)
+                        
+                        // Track usage session for dashboard visibility
+                        await serviceRoleSupabase.rpc('track_usage_session', {
+                          p_user_id: user.id,
+                          p_session_type: 'credits',
+                          p_tool_name: 'polydev_mcp',
+                          p_model_name: cleanModel,
+                          p_provider: providerName,
+                          p_message_count: 1,
+                          p_input_tokens: inputTokens,
+                          p_output_tokens: outputTokens,
+                          p_cost_usd: 0,
+                          p_cost_credits: totalCost,
+                          p_metadata: JSON.stringify({
+                            fallback_method: 'credits',
+                            usage_path: 'credits',
+                            request_source: 'mcp_api',
+                            admin_key_used: true,
+                            budget_exceeded: true
+                          })
+                        })
                       }
                     }
                   } catch (creditError) {
@@ -2202,13 +2243,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
                 return {
                   model,
-                  provider: `${provider.display_name} (Admin Key - Budget Exceeded)`,
+                  provider: provider.display_name,
                   content,
                   tokens_used: tokensUsed,
                   response_time_ms: duration,
                   latency_ms: duration,
                   fallback: true,
-                  source_type: 'admin_key'
+                  source: 'credits'
                 }
               }
             } catch (fallbackError) {
@@ -2717,7 +2758,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           content: finalContent,
           tokens_used: response.tokens_used,
           latency_ms: latency,
-          source_type: 'user_key', // Track that user's own API key was used
+          source: 'api_key', // Track that user's own API key was used
           // CLI tracking metadata - helps users understand routing decisions
           ...(cliAttempted && {
             cli_attempted: true,
@@ -2871,14 +2912,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       providerLatencies[`${provider}:${response.model}`] = response.latency_ms || 0
     })
 
-    // Determine primary source_type from responses (user_key or admin_key)
-    // If any response used user_key, mark the whole request as user_key
+    // Determine primary source_type from responses (api_key or credits)
+    // If any response used user_key (user's own key), mark the whole request as api_key
     const sourceTypes = responses
-      .filter(r => !('error' in r) && r.source_type)
-      .map(r => r.source_type)
-    const primarySourceType = sourceTypes.includes('user_key') ? 'user_key' :
-                              sourceTypes.includes('admin_key') ? 'admin_key' : 'admin_key'
-
+      .filter(r => !('error' in r) && r.source)
+      .map(r => r.source)
+    const primarySourceType = sourceTypes.includes('api_key') ? 'api_key' :
+                              sourceTypes.includes('credits') ? 'credits' : 'credits'
+    
     // Insert comprehensive log
     await serviceRoleSupabase
       .from('mcp_request_logs')
