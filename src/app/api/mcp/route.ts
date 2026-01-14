@@ -1938,7 +1938,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                max_tokens: adminMaxTokens,
+                maxTokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -1946,7 +1946,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.max_tokens
+                delete apiOptions.maxTokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
@@ -2107,7 +2107,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                max_tokens: adminMaxTokens,
+                maxTokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -2115,7 +2115,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.max_tokens
+                delete apiOptions.maxTokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
@@ -3456,7 +3456,7 @@ async function handleListAvailableModels(args: any, user: any, request: NextRequ
 
       const source = m.availability.primary_source === 'cli' ? 'CLI (FREE)' :
                      m.availability.primary_source === 'api' ? 'API (FREE)' :
-                     m.availability.primary_source === 'admin' ? `${m.availability.perspectives_needed} ${m.tier.toUpperCase()}` :
+                     m.availability.primary_source === 'admin' ? `${m.tier.toUpperCase()}` :
                      'Unavailable'
 
       return `${icon} **${m.display_name}** (${m.model_id})\n   Source: ${source}\n`
