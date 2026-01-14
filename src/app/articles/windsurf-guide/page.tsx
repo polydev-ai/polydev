@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ArrowLeft, MessageSquare, Copy, Check, ArrowRight, Zap, Settings, FolderOpen, Terminal, Sparkles } from 'lucide-react'
 
@@ -71,6 +72,27 @@ export default function WindsurfGuidePage() {
           </div>
         </motion.header>
 
+        {/* MCP Marketplace Screenshot */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="mb-12"
+        >
+          <div className="rounded-lg overflow-hidden border border-slate-200 shadow-sm">
+            <Image
+              src="/screenshots/windsurf/mcp-servers.png"
+              alt="Windsurf MCP Marketplace showing Polydev enabled"
+              width={1200}
+              height={600}
+              className="w-full"
+            />
+          </div>
+          <p className="text-sm text-slate-500 mt-3 text-center">
+            Windsurf MCP Marketplace with Polydev enabled
+          </p>
+        </motion.section>
+
         {/* Quick Start */}
         <motion.section
           initial={{ opacity: 0 }}
@@ -124,7 +146,7 @@ export default function WindsurfGuidePage() {
                   Ask Cascade to consult other models when you need different perspectives:
                 </p>
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
-                  &quot;I&apos;m designing a caching strategy. Can you use Polydev to get perspectives from GPT, Claude, and Gemini?&quot;
+                  &quot;I&apos;m designing a caching strategy. Can you use Polydev to get perspectives from multiple AI models?&quot;
                 </div>
               </div>
             </div>
@@ -158,9 +180,9 @@ export default function WindsurfGuidePage() {
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai@latest", "serve"],
+      "args": ["-y", "polydev-ai@latest"],
       "env": {
-        "POLYDEV_API_KEY": "your-api-key-here"
+        "POLYDEV_USER_TOKEN": "pd_your_token_here"
       }
     }
   }

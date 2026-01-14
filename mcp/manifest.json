@@ -1,6 +1,6 @@
 {
   "name": "polydev-perspectives",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Agentic workflow assistant - get diverse perspectives from multiple LLMs when stuck or need enhanced reasoning",
   "author": "Polydev AI",
   "license": "MIT",
@@ -22,22 +22,6 @@
             "type": "string",
             "description": "The prompt to get perspectives on",
             "minLength": 1
-          },
-          "models": {
-            "type": "array",
-            "description": "Array of model names to query (optional, defaults to [gpt-4, claude-3-sonnet, gemini-pro])",
-            "items": {
-              "type": "string",
-              "enum": [
-                "gpt-4",
-                "gpt-3.5-turbo",
-                "claude-3-sonnet", 
-                "claude-3-haiku",
-                "gemini-pro",
-                "gemini-1.5-pro"
-              ]
-            },
-            "default": ["gpt-4", "claude-3-sonnet", "gemini-pro"]
           },
           "user_token": {
             "type": "string",
@@ -103,14 +87,10 @@
         "properties": {
           "responses": {
             "type": "array",
-            "description": "Array of responses from different models",
+            "description": "Array of responses from different AI perspectives",
             "items": {
               "type": "object",
               "properties": {
-                "model": {
-                  "type": "string",
-                  "description": "Model name"
-                },
                 "content": {
                   "type": "string",
                   "description": "Response content"
@@ -128,12 +108,12 @@
                   "description": "Error message if the request failed"
                 }
               },
-              "required": ["model", "content"]
+              "required": ["content"]
             }
           },
           "total_tokens": {
             "type": "integer",
-            "description": "Total tokens used across all models"
+            "description": "Total tokens used across all perspectives"
           },
           "total_latency_ms": {
             "type": "integer",
@@ -152,25 +132,6 @@
           "input": {
             "prompt": "I'm building a new API and considering TypeScript vs JavaScript. I need multiple perspectives to make the right choice.",
             "user_token": "poly_abc123..."
-          },
-          "output": {
-            "responses": [
-              {
-                "model": "gpt-4",
-                "content": "TypeScript offers several key advantages over JavaScript: 1) Static type checking catches errors at compile time...",
-                "tokens_used": 150,
-                "latency_ms": 1200
-              },
-              {
-                "model": "claude-3-sonnet", 
-                "content": "TypeScript provides enhanced developer experience through: Type safety, better IDE support...",
-                "tokens_used": 140,
-                "latency_ms": 1100
-              }
-            ],
-            "total_tokens": 290,
-            "total_latency_ms": 1300,
-            "cached": false
           }
         },
         {
@@ -178,7 +139,6 @@
           "input": {
             "prompt": "My React app is slow and I can't figure out why. Help me identify the bottlenecks.",
             "user_token": "poly_abc123...",
-            "models": ["gpt-4", "claude-3-sonnet"],
             "project_memory": "full",
             "project_context": {
               "root_path": "/workspace/my-react-app",
@@ -191,8 +151,7 @@
           "description": "Agent needs diverse architectural opinions",
           "input": {
             "prompt": "I'm designing a microservices architecture for a fintech app. What are the key considerations and potential pitfalls?",
-            "user_token": "poly_abc123...",
-            "models": ["gpt-4", "claude-3-sonnet", "gemini-pro"]
+            "user_token": "poly_abc123..."
           }
         }
       ]

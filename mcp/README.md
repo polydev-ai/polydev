@@ -4,7 +4,7 @@ Get diverse AI perspectives from multiple LLMs via Model Context Protocol (MCP).
 
 ## Features
 
-- 🤖 **Multi-Model AI Perspectives**: Get responses from GPT-4, Claude, Gemini, and more
+- 🤖 **Multi-Model AI Perspectives**: Get responses from multiple AI models simultaneously
 - 🔧 **Local CLI Detection**: Automatically detect and use Claude Code, Codex CLI, Gemini CLI
 - ⚡ **Smart Caching**: Intelligent refresh intervals based on CLI status
 - 🔄 **Fallback Support**: Local CLI + remote perspectives for comprehensive responses
@@ -99,7 +99,7 @@ session_timeout = 600
 
 ## Available Tools
 
-- `get_perspectives` - Get AI responses from multiple models
+- `get_perspectives` - Get AI responses from multiple models (models managed by Polydev)
 - `force_cli_detection` - Force detection of local CLI tools
 - `get_cli_status` - Check status of CLI tools (Claude Code, Codex, Gemini)
 - `send_cli_prompt` - Send prompts to local CLI with perspectives fallback
@@ -111,8 +111,7 @@ session_timeout = 600
 ```typescript
 // Use the get_perspectives tool
 {
-  "prompt": "How do I optimize React performance?",
-  "models": ["gpt-4", "claude-3-sonnet", "gemini-pro"]
+  "prompt": "How do I optimize React performance?"
 }
 ```
 
@@ -194,6 +193,24 @@ This error occurs when the MCP handshake fails. Common causes and fixes:
 1. Ensure the CLI is installed and in your PATH
 2. Check authentication: `claude auth status` / `codex login status`
 3. Enable debugging: `export POLYDEV_CLI_DEBUG=1`
+
+### Gemini CLI: Truncated "I will search..." Responses
+
+If Gemini CLI returns truncated responses like "I will search for..." or "I will look up..." instead of actual analysis:
+
+**Cause**: Gemini CLI has an "agentic mode" that triggers when prompts mention code, files, or repositories. In headless `-p` mode, Gemini tries to use tools (file search, web search) but they can't execute, so it outputs intentions instead of analysis.
+
+**Fix**: The `-s` (sandbox) flag disables tool use. As of v1.8.37, polydev-ai automatically adds this flag. To update:
+
+```bash
+# Update polydev-ai
+npm update -g polydev-ai
+
+# Or in mcp-execution
+cd ~/mcp-execution && npm update polydev-ai
+```
+
+**Note**: Simple prompts (like "What is 5 + 5?") work correctly because they don't trigger agentic behavior. Complex prompts about code/repositories do.
 
 ### Token Issues
 

@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, FileText, Zap, Code, MessageSquare, Terminal } from 'lucide-react'
+import { ArrowLeft, ArrowRight, FileText, Zap, Code, MessageSquare, Terminal, Puzzle } from 'lucide-react'
 
 // Article data - add new articles here
 const articles = [
@@ -32,10 +32,20 @@ const articles = [
     category: 'Integration Guide',
     date: 'January 2026',
     title: 'Using Polydev with Cursor',
-    description: 'Integrate Polydev into your Cursor workflow. Access GPT, Claude, Gemini, and Grok perspectives without leaving your editor.',
+    description: 'Integrate Polydev into your Cursor workflow. Access multiple AI perspectives without leaving your editor.',
     icon: Code,
     featured: false,
     tags: ['Cursor', 'IDE', 'Tutorial'],
+  },
+  {
+    slug: 'cline-guide',
+    category: 'Integration Guide',
+    date: 'January 2026',
+    title: 'Using Polydev with Cline',
+    description: 'Add multi-model AI consultation to Cline (VS Code/Cursor extension) for diverse perspectives on debugging, architecture, and code review.',
+    icon: Puzzle,
+    featured: false,
+    tags: ['Cline', 'VS Code', 'Tutorial'],
   },
   {
     slug: 'codex-guide',
