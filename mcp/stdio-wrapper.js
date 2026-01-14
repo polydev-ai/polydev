@@ -521,6 +521,7 @@ class StdioMCPWrapper {
       
       // Force detection using CLI Manager (no remote API calls)
       const results = await this.cliManager.forceCliDetection(providerId);
+      console.error(`[Stdio Wrapper] CLI detection results:`, JSON.stringify(results, null, 2));
       
       // Save status locally to file-based cache
       await this.saveLocalCliStatus(results);
@@ -658,7 +659,10 @@ class StdioMCPWrapper {
         if (allProviders.length === 0) {
           // Fallback: use legacy CLI-only flow
           console.error(`[Stdio Wrapper] No allProviders, using legacy CLI-only flow`);
-          const userOrder = this.userProviderOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
+          // NOTE: Use length check because empty array [] is truthy in JS
+          const userOrder = (this.userProviderOrder && this.userProviderOrder.length > 0) 
+            ? this.userProviderOrder 
+            : ['claude_code', 'codex_cli', 'gemini_cli'];
           const cliProviders = userOrder.slice(0, maxPerspectives).filter(p => availableClis.includes(p));
           
           const cliPromises = cliProviders.map(async (providerId) => {
@@ -803,12 +807,16 @@ class StdioMCPWrapper {
       }
       
       const results = await this.cliManager.forceCliDetection();
+      console.error(`[Stdio Wrapper] CLI detection results:`, JSON.stringify(results, null, 2));
       const availableProviders = [];
       const unavailableProviders = [];
       
       // Use user's provider order from dashboard (fetched via model-preferences API)
-      // Falls back to default order if not yet loaded
-      const priorityOrder = this.userProviderOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
+      // Falls back to default order if not yet loaded or empty
+      // NOTE: Use length check because empty array [] is truthy in JS
+      const priorityOrder = (this.userProviderOrder && this.userProviderOrder.length > 0) 
+        ? this.userProviderOrder 
+        : ['claude_code', 'codex_cli', 'gemini_cli'];
       console.error(`[Stdio Wrapper] Using provider order: ${priorityOrder.join(' > ')}`);
       
       for (const providerId of priorityOrder) {
@@ -1555,7 +1563,10 @@ class StdioMCPWrapper {
         // Cache provider order from user's dashboard (respects display_order)
         // This determines which CLIs/APIs to use first
         // IMPORTANT: This is cached alongside modelPreferences and restored when cache is used
-        this.userProviderOrder = result.providerOrder || ['claude_code', 'codex_cli', 'gemini_cli'];
+        // NOTE: Use length check because empty array [] is truthy in JS
+        this.userProviderOrder = (result.providerOrder && result.providerOrder.length > 0) 
+          ? result.providerOrder 
+          : ['claude_code', 'codex_cli', 'gemini_cli'];
         
         // NEW: Cache full list of all providers (CLI + API-only) from dashboard
         // Format: [{ provider: 'openai', model: 'gpt-52-codex', cliId: 'codex_cli' }, { provider: 'x-ai', model: 'grok-4', cliId: null }, ...]
