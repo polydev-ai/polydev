@@ -1923,12 +1923,22 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             const adminDecryptedKey = Buffer.from(adminKeyBudget.encrypted_key, 'base64').toString('utf-8')
 
             try {
+              // Resolve the actual API model ID from model_tiers
+              const { data: modelTierInfo } = await serviceRoleSupabase
+                .from('model_tiers')
+                .select('api_model_id, cost_per_1k_input, cost_per_1k_output')
+                .eq('model_name', cleanModel)
+                .single()
+
+              const apiModelId = modelTierInfo?.api_model_id || cleanModel
+              console.log(`[MCP] Admin key: resolved ${cleanModel} to API model: ${apiModelId}`)
+
               const adminMaxTokens = 8000 // Fixed 8k tokens for admin key calls (Haiku limit is 8192)
               const apiOptions: any = {
-                model: cleanModel,
+                model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                maxTokens: adminMaxTokens,
+                max_tokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -1936,7 +1946,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.maxTokens
+                delete apiOptions.max_tokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
@@ -1953,12 +1963,92 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               const endTime = Date.now()
               const duration = endTime - startTime
-              const tokensUsed = result.usage?.total_tokens || 0
+
+              // Extract tokens based on provider format
+              let tokensUsed = 0
+              if (result.usage?.total_tokens) {
+                // OpenAI format
+                tokensUsed = result.usage.total_tokens
+              } else if (result.usage?.input_tokens !== undefined) {
+                // Anthropic format
+                tokensUsed = (result.usage.input_tokens || 0) + (result.usage.output_tokens || 0)
+              } else if (result.usageMetadata?.totalTokenCount) {
+                // Google format
+                tokensUsed = result.usageMetadata.totalTokenCount
+              }
+
+              // Extract content based on provider format
+              let content = ''
+              if (result.choices?.[0]?.message?.content) {
+                // OpenAI format
+                content = result.choices[0].message.content
+              } else if (result.content?.[0]?.text) {
+                // Anthropic format
+                content = result.content[0].text
+              } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                // Google/Gemini format
+                content = result.candidates[0].content.parts[0].text
+              }
+
+              // Deduct credits for admin key usage
+              if (tokensUsed > 0 && user.id) {
+                try {
+                  // Get model pricing from model_tiers (cost per 1k tokens)
+                  const { data: modelTier } = await serviceRoleSupabase
+                    .from('model_tiers')
+                    .select('cost_per_1k_input, cost_per_1k_output')
+                    .eq('model_name', cleanModel)
+                    .single()
+
+                  if (modelTier) {
+                    // Estimate input/output split (assume 20% input, 80% output for responses)
+                    const inputTokens = Math.floor(tokensUsed * 0.2)
+                    const outputTokens = tokensUsed - inputTokens
+                    const inputCost = (inputTokens / 1000) * (modelTier.cost_per_1k_input || 0)
+                    const outputCost = (outputTokens / 1000) * (modelTier.cost_per_1k_output || 0)
+                    const totalCost = inputCost + outputCost
+
+                    // Get current balance and update atomically (FIFO: promo first, then balance)
+                    const { data: currentCredits } = await serviceRoleSupabase
+                      .from('user_credits')
+                      .select('balance, promotional_balance, total_spent')
+                      .eq('user_id', user.id)
+                      .single()
+
+                    if (currentCredits) {
+                      let promo = parseFloat((currentCredits.promotional_balance ?? 0).toString())
+                      let bal = parseFloat((currentCredits.balance ?? 0).toString())
+                      const totalSpent = parseFloat((currentCredits.total_spent ?? 0).toString())
+                      
+                      // Deduct using unified total (promo + balance treated as one pool)
+                      const total = Math.max(0, promo + bal)
+                      const newTotal = Math.max(0, total - totalCost)
+                      let newPromo = Math.min(promo, newTotal)
+                      let newBal = Math.max(0, newTotal - newPromo)
+
+                      await serviceRoleSupabase
+                        .from('user_credits')
+                        .update({
+                          balance: newBal.toFixed(6),
+                          promotional_balance: newPromo.toFixed(6),
+                          total_spent: (totalSpent + totalCost).toFixed(6),
+                          updated_at: new Date().toISOString()
+                        })
+                        .eq('user_id', user.id)
+
+                      console.log(`[MCP] Deducted $${totalCost.toFixed(6)} credits for ${tokensUsed} tokens on ${cleanModel} (balance: $${newBal.toFixed(4)}, promo: $${newPromo.toFixed(4)})`)
+                    }
+                  }
+                } catch (creditError) {
+                  console.error(`[MCP] Failed to deduct credits:`, creditError)
+                  // Don't fail the response if credit deduction fails
+                }
+              }
 
               return {
                 model,
                 provider: `${provider.display_name} (Admin Key)`,
-                content: result.choices?.[0]?.message?.content || result.content?.[0]?.text || '',
+                content,
                 tokens_used: tokensUsed,
                 response_time_ms: duration,
                 latency_ms: duration,
@@ -2002,12 +2092,22 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             const adminDecryptedKey = Buffer.from(adminKeyBudget.encrypted_key, 'base64').toString('utf-8')
 
             try {
+              // Resolve the actual API model ID from model_tiers
+              const { data: modelTierInfo } = await serviceRoleSupabase
+                .from('model_tiers')
+                .select('api_model_id, cost_per_1k_input, cost_per_1k_output')
+                .eq('model_name', cleanModel)
+                .single()
+
+              const apiModelId = modelTierInfo?.api_model_id || cleanModel
+              console.log(`[MCP] Budget fallback: resolved ${cleanModel} to API model: ${apiModelId}`)
+
               const adminMaxTokens = 8000 // Fixed 8k tokens for admin key calls (Haiku limit is 8192)
               const apiOptions: any = {
-                model: cleanModel,
+                model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                maxTokens: adminMaxTokens,
+                max_tokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -2015,7 +2115,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.maxTokens
+                delete apiOptions.max_tokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
@@ -2030,11 +2130,81 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 const endTime = Date.now()
                 const duration = endTime - startTime
 
+                // Extract tokens based on provider format
+                let tokensUsed = 0
+                if (result.usage?.total_tokens) {
+                  tokensUsed = result.usage.total_tokens
+                } else if (result.usage?.input_tokens !== undefined) {
+                  tokensUsed = (result.usage.input_tokens || 0) + (result.usage.output_tokens || 0)
+                } else if (result.usageMetadata?.totalTokenCount) {
+                  tokensUsed = result.usageMetadata.totalTokenCount
+                }
+
+                // Extract content based on provider format
+                let content = ''
+                if (result.choices?.[0]?.message?.content) {
+                  content = result.choices[0].message.content
+                } else if (result.content?.[0]?.text) {
+                  content = result.content[0].text
+                } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                  content = result.candidates[0].content.parts[0].text
+                }
+
+                // Deduct credits for admin key usage (budget exceeded case)
+                if (tokensUsed > 0 && user.id) {
+                  try {
+                    const { data: modelTier } = await serviceRoleSupabase
+                      .from('model_tiers')
+                      .select('cost_per_1k_input, cost_per_1k_output')
+                      .eq('model_name', cleanModel)
+                      .single()
+
+                    if (modelTier) {
+                      const inputTokens = Math.floor(tokensUsed * 0.25)
+                      const outputTokens = tokensUsed - inputTokens
+                      const inputCost = (inputTokens / 1000) * (modelTier.cost_per_1k_input || 0)
+                      const outputCost = (outputTokens / 1000) * (modelTier.cost_per_1k_output || 0)
+                      const totalCost = inputCost + outputCost
+
+                      // Get current balance and update atomically (FIFO: promo first, then balance)
+                      const { data: currentCredits } = await serviceRoleSupabase
+                        .from('user_credits')
+                        .select('balance, promotional_balance, total_purchased, total_spent')
+                        .eq('user_id', user.id)
+                        .single()
+
+                      if (currentCredits) {
+                        const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
+                        const lifetimeSpent = currentCredits.total_spent || 0
+                        
+                        // Deduct from total balance (FIFO: promo first, then balance)
+                        const newTotal = Math.max(0, totalBalance - totalCost)
+                        let newPromo = Math.min(currentCredits.promotional_balance || 0, newTotal)
+                        let newBal = Math.max(0, newTotal - newPromo)
+                        
+                        await serviceRoleSupabase
+                          .from('user_credits')
+                          .update({
+                            balance: newBal.toFixed(6),
+                            promotional_balance: newPromo.toFixed(6),
+                            total_spent: (lifetimeSpent + totalCost).toFixed(6),
+                            updated_at: new Date().toISOString()
+                          })
+                          .eq('user_id', user.id)
+
+                        console.log(`[MCP] Deducted $${totalCost.toFixed(6)} credits (budget fallback) for ${tokensUsed} tokens on ${cleanModel}`)
+                      }
+                    }
+                  } catch (creditError) {
+                    console.error(`[MCP] Failed to deduct credits:`, creditError)
+                  }
+                }
+
                 return {
                   model,
                   provider: `${provider.display_name} (Admin Key - Budget Exceeded)`,
-                  content: result.choices?.[0]?.message?.content || result.content?.[0]?.text || '',
-                  tokens_used: result.usage?.total_tokens || 0,
+                  content,
+                  tokens_used: tokensUsed,
                   response_time_ms: duration,
                   latency_ms: duration,
                   fallback: true,
@@ -2577,7 +2747,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
   const totalTokens = responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0)
   const totalLatency = Math.max(...responses.map(r => r.latency_ms || 0))
-  const successCount = responses.filter(r => !r.content?.error).length
+  const successCount = responses.filter(r => !('error' in r)).length
 
   // Log MCP tool call to mcp_usage_logs for dashboard statistics
   // Get the access token for this request from the auth header
@@ -2612,7 +2782,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     // Create models used object with response details
     const modelsUsed: Record<string, any> = {}
     responses.forEach(response => {
-      if (!response.content?.error) {
+      if (!('error' in response)) {
         modelsUsed[response.model] = {
           provider: response.provider,
           tokens: response.tokens_used,
@@ -2668,7 +2838,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       const pricing = pricingMap.get(`${provider}:${response.model}`)
       
       let cost = 0
-      if (pricing && response.tokens_used && !response.content?.error) {
+      if (pricing && response.tokens_used && !('error' in response)) {
         // Estimate input/output split (typically 1:3 ratio for responses)
         const estimatedInputTokens = Math.floor(response.tokens_used * 0.25)
         const estimatedOutputTokens = response.tokens_used - estimatedInputTokens
@@ -2690,7 +2860,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         temperature: temperature
       }
 
-      if (!response.content?.error && response.content) {
+      if (!('error' in response) && response.content) {
         providerResponses[`${provider}:${response.model}`] = {
           content: response.content.substring(0, 2000), // Limit content size
           tokens_used: response.tokens_used,
@@ -2704,7 +2874,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     // Determine primary source_type from responses (user_key or admin_key)
     // If any response used user_key, mark the whole request as user_key
     const sourceTypes = responses
-      .filter(r => !r.content?.error && r.source_type)
+      .filter(r => !('error' in r) && r.source_type)
       .map(r => r.source_type)
     const primarySourceType = sourceTypes.includes('user_key') ? 'user_key' :
                               sourceTypes.includes('admin_key') ? 'admin_key' : 'admin_key'
@@ -2723,7 +2893,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         models_requested: models,
         provider_requests: providerRequests,
         total_completion_tokens: responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0),
-        total_prompt_tokens: Math.floor(args.prompt.length / 4) * responses.filter(r => !r.content?.error).length,
+        total_prompt_tokens: Math.floor(args.prompt.length / 4) * responses.filter(r => !('error' in r)).length,
         total_tokens: totalTokens,
         provider_costs: providerCosts,
         total_cost: totalAccurateCost,
@@ -2732,7 +2902,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         provider_latencies: providerLatencies,
         status: successCount === responses.length ? 'success' :
                 successCount > 0 ? 'partial_success' : 'error',
-        error_message: responses.filter(r => r.content?.error).map(r => r.content?.error).join('; ') || null,
+        error_message: responses.filter(r => ('error' in r)).map(r => ('error' in r)).join('; ') || null,
         successful_providers: successCount,
         failed_providers: responses.length - successCount,
         store_responses: true,
@@ -2756,12 +2926,12 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     
     // Determine which usage method was primarily used for this request
     // Since we already tracked the usage paths during processing, we can derive this from successful responses
-    const successfulResponses = responses.filter(r => !r.content?.error)
+    const successfulResponses = responses.filter(r => !('error' in r))
     let primaryUsageMethod = 'api_keys'
     
     // Simple heuristic: if we have successful responses, assume API keys were primarily used
     // unless user preference was explicitly set to credits
-    //   const userUsagePreference = 'auto' // Default usage preference
+    //     const userUsagePreference = 'auto' // Default usage preference
     // //if (userUsagePreference === 'credits') {
     //  // primaryUsageMethod = 'credits'
     // //} else if (successfulResponses.length > 0) {
@@ -2932,9 +3102,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     const responseAny = response as any
 
     // Check for error in response - handle both response.error and response.content.error
-    if (responseAny.error || responseAny.content?.error) {
+    if (responseAny.error || ('error' in responseAny)) {
       formatted += `## ${modelName}${providerName} - ERROR\n`
-      formatted += `❌ ${responseAny.error || responseAny.content?.error}\n\n`
+      formatted += `❌ ${responseAny.error || ('error' in responseAny)}\n\n`
     } else {
       formatted += `## ${modelName}${providerName}\n`
 
@@ -3006,7 +3176,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   if (memoryPreferences.enable_conversation_memory) {
     try {
       const totalTokensUsed = responses.reduce((sum, r) => sum + (r.tokens_used || 0), 0)
-      const primaryModel = responses.find(r => !r.content?.error)?.model || models[0] || 'unknown'
+      const primaryModel = responses.find(r => !('error' in r))?.model || models[0] || 'unknown'
       
       console.log(`[MCP] Memory - About to store conversation:`, {
         user_id: user.id,
@@ -3398,7 +3568,7 @@ async function handleSelectModelsInteractive(args: any, user: any, request: Next
 }
 
 // Helper function to get default model for a provider
-// Returns null if no default_model is configured - user must set it in dashboard/models
+// Returns null if no default_model is configured - user must set it in dashboard
 function getDefaultModelForProvider(provider: string): string | null {
   // No hardcoded defaults - user must configure default_model in dashboard
   return null
@@ -3501,7 +3671,7 @@ function getTopModelsFromPreferences_DEPRECATED(preferences: any, count: number 
 
     // Sort providers by 'order'
     const providersSorted = Object.entries(modelPrefs)
-      .filter(([, pref]: [string, any]) => pref && typeof pref === 'object')
+      .filter(([, pref]: [string, any]) => pref && typeof pref === 'object' && Array.isArray(pref.models))
       .sort(([_, a]: any, [__, b]: any) => (a.order || 0) - (b.order || 0))
 
     console.log('[MCP] getTopModelsFromPreferences - Sorted providers:',
