@@ -98,21 +98,36 @@ export default function ClineGuidePage() {
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">1</span>
-                {' '}Get your free token from{' '}
-                <a href="https://polydev.ai/dashboard" className="underline">polydev.ai/dashboard</a>
+                {' '}Get your free API token from{' '}
+                <a href="https://polydev.ai/dashboard/mcp-tokens" className="underline text-blue-600 hover:text-blue-800">polydev.ai/dashboard/mcp-tokens</a>
               </p>
             </div>
 
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">2</span>
-                {' '}Open Cline settings: Click the gear icon → "MCP Servers" → "Configure"
+                {' '}Ensure Node.js is installed (required for npx):
               </p>
+              <CodeBlock
+                code={`# Check if Node.js is installed
+node --version
+
+# If not installed, get it from https://nodejs.org`}
+                index={0}
+                language="bash"
+              />
             </div>
 
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">3</span>
+                {' '}Open Cline settings: Click the gear icon → &quot;MCP Servers&quot; → &quot;Configure&quot;
+              </p>
+            </div>
+
+            <div>
+              <p className="text-slate-600 mb-3">
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
                 {' '}Add Polydev to your Cline MCP config:
               </p>
               <CodeBlock
@@ -127,15 +142,15 @@ export default function ClineGuidePage() {
     }
   }
 }`}
-                index={0}
+                index={1}
                 language="json"
               />
             </div>
 
             <div>
               <p className="text-slate-600 mb-3">
-                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
-                {' '}Click "Done" and verify Polydev appears in the MCP Servers list with a green indicator
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">5</span>
+                {' '}Click &quot;Done&quot; and verify Polydev appears in the MCP Servers list with a green indicator
               </p>
             </div>
           </div>

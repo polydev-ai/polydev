@@ -60,7 +60,7 @@ export default function CursorGuidePage() {
 
           <p className="text-lg text-slate-600 leading-relaxed mb-8">
             Get multi-model AI perspectives directly in Cursor. When you need different viewpoints on a bug,
-            architecture decision, or code review, Polydev queries GPT, Gemini, and Claude in parallel.
+            architecture decision, or code review, Polydev queries multiple AI models in parallel.
           </p>
         </motion.header>
 
@@ -98,15 +98,30 @@ export default function CursorGuidePage() {
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">1</span>
-                {' '}Get your free token from{' '}
-                <a href="https://polydev.ai/dashboard" className="underline">polydev.ai/dashboard</a>
+                {' '}Get your free API token from{' '}
+                <a href="https://polydev.ai/dashboard/mcp-tokens" className="underline text-blue-600 hover:text-blue-800">polydev.ai/dashboard/mcp-tokens</a>
               </p>
             </div>
 
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">2</span>
-                {' '}Add Polydev to your Cursor MCP config. Edit <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">~/.cursor/mcp_settings.json</code>:
+                {' '}Ensure Node.js is installed (required for npx):
+              </p>
+              <CodeBlock
+                code={`# Check if Node.js is installed
+node --version
+
+# If not installed, get it from https://nodejs.org`}
+                index={10}
+                language="bash"
+              />
+            </div>
+
+            <div>
+              <p className="text-slate-600 mb-3">
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">3</span>
+                {' '}Add Polydev to your Cursor MCP config. Edit <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">~/.cursor/mcp.json</code>:
               </p>
               <CodeBlock
                 code={`{
@@ -127,14 +142,14 @@ export default function CursorGuidePage() {
 
             <div>
               <p className="text-slate-600 mb-3">
-                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">3</span>
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
                 {' '}Restart Cursor or reload the window with <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">Cmd+Shift+P</code> → "Reload Window"
               </p>
             </div>
 
             <div>
               <p className="text-slate-600">
-                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">5</span>
                 {' '}Open composer with <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">Cmd+I</code> and ask for perspectives
               </p>
             </div>
@@ -155,7 +170,7 @@ export default function CursorGuidePage() {
               <p className="font-medium text-slate-900 mb-1">MCP Tool</p>
               <p className="text-sm text-slate-600">
                 <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs">polydev.get_perspectives</code>
-                {' '}— queries multiple AI models in parallel (Gemini, Claude, GPT)
+                {' '}— queries multiple AI models in parallel
               </p>
             </div>
             <div className="p-4">

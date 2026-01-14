@@ -112,6 +112,36 @@ export default function WindsurfGuidePage() {
                 1
               </div>
               <div className="flex-1">
+                <h4 className="font-semibold text-slate-900 mb-2">Get your API token</h4>
+                <p className="text-slate-600">
+                  Get your free API token from{' '}
+                  <a href="https://polydev.ai/dashboard/mcp-tokens" className="underline text-blue-600 hover:text-blue-800">polydev.ai/dashboard/mcp-tokens</a>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">
+                2
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-slate-900 mb-2">Ensure Node.js is installed</h4>
+                <CodeBlock
+                  code={`# Check if Node.js is installed
+node --version
+
+# If not installed, get it from https://nodejs.org`}
+                  index={10}
+                  language="bash"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">
+                3
+              </div>
+              <div className="flex-1">
                 <h4 className="font-semibold text-slate-900 mb-2">Install Polydev MCP</h4>
                 <CodeBlock
                   code="npx polydev-ai@latest --windsurf"
@@ -125,7 +155,7 @@ export default function WindsurfGuidePage() {
 
             <div className="flex gap-4">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">
-                2
+                4
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-slate-900 mb-2">Restart Windsurf</h4>
@@ -138,7 +168,7 @@ export default function WindsurfGuidePage() {
 
             <div className="flex gap-4">
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">
-                3
+                5
               </div>
               <div className="flex-1">
                 <h4 className="font-semibold text-slate-900 mb-2">Use with Cascade</h4>

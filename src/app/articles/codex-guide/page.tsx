@@ -59,7 +59,7 @@ export default function CodexGuidePage() {
 
           <p className="text-lg text-slate-600 leading-relaxed mb-8">
             Get multi-model AI perspectives directly in your terminal. When you need different viewpoints on a bug,
-            architecture decision, or code review, Polydev queries GPT, Gemini, and Claude in parallel.
+            architecture decision, or code review, Polydev queries multiple AI models in parallel.
           </p>
         </motion.header>
 
@@ -102,14 +102,29 @@ Available MCP Servers:
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">1</span>
-                {' '}Get your free token from{' '}
-                <a href="https://polydev.ai/dashboard" className="underline">polydev.ai/dashboard</a>
+                {' '}Get your free API token from{' '}
+                <a href="https://polydev.ai/dashboard/mcp-tokens" className="underline text-blue-600 hover:text-blue-800">polydev.ai/dashboard/mcp-tokens</a>
               </p>
             </div>
 
             <div>
               <p className="text-slate-600 mb-3">
                 <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">2</span>
+                {' '}Ensure Node.js is installed (required for npx):
+              </p>
+              <CodeBlock
+                code={`# Check if Node.js is installed
+node --version
+
+# If not installed, get it from https://nodejs.org`}
+                index={10}
+                language="bash"
+              />
+            </div>
+
+            <div>
+              <p className="text-slate-600 mb-3">
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">3</span>
                 {' '}Add Polydev to your Codex config. Edit <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">~/.codex/config.toml</code>:
               </p>
               <CodeBlock
@@ -130,7 +145,7 @@ session_timeout = 600`}
 
             <div>
               <p className="text-slate-600 mb-3">
-                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">3</span>
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
                 {' '}Optionally set the token in your shell:
               </p>
               <CodeBlock
@@ -141,7 +156,7 @@ session_timeout = 600`}
 
             <div>
               <p className="text-slate-600">
-                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">4</span>
+                <span className="font-mono text-sm bg-slate-100 px-2 py-0.5 rounded">5</span>
                 {' '}Verify with <code className="font-mono text-sm bg-slate-100 px-1.5 py-0.5 rounded">codex mcp list</code>
               </p>
             </div>
@@ -162,7 +177,7 @@ session_timeout = 600`}
               <p className="font-medium text-slate-900 mb-1">MCP Tool</p>
               <p className="text-sm text-slate-600">
                 <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-xs">polydev.get_perspectives</code>
-                {' '}— queries multiple AI models in parallel (Gemini, Claude, GPT)
+                {' '}— queries multiple AI models in parallel
               </p>
             </div>
             <div className="p-4">
