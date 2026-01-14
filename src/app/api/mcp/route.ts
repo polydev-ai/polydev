@@ -1513,8 +1513,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     const afterSort = filteredKeys.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999))
 
     console.log(`[MCP DEBUG] After sort:`, afterSort.map(k => ({
-      provider: k.provider,
       model: k.default_model,
+      provider: k.provider,
       order: k.display_order
     })))
 
@@ -1735,17 +1735,50 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       
       try {
         // Find the API key configuration for this model (same as chat API)
-        const apiKeyForModel = apiKeys?.find(key => key.default_model === model)
+        let apiKeyForModel = apiKeys?.find(key => key.default_model === model)
+        let usingCreditsTier = false
+        let creditsTierProvider: string | null = null
 
         if (!apiKeyForModel) {
-          return {
-            model,
-            error: `Model ${model} not found in your API keys configuration`
+          // No user API key - check if this model is from credits tier (model_tiers)
+          console.log(`[MCP] No user API key for model ${model}, checking model_tiers...`)
+          
+          const { data: tierModel } = await serviceRoleSupabase
+            .from('model_tiers')
+            .select('provider, model_name, display_name, tier')
+            .eq('model_name', model)
+            .eq('active', true)
+            .single()
+          
+          if (tierModel) {
+            // Model found in credits tier - use admin-provided key
+            console.log(`[MCP] Model ${model} found in credits tier (${tierModel.tier}), provider: ${tierModel.provider}`)
+            usingCreditsTier = true
+            creditsTierProvider = tierModel.provider
+            
+            // Create a synthetic apiKeyForModel object for downstream code
+            apiKeyForModel = {
+              provider: tierModel.provider,
+              default_model: model,
+              encrypted_key: null, // Will trigger admin key fallback
+              key_preview: 'Credits Only',
+              api_base: null,
+              monthly_budget: null,
+              current_usage: 0,
+              max_tokens: null,
+              display_order: 0
+            } as any
+          } else {
+            return {
+              model,
+              error: `Model ${model} not found in your API keys or credits tier configuration`
+            }
           }
         }
 
-        const providerName = apiKeyForModel.provider
-        console.log(`[MCP] Found model ${model} configured for provider ${providerName}`)
+        // At this point apiKeyForModel is guaranteed to exist (either from user keys or synthetic credits tier)
+        const providerName = apiKeyForModel!.provider
+        console.log(`[MCP] Found model ${model} configured for provider ${providerName}${usingCreditsTier ? ' (via credits tier)' : ''}`)
 
         // CLI-FIRST ROUTING: Skip API keys if local CLI is available for this provider
         // Map provider names to CLI tool names
@@ -1868,11 +1901,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                                  maxTokens
         // Handle Credits Only mode (when encrypted_key is empty)
         console.log(`[MCP] Checking credits-only for model "${model}":`, {
-          hasEncryptedKey: !!apiKeyForModel.encrypted_key,
-          keyPreview: apiKeyForModel.key_preview,
+          hasEncryptedKey: !!apiKeyForModel!.encrypted_key,
+          keyPreview: apiKeyForModel!.key_preview,
           provider: providerName
         })
-        if (!apiKeyForModel.encrypted_key || apiKeyForModel.key_preview === 'Credits Only') {
+        if (!apiKeyForModel!.encrypted_key || apiKeyForModel!.key_preview === 'Credits Only') {
           // User doesn't have their own API key - try admin-provided key as fallback
           console.log(`[MCP] No user API key for ${providerName}, checking for admin-provided key...`)
 
@@ -1944,8 +1977,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         }
 
         // Check provider budget before making API call
-        if (apiKeyForModel.monthly_budget && apiKeyForModel.current_usage &&
-            parseFloat(apiKeyForModel.current_usage.toString()) >= parseFloat(apiKeyForModel.monthly_budget.toString())) {
+        if (apiKeyForModel!.monthly_budget && apiKeyForModel!.current_usage &&
+            parseFloat(apiKeyForModel!.current_usage.toString()) >= parseFloat(apiKeyForModel!.monthly_budget.toString())) {
 
           console.log(`[MCP] Budget exceeded for ${providerName}, checking for admin key fallback...`)
 
@@ -2008,15 +2041,15 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
           return {
             model,
-            error: `Monthly budget of $${apiKeyForModel.monthly_budget} exceeded for ${providerName}. Current usage: $${apiKeyForModel.current_usage}. Please increase your budget or add a new API key.`
+            error: `Monthly budget of $${apiKeyForModel!.monthly_budget} exceeded for ${providerName}. Current usage: $${apiKeyForModel!.current_usage}. Please increase your budget or add a new API key.`
           }
         }
 
         // Decode the Base64 encoded API key
-        const decryptedKey = Buffer.from(apiKeyForModel.encrypted_key, 'base64').toString('utf-8')
+        const decryptedKey = Buffer.from(apiKeyForModel!.encrypted_key, 'base64').toString('utf-8')
         console.log(`[MCP] Decoded key for ${providerName}: ${decryptedKey.substring(0, 10)}...`)
 
-        console.log(`[MCP] ${providerName} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens} (API budget: $${apiKeyForModel.monthly_budget || 'unlimited'}, used: $${apiKeyForModel.current_usage || '0'})`)
+        console.log(`[MCP] ${providerName} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens} (API budget: $${apiKeyForModel!.monthly_budget || 'unlimited'}, used: $${apiKeyForModel!.current_usage || '0'})`)
 
         // Determine usage path based on user preference and availability
         let usagePath = 'api_key' // Default fallback
@@ -2784,8 +2817,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     //     const requestCosts = successfulResponses
     //       .filter(r => !r.error && r.tokens_used)
     //       .map(r => {
-    //         const estimatedInputTokens = Math.ceil(contextualPrompt.length / 4)
-    //         const estimatedOutputTokens = r.tokens_used || 0
+    //         const estimatedInputTokens = Math.ceil(r.tokens_used * 0.25)
+    //         const estimatedOutputTokens = r.tokens_used - estimatedInputTokens
     //         let baseCost = 0.05 // Conservative fallback
             
     //         if (r.model.includes('gpt-4') || r.model.includes('claude-3')) {
