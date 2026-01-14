@@ -1923,18 +1923,19 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             const adminDecryptedKey = Buffer.from(adminKeyBudget.encrypted_key, 'base64').toString('utf-8')
 
             try {
+              const adminMaxTokens = 10000 // Fixed 10k tokens for admin key calls
               const apiOptions: any = {
                 model: cleanModel,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                max_tokens: providerMaxTokens,
+                max_tokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
               }
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
-                apiOptions.max_completion_tokens = providerMaxTokens
+                apiOptions.max_completion_tokens = adminMaxTokens
                 delete apiOptions.max_tokens
               }
 
@@ -2001,18 +2002,19 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             const adminDecryptedKey = Buffer.from(adminKeyBudget.encrypted_key, 'base64').toString('utf-8')
 
             try {
+              const adminMaxTokens = 10000 // Fixed 10k tokens for admin key calls
               const apiOptions: any = {
                 model: cleanModel,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                max_tokens: providerMaxTokens,
+                max_tokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
               }
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
-                apiOptions.max_completion_tokens = providerMaxTokens
+                apiOptions.max_completion_tokens = adminMaxTokens
                 delete apiOptions.max_tokens
               }
 
