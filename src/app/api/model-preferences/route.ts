@@ -225,27 +225,47 @@ export async function GET(request: NextRequest) {
       // Get user's tier priority preference (default: normal -> eco -> premium)
       const tierPriority = (userPrefs?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
       console.log('[Model Preferences] User tier priority:', tierPriority)
-      
+
+      // Get user's custom model order per tier (if they've customized it in dashboard/models)
+      const userModelOrder = (userPrefs?.mcp_settings as any)?.model_order || {}
+      console.log('[Model Preferences] User custom model_order:', JSON.stringify(userModelOrder))
+
       // Query model_tiers for active models in user's preferred tiers
       const { data: tierModels, error: tierError } = await supabase
         .from('model_tiers')
-        .select('model_name, display_name, provider, tier, display_order')
+        .select('id, model_name, display_name, provider, tier, display_order')
         .eq('active', true)
         .in('tier', tierPriority)
         .order('display_order', { ascending: true })
-      
+
       if (tierError) {
         console.error('[Model Preferences] Error fetching model_tiers:', tierError.message)
       }
-      
+
       if (tierModels && tierModels.length > 0) {
-        // Sort by tier priority first, then by display_order within each tier
+        // Sort by tier priority first, then by USER'S custom order (or fallback to display_order)
         const sortedTierModels = tierModels.sort((a, b) => {
           const aTierIndex = tierPriority.indexOf(a.tier)
           const bTierIndex = tierPriority.indexOf(b.tier)
           if (aTierIndex !== bTierIndex) return aTierIndex - bTierIndex
+
+          // Check if user has custom order for this tier
+          const tierOrder = userModelOrder[a.tier] as string[] | undefined
+          if (tierOrder && tierOrder.length > 0) {
+            // Use user's custom order (by model ID)
+            const aIndex = tierOrder.indexOf(a.id)
+            const bIndex = tierOrder.indexOf(b.id)
+            // Models not in user's order go to the end
+            const aPos = aIndex >= 0 ? aIndex : 999
+            const bPos = bIndex >= 0 ? bIndex : 999
+            return aPos - bPos
+          }
+
+          // Fallback to database display_order
           return (a.display_order ?? 999) - (b.display_order ?? 999)
         })
+
+        console.log('[Model Preferences] Sorted models (respecting user order):', sortedTierModels.map(m => m.model_name))
         
         console.log('[Model Preferences] Found', sortedTierModels.length, 'models from Credits Tier')
         
