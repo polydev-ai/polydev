@@ -602,12 +602,12 @@ class StdioMCPWrapper {
     console.error(`[Stdio Wrapper] Local CLI prompt sending with perspectives`);
     
     try {
-      let { provider_id, prompt, mode = 'args', timeout_ms = 300000 } = args;
+      let { provider_id, prompt, mode = 'args', timeout_ms = 240000 } = args;
       
       // Ensure timeout_ms is valid (not undefined, null, Infinity, or negative)
-      // Default to 5 minutes (300 seconds) for complex CLI responses
+      // Default to 4 minutes (240 seconds) for complex CLI responses
       if (!timeout_ms || timeout_ms === Infinity || timeout_ms < 1 || timeout_ms > 600000) {
-        timeout_ms = 300000; // Default to 5 minutes for CLI responses
+        timeout_ms = 240000; // Default to 4 minutes for CLI responses
       }
       
       if (!prompt) {

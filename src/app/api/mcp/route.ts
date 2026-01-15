@@ -1829,12 +1829,12 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 preferCli: true
               })
               
-              // Execute CLI command with 120 second timeout for model calls
+              // Execute CLI command with 240 second timeout for model calls
               const cliResult = await cliRouter.executeCliPrompt(
                 cliToolName,
                 contextualPrompt,
                 cleanModel,
-                120000 // 2 minute timeout
+                240000 // 4 minute timeout
               )
               
               if (cliResult.success && cliResult.content) {

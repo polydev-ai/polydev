@@ -134,6 +134,19 @@ export async function GET(request: NextRequest) {
     // Get perspectives_per_message from user settings (default 2, range 1-10)
     const perspectivesPerMessage = (userPrefs?.mcp_settings as any)?.perspectives_per_message || 2
 
+    // Normalize provider names to prevent duplicates (gemini = google, x-ai = xai)
+    const normalizeProvider = (provider: string): string => {
+      const map: Record<string, string> = {
+        'gemini': 'google',
+        'google-ai': 'google', 
+        'x-ai': 'xai',
+        'open-ai': 'openai',
+        'anthropic-ai': 'anthropic'
+      }
+      const lower = provider.toLowerCase()
+      return map[lower] || lower
+    }
+
     // Maps provider names to CLI tool IDs (only these have local CLI support)
     const providerToCliMap: Record<string, string> = {
       'anthropic': 'claude_code',
@@ -141,7 +154,8 @@ export async function GET(request: NextRequest) {
       'openai': 'codex_cli',
       'open-ai': 'codex_cli',
       'google': 'gemini_cli',
-      'google-ai': 'gemini_cli'
+      'google-ai': 'gemini_cli',
+      'gemini': 'gemini_cli'  // Support 'gemini' as provider name too
     }
 
     const modelPreferences: Record<string, string> = {}
@@ -162,18 +176,21 @@ export async function GET(request: NextRequest) {
       for (const key of apiKeys) {
         if (key.provider && key.default_model) {
           const providerLower = key.provider.toLowerCase()
+          const normalizedProvider = normalizeProvider(providerLower)
           
           // Skip duplicate providers (keep first occurrence per display_order)
-          if (seenProviders.has(providerLower)) {
+          // Use normalized name for deduplication (gemini = google, x-ai = xai)
+          if (seenProviders.has(normalizedProvider)) {
             continue
           }
-          seenProviders.add(providerLower)
+          seenProviders.add(normalizedProvider)
           
-          const cliId = providerToCliMap[providerLower] || null
+          const cliId = providerToCliMap[providerLower] || providerToCliMap[normalizedProvider] || null
 
           // Add to allProviders list (includes API-only providers)
+          // Use normalized provider name for consistency with perspectives API
           allProviders.push({
-            provider: providerLower,
+            provider: normalizedProvider,
             model: key.default_model,
             cliId: cliId
           })
@@ -223,18 +240,20 @@ export async function GET(request: NextRequest) {
         
         for (const model of sortedTierModels) {
           const providerLower = model.provider.toLowerCase()
+          const normalizedProvider = normalizeProvider(providerLower)
           
           // Skip duplicate providers (keep first occurrence per priority)
-          if (seenProviders.has(providerLower)) {
+          // Use normalized name for deduplication
+          if (seenProviders.has(normalizedProvider)) {
             continue
           }
-          seenProviders.add(providerLower)
+          seenProviders.add(normalizedProvider)
           
-          const cliId = providerToCliMap[providerLower] || null
+          const cliId = providerToCliMap[providerLower] || providerToCliMap[normalizedProvider] || null
           
           // Add to allProviders list
           allProviders.push({
-            provider: providerLower,
+            provider: normalizedProvider,
             model: model.model_name,
             cliId: cliId,
             tier: model.tier

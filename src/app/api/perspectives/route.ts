@@ -36,6 +36,7 @@ interface PerspectivesResponse {
 
 // Normalize provider names to match code expectations
 // Database may store "x-ai" but code expects "xai"
+// Also consolidate gemini -> google since both use the same Gemini API
 function normalizeProviderName(provider: string): string {
   const providerMap: Record<string, string> = {
     'x-ai': 'xai',
@@ -44,6 +45,8 @@ function normalizeProviderName(provider: string): string {
     'openai': 'openai',
     'anthropic': 'anthropic',
     'google': 'google',
+    'gemini': 'google',  // Consolidate gemini to google to prevent duplicates
+    'google-ai': 'google',
     'deepseek': 'deepseek',
     'groq': 'groq',
     'together': 'together',
