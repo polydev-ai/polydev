@@ -2291,7 +2291,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                         })
                         .eq('user_id', user.id)
 
-                      console.log(`[MCP] Deducted ${creditsToDeduct} credits (${tier} tier, budget fallback) for ${tokensUsed} tokens on ${cleanModel}`)
+                      console.log(`[MCP] Deducted ${creditsToDeduct} credits (${tier} tier, budget fallback) from ${tokensUsed} tokens on ${cleanModel}`)
                       
                       // Track usage session for dashboard visibility
                       await serviceRoleSupabase.rpc('track_usage_session', {
@@ -3303,6 +3303,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       totals: {
         tokens: totalTokens,
         cost_usd: Object.values(perResponseCost).reduce((sum: number, v: any) => sum + (typeof v === 'number' ? v : 0), 0)
+      },
+      // DEBUG: Include received parameters for troubleshooting
+      debug: {
+        exclude_providers_received: args.exclude_providers || null,
+        request_providers_received: args.request_providers || null,
+        final_models_used: models,
+        available_apikeys: apiKeys?.map((k: any) => ({ provider: k.provider, model: k.default_model })) || []
       }
     }
     formatted += `\n\n\n\u0060\u0060\u0060json\n${JSON.stringify(summary)}\n\u0060\u0060\u0060\n`
