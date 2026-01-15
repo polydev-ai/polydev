@@ -2601,18 +2601,86 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Together requires format like "Qwen/Qwen3-Coder-480B" not just "Qwen3-Coder-480B"
         if (providerName === 'together' && !resolvedModelId.includes('/')) {
           const originalId = resolvedModelId
-          // Common Together AI org prefixes based on model name patterns
-          if (resolvedModelId.toLowerCase().startsWith('qwen')) {
+          const lowerModel = resolvedModelId.toLowerCase()
+          
+          // Comprehensive Together AI org prefixes based on model name patterns
+          // Alibaba/Qwen models
+          if (lowerModel.startsWith('qwen')) {
             resolvedModelId = `Qwen/${resolvedModelId}`
-          } else if (resolvedModelId.toLowerCase().startsWith('llama')) {
+          }
+          // Meta Llama models
+          else if (lowerModel.startsWith('llama') || lowerModel.startsWith('meta-llama')) {
             resolvedModelId = `meta-llama/${resolvedModelId}`
-          } else if (resolvedModelId.toLowerCase().startsWith('mistral')) {
+          }
+          // Mistral AI models
+          else if (lowerModel.startsWith('mistral') || lowerModel.startsWith('codestral') || lowerModel.startsWith('mixtral')) {
             resolvedModelId = `mistralai/${resolvedModelId}`
-          } else if (resolvedModelId.toLowerCase().startsWith('deepseek')) {
+          }
+          // DeepSeek models
+          else if (lowerModel.startsWith('deepseek')) {
             resolvedModelId = `deepseek-ai/${resolvedModelId}`
-          } else if (resolvedModelId.toLowerCase().startsWith('gemma')) {
+          }
+          // Google models
+          else if (lowerModel.startsWith('gemma')) {
             resolvedModelId = `google/${resolvedModelId}`
           }
+          // Black Forest Labs (FLUX image models)
+          else if (lowerModel.startsWith('flux')) {
+            resolvedModelId = `black-forest-labs/${resolvedModelId}`
+          }
+          // NousResearch models
+          else if (lowerModel.startsWith('nous') || lowerModel.startsWith('hermes')) {
+            resolvedModelId = `NousResearch/${resolvedModelId}`
+          }
+          // WizardLM models
+          else if (lowerModel.startsWith('wizard')) {
+            resolvedModelId = `WizardLM/${resolvedModelId}`
+          }
+          // Microsoft models
+          else if (lowerModel.startsWith('phi') || lowerModel.startsWith('wizardcoder')) {
+            resolvedModelId = `microsoft/${resolvedModelId}`
+          }
+          // NVIDIA models
+          else if (lowerModel.startsWith('nemotron')) {
+            resolvedModelId = `nvidia/${resolvedModelId}`
+          }
+          // Databricks models
+          else if (lowerModel.startsWith('dbrx')) {
+            resolvedModelId = `databricks/${resolvedModelId}`
+          }
+          // Together's own models
+          else if (lowerModel.startsWith('stripedh') || lowerModel.startsWith('together')) {
+            resolvedModelId = `togethercomputer/${resolvedModelId}`
+          }
+          // Yi models (01.AI)
+          else if (lowerModel.startsWith('yi-')) {
+            resolvedModelId = `zero-one-ai/${resolvedModelId}`
+          }
+          // Salesforce models
+          else if (lowerModel.startsWith('codegen') || lowerModel.startsWith('xgen')) {
+            resolvedModelId = `Salesforce/${resolvedModelId}`
+          }
+          // Gryphe models
+          else if (lowerModel.startsWith('mytho')) {
+            resolvedModelId = `Gryphe/${resolvedModelId}`
+          }
+          // Cognitive Computations
+          else if (lowerModel.startsWith('dolphin')) {
+            resolvedModelId = `cognitivecomputations/${resolvedModelId}`
+          }
+          // Arcee models
+          else if (lowerModel.startsWith('arcee')) {
+            resolvedModelId = `arcee-ai/${resolvedModelId}`
+          }
+          // Kimi/Moonshot models
+          else if (lowerModel.startsWith('kimi') || lowerModel.startsWith('moonshot')) {
+            resolvedModelId = `moonshotai/${resolvedModelId}`
+          }
+          // Cohere models
+          else if (lowerModel.startsWith('command') || lowerModel.startsWith('c4ai')) {
+            resolvedModelId = `CohereForAI/${resolvedModelId}`
+          }
+          
           if (resolvedModelId !== originalId) {
             console.log(`[MCP] Together model ID normalized: ${originalId} → ${resolvedModelId}`)
           }
@@ -3118,13 +3186,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     // Simple heuristic: if we have successful responses, assume API keys were primarily used
     // unless user preference was explicitly set to credits
     //     const userUsagePreference = 'auto' // Default usage preference
-    // //if (userUsagePreference === 'credits') {
+    //     //if (userUsagePreference === 'credits') {
     //  // primaryUsageMethod = 'credits'
-    // //} else if (successfulResponses.length > 0) {
-    //  // primaryUsageMethod = 'api_keys'
-    // //} else {
-    //  // primaryUsageMethod = 'credits'
-    // //}
+    //     //}
     //     const hasValidApiKey = apiKeyForModel && decryptedKey && decryptedKey !== 'demo_key'
     //     const userUsagePreference = 'auto' // Default usage preference
 
@@ -3169,7 +3233,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     //     .select('balance, promotional_balance, total_purchased, total_spent')
     //     .eq('user_id', user.id)
     //     .single()
-      
+
     //   if (currentCredits) {
     //     const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
     //     const lifetimeSpent = currentCredits.total_spent || 0
