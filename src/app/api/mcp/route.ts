@@ -1736,15 +1736,24 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           // This handles cases where the provider wasn't included in initial model list due to maxModels limit
           console.log(`[MCP] Provider ${normalizedReqProvider} not in modelProviderMap, querying model_tiers directly...`)
           
-          const { data: providerTierModel } = await serviceRoleSupabase
+          const { data: providerTierModels } = await serviceRoleSupabase
             .from('model_tiers')
-            .select('model_name, provider, tier')
+            .select('model_name, provider, tier, display_order')
             .eq('active', true)
             .in('tier', userTierPriority)
             .order('display_order', { ascending: true })
           
-          // Find model matching this provider (case-insensitive)
-          const matchingModel = providerTierModel?.find(m => {
+          // Sort by tier priority FIRST, then by display_order within each tier
+          // This respects user's tier preference (e.g., normal before eco before premium)
+          const sortedTierModels = providerTierModels?.sort((a, b) => {
+            const aTierIndex = userTierPriority.indexOf(a.tier)
+            const bTierIndex = userTierPriority.indexOf(b.tier)
+            if (aTierIndex !== bTierIndex) return aTierIndex - bTierIndex
+            return (a.display_order ?? 999) - (b.display_order ?? 999)
+          }) || []
+          
+          // Find first model matching this provider (respecting tier priority)
+          const matchingModel = sortedTierModels.find(m => {
             const normalizedTierProvider = normalizeProviderName(m.provider)
             return normalizedTierProvider === normalizedReqProvider || m.provider?.toLowerCase() === providerLower
           })
@@ -1753,7 +1762,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             // Add to modelProviderMap so it can be used for API calls
             modelProviderMap.set(matchingModel.model_name, matchingModel.provider)
             requestedModels.push(matchingModel.model_name)
-            console.log(`[MCP] Added model from credits tier for requested provider ${normalizedReqProvider}: ${matchingModel.model_name} (tier: ${matchingModel.tier})`)
+            console.log(`[MCP] Added model from credits tier for requested provider ${normalizedReqProvider}: ${matchingModel.model_name} (tier: ${matchingModel.tier}, display_order: ${matchingModel.display_order})`)
           } else {
             console.log(`[MCP] No model found for provider: ${normalizedReqProvider} (original: ${providerLower}) - not in API keys or credits tier`)
           }
