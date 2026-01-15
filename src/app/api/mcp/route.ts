@@ -482,6 +482,19 @@ function parseResponse(provider: string, data: any, model?: string): APIResponse
     case 'mistral':
     case 'xai':
     case 'x-ai':
+    case 'together':
+    case 'togetherai':
+    case 'cerebras':
+    case 'sambanova':
+    case 'fireworks':
+      // Debug logging for OpenAI-compatible providers
+      console.log(`[MCP parseResponse] ${provider}/${model}:`, {
+        hasChoices: !!data.choices,
+        choicesLength: data.choices?.length,
+        hasMessage: !!data.choices?.[0]?.message,
+        contentLength: data.choices?.[0]?.message?.content?.length,
+        rawKeys: Object.keys(data || {})
+      })
       return {
         content: data.choices?.[0]?.message?.content || 'No response',
         tokens_used: data.usage?.total_tokens || 0
