@@ -83,11 +83,11 @@ export const MODEL_TIERS: Record<string, ModelTierInfo> = {
     costPer1k: { input: 0.1, output: 0.4 },
     routingStrategy: 'api_key'
   },
-  'qwen-3-coder-480b': {
+  'qwen-3-32b': {
     provider: 'cerebras',
-    modelId: 'qwen-3-coder-480b',
+    modelId: 'qwen-3-32b',
     tier: 'normal',
-    displayName: 'Qwen 3 Coder 480B',
+    displayName: 'Qwen 3 32B',
     costPer1k: { input: 0.05, output: 0.2 },
     routingStrategy: 'unlimited_account'
   },
