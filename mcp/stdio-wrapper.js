@@ -733,14 +733,19 @@ class StdioMCPWrapper {
       const successfulLocalCount = localResults.filter(r => r.success).length;
       const failedCliCount = localResults.filter(r => !r.success).length;
       
-      // Need API for: API-only providers + failed CLIs
+      // Need API for: remaining perspectives to reach maxPerspectives
+      // OLD (WRONG): const remainingPerspectives = apiOnlyCount + failedCliCount;
+      // This was wrong because if allProviders was empty, apiOnlyCount=0 and we'd get too few perspectives
+      // NEW (CORRECT): Always try to fill up to maxPerspectives from remote API
       const apiOnlyCount = (this._apiOnlyProviders || []).length;
-      const remainingPerspectives = apiOnlyCount + failedCliCount;
+      const remainingPerspectives = Math.max(0, maxPerspectives - successfulLocalCount);
+      
+      console.error(`[Stdio Wrapper] Perspectives breakdown: ${successfulLocalCount} successful CLI, ${failedCliCount} failed CLI, ${apiOnlyCount} API-only, need ${remainingPerspectives} more from remote (target: ${maxPerspectives})`);
 
       // Get remote perspectives for API-only providers and failed CLIs
       let perspectivesResult;
       if (remainingPerspectives > 0) {
-        console.error(`[Stdio Wrapper] Need ${remainingPerspectives} perspectives from remote API (${apiOnlyCount} API-only + ${failedCliCount} failed CLIs)`);
+        console.error(`[Stdio Wrapper] Calling remote API for ${remainingPerspectives} more perspectives (have ${successfulLocalCount}/${maxPerspectives})`);
         
         // Pass API-only provider info to help remote API choose correct models
         const apiProvidersInfo = (this._apiOnlyProviders || []).map(p => ({
@@ -752,7 +757,7 @@ class StdioMCPWrapper {
         // We do NOT call reportCliResultsToServer() here to avoid duplicate logs
         perspectivesResult = await this.callPerspectivesForCli(args, localResults, remainingPerspectives, apiProvidersInfo);
       } else {
-        console.error(`[Stdio Wrapper] Already have ${successfulLocalCount} perspectives from CLIs, skipping remote call`);
+        console.error(`[Stdio Wrapper] Already have ${successfulLocalCount} perspectives (max: ${maxPerspectives})`);
         
         // ONLY report CLI results when NOT calling remote API
         // (When we call remote API, it handles logging CLI + API results together)
