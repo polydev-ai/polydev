@@ -21,7 +21,7 @@ const TIER_CREDIT_COSTS: Record<string, number> = {
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
-// MCP Route Version: 2026-01-15-v2 - Provider normalization fix for exclude_providers
+// MCP Route Version: 2026-01-15-v3 - Multi-source model selection (API keys + Credits tier combined)
 
 // Provider Configuration Interface
 interface ProviderConfig {
@@ -144,7 +144,7 @@ function getProviderDisplayName(provider: string): string {
     'openrouter': 'OpenRouter',
     'groq': 'Groq',
     'deepseek': 'DeepSeek',
-    'azure': 'Azure OpenAI',
+    'azure': '', // Azure URLs are dynamic based on deployment
     'mistral': 'Mistral AI',
     'perplexity': 'Perplexity',
     'fireworks': 'Fireworks AI'
@@ -1486,139 +1486,114 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   }
 
   // ============================================================================
-  // MODEL SELECTION: user_api_keys.default_model is the SINGLE SOURCE OF TRUTH
+  // MULTI-SOURCE MODEL SELECTION (v3)
+  // Priority: API keys first, then supplement with credits tier to fill gaps
+  // This ensures user's configured API keys are always used, while credits tier
+  // fills in for providers the user doesn't have API keys for.
   // ============================================================================
-  // The dashboard (/dashboard/models) writes directly to user_api_keys table.
-  // We read models from user_api_keys.default_model, ordered by display_order.
-  // The old user_preferences.model_preferences is DEPRECATED and not used here.
-  // ============================================================================
-  let models: string[] = []
   
-  // Map of model name → provider for exclude_providers filtering
-  // This works for both apiKeys path AND credits tier path
-  const modelProviderMap = new Map<string, string>()
-
-  // DEBUG: Log incoming args to trace exclude_providers
-  console.log(`[MCP DEBUG] Full args received:`, JSON.stringify(args, null, 2))
-  console.log(`[MCP DEBUG] args.exclude_providers:`, args.exclude_providers)
-  console.log(`[MCP DEBUG] typeof exclude_providers:`, typeof args.exclude_providers)
-
-  if (args.models && args.models.length > 0) {
-    // If models explicitly specified, use those
-    models = args.models
-    console.log(`[MCP] Using explicitly specified models:`, models)
-  } else if (apiKeys && apiKeys.length > 0) {
-    // Use models from API keys directly, respecting display_order
-    // Use user's perspectives_per_message setting (from dashboard)
-    const maxModels = perspectivesPerMessage
-
-    // Sort by display_order to ensure proper priority
-    console.log(`[MCP DEBUG] Before filtering - all keys:`, apiKeys?.map(k => ({
-      provider: k.provider,
-      model: k.default_model,
-      order: k.display_order,
-      hasKey: !!k.encrypted_key
-    })))
-
+  // Normalize provider names helper (for deduplication and matching)
+  // Must be defined before use in model selection logic
+  const normalizeProviderName = (provider: string): string => {
+    const map: Record<string, string> = {
+      'gemini': 'google',
+      'google-ai': 'google',
+      'x-ai': 'xai',
+      'open-ai': 'openai',
+      'anthropic-ai': 'anthropic',
+      'togetherai': 'together',
+      'together-ai': 'together'
+    }
+    const lower = provider?.toLowerCase() || ''
+    return map[lower] || lower
+  }
+  
+  // Initialize model tracking variables
+  let models: string[] = []
+  const modelProviderMap = new Map<string, string>() // Map of model name → provider
+  const coveredProviders = new Set<string>() // Track providers already covered
+  const maxModels = perspectivesPerMessage
+  
+  // Step 1: Collect models from user's API keys
+  if (apiKeys && apiKeys.length > 0) {
+    console.log(`[MCP] Step 1: Loading models from user API keys`)
+    
     const filteredKeys = apiKeys.filter(key => {
       const hasModel = !!key.default_model
       console.log(`[MCP DEBUG] Filter check for ${key.provider}: hasModel=${hasModel}, model=${key.default_model}`)
       return hasModel
     })
-
-    console.log(`[MCP DEBUG] After filter, before sort:`, filteredKeys.map(k => ({
-      provider: k.provider,
-      model: k.default_model,
-      order: k.display_order
-    })))
-
-    const afterSort = filteredKeys.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999))
-
-    console.log(`[MCP DEBUG] After sort:`, afterSort.map(k => ({
-      model: k.default_model,
-      provider: k.provider,
-      order: k.display_order
-    })))
-
-    // IMPORTANT: Don't slice here! We need all models available for exclude_providers filtering
-    // The slice will happen AFTER exclude_providers filter to ensure we get the right count
-    const sortedKeys = afterSort // No slice - take all models
-
-    console.log(`[MCP DEBUG] All sorted keys (no slice yet, will slice after exclude filter):`, sortedKeys.map(k => ({
-      model: k.default_model,
-      provider: k.provider,
-      order: k.display_order
-    })))
-
-    models = sortedKeys.map(key => key.default_model)
     
-    // Populate modelProviderMap from apiKeys
+    const sortedKeys = filteredKeys.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999))
+    
     for (const key of sortedKeys) {
       if (key.default_model && key.provider) {
-        modelProviderMap.set(key.default_model, key.provider)
-      }
-    }
-
-    console.log(`[MCP] All models from API keys (ordered by display_order, will be filtered and sliced later):`, models)
-    console.log(`[MCP] API key display orders:`, sortedKeys.map(k => ({
-      model: k.default_model,
-      provider: k.provider,
-      order: k.display_order
-    })))
-  } else {
-    // Fallback if no API keys configured - use credits tier models from model_tiers
-    console.log(`[MCP] No user API keys found, checking credits tier models...`)
-    
-    // Get user's tier priority preference (default: normal tier)
-    const userUsagePreference = (userPrefs?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
-    console.log(`[MCP] User tier priority:`, userUsagePreference)
-    
-    // Query model_tiers for active models in user's preferred tiers
-    const { data: tierModels, error: tierError } = await serviceRoleSupabase
-      .from('model_tiers')
-      .select('model_name, display_name, provider, tier, display_order')
-      .eq('active', true)
-      .in('tier', userUsagePreference)
-      .order('display_order', { ascending: true })
-    
-    if (tierError) {
-      console.error(`[MCP] Error fetching model_tiers:`, tierError)
-    }
-    
-    if (tierModels && tierModels.length > 0) {
-      // Sort by tier priority, then by display_order within each tier
-      const sortedTierModels = tierModels.sort((a, b) => {
-        const aTierIndex = userUsagePreference.indexOf(a.tier)
-        const bTierIndex = userUsagePreference.indexOf(b.tier)
-        if (aTierIndex !== bTierIndex) return aTierIndex - bTierIndex
-        return (a.display_order ?? 999) - (b.display_order ?? 999)
-      })
-      
-      // DON'T slice here - we need all models for exclude_providers filtering
-      // The slice will happen AFTER exclude_providers filter
-      models = sortedTierModels.map(m => m.model_name)
-      
-      // Populate modelProviderMap from tierModels
-      for (const model of sortedTierModels) {
-        if (model.model_name && model.provider) {
-          modelProviderMap.set(model.model_name, model.provider)
+        const normalizedProvider = normalizeProviderName(key.provider)
+        
+        // Skip if we already have a model from this provider (prevent duplicates)
+        if (!coveredProviders.has(normalizedProvider)) {
+          models.push(key.default_model)
+          modelProviderMap.set(key.default_model, key.provider)
+          coveredProviders.add(normalizedProvider)
+          console.log(`[MCP] Added API key model: ${key.default_model} (provider: ${key.provider})`)
         }
       }
-      
-      console.log(`[MCP] Using ${models.length} models from credits tier (all, will filter and slice later):`, models)
-      console.log(`[MCP] Credits tier models detail:`, sortedTierModels.map(m => ({
-        model: m.model_name,
-        display: m.display_name,
-        provider: m.provider,
-        tier: m.tier
-      })))
-      console.log(`[MCP] modelProviderMap populated:`, Object.fromEntries(modelProviderMap))
-    } else {
-      // Ultimate fallback if no tier models found
-      models = ['gpt-5-2025-08-07']
-      console.log(`[MCP] No credits tier models found, using ultimate fallback:`, models)
     }
+    
+    console.log(`[MCP] After API keys: ${models.length} models, covered providers:`, Array.from(coveredProviders))
   }
+  
+  // Step 2: Supplement with credits tier models for uncovered providers
+  // Only if we need more models to reach perspectivesPerMessage
+  console.log(`[MCP] Step 2: Checking credits tier for additional models (need ${maxModels}, have ${models.length})`)
+  
+  // Get user's tier priority preference (default: normal tier)
+  const userTierPriority = (userPrefs?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
+  console.log(`[MCP] User tier priority:`, userTierPriority)
+  
+  // Query model_tiers for active models in user's preferred tiers
+  const { data: tierModels, error: tierError } = await serviceRoleSupabase
+    .from('model_tiers')
+    .select('model_name, display_name, provider, tier, display_order')
+    .eq('active', true)
+    .in('tier', userTierPriority)
+    .order('display_order', { ascending: true })
+  
+  if (tierError) {
+    console.error(`[MCP] Error fetching model_tiers:`, tierError)
+  }
+  
+  if (tierModels && tierModels.length > 0) {
+    // Sort by tier priority, then by display_order within each tier
+    const sortedTierModels = tierModels.sort((a, b) => {
+      const aTierIndex = userTierPriority.indexOf(a.tier)
+      const bTierIndex = userTierPriority.indexOf(b.tier)
+      if (aTierIndex !== bTierIndex) return aTierIndex - bTierIndex
+      return (a.display_order ?? 999) - (b.display_order ?? 999)
+    })
+    
+    // Add credits tier models for providers not already covered by API keys
+    for (const tierModel of sortedTierModels) {
+      const normalizedProvider = normalizeProviderName(tierModel.provider)
+      
+      // Only add if this provider isn't already covered by API keys
+      if (!coveredProviders.has(normalizedProvider)) {
+        models.push(tierModel.model_name)
+        modelProviderMap.set(tierModel.model_name, tierModel.provider)
+        coveredProviders.add(normalizedProvider)
+        console.log(`[MCP] Added credits tier model: ${tierModel.model_name} (provider: ${tierModel.provider}, tier: ${tierModel.tier})`)
+      }
+    }
+    
+    console.log(`[MCP] After credits tier supplement: ${models.length} total models from ${coveredProviders.size} providers`)
+  } else if (models.length === 0) {
+    // Ultimate fallback if no API keys AND no tier models found
+    models = ['gpt-5-2025-08-07']
+    console.log(`[MCP] No API keys or credits tier models found, using ultimate fallback:`, models)
+  }
+  
+  console.log(`[MCP] Final model list (before exclude_providers filter):`, models)
+  console.log(`[MCP] modelProviderMap:`, Object.fromEntries(modelProviderMap))
 
   // Handle exclude_providers parameter - filter out providers that succeeded via local CLI
   // This prevents redundant remote API calls when local CLIs already returned results
@@ -1629,24 +1604,11 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     value: args.exclude_providers
   })
   
-  // Normalize provider names for consistent matching (gemini=google, x-ai=xai, etc)
-  const normalizeProvider = (provider: string): string => {
-    const map: Record<string, string> = {
-      'gemini': 'google',
-      'google-ai': 'google',
-      'x-ai': 'xai',
-      'open-ai': 'openai',
-      'anthropic-ai': 'anthropic'
-    }
-    const lower = provider?.toLowerCase() || ''
-    return map[lower] || lower
-  }
-  
   if (args.exclude_providers && Array.isArray(args.exclude_providers) && args.exclude_providers.length > 0) {
     console.log(`[MCP] Excluding providers that succeeded locally:`, args.exclude_providers)
     
     // Map provider names to lowercase for comparison
-    const excludeSet = new Set(args.exclude_providers.map((p: string) => normalizeProvider(p)))
+    const excludeSet = new Set(args.exclude_providers.map((p: string) => normalizeProviderName(p)))
     console.log(`[MCP DEBUG] excludeSet (normalized):`, Array.from(excludeSet))
     
     // Filter out models from excluded providers
@@ -1655,7 +1617,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     console.log(`[MCP DEBUG] modelProviderMap for matching:`, Object.fromEntries(modelProviderMap))
     
     models = models.filter((model: string) => {
-      // Look up provider from our map (works for both apiKeys and tierModels)
+      // Look up provider from our map (works for both API keys and tier models)
       const providerForModel = modelProviderMap.get(model)
       console.log(`[MCP DEBUG] Model ${model}: provider from map = ${providerForModel || 'NOT FOUND'}`)
       
@@ -1665,7 +1627,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       }
       
       // Normalize the provider for comparison
-      const normalizedProvider = normalizeProvider(providerForModel)
+      const normalizedProvider = normalizeProviderName(providerForModel)
       const isExcluded = excludeSet.has(normalizedProvider)
       
       console.log(`[MCP DEBUG] Model ${model}: provider=${providerForModel}, normalized=${normalizedProvider}, isExcluded=${isExcluded}`)
@@ -1707,14 +1669,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     
     for (const reqProvider of args.request_providers) {
       const providerLower = reqProvider.provider?.toLowerCase()
-      const normalizedReqProvider = normalizeProvider(providerLower)
+      const normalizedReqProvider = normalizeProviderName(providerLower)
       console.log(`[MCP DEBUG] Processing request_provider: ${JSON.stringify(reqProvider)}, normalized: ${normalizedReqProvider}`)
       
       let foundModel = false
       
       // If a specific model is requested, try to use that first
       if (reqProvider.model) {
-        // Check if this model exists in our modelProviderMap (works for both apiKeys and tierModels)
+        // Check if this model exists in our modelProviderMap (works for both API keys and tier models)
         const modelProvider = modelProviderMap.get(reqProvider.model)
         if (modelProvider) {
           requestedModels.push(reqProvider.model)
@@ -1730,7 +1692,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         // Search modelProviderMap for any model from this provider
         let foundProviderModel: string | null = null
         for (const [model, provider] of modelProviderMap.entries()) {
-          const normalizedKeyProvider = normalizeProvider(provider)
+          const normalizedKeyProvider = normalizeProviderName(provider)
           const match = normalizedKeyProvider === normalizedReqProvider || provider?.toLowerCase() === providerLower
           console.log(`[MCP DEBUG] Checking modelProviderMap: model=${model}, provider=${provider}, normalized=${normalizedKeyProvider}, vs request=${normalizedReqProvider} → match=${match}`)
           if (match) {
@@ -2029,7 +1991,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.maxTokens
+                delete apiOptions.max_tokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
@@ -2175,7 +2137,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               return {
                 model,
-                provider: provider.display_name,
+                provider: providerName,
                 content,
                 tokens_used: tokensUsed,
                 response_time_ms: duration,
@@ -2188,7 +2150,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               // Return the actual error instead of falling through to "No API key configured"
               return {
                 model,
-                error: `Admin key API call failed for ${provider.display_name}: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`
+                error: `Admin key API call failed for ${providerName}: ${fallbackError instanceof Error ? fallbackError.message : 'Unknown error'}`
               }
             }
           }
@@ -2196,7 +2158,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           // No admin key available - user needs to add their own API key
           return {
             model,
-            error: `No API key configured for ${provider.display_name}. Please add your ${provider.display_name} API key in the dashboard Settings → API Keys.`
+            error: `No API key configured for ${providerName}. Please add your ${providerName} API key in the dashboard Settings → API Keys.`
           }
         }
 
@@ -2378,7 +2340,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
                 return {
                   model,
-                  provider: provider.display_name,
+                  provider: providerName,
                   content,
                   tokens_used: tokensUsed,
                   response_time_ms: duration,
@@ -2932,7 +2894,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             console.error(`[MCP] WARNING: ${cleanModel} response contains MCP-formatted content!`)
             console.error(`[MCP] Response preview: ${response.content.substring(0, 200)}...`)
           }
-          if (response.content.includes('"id"') && response.content.includes('"object"') &&
+          if (response.content.includes('"id"') && response.content.includes('"object":"chat.completion"') &&
               response.content.includes('"chat.completion"')) {
             console.error(`[MCP] WARNING: ${cleanModel} response contains raw JSON API response!`)
             console.error(`[MCP] Response preview: ${response.content.substring(0, 200)}...`)
@@ -3983,7 +3945,7 @@ function getTopModelsFromPreferences_DEPRECATED(preferences: any, count: number 
   }
 }
 
-// Normalize provider names to handle variations like "xai" vs "x-ai", "openai" vs "openai-native"
+// Normalize provider names to handle variations like "xai" vs "x-ai", "openai-native" vs "openai"
 function normalizeProviderName(provider: string): string {
   if (!provider) return ''
   
