@@ -2597,6 +2597,27 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           // Continue with original model ID
         }
 
+        // Together AI specific: If model ID doesn't have org prefix, try to add it
+        // Together requires format like "Qwen/Qwen3-Coder-480B" not just "Qwen3-Coder-480B"
+        if (providerName === 'together' && !resolvedModelId.includes('/')) {
+          const originalId = resolvedModelId
+          // Common Together AI org prefixes based on model name patterns
+          if (resolvedModelId.toLowerCase().startsWith('qwen')) {
+            resolvedModelId = `Qwen/${resolvedModelId}`
+          } else if (resolvedModelId.toLowerCase().startsWith('llama')) {
+            resolvedModelId = `meta-llama/${resolvedModelId}`
+          } else if (resolvedModelId.toLowerCase().startsWith('mistral')) {
+            resolvedModelId = `mistralai/${resolvedModelId}`
+          } else if (resolvedModelId.toLowerCase().startsWith('deepseek')) {
+            resolvedModelId = `deepseek-ai/${resolvedModelId}`
+          } else if (resolvedModelId.toLowerCase().startsWith('gemma')) {
+            resolvedModelId = `google/${resolvedModelId}`
+          }
+          if (resolvedModelId !== originalId) {
+            console.log(`[MCP] Together model ID normalized: ${originalId} → ${resolvedModelId}`)
+          }
+        }
+
         // Use apiManager directly like chat API does
         let response: APIResponse
         try {
