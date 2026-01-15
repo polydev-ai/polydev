@@ -2797,7 +2797,15 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               tokens_used: Math.ceil(text.length / 4) // Estimate tokens
             }
           } else {
-            throw new Error('Invalid response format from provider')
+            // Log unexpected content type for debugging
+            const responseText = await apiResponse.text().catch(() => '(unable to read)')
+            console.error(`[MCP] Unexpected content type from ${providerName}:`, {
+              contentType,
+              status: apiResponse.status,
+              statusText: apiResponse.statusText,
+              responsePreview: responseText.substring(0, 500)
+            })
+            throw new Error(`Invalid response format from provider (content-type: ${contentType}, status: ${apiResponse.status})`)
           }
         } catch (apiKeyErr: any) {
           const msg = apiKeyErr instanceof Error ? apiKeyErr.message : String(apiKeyErr)
