@@ -1723,12 +1723,16 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     }
     
     console.log(`[MCP DEBUG] requestedModels after processing: ${JSON.stringify(requestedModels)}`)
-    console.log(`[MCP DEBUG] models before request_providers replacement: ${JSON.stringify(models)}`)
-    
-    // If we found requested models, use those instead of the general models list
+    console.log(`[MCP DEBUG] models before request_providers prioritization: ${JSON.stringify(models)}`)
+
+    // CHANGED: Prioritize requested models at the front, but keep remaining models from multi-source
+    // This ensures we use API keys first, then fill gaps with credits tier models
     if (requestedModels.length > 0) {
-      console.log(`[MCP] Using ${requestedModels.length} specifically requested models:`, requestedModels)
-      models = requestedModels
+      // Remove requested models from the list to avoid duplicates
+      const remainingModels = models.filter(m => !requestedModels.includes(m))
+      // Put requested models first, then remaining models
+      models = [...requestedModels, ...remainingModels]
+      console.log(`[MCP] Prioritized ${requestedModels.length} requested models at front, ${remainingModels.length} remaining:`, models)
     } else {
       console.log(`[MCP DEBUG] No requested models found, keeping filtered models: ${JSON.stringify(models)}`)
     }
@@ -2702,8 +2706,12 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             console.log(`[MCP DEBUG] API Response for ${resolvedModelId}:`, {
               provider: providerName,
               hasChoices: !!result.choices,
+              choicesLength: result.choices?.length,
               hasError: !!result.error,
-              contentPreview: result.choices?.[0]?.message?.content?.substring(0, 100)
+              contentPreview: result.choices?.[0]?.message?.content?.substring(0, 100),
+              // Debug: show raw response structure for providers returning empty
+              rawKeys: Object.keys(result || {}),
+              rawPreview: JSON.stringify(result).substring(0, 500)
             })
 
             if (result.error) {
