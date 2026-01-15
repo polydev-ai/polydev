@@ -83,12 +83,12 @@ export const MODEL_TIERS: Record<string, ModelTierInfo> = {
     costPer1k: { input: 0.1, output: 0.4 },
     routingStrategy: 'api_key'
   },
-  'qwen-3-32b': {
+  'qwen-3-235b-a22b-instruct-2507': {
     provider: 'cerebras',
-    modelId: 'qwen-3-32b',
+    modelId: 'qwen-3-235b-a22b-instruct-2507',
     tier: 'normal',
-    displayName: 'Qwen 3 32B',
-    costPer1k: { input: 0.05, output: 0.2 },
+    displayName: 'Qwen 3 235B Instruct',
+    costPer1k: { input: 0.0006, output: 0.0012 }, // $0.60/$1.20 per million tokens
     routingStrategy: 'unlimited_account'
   },
   'glm-4.5': {
