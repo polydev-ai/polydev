@@ -2193,7 +2193,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               return {
                 model,
-                provider: providerName,
+                provider: `${providerName} (Credits)`, // Label as Credits when using admin key
                 content,
                 tokens_used: tokensUsed,
                 response_time_ms: duration,
@@ -2396,7 +2396,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
                 return {
                   model,
-                  provider: providerName,
+                  provider: `${providerName} (Credits)`, // Label as Credits when using admin key
                   content,
                   tokens_used: tokensUsed,
                   response_time_ms: duration,
@@ -2541,7 +2541,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               })
               .select('daily_limit, weekly_limit, monthly_limit')
               .single()
-            
+          
             if (createError) {
               console.error('[MCP] Failed to create default budget:', createError)
               budgetData = null
