@@ -164,7 +164,13 @@ function getProviderBaseUrl(provider: string): string {
     'azure': '', // Azure URLs are dynamic based on deployment
     'mistral': 'https://api.mistral.ai/v1',
     'perplexity': 'https://api.perplexity.ai',
-    'fireworks': 'https://api.fireworks.ai/inference/v1'
+    'fireworks': 'https://api.fireworks.ai/inference/v1',
+    'together': 'https://api.together.xyz/v1',
+    'togetherai': 'https://api.together.xyz/v1',
+    'cerebras': 'https://api.cerebras.ai/v1',
+    'sambanova': 'https://api.sambanova.ai/v1',
+    'xai': 'https://api.x.ai/v1',
+    'x-ai': 'https://api.x.ai/v1'
   }
   return baseUrls[provider.toLowerCase()] || ''
 }
@@ -290,6 +296,11 @@ function buildRequestConfig(
     case 'mistral':
     case 'xai':
     case 'x-ai':
+    case 'together':
+    case 'togetherai':
+    case 'cerebras':
+    case 'sambanova':
+    case 'fireworks':
       // OpenAI-compatible format
       return {
         url: `${baseUrl}/chat/completions`,
