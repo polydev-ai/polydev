@@ -1597,17 +1597,30 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     value: args.exclude_providers
   })
   
+  // Normalize provider names for consistent matching (gemini=google, x-ai=xai, etc)
+  const normalizeProvider = (provider: string): string => {
+    const map: Record<string, string> = {
+      'gemini': 'google',
+      'google-ai': 'google',
+      'x-ai': 'xai',
+      'open-ai': 'openai',
+      'anthropic-ai': 'anthropic'
+    }
+    const lower = provider?.toLowerCase() || ''
+    return map[lower] || lower
+  }
+  
   if (args.exclude_providers && Array.isArray(args.exclude_providers) && args.exclude_providers.length > 0) {
     console.log(`[MCP] Excluding providers that succeeded locally:`, args.exclude_providers)
     
     // Map provider names to lowercase for comparison
-    const excludeSet = new Set(args.exclude_providers.map((p: string) => p.toLowerCase()))
-    console.log(`[MCP DEBUG] excludeSet:`, Array.from(excludeSet))
+    const excludeSet = new Set(args.exclude_providers.map((p: string) => normalizeProvider(p)))
+    console.log(`[MCP DEBUG] excludeSet (normalized):`, Array.from(excludeSet))
     
     // Filter out models from excluded providers
     const originalCount = models.length
     console.log(`[MCP DEBUG] Models before filtering:`, models)
-    console.log(`[MCP DEBUG] API keys for matching:`, apiKeys?.map(k => ({ provider: k.provider, model: k.default_model })))
+    console.log(`[MCP DEBUG] API keys for matching:`, apiKeys?.map(k => ({ provider: k.provider, normalized: normalizeProvider(k.provider), model: k.default_model })))
     
     models = models.filter((model: string) => {
       // Find the API key config for this model to get its provider
@@ -1616,13 +1629,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       
       if (!apiKeyForModel) return true // Keep models without config (will error later anyway)
       
-      const providerLower = apiKeyForModel.provider?.toLowerCase()
-      const isExcluded = excludeSet.has(providerLower)
+      // Normalize the provider for comparison
+      const normalizedProvider = normalizeProvider(apiKeyForModel.provider)
+      const isExcluded = excludeSet.has(normalizedProvider)
       
-      console.log(`[MCP DEBUG] Model ${model}: provider=${providerLower}, isExcluded=${isExcluded}`)
+      console.log(`[MCP DEBUG] Model ${model}: provider=${apiKeyForModel.provider}, normalized=${normalizedProvider}, isExcluded=${isExcluded}`)
       
       if (isExcluded) {
-        console.log(`[MCP] Excluding model ${model} (provider ${providerLower} succeeded via local CLI)`)
+        console.log(`[MCP] Excluding model ${model} (provider ${normalizedProvider} succeeded via local CLI)`)
       }
       return !isExcluded
     })
@@ -1653,6 +1667,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     
     for (const reqProvider of args.request_providers) {
       const providerLower = reqProvider.provider?.toLowerCase()
+      const normalizedReqProvider = normalizeProvider(providerLower)
       
       // If a specific model is requested, use that
       if (reqProvider.model) {
@@ -1660,18 +1675,21 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         const hasKey = apiKeys?.find(k => k.default_model === reqProvider.model)
         if (hasKey) {
           requestedModels.push(reqProvider.model)
-          console.log(`[MCP] Added requested model: ${reqProvider.model} (provider: ${providerLower})`)
+          console.log(`[MCP] Added requested model: ${reqProvider.model} (provider: ${normalizedReqProvider})`)
         } else {
           console.log(`[MCP] Requested model ${reqProvider.model} not found in user's API keys`)
         }
       } else {
-        // Find any model from this provider
-        const providerKey = apiKeys?.find(k => k.provider?.toLowerCase() === providerLower)
+        // Find any model from this provider (check both original and normalized names)
+        const providerKey = apiKeys?.find(k => {
+          const normalizedKeyProvider = normalizeProvider(k.provider)
+          return normalizedKeyProvider === normalizedReqProvider || k.provider?.toLowerCase() === providerLower
+        })
         if (providerKey?.default_model) {
           requestedModels.push(providerKey.default_model)
-          console.log(`[MCP] Added model for provider ${providerLower}: ${providerKey.default_model}`)
+          console.log(`[MCP] Added model for provider ${normalizedReqProvider}: ${providerKey.default_model}`)
         } else {
-          console.log(`[MCP] No API key found for provider: ${providerLower}`)
+          console.log(`[MCP] No API key found for provider: ${normalizedReqProvider} (original: ${providerLower})`)
         }
       }
     }
