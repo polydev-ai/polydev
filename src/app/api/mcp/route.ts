@@ -1593,7 +1593,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       return (a.display_order ?? 999) - (b.display_order ?? 999)
     })
     
+    // Build exclude set from CLI-covered providers (to skip them during selection, not after)
+    const excludeProvidersSet = new Set(
+      (args.exclude_providers || []).map((p: string) => normalizeProviderName(p))
+    )
+    console.log(`[MCP] CLI-covered providers to skip during model selection:`, Array.from(excludeProvidersSet))
+
     // Add credits tier models for providers not already covered by API keys
+    // AND not covered by local CLIs (exclude_providers) - CRITICAL FIX
     // Stop when we reach maxModels (perspectivesPerMessage)
     for (const tierModel of sortedTierModels) {
       // Stop if we already have enough models
@@ -1601,9 +1608,16 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         console.log(`[MCP] Reached maxModels (${maxModels}), stopping credits tier supplement`)
         break
       }
-      
+
       const normalizedProvider = normalizeProviderName(tierModel.provider)
-      
+
+      // CRITICAL FIX: Skip providers that are covered by local CLIs
+      // This ensures we don't waste slots on providers that will be filtered out later
+      if (excludeProvidersSet.has(normalizedProvider)) {
+        console.log(`[MCP] Skipping ${tierModel.model_name} - provider ${normalizedProvider} already covered by local CLI`)
+        continue
+      }
+
       // Only add if this provider isn't already covered by API keys
       if (!coveredProviders.has(normalizedProvider)) {
         models.push(tierModel.model_name)
