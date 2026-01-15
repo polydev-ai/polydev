@@ -3168,7 +3168,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         providerResponses[`${provider}:${response.model}`] = {
           content: response.content.substring(0, 2000), // Limit content size
           tokens_used: response.tokens_used,
-          finish_reason: 'stop'
+          finish_reason: 'stop',
+          source: response.source || 'user_key' // FIXED: Include source for dashboard payment method display
         }
       }
 
