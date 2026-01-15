@@ -1732,7 +1732,31 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           requestedModels.push(foundProviderModel)
           console.log(`[MCP] Added model for provider ${normalizedReqProvider}: ${foundProviderModel}`)
         } else {
-          console.log(`[MCP] No model found for provider: ${normalizedReqProvider} (original: ${providerLower})`)
+          // NEW: Model not in modelProviderMap - fetch directly from credits tier (model_tiers)
+          // This handles cases where the provider wasn't included in initial model list due to maxModels limit
+          console.log(`[MCP] Provider ${normalizedReqProvider} not in modelProviderMap, querying model_tiers directly...`)
+          
+          const { data: providerTierModel } = await serviceRoleSupabase
+            .from('model_tiers')
+            .select('model_name, provider, tier')
+            .eq('active', true)
+            .in('tier', userTierPriority)
+            .order('display_order', { ascending: true })
+          
+          // Find model matching this provider (case-insensitive)
+          const matchingModel = providerTierModel?.find(m => {
+            const normalizedTierProvider = normalizeProviderName(m.provider)
+            return normalizedTierProvider === normalizedReqProvider || m.provider?.toLowerCase() === providerLower
+          })
+          
+          if (matchingModel) {
+            // Add to modelProviderMap so it can be used for API calls
+            modelProviderMap.set(matchingModel.model_name, matchingModel.provider)
+            requestedModels.push(matchingModel.model_name)
+            console.log(`[MCP] Added model from credits tier for requested provider ${normalizedReqProvider}: ${matchingModel.model_name} (tier: ${matchingModel.tier})`)
+          } else {
+            console.log(`[MCP] No model found for provider: ${normalizedReqProvider} (original: ${providerLower}) - not in API keys or credits tier`)
+          }
         }
       }
     }
@@ -2286,13 +2310,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                     const tier = modelTierData?.tier || 'normal'
                     const creditsToDeduct = TIER_CREDIT_COSTS[tier] || 4
 
-                    // Estimate input/output split for logging
-                    const inputTokens = Math.floor(tokensUsed * 0.25)
-                    const outputTokens = tokensUsed - inputTokens
+                    // Estimate input/output split (typically 1:3 ratio for responses)
+                    const estimatedInputTokens = Math.floor(tokensUsed * 0.25)
+                    const estimatedOutputTokens = tokensUsed - estimatedInputTokens
                     
                     // Calculate USD cost for record keeping only
-                    const inputCost = modelTierData ? (inputTokens / 1000) * (modelTierData.cost_per_1k_input || 0) : 0
-                    const outputCost = modelTierData ? (outputTokens / 1000) * (modelTierData.cost_per_1k_output || 0) : 0
+                    const inputCost = modelTierData ? (estimatedInputTokens / 1000) * (modelTierData.cost_per_1k_input || 0) : 0
+                    const outputCost = modelTierData ? (estimatedOutputTokens / 1000) * (modelTierData.cost_per_1k_output || 0) : 0
                     const usdCost = inputCost + outputCost
 
                     // Get current balance and update atomically (FIFO: promo first, then balance)
@@ -2331,8 +2355,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                         p_model_name: cleanModel,
                         p_provider: providerName,
                         p_message_count: 1,
-                        p_input_tokens: inputTokens,
-                        p_output_tokens: outputTokens,
+                        p_input_tokens: estimatedInputTokens,
+                        p_output_tokens: estimatedOutputTokens,
                         p_cost_usd: usdCost,
                         p_cost_credits: creditsToDeduct,
                         p_metadata: JSON.stringify({
@@ -2356,8 +2380,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                           model_name: cleanModel,
                           model_tier: tier,
                           provider: providerName,
-                          input_tokens: inputTokens,
-                          output_tokens: outputTokens,
+                          input_tokens: estimatedInputTokens,
+                          output_tokens: estimatedOutputTokens,
                           total_tokens: tokensUsed,
                           estimated_cost: usdCost,
                           perspectives_deducted: 1,
@@ -2400,8 +2424,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         console.log(`[MCP] ${providerName} settings - temp: ${providerTemperature}, tokens: ${providerMaxTokens} (API budget: $${apiKeyForModel!.monthly_budget || 'unlimited'}, used: $${apiKeyForModel!.current_usage || '0'})`)
 
         // Determine usage path based on user preference and availability
-        let usagePath = 'api_key' // Default fallback
-        let sessionType = 'api_key'
+        let usagePath = 'api_keys' // Default fallback
+        let sessionType = 'api_keys'
         
         const hasValidApiKey = apiKeyForModel && decryptedKey && decryptedKey !== 'demo_key'
         const userUsagePreference = 'auto' // Default usage preference
@@ -2412,8 +2436,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             // CLI preference - CLI integration handled by separate CLI handlers (codex-cli, claude-code, gemini-cli)
             // For MCP route, fall back to API keys → credits as per user's preference order
             if (hasValidApiKey) {
-              usagePath = 'api_key'
-              sessionType = 'api_key'
+              usagePath = 'api_keys'
+              sessionType = 'api_keys'
             } else {
               usagePath = 'credits'
               sessionType = 'credits'
@@ -2425,8 +2449,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             // For now CLI integration is handled by separate CLI handlers
             // So we check: API keys first, then credits as fallback
             if (hasValidApiKey) {
-              usagePath = 'api_key'
-              sessionType = 'api_key'
+              usagePath = 'api_keys'
+              sessionType = 'api_keys'
             } else {
               usagePath = 'credits'
               sessionType = 'credits'
@@ -3215,8 +3239,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     //         // CLI preference - CLI integration handled by separate CLI handlers (codex-cli, claude-code, gemini-cli)
     //         // For MCP route, fall back to API keys → credits as per user's preference order
     //         if (hasValidApiKey) {
-    //           usagePath = 'api_key'
-    //           sessionType = 'api_key'
+    //           usagePath = 'api_keys'
+    //           sessionType = 'api_keys'
     //         } else {
     //           usagePath = 'credits'
     //           sessionType = 'credits'
@@ -3228,8 +3252,8 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     //         // For now CLI integration is handled by separate CLI handlers
     //         // So we check: API keys first, then credits as fallback
     //         if (hasValidApiKey) {
-    //           usagePath = 'api_key'
-    //           sessionType = 'api_key'
+    //           usagePath = 'api_keys'
+    //           sessionType = 'api_keys'
     //         } else {
     //           usagePath = 'credits'
     //           sessionType = 'credits'
@@ -3650,7 +3674,7 @@ ${enabled ? '✅ **Enabled**' : '❌ **Disabled**'} - Check every ${interval_min
    \`\`\`bash
    export POLYDEV_MCP_TOKEN="your_token"
    export POLYDEV_USER_ID="${user.id}"
-   export POLYDEV_API_URL="https://polydev.com/api/cli-status-update"
+   export POLYDEV_API_URL="https://polydev.com/api/mcp/cli-status-update"
    \`\`\`
 
 2. **Set up automatic monitoring** with cron (optional):
