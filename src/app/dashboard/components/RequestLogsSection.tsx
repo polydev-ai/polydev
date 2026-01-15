@@ -113,12 +113,9 @@ export default function RequestLogsSection({
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-1">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          log.paymentMethod === 'credits' ? 'bg-amber-100 text-amber-800' : 
-                          log.paymentMethod === 'mixed' ? 'bg-purple-100 text-purple-800' :
-                          'bg-slate-100 text-slate-800'
+                          log.paymentMethod === 'credits' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-800'
                         }`}>
-                          {log.paymentMethod === 'credits' ? '💳 Credits' : 
-                           log.paymentMethod === 'mixed' ? '🔀 Mixed' : '🔑 API Key'}
+                          {log.paymentMethod === 'credits' ? '💳 Credits' : '🔑 API Key'}
                         </span>
                         {log.hasCliResponse && (
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800" title="Response from local CLI tool">

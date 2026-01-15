@@ -385,13 +385,9 @@ export async function GET(request: NextRequest) {
           ? parseFloat((log.total_tokens / (log.response_time_ms / 1000)).toFixed(1))
           : 0,
         // FIXED: Determine request-level paymentMethod from individual provider sources
-        // Check if any provider used admin_credits (credits), otherwise api_key
-        paymentMethod: (() => {
-          const sources = Object.values(providerResponses).map((r: any) => r?.source).filter(Boolean)
-          if (sources.includes('admin_credits') && !sources.includes('user_key')) return 'credits'
-          if (sources.includes('user_key') && sources.includes('admin_credits')) return 'mixed'
-          return log.source_type === 'admin_credits' ? 'credits' : 'api_key'
-        })(),
+        // Show 'credits' if any provider used credits, otherwise 'api_key'
+        paymentMethod: Object.values(providerResponses).some((r: any) => r?.source === 'admin_credits') 
+          ? 'credits' : (log.source_type === 'admin_credits' ? 'credits' : 'api_key'),
         // Request-level CLI indicator (if any provider is CLI)
         hasCliResponse: cliProviders.length > 0 || Object.values(providerResponses).some((r: any) => r?.source === 'cli'),
         cliCount: cliProviders.length
