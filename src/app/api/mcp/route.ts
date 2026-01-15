@@ -1594,7 +1594,14 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     })
     
     // Add credits tier models for providers not already covered by API keys
+    // Stop when we reach maxModels (perspectivesPerMessage)
     for (const tierModel of sortedTierModels) {
+      // Stop if we already have enough models
+      if (models.length >= maxModels) {
+        console.log(`[MCP] Reached maxModels (${maxModels}), stopping credits tier supplement`)
+        break
+      }
+      
       const normalizedProvider = normalizeProviderName(tierModel.provider)
       
       // Only add if this provider isn't already covered by API keys
