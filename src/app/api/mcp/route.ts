@@ -21,7 +21,7 @@ const TIER_CREDIT_COSTS: Record<string, number> = {
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
-// MCP Route Version: 2026-01-15-v3 - Multi-source model selection (API keys + Credits tier combined)
+// MCP Route Version: 2026-01-15-v4 - Fix Anthropic max_tokens (camelCase) for admin key calls
 
 // Provider Configuration Interface
 interface ProviderConfig {
@@ -2015,7 +2015,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                max_tokens: adminMaxTokens,
+                maxTokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -2023,7 +2023,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.max_tokens
+                delete apiOptions.maxTokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
@@ -2229,7 +2229,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                max_tokens: adminMaxTokens,
+                maxTokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -2237,7 +2237,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.max_tokens
+                delete apiOptions.maxTokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)

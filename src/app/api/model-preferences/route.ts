@@ -169,9 +169,9 @@ export async function GET(request: NextRequest) {
     // Check if user has API keys configured
     const hasApiKeys = apiKeys && apiKeys.length > 0
 
+    // STEP 1: Add models from user's API keys first
     if (hasApiKeys) {
-      // PRIMARY: Use user's API keys
-      console.log('[Model Preferences] Using user API keys, count:', apiKeys.length)
+      console.log('[Model Preferences] Step 1: Using user API keys, count:', apiKeys.length)
       
       for (const key of apiKeys) {
         if (key.provider && key.default_model) {
@@ -207,10 +207,15 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-    } else {
-      // FALLBACK: Use Credits Tier Priority from model_tiers table
-      console.log('[Model Preferences] No user API keys found, falling back to Credits Tier Priority')
-      
+      console.log('[Model Preferences] After API keys:', allProviders.length, 'models, covered providers:', Array.from(seenProviders))
+    }
+    
+    // STEP 2: Supplement with Credits Tier models for uncovered providers
+    // This ensures stdio-wrapper knows about ALL available providers for CLI routing
+    const needMoreModels = allProviders.length < perspectivesPerMessage
+    console.log('[Model Preferences] Step 2: Checking credits tier (have', allProviders.length, ', need', perspectivesPerMessage, ')')
+    
+    if (needMoreModels || !hasApiKeys) {
       // Get user's tier priority preference (default: normal -> eco -> premium)
       const tierPriority = (userPrefs?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
       console.log('[Model Preferences] User tier priority:', tierPriority)
@@ -239,6 +244,12 @@ export async function GET(request: NextRequest) {
         console.log('[Model Preferences] Found', sortedTierModels.length, 'models from Credits Tier')
         
         for (const model of sortedTierModels) {
+          // Stop if we have enough models
+          if (allProviders.length >= perspectivesPerMessage) {
+            console.log('[Model Preferences] Reached perspectivesPerMessage limit:', perspectivesPerMessage)
+            break
+          }
+          
           const providerLower = model.provider.toLowerCase()
           const normalizedProvider = normalizeProvider(providerLower)
           
@@ -259,6 +270,8 @@ export async function GET(request: NextRequest) {
             tier: model.tier
           })
           
+          console.log('[Model Preferences] Added credits tier model:', model.model_name, '(provider:', normalizedProvider, ', cliId:', cliId, ')')
+          
           if (cliId) {
             // Track CLI providers for backwards compatibility
             if (!providerOrder.includes(cliId)) {
@@ -270,23 +283,21 @@ export async function GET(request: NextRequest) {
             }
           }
         }
-        
-        console.log('[Model Preferences] Credits Tier models mapped:', allProviders.map(p => ({
-          provider: p.provider,
-          model: p.model,
-          cliId: p.cliId,
-          tier: p.tier
-        })))
       } else {
         console.log('[Model Preferences] No Credits Tier models found')
       }
     }
 
+    console.log('[Model Preferences] Final allProviders:', allProviders.map(p => ({
+      provider: p.provider,
+      model: p.model,
+      cliId: p.cliId,
+      tier: p.tier
+    })))
     console.log('[Model Preferences] Returning preferences:', modelPreferences)
-    console.log('[Model Preferences] All providers:', allProviders)
     console.log('[Model Preferences] Provider order:', providerOrder)
     console.log('[Model Preferences] perspectives_per_message:', perspectivesPerMessage)
-    console.log('[Model Preferences] Source:', hasApiKeys ? 'user_api_keys' : 'credits_tier')
+    console.log('[Model Preferences] Source:', hasApiKeys ? 'api_keys_plus_credits' : 'credits_tier_only')
 
     return NextResponse.json({
       success: true,
@@ -294,7 +305,7 @@ export async function GET(request: NextRequest) {
       providerOrder, // CLI provider IDs only (backwards compatibility)
       allProviders,  // Full list of all providers with CLI info
       perspectivesPerMessage,
-      source: hasApiKeys ? 'user_api_keys' : 'credits_tier', // NEW: Indicate where models came from
+      source: hasApiKeys ? 'api_keys_plus_credits' : 'credits_tier_only', // NEW: Indicate where models came from
       timestamp: new Date().toISOString()
     })
 
