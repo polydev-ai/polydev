@@ -1364,7 +1364,15 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   // The enabled=true flag indicates the user has working CLIs, regardless of subscription tier
   // (mcp-execution runs CLIs locally without tier checks)
   
-  if (cliSummary.hasAnyCli && cliSummary.totalAuthenticated > 0) {
+  // IMPORTANT: Skip server-side CLI exclusion when stdio-wrapper is calling (detected by cli_responses being present)
+  // This indicates stdio-wrapper handles CLIs locally and has already set correct exclude_providers
+  const isStdioWrapperClient = args.cli_responses !== undefined;
+  
+  if (isStdioWrapperClient) {
+    console.log(`[MCP] Skipping server-side CLI exclusion - stdio-wrapper handles CLIs locally`);
+    console.log(`[MCP] Client-provided exclusions: ${JSON.stringify(args.exclude_providers || [])}`);
+  } else if (cliSummary.hasAnyCli && cliSummary.totalAuthenticated > 0) {
+    // Only add server-side CLI exclusions for non-stdio-wrapper clients (e.g., web chat, mcp-execution direct calls)
     // Map authenticated CLI providers to API provider names
     const cliExclusions = cliSummary.authenticatedProviders
       .map((cli: string) => cliToApiProviderMap[cli])
@@ -1375,7 +1383,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       const existingExclusions = args.exclude_providers || [];
       const mergedExclusions = [...new Set([...existingExclusions, ...cliExclusions])];
       
-      console.log(`[MCP] SERVER-SIDE CLI EXCLUSION:`, {
+      console.log(`[MCP] SERVER-SIDE CLI EXCLUSION (non-stdio-wrapper client):`, {
         authenticatedCLIs: cliSummary.authenticatedProviders,
         cliExclusions,
         clientExclusions: existingExclusions,
@@ -2000,7 +2008,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                maxTokens: adminMaxTokens,
+                max_tokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -2214,7 +2222,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                 model: apiModelId,
                 messages: [{ role: 'user' as const, content: contextualPrompt }],
                 temperature: providerTemperature,
-                maxTokens: adminMaxTokens,
+                max_tokens: adminMaxTokens,
                 stream: false,
                 apiKey: adminDecryptedKey,
                 baseUrl: adminKeyBudget.api_base || provider.base_url
@@ -2222,7 +2230,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               if (model === 'gpt-5' || model.includes('gpt-5')) {
                 apiOptions.max_completion_tokens = adminMaxTokens
-                delete apiOptions.maxTokens
+                delete apiOptions.max_tokens
               }
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
