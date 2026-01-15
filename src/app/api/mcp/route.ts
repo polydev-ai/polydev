@@ -1669,18 +1669,23 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       const providerLower = reqProvider.provider?.toLowerCase()
       const normalizedReqProvider = normalizeProvider(providerLower)
       
-      // If a specific model is requested, use that
+      let foundModel = false
+      
+      // If a specific model is requested, try to use that first
       if (reqProvider.model) {
         // Check if this model exists in user's API keys
         const hasKey = apiKeys?.find(k => k.default_model === reqProvider.model)
         if (hasKey) {
           requestedModels.push(reqProvider.model)
           console.log(`[MCP] Added requested model: ${reqProvider.model} (provider: ${normalizedReqProvider})`)
+          foundModel = true
         } else {
-          console.log(`[MCP] Requested model ${reqProvider.model} not found in user's API keys`)
+          console.log(`[MCP] Requested model ${reqProvider.model} not found in user's API keys, trying provider lookup`)
         }
-      } else {
-        // Find any model from this provider (check both original and normalized names)
+      }
+      
+      // If no specific model or model not found, find any model from this provider
+      if (!foundModel) {
         const providerKey = apiKeys?.find(k => {
           const normalizedKeyProvider = normalizeProvider(k.provider)
           return normalizedKeyProvider === normalizedReqProvider || k.provider?.toLowerCase() === providerLower
