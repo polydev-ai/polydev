@@ -21,7 +21,7 @@ const TIER_CREDIT_COSTS: Record<string, number> = {
 // Vercel configuration for MCP server
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
-// Trigger deployment
+// MCP Route Version: 2026-01-15-v2 - Provider normalization fix for exclude_providers
 
 // Provider Configuration Interface
 interface ProviderConfig {
