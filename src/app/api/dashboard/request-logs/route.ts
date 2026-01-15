@@ -366,8 +366,10 @@ export async function GET(request: NextRequest) {
             success: !!response,
             response: response?.content || null,
             fullResponse: response || null,
-            // Determine paymentMethod based on source_type: admin_credits = 'credits', user_key = 'api_key'
-            paymentMethod: log.source_type === 'admin_credits' ? 'credits' : 'api_key',
+            // FIXED: Determine paymentMethod based on individual provider's source field
+            // Each provider response has its own source: 'admin_credits', 'user_key', 'cli', etc.
+            paymentMethod: response?.source === 'admin_credits' ? 'credits' : 
+                          response?.source === 'cli' ? 'cli' : 'api_key',
             // CLI indicator fields
             source: response?.source || 'api',
             cli_tool: response?.cli_tool || null
@@ -382,8 +384,14 @@ export async function GET(request: NextRequest) {
         tokensPerSecond: log.response_time_ms && log.total_tokens
           ? parseFloat((log.total_tokens / (log.response_time_ms / 1000)).toFixed(1))
           : 0,
-        // Determine paymentMethod based on source_type: admin_credits = 'credits', user_key = 'api_key'
-        paymentMethod: log.source_type === 'admin_credits' ? 'credits' : 'api_key',
+        // FIXED: Determine request-level paymentMethod from individual provider sources
+        // Check if any provider used admin_credits (credits), otherwise api_key
+        paymentMethod: (() => {
+          const sources = Object.values(providerResponses).map((r: any) => r?.source).filter(Boolean)
+          if (sources.includes('admin_credits') && !sources.includes('user_key')) return 'credits'
+          if (sources.includes('user_key') && sources.includes('admin_credits')) return 'mixed'
+          return log.source_type === 'admin_credits' ? 'credits' : 'api_key'
+        })(),
         // Request-level CLI indicator (if any provider is CLI)
         hasCliResponse: cliProviders.length > 0 || Object.values(providerResponses).some((r: any) => r?.source === 'cli'),
         cliCount: cliProviders.length
