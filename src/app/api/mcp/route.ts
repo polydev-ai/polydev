@@ -1662,12 +1662,18 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   // This is used when stdio-wrapper needs perspectives from providers without CLI support
   if (args.request_providers && Array.isArray(args.request_providers) && args.request_providers.length > 0) {
     console.log(`[MCP] Prioritizing requested providers:`, args.request_providers)
+    console.log(`[MCP DEBUG] All apiKeys for matching:`, apiKeys?.map(k => ({
+      provider: k.provider,
+      normalized: normalizeProvider(k.provider),
+      model: k.default_model
+    })))
     
     const requestedModels: string[] = []
     
     for (const reqProvider of args.request_providers) {
       const providerLower = reqProvider.provider?.toLowerCase()
       const normalizedReqProvider = normalizeProvider(providerLower)
+      console.log(`[MCP DEBUG] Processing request_provider: ${JSON.stringify(reqProvider)}, normalized: ${normalizedReqProvider}`)
       
       let foundModel = false
       
@@ -1680,7 +1686,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
           console.log(`[MCP] Added requested model: ${reqProvider.model} (provider: ${normalizedReqProvider})`)
           foundModel = true
         } else {
-          console.log(`[MCP] Requested model ${reqProvider.model} not found in user's API keys, trying provider lookup`)
+          console.log(`[MCP DEBUG] Model "${reqProvider.model}" not found in apiKeys. Available models: ${apiKeys?.map(k => k.default_model).join(', ')}`)
         }
       }
       
@@ -1688,7 +1694,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       if (!foundModel) {
         const providerKey = apiKeys?.find(k => {
           const normalizedKeyProvider = normalizeProvider(k.provider)
-          return normalizedKeyProvider === normalizedReqProvider || k.provider?.toLowerCase() === providerLower
+          const match = normalizedKeyProvider === normalizedReqProvider || k.provider?.toLowerCase() === providerLower
+          console.log(`[MCP DEBUG] Checking apiKey: provider=${k.provider}, normalized=${normalizedKeyProvider}, vs request=${normalizedReqProvider} → match=${match}`)
+          return match
         })
         if (providerKey?.default_model) {
           requestedModels.push(providerKey.default_model)
@@ -1699,10 +1707,15 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       }
     }
     
+    console.log(`[MCP DEBUG] requestedModels after processing: ${JSON.stringify(requestedModels)}`)
+    console.log(`[MCP DEBUG] models before request_providers replacement: ${JSON.stringify(models)}`)
+    
     // If we found requested models, use those instead of the general models list
     if (requestedModels.length > 0) {
       console.log(`[MCP] Using ${requestedModels.length} specifically requested models:`, requestedModels)
       models = requestedModels
+    } else {
+      console.log(`[MCP DEBUG] No requested models found, keeping filtered models: ${JSON.stringify(models)}`)
     }
   }
 
@@ -2073,7 +2086,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
                     console.log(`[MCP] Deducted ${creditsToDeduct} credits (${tier} tier) for ${tokensUsed} tokens on ${cleanModel} (balance: ${newBal.toFixed(2)}, promo: ${newPromo.toFixed(2)})`)
                     
-                    // Track usage session for dashboard visibility
+                    // Track usage session for dashboard statistics
                     await serviceRoleSupabase.rpc('track_usage_session', {
                       p_user_id: user.id,
                       p_session_type: 'credits',
