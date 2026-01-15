@@ -1482,6 +1482,10 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   // The old user_preferences.model_preferences is DEPRECATED and not used here.
   // ============================================================================
   let models: string[] = []
+  
+  // Map of model name → provider for exclude_providers filtering
+  // This works for both apiKeys path AND credits tier path
+  const modelProviderMap = new Map<string, string>()
 
   // DEBUG: Log incoming args to trace exclude_providers
   console.log(`[MCP DEBUG] Full args received:`, JSON.stringify(args, null, 2))
@@ -1536,6 +1540,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     })))
 
     models = sortedKeys.map(key => key.default_model)
+    
+    // Populate modelProviderMap from apiKeys
+    for (const key of sortedKeys) {
+      if (key.default_model && key.provider) {
+        modelProviderMap.set(key.default_model, key.provider)
+      }
+    }
 
     console.log(`[MCP] All models from API keys (ordered by display_order, will be filtered and sliced later):`, models)
     console.log(`[MCP] API key display orders:`, sortedKeys.map(k => ({
@@ -1572,15 +1583,25 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         return (a.display_order ?? 999) - (b.display_order ?? 999)
       })
       
-      // Take up to perspectivesPerMessage models
-      models = sortedTierModels.slice(0, perspectivesPerMessage).map(m => m.model_name)
-      console.log(`[MCP] Using ${models.length} models from credits tier:`, models)
-      console.log(`[MCP] Credits tier models detail:`, sortedTierModels.slice(0, perspectivesPerMessage).map(m => ({
+      // DON'T slice here - we need all models for exclude_providers filtering
+      // The slice will happen AFTER exclude_providers filter
+      models = sortedTierModels.map(m => m.model_name)
+      
+      // Populate modelProviderMap from tierModels
+      for (const model of sortedTierModels) {
+        if (model.model_name && model.provider) {
+          modelProviderMap.set(model.model_name, model.provider)
+        }
+      }
+      
+      console.log(`[MCP] Using ${models.length} models from credits tier (all, will filter and slice later):`, models)
+      console.log(`[MCP] Credits tier models detail:`, sortedTierModels.map(m => ({
         model: m.model_name,
         display: m.display_name,
         provider: m.provider,
         tier: m.tier
       })))
+      console.log(`[MCP] modelProviderMap populated:`, Object.fromEntries(modelProviderMap))
     } else {
       // Ultimate fallback if no tier models found
       models = ['gpt-5-2025-08-07']
@@ -1620,20 +1641,23 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
     // Filter out models from excluded providers
     const originalCount = models.length
     console.log(`[MCP DEBUG] Models before filtering:`, models)
-    console.log(`[MCP DEBUG] API keys for matching:`, apiKeys?.map(k => ({ provider: k.provider, normalized: normalizeProvider(k.provider), model: k.default_model })))
+    console.log(`[MCP DEBUG] modelProviderMap for matching:`, Object.fromEntries(modelProviderMap))
     
     models = models.filter((model: string) => {
-      // Find the API key config for this model to get its provider
-      const apiKeyForModel = apiKeys?.find(key => key.default_model === model)
-      console.log(`[MCP DEBUG] Model ${model}: apiKeyForModel =`, apiKeyForModel ? { provider: apiKeyForModel.provider, model: apiKeyForModel.default_model } : 'NOT FOUND')
+      // Look up provider from our map (works for both apiKeys and tierModels)
+      const providerForModel = modelProviderMap.get(model)
+      console.log(`[MCP DEBUG] Model ${model}: provider from map = ${providerForModel || 'NOT FOUND'}`)
       
-      if (!apiKeyForModel) return true // Keep models without config (will error later anyway)
+      if (!providerForModel) {
+        console.log(`[MCP DEBUG] Model ${model} not in modelProviderMap, keeping it`)
+        return true // Keep models without provider mapping (will error later anyway)
+      }
       
       // Normalize the provider for comparison
-      const normalizedProvider = normalizeProvider(apiKeyForModel.provider)
+      const normalizedProvider = normalizeProvider(providerForModel)
       const isExcluded = excludeSet.has(normalizedProvider)
       
-      console.log(`[MCP DEBUG] Model ${model}: provider=${apiKeyForModel.provider}, normalized=${normalizedProvider}, isExcluded=${isExcluded}`)
+      console.log(`[MCP DEBUG] Model ${model}: provider=${providerForModel}, normalized=${normalizedProvider}, isExcluded=${isExcluded}`)
       
       if (isExcluded) {
         console.log(`[MCP] Excluding model ${model} (provider ${normalizedProvider} succeeded via local CLI)`)
@@ -1657,20 +1681,16 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       })
     }
   } else {
-    // DEBUG: Log why request_providers was skipped
-    console.log(`[MCP DEBUG] request_providers block SKIPPED. args.request_providers =`, args.request_providers)
-    console.log(`[MCP DEBUG] Condition check: exists=${!!args.request_providers}, isArray=${Array.isArray(args.request_providers)}, length=${args.request_providers?.length}`)
+    // DEBUG: Log why exclude_providers was skipped
+    console.log(`[MCP DEBUG] exclude_providers block SKIPPED. args.exclude_providers =`, args.exclude_providers)
+    console.log(`[MCP DEBUG] Condition check: exists=${!!args.exclude_providers}, isArray=${Array.isArray(args.exclude_providers)}, length=${args.exclude_providers?.length}`)
   }
 
   // Handle request_providers parameter - prioritize specific providers for API-only perspectives
   // This is used when stdio-wrapper needs perspectives from providers without CLI support
   if (args.request_providers && Array.isArray(args.request_providers) && args.request_providers.length > 0) {
     console.log(`[MCP] Prioritizing requested providers:`, args.request_providers)
-    console.log(`[MCP DEBUG] All apiKeys for matching:`, apiKeys?.map(k => ({
-      provider: k.provider,
-      normalized: normalizeProvider(k.provider),
-      model: k.default_model
-    })))
+    console.log(`[MCP DEBUG] modelProviderMap for matching:`, Object.fromEntries(modelProviderMap))
     
     const requestedModels: string[] = []
     
@@ -1683,30 +1703,35 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       
       // If a specific model is requested, try to use that first
       if (reqProvider.model) {
-        // Check if this model exists in user's API keys
-        const hasKey = apiKeys?.find(key => key.default_model === reqProvider.model)
-        if (hasKey) {
+        // Check if this model exists in our modelProviderMap (works for both apiKeys and tierModels)
+        const modelProvider = modelProviderMap.get(reqProvider.model)
+        if (modelProvider) {
           requestedModels.push(reqProvider.model)
           console.log(`[MCP] Added requested model: ${reqProvider.model} (provider: ${normalizedReqProvider})`)
           foundModel = true
         } else {
-          console.log(`[MCP DEBUG] Model "${reqProvider.model}" not found in apiKeys. Available models: ${apiKeys?.map(k => k.default_model).join(', ')}`)
+          console.log(`[MCP DEBUG] Model "${reqProvider.model}" not found in modelProviderMap. Available models: ${Array.from(modelProviderMap.keys()).join(', ')}`)
         }
       }
       
       // If no specific model or model not found, find any model from this provider
       if (!foundModel) {
-        const providerKey = apiKeys?.find(k => {
-          const normalizedKeyProvider = normalizeProvider(k.provider)
-          const match = normalizedKeyProvider === normalizedReqProvider || k.provider?.toLowerCase() === providerLower
-          console.log(`[MCP DEBUG] Checking apiKey: provider=${k.provider}, normalized=${normalizedKeyProvider}, vs request=${normalizedReqProvider} → match=${match}`)
-          return match
-        })
-        if (providerKey?.default_model) {
-          requestedModels.push(providerKey.default_model)
-          console.log(`[MCP] Added model for provider ${normalizedReqProvider}: ${providerKey.default_model}`)
+        // Search modelProviderMap for any model from this provider
+        let foundProviderModel: string | null = null
+        for (const [model, provider] of modelProviderMap.entries()) {
+          const normalizedKeyProvider = normalizeProvider(provider)
+          const match = normalizedKeyProvider === normalizedReqProvider || provider?.toLowerCase() === providerLower
+          console.log(`[MCP DEBUG] Checking modelProviderMap: model=${model}, provider=${provider}, normalized=${normalizedKeyProvider}, vs request=${normalizedReqProvider} → match=${match}`)
+          if (match) {
+            foundProviderModel = model
+            break
+          }
+        }
+        if (foundProviderModel) {
+          requestedModels.push(foundProviderModel)
+          console.log(`[MCP] Added model for provider ${normalizedReqProvider}: ${foundProviderModel}`)
         } else {
-          console.log(`[MCP] No API key found for provider: ${normalizedReqProvider} (original: ${providerLower})`)
+          console.log(`[MCP] No model found for provider: ${normalizedReqProvider} (original: ${providerLower})`)
         }
       }
     }
@@ -2005,7 +2030,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               const result = await apiResponse.json()
               if (result.error) {
-                throw new Error(result.error.message || `${provider.display_name} API error`)
+                throw new Error(result.error.message || 'API error')
               }
 
               const endTime = Date.now()
@@ -2840,9 +2865,9 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               const parsed = JSON.parse(finalContent)
               if (parsed.choices?.[0]?.message?.content !== undefined) {
                 finalContent = parsed.choices[0].message.content
-                console.log(`[MCP RETURN FIX] Extracted at return: "${finalContent}"`)
+                console.log(`[MCP CRITICAL] Extracted at return: "${finalContent}"`)
               } else {
-                console.error(`[MCP RETURN ERROR] No content field in parsed JSON`)
+                console.error(`[MCP CRITICAL] No content field in parsed JSON`)
               }
             } catch (e) {
               console.error(`[MCP RETURN ERROR] Failed to parse:`, e)
@@ -3819,7 +3844,7 @@ function getTopModelsFromPreferences_DEPRECATED(preferences: any, count: number 
     // Sort providers by 'order'
     const providersSorted = Object.entries(modelPrefs)
       .filter(([, pref]: [string, any]) => pref && typeof pref === 'object' && Array.isArray(pref.models))
-      .sort(([_, a]: any, [__, b]: any) => (a.order || 0) - (b.order || 0))
+      .sort(([_, a]: [string, any], [__, b]: [string, any]) => (a.order || 0) - (b.order || 0))
 
     console.log('[MCP] getTopModelsFromPreferences - Sorted providers:',
       providersSorted.map(([p, pref]: any) => `${p}(order:${pref.order}, models:${pref.models})`))
