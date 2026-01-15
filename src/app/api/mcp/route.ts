@@ -1656,6 +1656,10 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         excluded_providers: args.exclude_providers
       })
     }
+  } else {
+    // DEBUG: Log why request_providers was skipped
+    console.log(`[MCP DEBUG] request_providers block SKIPPED. args.request_providers =`, args.request_providers)
+    console.log(`[MCP DEBUG] Condition check: exists=${!!args.request_providers}, isArray=${Array.isArray(args.request_providers)}, length=${args.request_providers?.length}`)
   }
 
   // Handle request_providers parameter - prioritize specific providers for API-only perspectives
@@ -1680,7 +1684,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
       // If a specific model is requested, try to use that first
       if (reqProvider.model) {
         // Check if this model exists in user's API keys
-        const hasKey = apiKeys?.find(k => k.default_model === reqProvider.model)
+        const hasKey = apiKeys?.find(key => key.default_model === reqProvider.model)
         if (hasKey) {
           requestedModels.push(reqProvider.model)
           console.log(`[MCP] Added requested model: ${reqProvider.model} (provider: ${normalizedReqProvider})`)
