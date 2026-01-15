@@ -1,6 +1,9 @@
 {
   "name": "polydev-ai",
-  "version": "1.8.59",
+  "version": "1.8.60",
+  "engines": {
+    "node": ">=20.x <=22.x"
+  },
   "mcpName": "io.github.backspacevenkat/perspectives",
   "description": "Agentic workflow assistant with CLI integration - get diverse perspectives from multiple LLMs when stuck or need enhanced reasoning",
   "keywords": [
