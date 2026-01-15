@@ -131,8 +131,14 @@ export async function GET(request: NextRequest) {
       // Non-fatal - continue with default
     }
 
+    // DEBUG: Log what we got from user_preferences
+    console.log('[Model Preferences] userPrefs:', JSON.stringify(userPrefs))
+    console.log('[Model Preferences] mcp_settings:', JSON.stringify(userPrefs?.mcp_settings))
+    console.log('[Model Preferences] perspectives_per_message raw:', (userPrefs?.mcp_settings as any)?.perspectives_per_message)
+
     // Get perspectives_per_message from user settings (default 2, range 1-10)
     const perspectivesPerMessage = (userPrefs?.mcp_settings as any)?.perspectives_per_message || 2
+    console.log('[Model Preferences] Final perspectivesPerMessage:', perspectivesPerMessage)
 
     // Normalize provider names to prevent duplicates (gemini = google, x-ai = xai)
     const normalizeProvider = (provider: string): string => {
