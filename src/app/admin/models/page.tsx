@@ -794,7 +794,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     className="w-full border border-slate-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900"
-                    placeholder="gpt-5.1, claude-sonnet-4.5"
+                    placeholder="gpt-5.2, claude-sonnet-4.5"
                     required
                   />
                 </div>
@@ -812,7 +812,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                     className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
                       formErrors.displayName ? 'border-red-500 bg-red-50' : 'border-slate-300'
                     }`}
-                    placeholder="GPT-5.1, Claude Sonnet 4.5"
+                    placeholder="GPT-5.2, Claude Sonnet 4.5"
                     required
                   />
                   {formErrors.displayName && (
@@ -834,7 +834,7 @@ function ModelEditForm({ model, onSave, onCancel, onDelete }: {
                       className={`flex-1 border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-900 ${
                         formErrors.friendlyId ? 'border-red-500 bg-red-50' : 'border-slate-300'
                       }`}
-                      placeholder="gpt-5.1, claude-sonnet-4.5"
+                      placeholder="gpt-5.2, claude-sonnet-4.5"
                     />
                     <button
                       type="button"

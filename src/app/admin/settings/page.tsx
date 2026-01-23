@@ -334,14 +334,14 @@ export default function AdminSettings() {
                       placeholder="10000"
                     />
                     <p className="text-xs text-slate-600 mt-1">
-                      Default maximum output tokens for MCP get_perspectives requests when not explicitly specified. Recommended: 10,000+ for models with thinking tokens (Gemini 2.5 Pro)
+                      Default maximum output tokens for MCP get_perspectives requests when not explicitly specified. Recommended: 10,000+ for models with thinking tokens (Gemini 3 Pro)
                     </p>
                   </div>
                   <div className="bg-slate-50 border border-slate-200 rounded-md p-4">
                     <h3 className="text-sm font-medium text-slate-900 mb-2">ℹ️ About MCP Max Tokens</h3>
                     <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
                       <li>Used when <code className="bg-slate-200 px-1 rounded">max_tokens</code> parameter is not provided in MCP requests</li>
-                      <li>Prevents MAX_TOKENS errors with models that use thinking tokens (e.g., Gemini 2.5 Pro)</li>
+                      <li>Prevents MAX_TOKENS errors with models that use thinking tokens (e.g., Gemini 3 Pro)</li>
                       <li>Higher values allow more comprehensive responses but may increase costs</li>
                       <li>Users can override this per-request by providing <code className="bg-slate-200 px-1 rounded">max_tokens</code> parameter</li>
                     </ul>

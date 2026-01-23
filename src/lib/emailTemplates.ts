@@ -40,7 +40,7 @@ export const emailTemplates = {
           <ul style="padding-left: 20px;">
             <li style="margin-bottom: 10px;"><strong style="color: #0f172a;">${planInfo.credits} credits/month</strong> - Use across all AI models</li>
             <li style="margin-bottom: 10px;"><strong>Credits rollover</strong> - Unused credits carry forward while subscribed</li>
-            <li style="margin-bottom: 10px;"><strong>340+ AI models</strong> - GPT-5.1, Claude Opus 4.5, Gemini 3.0 Pro, and more</li>
+            <li style="margin-bottom: 10px;"><strong>340+ AI models</strong> - GPT-5.2, Claude Opus 4.5, Gemini 3 Pro, and more</li>
             <li style="margin-bottom: 10px;"><strong>BYOK support</strong> - Use your own API keys for unlimited usage</li>
             <li style="margin-bottom: 10px;"><strong>Priority support</strong> - Get help when you need it</li>
             ${isPro ? '<li style="margin-bottom: 10px;"><strong>Advanced analytics</strong> - Track your usage in detail</li>' : ''}
@@ -50,7 +50,7 @@ export const emailTemplates = {
         <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #0284c7;">
           <h3 style="color: #0369a1; margin-top: 0;">How Credits Work</h3>
           <p style="margin: 0; color: #0c4a6e;">
-            <strong>Premium models</strong> (GPT-5.1, Claude Opus 4.5) = 20 credits<br>
+            <strong>Premium models</strong> (GPT-5.2, Claude Opus 4.5) = 20 credits<br>
             <strong>Normal models</strong> = 4 credits<br>
             <strong>Eco models</strong> = 1 credit
           </p>
@@ -78,12 +78,12 @@ Your subscription is now active and ready to use.
 Your ${planName} Plan Includes:
 - ${planInfo.credits} credits/month - Use across all AI models
 - Credits rollover - Unused credits carry forward while subscribed
-- 340+ AI models - GPT-5.1, Claude Opus 4.5, Gemini 3.0 Pro, and more
+- 340+ AI models - GPT-5.2, Claude Opus 4.5, Gemini 3 Pro, and more
 - BYOK support - Use your own API keys for unlimited usage
 - Priority support - Get help when you need it
 ${isPro ? '- Advanced analytics - Track your usage in detail\n' : ''}
 How Credits Work:
-- Premium models (GPT-5.1, Claude Opus 4.5) = 20 credits
+- Premium models (GPT-5.2, Claude Opus 4.5) = 20 credits
 - Normal models = 4 credits
 - Eco models = 1 credit
 
@@ -425,7 +425,7 @@ The Polydev Team
         <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #0284c7;">
           <h3 style="color: #0369a1; margin-top: 0;">How Credits Work</h3>
           <p style="margin: 0; color: #0c4a6e;">
-            <strong>Premium models</strong> (GPT-5.1, Claude Opus 4.5) = 20 credits<br>
+            <strong>Premium models</strong> (GPT-5.2, Claude Opus 4.5) = 20 credits<br>
             <strong>Normal models</strong> = 4 credits<br>
             <strong>Eco models</strong> = 1 credit
           </p>
@@ -471,7 +471,7 @@ Welcome to Polydev!
 500 free credits are ready to use across 340+ AI models.
 
 How Credits Work:
-- Premium models (GPT-5.1, Claude Opus 4.5) = 20 credits
+- Premium models (GPT-5.2, Claude Opus 4.5) = 20 credits
 - Normal models = 4 credits
 - Eco models = 1 credit
 
@@ -646,7 +646,7 @@ The Polydev Team
         <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #0284c7;">
           <h3 style="color: #0369a1; margin-top: 0;">How to Use Your Credits</h3>
           <p style="margin: 0; color: #0c4a6e;">
-            <strong>Premium models</strong> (GPT-5.1, Claude Opus 4.5) = 20 credits<br>
+            <strong>Premium models</strong> (GPT-5.2, Claude Opus 4.5) = 20 credits<br>
             <strong>Normal models</strong> = 4 credits<br>
             <strong>Eco models</strong> = 1 credit
           </p>
@@ -692,7 +692,7 @@ You've received ${creditsReceived} bonus credits${referrerName ? ` thanks to you
 Your Welcome Bonus: ${creditsReceived} bonus credits added to your account
 
 How to Use Your Credits:
-- Premium models (GPT-5.1, Claude Opus 4.5) = 20 credits
+- Premium models (GPT-5.2, Claude Opus 4.5) = 20 credits
 - Normal models = 4 credits
 - Eco models = 1 credit
 

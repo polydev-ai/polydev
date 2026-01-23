@@ -207,7 +207,7 @@ export default function SWEBenchPaperPage() {
                     <p className="text-white text-xs mt-1 truncate">&quot;Consider option B for...&quot;</p>
                   </div>
                   <div className="bg-slate-800 rounded px-3 py-2">
-                    <span className="text-slate-400 text-xs">Gemini 3.0 Pro</span>
+                    <span className="text-slate-400 text-xs">Gemini 3 Pro</span>
                     <p className="text-white text-xs mt-1 truncate">&quot;The pattern here is...&quot;</p>
                   </div>
                   <div className="bg-slate-800 rounded px-3 py-2">

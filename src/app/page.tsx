@@ -60,10 +60,18 @@ function TypewriterText({ texts, delay = 50, pauseDuration = 3000 }: {
 const PROVIDERS = [
   { name: 'OpenAI', logo: 'https://models.dev/logos/openai.svg' },
   { name: 'Anthropic', logo: 'https://models.dev/logos/anthropic.svg' },
-  { name: 'Google', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png' },
+  { name: 'Google', logo: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Google_Gemini_logo_2025.svg' },
   { name: 'xAI', logo: 'https://models.dev/logos/xai.svg' },
   { name: 'Groq', logo: 'https://models.dev/logos/groq.svg' },
   { name: 'OpenRouter', logo: 'https://models.dev/logos/openrouter.svg' }
+]
+
+const IDE_TOOLS = [
+  { name: 'Claude Code', logo: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/dark/claude-color.png' },
+  { name: 'Cursor', logo: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/dark/cursor.png' },
+  { name: 'Cline', logo: 'https://cline.bot/favicon.svg' },
+  { name: 'Windsurf', logo: 'https://windsurf.com/favicon.svg' },
+  { name: 'Continue', logo: 'https://www.continue.dev/favicon.ico' }
 ]
 
 const PROBLEM_SCENARIOS = [
@@ -94,19 +102,24 @@ const CODE_EXAMPLES = [
 }`,
     responses: [
       {
-        model: "Claude Sonnet 4.5",
+        model: "Claude Opus 4.5",
         avatar: "https://models.dev/logos/anthropic.svg",
         text: "Critical N+1 issue. Use JOIN or DataLoader to batch queries. Add query monitoring with pg-stats. Reduces 10k queries to 1."
       },
       {
-        model: "GPT-5.1",
+        model: "GPT-5.2",
         avatar: "https://models.dev/logos/openai.svg",
         text: "Implement eager loading with Prisma or TypeORM. Add Redis caching layer. Use database connection pooling for scale."
       },
       {
-        model: "Gemini 3.0 Pro",
-        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+        model: "Gemini 3 Pro",
+        avatar: "https://upload.wikimedia.org/wikipedia/commons/4/45/Google_Gemini_logo_2025.svg",
         text: "Batch with single LEFT JOIN query. Add GraphQL DataLoader pattern. Implement query result caching with 5min TTL."
+      },
+      {
+        model: "Grok 4.1",
+        avatar: "https://models.dev/logos/xai.svg",
+        text: "Use SQL window functions for bulk fetch. Consider materialized views for frequent queries. Add read replicas for scaling."
       }
     ]
   },
@@ -131,19 +144,24 @@ const CODE_EXAMPLES = [
 }`,
     responses: [
       {
-        model: "Claude Sonnet 4.5",
+        model: "Claude Opus 4.5",
         avatar: "https://models.dev/logos/anthropic.svg",
         text: "Remove event listeners in cleanup. Use WeakMap for event storage. Add memory profiling to catch leaks before deploy."
       },
       {
-        model: "GPT-5.1",
+        model: "GPT-5.2",
         avatar: "https://models.dev/logos/openai.svg",
         text: "Implement proper lifecycle management. Use AbortController for cleanup. Add heap snapshots to CI/CD pipeline."
       },
       {
-        model: "Gemini 3.0 Pro",
-        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+        model: "Gemini 3 Pro",
+        avatar: "https://upload.wikimedia.org/wikipedia/commons/4/45/Google_Gemini_logo_2025.svg",
         text: "Store listener refs for cleanup. Use FinalizationRegistry API. Add automated memory regression tests with Puppeteer."
+      },
+      {
+        model: "Grok 4.1",
+        avatar: "https://models.dev/logos/xai.svg",
+        text: "Apply singleton pattern for listener registration. Use WeakRef for callback storage. Monitor with Performance Observer API."
       }
     ]
   },
@@ -164,19 +182,24 @@ const CODE_EXAMPLES = [
 })`,
     responses: [
       {
-        model: "Claude Sonnet 4.5",
+        model: "Claude Opus 4.5",
         avatar: "https://models.dev/logos/anthropic.svg",
         text: "CRITICAL: Use jwt.verify() not decode(). Add secret key validation. Implement token rotation and rate limiting immediately."
       },
       {
-        model: "GPT-5.1",
+        model: "GPT-5.2",
         avatar: "https://models.dev/logos/openai.svg",
         text: "Replace with verified JWT library. Add Redis session store. Implement refresh tokens with short-lived access tokens."
       },
       {
-        model: "Gemini 3.0 Pro",
-        avatar: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png",
+        model: "Gemini 3 Pro",
+        avatar: "https://upload.wikimedia.org/wikipedia/commons/4/45/Google_Gemini_logo_2025.svg",
         text: "Use passport.js with proper validation. Add JWKS endpoint verification. Implement distributed session management with TTL."
+      },
+      {
+        model: "Grok 4.1",
+        avatar: "https://models.dev/logos/xai.svg",
+        text: "Add signature verification with RS256. Implement token blacklisting for revocation. Use asymmetric keys for better security."
       }
     ]
   }
@@ -193,7 +216,7 @@ const FAQ_DATA = [
   },
   {
     question: "Which models are available?",
-    answer: "346+ models from 37+ providers including Claude Sonnet 4.5, GPT-5.1, Gemini 3.0 Pro, Grok 4.1, DeepSeek, and many more. The full list updates automatically in your dashboard."
+    answer: "346+ models from 37+ providers including Claude Opus 4.5, GPT-5.2, Gemini 3 Pro, Grok 4.1, DeepSeek, and many more. The full list updates automatically in your dashboard."
   },
   {
     question: "How is this different from ChatGPT/Claude separately?",
@@ -379,7 +402,7 @@ export default function LandingPage() {
               </span>
             </h1>
             <p className="text-lg text-slate-600 mb-6 leading-relaxed max-w-2xl mx-auto">
-              Query Claude Sonnet 4.5, GPT-5.1, Gemini 3.0, Grok 4.1 and more simultaneously—right from your IDE.
+              Query Claude Opus 4.5, GPT-5.2, Gemini 3 Pro, Grok 4.1 and more simultaneously—right from your IDE.
               Different models catch different things. Get unstuck faster.
             </p>
 
@@ -401,8 +424,23 @@ export default function LandingPage() {
             </div>
 
             {/* Simplified stats - focus on value */}
-            <div className="flex items-center justify-center gap-6 text-sm text-slate-500">
-              <span>Works with Claude Code, Cursor, Cline, Windsurf</span>
+            <div className="flex flex-col items-center justify-center gap-3 text-sm text-slate-500">
+              <span>Works with</span>
+              <div className="flex items-center gap-4 flex-wrap justify-center">
+                {IDE_TOOLS.map((tool, i) => (
+                  <motion.div
+                    key={tool.name}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.05 * i }}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    <Image src={tool.logo} alt={tool.name} width={16} height={16} className="rounded" />
+                    <span className="text-xs font-medium text-slate-700">{tool.name}</span>
+                  </motion.div>
+                ))}
+              </div>
             </div>
           </motion.div>
 
@@ -896,7 +934,7 @@ export default function LandingPage() {
                 </li>
               </ul>
 
-              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-3 bg-white text-slate-900 rounded-lg font-medium hover:bg-slate-100 transition-colors">
+              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors">
                 Upgrade
               </Link>
             </motion.div>

@@ -288,7 +288,7 @@ export default function Pricing() {
                 How do credits work?
               </h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                Credits are used when you query AI models. Premium models (like GPT-5.1, Claude Opus 4.5)
+                Credits are used when you query AI models. Premium models (like GPT-5.2, Claude Opus 4.5)
                 cost 20 credits. Normal models cost 4 credits. Eco models cost 1 credit.
                 Use your credits however you want across all models.
               </p>
@@ -333,8 +333,8 @@ export default function Pricing() {
                 Which AI models are included?
               </h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                All plans include access to 340+ AI models from 37+ providers: GPT-5.1,
-                Claude Opus 4.5, Gemini 3.0 Pro, Grok 4.1, DeepSeek, Llama, and many more.
+                All plans include access to 340+ AI models from 37+ providers: GPT-5.2,
+                Claude Opus 4.5, Gemini 3 Pro, Grok 4.1, DeepSeek, Llama, and many more.
                 The full list is available in your dashboard.
               </p>
             </div>

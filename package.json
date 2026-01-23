@@ -1,6 +1,6 @@
 {
   "name": "polydev-ai",
-  "version": "1.8.60",
+  "version": "1.8.61",
   "engines": {
     "node": ">=20.x <=22.x"
   },
