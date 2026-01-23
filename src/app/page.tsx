@@ -67,10 +67,10 @@ const PROVIDERS = [
 ]
 
 const IDE_TOOLS = [
-  { name: 'Claude Code', logo: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/dark/claude-color.png' },
-  { name: 'Cursor', logo: 'https://registry.npmmirror.com/@lobehub/icons-static-png/latest/files/dark/cursor.png' },
-  { name: 'Cline', logo: 'https://cline.bot/favicon.svg' },
-  { name: 'Windsurf', logo: 'https://windsurf.com/favicon.svg' },
+  { name: 'Claude Code', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/dark/claude-color.png' },
+  { name: 'Cursor', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/dark/cursor.png' },
+  { name: 'Cline', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/dark/cline.png' },
+  { name: 'Windsurf', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/dark/windsurf.png' },
   { name: 'Continue', logo: 'https://www.continue.dev/favicon.ico' }
 ]
 
