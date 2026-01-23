@@ -449,45 +449,46 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
     } else {
-      // Managed mode - validate MCP token if provided
-      if (user_token) {
-        const tokenData = await validateUserToken(user_token)
-        
-        if (!tokenData) {
-          return NextResponse.json({ 
-            error: 'Invalid token. Generate a new one at: https://polydev.ai/dashboard/mcp-tools' 
-          }, { status: 401 })
-        }
-        userId = tokenData.user_id
-        
-        // Check message limits for MCP token user
-        try {
-          const messageCheck = await subscriptionManager.canSendMessage(userId!, true)
-          if (!messageCheck.canSend) {
-            return NextResponse.json({ 
-              error: messageCheck.reason || 'Message limit exceeded' 
-            }, { status: 429 })
-          }
-        } catch (error: any) {
-          console.error('Error checking message limits (managed mode):', error)
-          return NextResponse.json({ 
-            error: 'Error checking message limits',
-            details: error.message
-          }, { status: 500 })
-        }
+      // Managed mode - REQUIRE user_token for all requests
+      // No anonymous/unauthenticated access allowed
+      if (!user_token) {
+        return NextResponse.json({ 
+          error: 'Authentication required. Please provide a valid user_token. Generate one at: https://polydev.ai/dashboard/mcp-tools' 
+        }, { status: 401 })
       }
-      // If no user_token is provided in managed mode, skip message limits 
-      // (this is for Polydev's own managed API keys without user restrictions)
       
-      // Get user's API keys from database for managed mode (if user is identified)
-      if (userId) {
-        const userKeys = await getUserApiKeys(userId)
-        
-        // Convert user keys to simple format for compatibility
-        Object.keys(userKeys).forEach(provider => {
-          availableKeys[provider] = userKeys[provider].key
-        })
+      const tokenData = await validateUserToken(user_token)
+      
+      if (!tokenData) {
+        return NextResponse.json({ 
+          error: 'Invalid token. Generate a new one at: https://polydev.ai/dashboard/mcp-tools' 
+        }, { status: 401 })
       }
+      userId = tokenData.user_id
+      
+      // Check message limits for MCP token user
+      try {
+        const messageCheck = await subscriptionManager.canSendMessage(userId!, true)
+        if (!messageCheck.canSend) {
+          return NextResponse.json({ 
+            error: messageCheck.reason || 'Message limit exceeded' 
+          }, { status: 429 })
+        }
+      } catch (error: any) {
+        console.error('Error checking message limits (managed mode):', error)
+        return NextResponse.json({ 
+          error: 'Error checking message limits',
+          details: error.message
+        }, { status: 500 })
+      }
+      
+      // Get user's API keys from database for managed mode
+      const userKeys = await getUserApiKeys(userId!)
+      
+      // Convert user keys to simple format for compatibility
+      Object.keys(userKeys).forEach(provider => {
+        availableKeys[provider] = userKeys[provider].key
+      })
       
       // Fallback to Polydev managed keys if user has no keys configured
       if (Object.keys(availableKeys).length === 0) {
@@ -659,20 +660,24 @@ export async function POST(request: NextRequest) {
       cached: false
     }
 
-    // Increment message count for successful requests (only if user is tracked)
-    if (userId) {
-      try {
-        await subscriptionManager.incrementMessageCount(userId, true, 'chat')
-      } catch (error) {
-        console.error('Failed to increment message count:', error)
-        // Don't fail the request, just log the error
-      }
+    // SECURITY: Ensure userId is always set - no anonymous requests allowed
+    if (!userId) {
+      console.error('SECURITY: Request reached end without userId - this should never happen')
+      return NextResponse.json({ 
+        error: 'Authentication required. No anonymous requests allowed.' 
+      }, { status: 401 })
     }
 
-    // Log I/O for persistence
-    if (userId) {
-      await logIOToDatabase(userId, prompt, result)
+    // Increment message count for successful requests
+    try {
+      await subscriptionManager.incrementMessageCount(userId, true, 'chat')
+    } catch (error) {
+      console.error('Failed to increment message count:', error)
+      // Don't fail the request, just log the error
     }
+
+    // Log I/O for persistence - ALL requests must be logged
+    await logIOToDatabase(userId, prompt, result)
 
     return NextResponse.json(result)
     
