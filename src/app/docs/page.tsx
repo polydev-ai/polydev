@@ -150,7 +150,7 @@ session_timeout = 600`
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer pd_your_token_here" \\
   -d '{
-    "model": "gpt-5.1",
+    "model": "gpt-5.2",
     "messages": [
       {"role": "user", "content": "Hello!"}
     ]
@@ -381,9 +381,9 @@ npm root -g
             <div className="border border-slate-200 rounded-lg p-4">
               <h3 className="font-medium text-slate-900 mb-2">OpenAI</h3>
               <ul className="text-sm text-slate-600 space-y-1">
-                <li>gpt-5.1</li>
-                <li>gpt-5.1-mini</li>
-                <li>gpt-5.1-nano</li>
+                <li>gpt-5.2</li>
+                <li>gpt-5.2-mini</li>
+                <li>gpt-5.2-nano</li>
               </ul>
             </div>
             <div className="border border-slate-200 rounded-lg p-4">
@@ -397,8 +397,8 @@ npm root -g
             <div className="border border-slate-200 rounded-lg p-4">
               <h3 className="font-medium text-slate-900 mb-2">Google</h3>
               <ul className="text-sm text-slate-600 space-y-1">
-                <li>gemini-3.0-pro</li>
-                <li>gemini-3.0-flash</li>
+                <li>gemini-3-pro</li>
+                <li>gemini-3-flash</li>
               </ul>
             </div>
             <div className="border border-slate-200 rounded-lg p-4">

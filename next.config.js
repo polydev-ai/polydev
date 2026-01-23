@@ -14,7 +14,10 @@ const nextConfig = {
       { protocol: 'https', hostname: 'pbs.twimg.com', pathname: '/**' },
       { protocol: 'https', hostname: 'upload.wikimedia.org', pathname: '/**' },
       { protocol: 'https', hostname: 'uxwing.com', pathname: '/**' },
-      { protocol: 'https', hostname: 'cdn.jsdelivr.net', pathname: '/**' }
+      { protocol: 'https', hostname: 'cdn.jsdelivr.net', pathname: '/**' },
+      { protocol: 'https', hostname: 'registry.npmmirror.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'windsurf.com', pathname: '/**' },
+      { protocol: 'https', hostname: 'www.continue.dev', pathname: '/**' }
     ]
   },
   experimental: {

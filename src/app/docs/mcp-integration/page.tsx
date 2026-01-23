@@ -688,7 +688,7 @@ session_timeout = 600`
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer pd_your_token_here" \\
   -d '{
-    "model": "gpt-5.1",
+    "model": "gpt-5.2",
     "messages": [
       {"role": "user", "content": "Hello!"}
     ]
@@ -712,7 +712,7 @@ const client = new OpenAI({
 })
 
 const response = await client.chat.completions.create({
-  model: 'gpt-5.1', // or any supported model
+  model: 'gpt-5.2', // or any supported model
   messages: [{ role: 'user', content: 'Hello!' }]
 })`}
                 id="api-sdk"
@@ -971,9 +971,9 @@ Authorization: Bearer pd_your_token_here`
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
               <h3 className="font-semibold text-slate-900 mb-3">OpenAI</h3>
               <ul className="text-sm text-slate-600 space-y-1">
-                <li><code className="text-xs bg-white px-1 rounded">gpt-5.1</code></li>
-                <li><code className="text-xs bg-white px-1 rounded">gpt-5.1-mini</code></li>
-                <li><code className="text-xs bg-white px-1 rounded">gpt-5.1-nano</code></li>
+                <li><code className="text-xs bg-white px-1 rounded">gpt-5.2</code></li>
+                <li><code className="text-xs bg-white px-1 rounded">gpt-5.2-mini</code></li>
+                <li><code className="text-xs bg-white px-1 rounded">gpt-5.2-nano</code></li>
               </ul>
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
@@ -987,8 +987,8 @@ Authorization: Bearer pd_your_token_here`
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
               <h3 className="font-semibold text-slate-900 mb-3">Google</h3>
               <ul className="text-sm text-slate-600 space-y-1">
-                <li><code className="text-xs bg-white px-1 rounded">gemini-3.0-pro</code></li>
-                <li><code className="text-xs bg-white px-1 rounded">gemini-3.0-flash</code></li>
+                <li><code className="text-xs bg-white px-1 rounded">gemini-3-pro</code></li>
+                <li><code className="text-xs bg-white px-1 rounded">gemini-3-flash</code></li>
               </ul>
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5">
