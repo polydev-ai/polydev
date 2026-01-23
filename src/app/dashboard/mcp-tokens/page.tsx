@@ -65,7 +65,8 @@ export default function MCPTokensPage() {
       setLoading(true)
 
       const response = await fetch('/api/mcp/tokens', {
-        credentials: 'include'
+        credentials: 'include',
+        cache: 'no-store'  // Prevent browser caching to ensure fresh data after updates
       })
       const data = await response.json()
 
@@ -123,6 +124,10 @@ export default function MCPTokensPage() {
   }
 
   const toggleTokenActive = async (tokenId: string, active: boolean) => {
+    // Optimistic update - immediately reflect the change in UI
+    const previousTokens = [...tokens]
+    setTokens(tokens.map(t => t.id === tokenId ? { ...t, active: !active } : t))
+    
     try {
       const response = await fetch('/api/mcp/tokens', {
         method: 'PATCH',
@@ -138,8 +143,11 @@ export default function MCPTokensPage() {
         throw new Error(data.error || 'Failed to update token')
       }
 
-      await fetchTokens(true) // Force refresh after toggling
+      // Refresh to ensure consistency with server
+      await fetchTokens(true)
     } catch (err: any) {
+      // Rollback on error
+      setTokens(previousTokens)
       setError(err.message)
     }
   }
