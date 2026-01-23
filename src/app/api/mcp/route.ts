@@ -1285,7 +1285,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
   }
 
   // Check message limits and subscription status
-  const messageCheck = await subscriptionManager.canSendMessage(user.id)
+  const messageCheck = await subscriptionManager.canSendMessage(user.id, true)
   if (!messageCheck.canSend) {
     throw new Error(messageCheck.reason || 'Message limit exceeded')
   }
@@ -1296,7 +1296,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                       args.source === 'cli'
 
   if (isCliRequest) {
-    const cliCheck = await subscriptionManager.canUseCLI(user.id)
+    const cliCheck = await subscriptionManager.canUseCLI(user.id, true)
     if (!cliCheck.canUse) {
       throw new Error(cliCheck.reason || 'CLI access requires Pro subscription')
     }
