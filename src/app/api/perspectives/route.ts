@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 import { createClient } from '../../utils/supabase/server'
 import { subscriptionManager } from '@/lib/subscriptionManager'
 
@@ -357,8 +358,7 @@ async function validateUserToken(userToken: string) {
 }
 
 function hashToken(token: string): string {
-  // Simple hash for demo - use proper crypto in production
-  return Buffer.from(token).toString('base64')
+  return createHash('sha256').update(token).digest('hex')
 }
 
 async function logIOToDatabase(userId: string, input: string, output: PerspectivesResponse) {
