@@ -58,20 +58,20 @@ function TypewriterText({ texts, delay = 50, pauseDuration = 3000 }: {
 }
 
 const PROVIDERS = [
-  { name: 'OpenAI', logo: 'https://models.dev/logos/openai.svg' },
-  { name: 'Anthropic', logo: 'https://models.dev/logos/anthropic.svg' },
-  { name: 'Google', logo: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Google_Gemini_logo_2025.svg' },
-  { name: 'xAI', logo: 'https://models.dev/logos/xai.svg' },
-  { name: 'Groq', logo: 'https://models.dev/logos/groq.svg' },
-  { name: 'OpenRouter', logo: 'https://models.dev/logos/openrouter.svg' }
+  { name: 'OpenAI', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/openai.png' },
+  { name: 'Anthropic', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/anthropic.png' },
+  { name: 'Google', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/gemini-color.png' },
+  { name: 'xAI', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/grok.png' },
+  { name: 'Groq', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/groq-color.png' },
+  { name: 'OpenRouter', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/openrouter.png' }
 ]
 
 const IDE_TOOLS = [
-  { name: 'Claude Code', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/dark/claude-color.png' },
-  { name: 'Cursor', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/dark/cursor.png' },
-  { name: 'Cline', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/dark/cline.png' },
-  { name: 'Windsurf', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/dark/windsurf.png' },
-  { name: 'Continue', logo: 'https://www.continue.dev/favicon.ico' }
+  { name: 'Claude Code', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/claude-color.png' },
+  { name: 'Cursor', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/cursor.png' },
+  { name: 'Cline', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/cline.png' },
+  { name: 'Windsurf', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/windsurf.png' },
+  { name: 'Continue', logo: 'https://cdn.prod.website-files.com/663e06c56841363663ffbbcf/663e1b9fb023f0b622ad3608_log-text.svg' }
 ]
 
 const PROBLEM_SCENARIOS = [
@@ -103,22 +103,22 @@ const CODE_EXAMPLES = [
     responses: [
       {
         model: "Claude Opus 4.5",
-        avatar: "https://models.dev/logos/anthropic.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/claude-color.png",
         text: "Critical N+1 issue. Use JOIN or DataLoader to batch queries. Add query monitoring with pg-stats. Reduces 10k queries to 1."
       },
       {
         model: "GPT-5.2",
-        avatar: "https://models.dev/logos/openai.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/openai.png",
         text: "Implement eager loading with Prisma or TypeORM. Add Redis caching layer. Use database connection pooling for scale."
       },
       {
         model: "Gemini 3 Pro",
-        avatar: "https://upload.wikimedia.org/wikipedia/commons/4/45/Google_Gemini_logo_2025.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/gemini-color.png",
         text: "Batch with single LEFT JOIN query. Add GraphQL DataLoader pattern. Implement query result caching with 5min TTL."
       },
       {
         model: "Grok 4.1",
-        avatar: "https://models.dev/logos/xai.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/grok.png",
         text: "Use SQL window functions for bulk fetch. Consider materialized views for frequent queries. Add read replicas for scaling."
       }
     ]
@@ -145,22 +145,22 @@ const CODE_EXAMPLES = [
     responses: [
       {
         model: "Claude Opus 4.5",
-        avatar: "https://models.dev/logos/anthropic.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/claude-color.png",
         text: "Remove event listeners in cleanup. Use WeakMap for event storage. Add memory profiling to catch leaks before deploy."
       },
       {
         model: "GPT-5.2",
-        avatar: "https://models.dev/logos/openai.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/openai.png",
         text: "Implement proper lifecycle management. Use AbortController for cleanup. Add heap snapshots to CI/CD pipeline."
       },
       {
         model: "Gemini 3 Pro",
-        avatar: "https://upload.wikimedia.org/wikipedia/commons/4/45/Google_Gemini_logo_2025.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/gemini-color.png",
         text: "Store listener refs for cleanup. Use FinalizationRegistry API. Add automated memory regression tests with Puppeteer."
       },
       {
         model: "Grok 4.1",
-        avatar: "https://models.dev/logos/xai.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/grok.png",
         text: "Apply singleton pattern for listener registration. Use WeakRef for callback storage. Monitor with Performance Observer API."
       }
     ]
@@ -183,22 +183,22 @@ const CODE_EXAMPLES = [
     responses: [
       {
         model: "Claude Opus 4.5",
-        avatar: "https://models.dev/logos/anthropic.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/claude-color.png",
         text: "CRITICAL: Use jwt.verify() not decode(). Add secret key validation. Implement token rotation and rate limiting immediately."
       },
       {
         model: "GPT-5.2",
-        avatar: "https://models.dev/logos/openai.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/openai.png",
         text: "Replace with verified JWT library. Add Redis session store. Implement refresh tokens with short-lived access tokens."
       },
       {
         model: "Gemini 3 Pro",
-        avatar: "https://upload.wikimedia.org/wikipedia/commons/4/45/Google_Gemini_logo_2025.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/gemini-color.png",
         text: "Use passport.js with proper validation. Add JWKS endpoint verification. Implement distributed session management with TTL."
       },
       {
         model: "Grok 4.1",
-        avatar: "https://models.dev/logos/xai.svg",
+        avatar: "https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/grok.png",
         text: "Add signature verification with RS256. Implement token blacklisting for revocation. Use asymmetric keys for better security."
       }
     ]

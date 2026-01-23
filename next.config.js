@@ -17,7 +17,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'cdn.jsdelivr.net', pathname: '/**' },
       { protocol: 'https', hostname: 'registry.npmmirror.com', pathname: '/**' },
       { protocol: 'https', hostname: 'windsurf.com', pathname: '/**' },
-      { protocol: 'https', hostname: 'www.continue.dev', pathname: '/**' }
+      { protocol: 'https', hostname: 'www.continue.dev', pathname: '/**' },
+      { protocol: 'https', hostname: 'cdn.prod.website-files.com', pathname: '/**' }
     ]
   },
   experimental: {
