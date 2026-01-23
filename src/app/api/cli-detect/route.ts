@@ -542,18 +542,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Skip token validation for dashboard checks (allow temporary detection)
-    const isDashboardCheck = user_id === 'dashboard-check' && mcp_token === 'temp-token'
-    
-    if (!isDashboardCheck) {
-      // Verify MCP token for real requests
-      const isValidToken = await verifyMCPToken(user_id, mcp_token)
-      if (!isValidToken) {
-        return NextResponse.json(
-          { error: 'Invalid or expired MCP token' },
-          { status: 401 }
-        )
-      }
+    // Verify MCP token
+    const isValidToken = await verifyMCPToken(user_id, mcp_token)
+    if (!isValidToken) {
+      return NextResponse.json(
+        { error: 'Invalid or expired MCP token' },
+        { status: 401 }
+      )
     }
 
     console.log(`🔍 Starting CLI detection for user: ${user_id}`)
