@@ -933,11 +933,20 @@ export async function POST(request: NextRequest) {
           selectedProvider = requiredProvider
           selectedConfig = providerConfigs[requiredProvider].api
           fallbackMethod = 'api'
-          // Resolve API-specific model ID
-          actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+          
+          // For user API keys, also check model_tiers.api_model_id first
+          // This allows proper mapping even for user's custom model names
+          const apiModelIdFromTiers = await getApiModelIdFromModelTiers(modelId, supabase)
+          if (apiModelIdFromTiers) {
+            actualModelId = apiModelIdFromTiers
+            console.log(`[Selection] User API key: Using api_model_id from model_tiers: ${modelId} → ${actualModelId}`)
+          } else {
+            // Fall back to standard model resolution
+            actualModelId = await resolveProviderModelId(modelId, requiredProvider)
+          }
           console.log(`[Selection] Selected user API key for ${requiredProvider}`)
         }
-
+        
         // Priority 3: Admin system API keys (platform-provided Polydev keys)
         if (!selectedProvider && providerConfigs[requiredProvider]?.admin) {
           console.log(`[Selection Debug] Selecting admin key for ${requiredProvider}:`, {
@@ -2034,18 +2043,18 @@ export async function POST(request: NextRequest) {
             
             // Calculate pricing if available
             const usage = parseUsageData(result) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
-            let cost = null
-            console.log(`[DEBUG API Cost] Model: ${modelId}, Usage:`, usage, `ModelPricing:`, modelPricing)
+            let costInfo: any = { input_cost: 0, output_cost: 0, total_cost: 0 }
+            
             if (modelPricing && usage && (usage.prompt_tokens > 0 || usage.completion_tokens > 0)) {
               const totalCost = computeCostUSD(usage.prompt_tokens, usage.completion_tokens, modelPricing.input, modelPricing.output)
               const inputCost = ((usage.prompt_tokens || 0) / 1000000) * modelPricing.input
               const outputCost = ((usage.completion_tokens || 0) / 1000000) * modelPricing.output
-              cost = {
+              costInfo = {
                 input_cost: Number(inputCost.toFixed(6)),
                 output_cost: Number(outputCost.toFixed(6)),
                 total_cost: totalCost
               }
-              console.log(`[DEBUG API Cost] Calculated cost:`, cost)
+              console.log(`[DEBUG API Cost] Calculated cost:`, costInfo)
             } else {
               console.log(`[DEBUG API Cost] Cost calculation failed - modelPricing:`, !!modelPricing, `usage tokens:`, usage?.prompt_tokens || 0, usage?.completion_tokens || 0)
             }
@@ -2054,7 +2063,7 @@ export async function POST(request: NextRequest) {
               model: modelId,
               content: content,
               usage: usage,
-              costInfo: cost,
+              costInfo: costInfo,
               provider: `${selectedProvider} (API)`,
               fallback_method: fallbackMethod,
               providerSourceId: selectedConfig?.keyId,
@@ -2726,8 +2735,8 @@ export async function POST(request: NextRequest) {
             const inputCost = (usage.prompt_tokens / 1000000) * modelLimits.pricing.input
             const outputCost = (usage.completion_tokens / 1000000) * modelLimits.pricing.output
             costInfo = {
-              input_cost: inputCost,
-              output_cost: outputCost,
+              input_cost: Number(inputCost.toFixed(6)),
+              output_cost: Number(outputCost.toFixed(6)),
               total_cost: totalCost
             }
           }
@@ -2859,14 +2868,16 @@ export async function POST(request: NextRequest) {
         try {
           const modelLimits = await modelsDevService.getModelLimits(response.model, response.provider)
           if (modelLimits?.pricing && response.usage) {
-            const responseCost = computeCostUSD(response.usage.prompt_tokens, response.usage.completion_tokens, modelLimits.pricing.input, modelLimits.pricing.output)
-            totalCost += responseCost
-            
-            if (!providerBreakdown[response.provider]) {
-              providerBreakdown[response.provider] = { cost: 0, tokens: 0, type: 'api' }
+            const totalCost = computeCostUSD(response.usage.prompt_tokens, response.usage.completion_tokens, modelLimits.pricing.input, modelLimits.pricing.output)
+            const inputCost = (response.usage.prompt_tokens / 1000000) * modelLimits.pricing.input
+            const outputCost = (response.usage.completion_tokens / 1000000) * modelLimits.pricing.output
+            providerBreakdown[response.provider] = {
+              cost: totalCost,
+              tokens: response.usage.total_tokens,
+              type: 'api'
             }
-            providerBreakdown[response.provider].cost += responseCost
-            providerBreakdown[response.provider].tokens += (response.usage?.total_tokens || 0)
+            totalCost += totalCost
+            totalCreditsUsed += response.credits_used || 0
           }
         } catch (error) {
           console.warn(`Failed to get pricing for ${response.model}:`, error)
@@ -2917,13 +2928,11 @@ export async function POST(request: NextRequest) {
                   ? ((r as any).fallback_method === 'credits' ? 'OpenRouter (Credits)' : 'OpenRouter (API)')
                   : r!.provider,
                 usage: r!.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-                cost: (r as any).costInfo
-                  ? {
-                      input_cost: (r as any).costInfo.input_cost || 0,
-                      output_cost: (r as any).costInfo.output_cost || 0,
-                      total_cost: (r as any).costInfo.total_cost || 0
-                    }
-                  : undefined,
+                cost: {
+                  input_cost: (r as any).costInfo?.input_cost || 0,
+                  output_cost: (r as any).costInfo?.output_cost || 0,
+                  total_cost: (r as any).costInfo?.total_cost || 0
+                },
                 fallback_method: r!.fallback_method,
                 credits_used: (r as any).credits_used || 0
               }))
