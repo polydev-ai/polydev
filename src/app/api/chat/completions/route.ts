@@ -2306,7 +2306,7 @@ export async function POST(request: NextRequest) {
 
                 // Add reasoning effort for reasoning models if supported
                 if (modelData?.supports_reasoning && reasoning_effort) {
-                  retryApiOptions.reasoning_effort = reasoningEffort
+                  retryApiOptions.reasoning_effort = reasoning_effort
                 }
 
                 // Retry with admin key
