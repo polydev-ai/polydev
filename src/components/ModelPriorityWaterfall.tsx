@@ -540,8 +540,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                   <div key={tier} className="bg-slate-50 border border-slate-200 rounded-lg p-4">
                     {/* Tier Header */}
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="text-sm font-bold text-slate-400 bg-white px-2 py-1 rounded border border-slate-200">{tierIdx + 1}</span>
-                      <span className="text-base font-semibold text-slate-900 capitalize">{tier}</span>
+                      <span className="text-base font-semibold text-slate-900">Credits</span>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
@@ -556,24 +555,6 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                             {remaining} / {total}
                           </span>
                         </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => moveTier(tier, 'up')}
-                          disabled={tierIdx === 0 || saving}
-                          className="p-1.5 hover:bg-white rounded-lg disabled:opacity-30 transition-colors border border-transparent hover:border-slate-200"
-                          title="Move up"
-                        >
-                          <ChevronUp className="w-4 h-4 text-slate-600" />
-                        </button>
-                        <button
-                          onClick={() => moveTier(tier, 'down')}
-                          disabled={tierIdx === tierPriority.length - 1 || saving}
-                          className="p-1.5 hover:bg-white rounded-lg disabled:opacity-30 transition-colors border border-transparent hover:border-slate-200"
-                          title="Move down"
-                        >
-                          <ChevronDown className="w-4 h-4 text-slate-600" />
-                        </button>
                       </div>
                     </div>
 
