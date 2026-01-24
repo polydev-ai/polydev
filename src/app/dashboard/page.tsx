@@ -475,23 +475,38 @@ export default function Dashboard() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
-                <p className="text-xs text-slate-500 mb-1">Available Credits</p>
-                <p className="text-2xl font-bold text-slate-900">
-                  {Math.round(realTimeData?.creditsBalance || 0).toLocaleString()}
-                </p>
+            {/* Main Balance Display */}
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-5 mb-4 border border-slate-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Available Credits</p>
+                  <p className="text-4xl font-bold text-slate-900">
+                    {Math.round(realTimeData?.creditsBalance || 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">Ready to use</p>
+                </div>
+                <div className="h-16 w-16 rounded-full bg-slate-200/50 flex items-center justify-center">
+                  <Sparkles className="h-8 w-8 text-slate-400" />
+                </div>
               </div>
-              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
-                <p className="text-xs text-slate-500 mb-1">Credits Used</p>
-                <p className="text-2xl font-bold text-slate-900">
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <Activity className="h-3 w-3 text-slate-400" />
+                  <p className="text-xs text-slate-500">Used This Month</p>
+                </div>
+                <p className="text-xl font-bold text-slate-900">
                   {quotaData?.totalCreditsUsed || 0}
                 </p>
-                <p className="text-[10px] text-slate-400">this month</p>
               </div>
-              <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
-                <p className="text-xs text-slate-500 mb-1">Bonus Messages</p>
-                <p className="text-2xl font-bold text-slate-900">
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="h-3 w-3 text-amber-400" />
+                  <p className="text-xs text-slate-500">Bonus Messages</p>
+                </div>
+                <p className="text-xl font-bold text-slate-900">
                   {quotaData?.bonusMessages || 0}
                 </p>
               </div>

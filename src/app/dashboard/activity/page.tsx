@@ -807,7 +807,7 @@ export default function ActivityPage() {
                         <span className="font-medium">{creditsData.tierCosts.normal} credits</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-green-600">Eco</span>
+                        <span className="text-green-600">Credits Tier</span>
                         <span className="font-medium">{creditsData.tierCosts.eco} credit</span>
                       </div>
                     </div>
@@ -854,7 +854,7 @@ export default function ActivityPage() {
                       {creditsData.tierBreakdown.eco.credits > 0 && (
                       <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                         <div>
-                          <div className="font-medium text-green-800">Eco</div>
+                          <div className="font-medium text-green-800">Credits Tier</div>
                           <div className="text-sm text-green-600">{creditsData.tierBreakdown.eco.requests} requests</div>
                         </div>
                         <div className="text-right">
@@ -894,7 +894,7 @@ export default function ActivityPage() {
                               model.tier === 'eco' ? 'bg-green-50 text-green-700' :
                               'bg-blue-50 text-blue-700'
                             }>
-                              {model.tier}
+                              {model.tier === 'eco' ? 'credits' : model.tier}
                             </Badge>
                           </div>
                           <div className="text-right">
@@ -944,7 +944,7 @@ export default function ActivityPage() {
                                 tx.tier === 'eco' ? 'bg-green-50 text-green-700' :
                                 'bg-blue-50 text-blue-700'
                               }>
-                                {tx.tier}
+                                {tx.tier === 'eco' ? 'credits' : tx.tier}
                               </Badge>
                             </td>
                             <td className="py-2 pr-4 font-medium">-{tx.credits}</td>

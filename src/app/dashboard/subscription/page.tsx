@@ -634,7 +634,7 @@ export default function SubscriptionPage() {
                 {creditsAnalytics.tierBreakdown.eco.credits > 0 && (
                 <div className="bg-green-50 rounded-lg p-4 border border-green-100">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-green-700">Eco</span>
+                    <span className="text-xs font-medium text-green-700">Credits Tier</span>
                     <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200">
                       {creditsAnalytics.tierCosts.eco} credit/req
                     </Badge>
@@ -680,7 +680,7 @@ export default function SubscriptionPage() {
                             model.tier === 'eco' ? 'bg-green-50 text-green-700' :
                             'bg-blue-50 text-blue-700'
                           }`}>
-                            {model.tier}
+                            {model.tier === 'eco' ? 'credits' : model.tier}
                           </Badge>
                         </div>
                       </div>
@@ -758,7 +758,7 @@ export default function SubscriptionPage() {
                               tx.tier === 'eco' ? 'bg-green-50 text-green-700' :
                               'bg-blue-50 text-blue-700'
                             }`}>
-                              {tx.tier}
+                              {tx.tier === 'eco' ? 'credits' : tx.tier}
                             </Badge>
                           </td>
                           <td className="py-2 px-3 text-right text-xs font-medium text-slate-900">-{tx.credits}</td>
