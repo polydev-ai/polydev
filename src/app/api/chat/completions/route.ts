@@ -2705,7 +2705,7 @@ export async function POST(request: NextRequest) {
       const usage = response?.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
       let costInfo: any = { input_cost: 0, output_cost: 0, total_cost: 0 }
       
-      if (response && response.fallback_method !== 'cli') {
+      if (response && response.fallback_method !== 'cli' && response.provider) {
         // API key usage - calculate cost from model limits (uses corrected pricing data)
         try {
           const modelLimits = await modelsDevService.getModelLimits(response.model, response.provider)
@@ -2857,7 +2857,7 @@ export async function POST(request: NextRequest) {
               type: 'api'
             }
             totalCost += responseCost
-            totalCreditsUsed += response.credits_used || 0
+            totalCreditsUsed += (response as any).credits_used || 0
           }
         } catch (error) {
           console.warn(`Failed to get pricing for ${response.model}:`, error)
