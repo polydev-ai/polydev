@@ -223,6 +223,14 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
     }
   }, [getSortedModelsForTier, modelOrder, preferences, updatePreferences])
 
+  // Hardcoded logo URLs for providers not in the external registry
+  const PROVIDER_LOGO_FALLBACKS: Record<string, string> = {
+    'zai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+    'zhipuai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+    'zai-coding-plan': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+    'z-ai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+  }
+
   // Get provider logo
   const getProviderLogo = (providerId: string) => {
     const pid = providerId.toLowerCase().replace(/[-_\s]/g, '')
@@ -231,7 +239,8 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       const pName = p.name.toLowerCase().replace(/[-_\s]/g, '')
       return pId === pid || pName === pid || pId.includes(pid) || pid.includes(pId)
     })
-    return provider?.logo || provider?.logo_url
+    // Check external registry first, then hardcoded fallbacks
+    return provider?.logo || provider?.logo_url || PROVIDER_LOGO_FALLBACKS[providerId.toLowerCase()]
   }
 
   // Get provider display name
