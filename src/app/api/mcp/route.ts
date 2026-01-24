@@ -2105,12 +2105,66 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
 
+              // Handle both JSON and SSE responses (some providers like ZAI return SSE even with stream: false)
               const contentType = apiResponse.headers.get('content-type') || ''
-              if (!contentType.includes('application/json')) {
+              let result: any
+              
+              if (contentType.includes('text/event-stream') || contentType.includes('text/plain')) {
+                // Parse SSE response format
+                console.log(`[MCP] Admin key: parsing SSE response from ${providerName}`)
+                const textResult = await apiResponse.text()
+                
+                const chunks = textResult.split('\n\n').filter(chunk => chunk.startsWith('data: '))
+                let finalContent = ''
+                let finalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+                
+                for (const chunk of chunks) {
+                  try {
+                    const data = chunk.replace('data: ', '').trim()
+                    if (data === '[DONE]') break
+                    
+                    const parsed = JSON.parse(data)
+                    
+                    // Extract content from streaming chunk
+                    if (parsed.choices?.[0]?.delta?.content) {
+                      finalContent += parsed.choices[0].delta.content
+                    }
+                    // Also handle non-delta format
+                    if (parsed.choices?.[0]?.message?.content) {
+                      finalContent += parsed.choices[0].message.content
+                    }
+                    
+                    // Extract usage if present
+                    if (parsed.usage) {
+                      finalUsage = parsed.usage
+                    }
+                  } catch (parseError) {
+                    // Skip unparseable chunks
+                  }
+                }
+                
+                // Estimate tokens if not provided
+                if (finalUsage.total_tokens === 0 && finalContent) {
+                  const estimatedTokens = Math.ceil(finalContent.length / 4)
+                  finalUsage = {
+                    prompt_tokens: Math.ceil(contextualPrompt.length / 4),
+                    completion_tokens: estimatedTokens,
+                    total_tokens: estimatedTokens + Math.ceil(contextualPrompt.length / 4)
+                  }
+                }
+                
+                result = {
+                  choices: [{
+                    message: { content: finalContent, role: 'assistant' }
+                  }],
+                  usage: finalUsage
+                }
+              } else if (!contentType.includes('application/json')) {
                 throw new Error(`Invalid response from ${provider.display_name}`)
+              } else {
+                result = await apiResponse.json()
               }
 
-              const result = await apiResponse.json()
               if (result.error) {
                 throw new Error(result.error.message || 'API error')
               }
@@ -2319,144 +2373,200 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
 
               const apiResponse = await apiManager.createMessage(providerName, apiOptions)
 
+              // Handle both JSON and SSE responses (some providers like ZAI return SSE even with stream: false)
               const contentType = apiResponse.headers.get('content-type') || ''
-              if (contentType.includes('application/json')) {
-                const result = await apiResponse.json()
-                if (result.error) {
-                  throw new Error(result.error.message || `${provider.display_name} API error`)
-                }
-
-                const endTime = Date.now()
-                const duration = endTime - startTime
-
-                // Extract tokens based on provider format
-                let tokensUsed = 0
-                if (result.usage?.total_tokens) {
-                  tokensUsed = result.usage.total_tokens
-                } else if (result.usage?.input_tokens !== undefined) {
-                  tokensUsed = (result.usage.input_tokens || 0) + (result.usage.output_tokens || 0)
-                } else if (result.usageMetadata?.totalTokenCount) {
-                  tokensUsed = result.usageMetadata.totalTokenCount
-                }
-
-                // Extract content based on provider format
-                let content = ''
-                if (result.choices?.[0]?.message?.content) {
-                  content = result.choices[0].message.content
-                } else if (result.content?.[0]?.text) {
-                  content = result.content[0].text
-                } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-                  content = result.candidates[0].content.parts[0].text
-                }
-
-                // Deduct credits for admin key usage (budget exceeded case)
-                if (tokensUsed > 0 && user.id) {
+              let result: any
+              
+              if (contentType.includes('text/event-stream') || contentType.includes('text/plain')) {
+                // Parse SSE response format
+                console.log(`[MCP] Admin key: parsing SSE response from ${providerName}`)
+                const textResult = await apiResponse.text()
+                
+                const chunks = textResult.split('\n\n').filter(chunk => chunk.startsWith('data: '))
+                let finalContent = ''
+                let finalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
+                
+                for (const chunk of chunks) {
                   try {
-                    // Get model tier from model_tiers table
-                    const { data: modelTierData } = await serviceRoleSupabase
-                      .from('model_tiers')
-                      .select('tier, cost_per_1k_input, cost_per_1k_output')
-                      .eq('model_name', cleanModel)
-                      .single()
-
-                    // Use tier-based credits (eco=1, normal=4, premium=20)
-                    const tier = modelTierData?.tier || 'normal'
-                    const creditsToDeduct = TIER_CREDIT_COSTS[tier] || 4
-
-                    // Estimate input/output split (typically 1:3 ratio for responses)
-                    const estimatedInputTokens = Math.floor(tokensUsed * 0.25)
-                    const estimatedOutputTokens = tokensUsed - estimatedInputTokens
+                    const data = chunk.replace('data: ', '').trim()
+                    if (data === '[DONE]') break
                     
-                    // Calculate USD cost for record keeping only
-                    const inputCost = modelTierData ? (estimatedInputTokens / 1000) * (modelTierData.cost_per_1k_input || 0) : 0
-                    const outputCost = modelTierData ? (estimatedOutputTokens / 1000) * (modelTierData.cost_per_1k_output || 0) : 0
-                    const usdCost = inputCost + outputCost
-
-                    // Get current balance and update atomically (FIFO: promo first, then balance)
-                    const { data: currentCredits } = await serviceRoleSupabase
-                      .from('user_credits')
-                      .select('balance, promotional_balance, total_purchased, total_spent')
-                      .eq('user_id', user.id)
-                      .single()
-
-                    if (currentCredits) {
-                      const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
-                      const lifetimeSpent = currentCredits.total_spent || 0
-                      
-                      // Deduct tier-based credits (FIFO: promo first, then balance)
-                      const newTotal = Math.max(0, totalBalance - creditsToDeduct)
-                      let newPromo = Math.min(currentCredits.promotional_balance || 0, newTotal)
-                      let newBal = Math.max(0, newTotal - newPromo)
-                      
-                      await serviceRoleSupabase
-                        .from('user_credits')
-                        .update({
-                          balance: newBal.toFixed(6),
-                          promotional_balance: newPromo.toFixed(6),
-                          total_spent: (lifetimeSpent + creditsToDeduct).toFixed(6),
-                          updated_at: new Date().toISOString()
-                        })
-                        .eq('user_id', user.id)
-
-                      console.log(`[MCP] Deducted ${creditsToDeduct} credits (${tier} tier, budget fallback) from ${tokensUsed} tokens on ${cleanModel}`)
-                      
-                      // Track usage session for dashboard visibility
-                      await serviceRoleSupabase.rpc('track_usage_session', {
-                        p_user_id: user.id,
-                        p_session_type: 'credits',
-                        p_tool_name: 'polydev_mcp',
-                        p_model_name: cleanModel,
-                        p_provider: providerName,
-                        p_message_count: 1,
-                        p_input_tokens: estimatedInputTokens,
-                        p_output_tokens: estimatedOutputTokens,
-                        p_cost_usd: usdCost,
-                        p_cost_credits: creditsToDeduct,
-                        p_metadata: JSON.stringify({
-                          fallback_method: 'credits',
-                          usage_path: 'credits',
-                          request_source: 'mcp_api',
-                          admin_key_used: true,
-                          budget_exceeded: true,
-                          model_tier: tier,
-                          credits_used: creditsToDeduct
-                        })
-                      })
-                      
-                      // Insert into perspective_usage for dashboard credits display
-                      // This is what the /api/usage/credits endpoint reads from
-                      await serviceRoleSupabase
-                        .from('perspective_usage')
-                        .insert({
-                          user_id: user.id,
-                          session_id: `mcp_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-                          model_name: cleanModel,
-                          model_tier: tier,
-                          provider: providerName,
-                          input_tokens: estimatedInputTokens,
-                          output_tokens: estimatedOutputTokens,
-                          total_tokens: tokensUsed,
-                          estimated_cost: usdCost,
-                          perspectives_deducted: 1,
-                          credits_deducted: creditsToDeduct,
-                          request_metadata: { source_type: 'admin_credits' }
-                        })
+                    const parsed = JSON.parse(data)
+                    
+                    // Extract content from streaming chunk
+                    if (parsed.choices?.[0]?.delta?.content) {
+                      finalContent += parsed.choices[0].delta.content
                     }
-                  } catch (creditError) {
-                    console.error(`[MCP] Failed to deduct credits:`, creditError)
+                    // Also handle non-delta format
+                    if (parsed.choices?.[0]?.message?.content) {
+                      finalContent += parsed.choices[0].message.content
+                    }
+                    
+                    // Extract usage if present
+                    if (parsed.usage) {
+                      finalUsage = parsed.usage
+                    }
+                  } catch (parseError) {
+                    // Skip unparseable chunks
                   }
                 }
-
-                return {
-                  model,
-                  provider: `${providerName} (Credits)`, // Label as Credits when using admin key
-                  content,
-                  tokens_used: tokensUsed,
-                  response_time_ms: duration,
-                  latency_ms: duration,
-                  fallback: true,
-                  source: 'admin_credits' // Track admin key usage for credits (was 'credits')
+                
+                // Estimate tokens if not provided
+                if (finalUsage.total_tokens === 0 && finalContent) {
+                  const estimatedTokens = Math.ceil(finalContent.length / 4)
+                  finalUsage = {
+                    prompt_tokens: Math.ceil(contextualPrompt.length / 4),
+                    completion_tokens: estimatedTokens,
+                    total_tokens: estimatedTokens + Math.ceil(contextualPrompt.length / 4)
+                  }
                 }
+                
+                result = {
+                  choices: [{
+                    message: { content: finalContent, role: 'assistant' }
+                  }],
+                  usage: finalUsage
+                }
+              } else if (!contentType.includes('application/json')) {
+                throw new Error(`Invalid response from ${provider.display_name}`)
+              } else {
+                result = await apiResponse.json()
+              }
+
+              if (result.error) {
+                throw new Error(result.error.message || `${provider.display_name} API error`)
+              }
+
+              const endTime = Date.now()
+              const duration = endTime - startTime
+
+              // Extract tokens based on provider format
+              let tokensUsed = 0
+              if (result.usage?.total_tokens) {
+                tokensUsed = result.usage.total_tokens
+              } else if (result.usage?.input_tokens !== undefined) {
+                tokensUsed = (result.usage.input_tokens || 0) + (result.usage.output_tokens || 0)
+              } else if (result.usageMetadata?.totalTokenCount) {
+                tokensUsed = result.usageMetadata.totalTokenCount
+              }
+
+              // Extract content based on provider format
+              let content = ''
+              if (result.choices?.[0]?.message?.content) {
+                content = result.choices[0].message.content
+              } else if (result.content?.[0]?.text) {
+                content = result.content[0].text
+              } else if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                content = result.candidates[0].content.parts[0].text
+              }
+
+              // Deduct credits for admin key usage (budget exceeded case)
+              if (tokensUsed > 0 && user.id) {
+                try {
+                  // Get model tier from model_tiers table
+                  const { data: modelTierData } = await serviceRoleSupabase
+                    .from('model_tiers')
+                    .select('tier, cost_per_1k_input, cost_per_1k_output')
+                    .eq('model_name', cleanModel)
+                    .single()
+
+                  // Use tier-based credits (eco=1, normal=4, premium=20)
+                  const tier = modelTierData?.tier || 'normal'
+                  const creditsToDeduct = TIER_CREDIT_COSTS[tier] || 4
+
+                  // Estimate input/output split (typically 1:3 ratio for responses)
+                  const estimatedInputTokens = Math.floor(tokensUsed * 0.25)
+                  const estimatedOutputTokens = tokensUsed - estimatedInputTokens
+                    
+                  // Calculate USD cost for record keeping only
+                  const inputCost = modelTierData ? (estimatedInputTokens / 1000) * (modelTierData.cost_per_1k_input || 0) : 0
+                  const outputCost = modelTierData ? (estimatedOutputTokens / 1000) * (modelTierData.cost_per_1k_output || 0) : 0
+                  const usdCost = inputCost + outputCost
+
+                  // Get current balance and update atomically (FIFO: promo first, then balance)
+                  const { data: currentCredits } = await serviceRoleSupabase
+                    .from('user_credits')
+                    .select('balance, promotional_balance, total_purchased, total_spent')
+                    .eq('user_id', user.id)
+                    .single()
+
+                  if (currentCredits) {
+                    const totalBalance = (currentCredits.balance || 0) + (currentCredits.promotional_balance || 0)
+                    const lifetimeSpent = currentCredits.total_spent || 0
+                      
+                    // Deduct tier-based credits (FIFO: promo first, then balance)
+                    const newTotal = Math.max(0, totalBalance - creditsToDeduct)
+                    let newPromo = Math.min(currentCredits.promotional_balance || 0, newTotal)
+                    let newBal = Math.max(0, newTotal - newPromo)
+                      
+                    await serviceRoleSupabase
+                      .from('user_credits')
+                      .update({
+                        balance: newBal.toFixed(6),
+                        promotional_balance: newPromo.toFixed(6),
+                        total_spent: (lifetimeSpent + creditsToDeduct).toFixed(6),
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('user_id', user.id)
+
+                    console.log(`[MCP] Deducted ${creditsToDeduct} credits (${tier} tier, budget fallback) from ${tokensUsed} tokens on ${cleanModel}`)
+                      
+                    // Track usage session for dashboard visibility
+                    await serviceRoleSupabase.rpc('track_usage_session', {
+                      p_user_id: user.id,
+                      p_session_type: 'credits',
+                      p_tool_name: 'polydev_mcp',
+                      p_model_name: cleanModel,
+                      p_provider: providerName,
+                      p_message_count: 1,
+                      p_input_tokens: estimatedInputTokens,
+                      p_output_tokens: estimatedOutputTokens,
+                      p_cost_usd: usdCost,
+                      p_cost_credits: creditsToDeduct,
+                      p_metadata: JSON.stringify({
+                        fallback_method: 'credits',
+                        usage_path: 'credits',
+                        request_source: 'mcp_api',
+                        admin_key_used: true,
+                        budget_exceeded: true,
+                        model_tier: tier,
+                        credits_used: creditsToDeduct
+                      })
+                    })
+                      
+                    // Insert into perspective_usage for dashboard credits display
+                    // This is what the /api/usage/credits endpoint reads from
+                    await serviceRoleSupabase
+                      .from('perspective_usage')
+                      .insert({
+                        user_id: user.id,
+                        session_id: `mcp_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+                        model_name: cleanModel,
+                        model_tier: tier,
+                        provider: providerName,
+                        input_tokens: estimatedInputTokens,
+                        output_tokens: estimatedOutputTokens,
+                        total_tokens: tokensUsed,
+                        estimated_cost: usdCost,
+                        perspectives_deducted: 1,
+                        credits_deducted: creditsToDeduct,
+                        request_metadata: { source_type: 'admin_credits' }
+                      })
+                  }
+                } catch (creditError) {
+                  console.error(`[MCP] Failed to deduct credits:`, creditError)
+                }
+              }
+
+              return {
+                model,
+                provider: `${providerName} (Credits)`, // Label as Credits when using admin key
+                content,
+                tokens_used: tokensUsed,
+                response_time_ms: duration,
+                latency_ms: duration,
+                fallback: true,
+                source: 'admin_credits' // Track admin key usage for credits (was 'credits')
               }
             } catch (fallbackError) {
               console.error(`[MCP] Admin key budget fallback failed for ${providerName}:`, fallbackError)
