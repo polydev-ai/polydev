@@ -46,6 +46,7 @@ export default function MCPTokensPage() {
   const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null)
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
   const [extendingToken, setExtendingToken] = useState<string | null>(null)
+  const [visibleTokens, setVisibleTokens] = useState<Record<string, boolean>>({})
   
   // Form state
   const [formData, setFormData] = useState({
@@ -503,14 +504,26 @@ export default function MCPTokensPage() {
                             </h3>
                             <div className="flex items-center space-x-2">
                               <p className={`text-sm font-mono ${canCopyFullToken ? 'text-slate-700' : 'text-slate-400'}`}>
-                                {canCopyFullToken ? token.full_token : token.token_preview}
+                                {canCopyFullToken 
+                                  ? (visibleTokens[token.id] ? token.full_token : `${token.full_token?.slice(0, 8)}${'•'.repeat(20)}...`)
+                                  : token.token_preview
+                                }
                               </p>
+                              {canCopyFullToken && (
+                                <button
+                                  onClick={() => setVisibleTokens(prev => ({ ...prev, [token.id]: !prev[token.id] }))}
+                                  className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                  title={visibleTokens[token.id] ? 'Hide token' : 'Show full token'}
+                                >
+                                  {visibleTokens[token.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                              )}
                               <button
                                 onClick={() => copyToClipboard(getTokenToCopy(token), token.id)}
-                                className="text-slate-600 hover:text-slate-900"
+                                className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100"
                                 title={canCopyFullToken ? 'Copy full token' : 'Copy token preview (legacy token - full token not available)'}
                               >
-                                {copiedToken === token.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                {copiedToken === token.id ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                               </button>
                               {!canCopyFullToken && (
                                 <span className="text-xs text-orange-500">(regenerate for full copy)</span>
