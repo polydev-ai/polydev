@@ -4,9 +4,11 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '../hooks/useAuth'
+import { useCredits } from '../hooks/useCredits'
 import { createClient } from '../app/utils/supabase/client'
 import PolydevLogo from './PolydevLogo'
 import { EncryptionStatus } from './EncryptionStatus'
+import { Coins } from 'lucide-react'
 
 interface UserProfile {
   id: string
@@ -28,6 +30,7 @@ export default function Navigation() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const { user, loading, signOut, isAuthenticated } = useAuth()
+  const { balance, loading: creditsLoading } = useCredits()
 
   const supabase = createClient()
 
@@ -152,6 +155,17 @@ export default function Navigation() {
               <div className="w-16 h-8 bg-slate-200 rounded animate-pulse"></div>
             ) : isAuthenticated ? (
               <>
+                {/* Credits Balance - Prominent Display */}
+                <Link
+                  href="/dashboard/subscription"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-sm font-medium transition-colors border border-amber-200"
+                >
+                  <Coins className="w-4 h-4" />
+                  <span>
+                    {creditsLoading ? '...' : `${(balance.balance + balance.promotionalBalance).toFixed(0)}`}
+                  </span>
+                  <span className="text-amber-500 text-xs">credits</span>
+                </Link>
                 <EncryptionStatus variant="icon" />
                 <div className="relative" ref={dropdownRef}>
                   <button
