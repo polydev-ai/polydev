@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { ChevronUp, ChevronDown, ChevronRight, Terminal, Key, Coins, Info, Sparkles, Check, Zap, AlertCircle, Crown, Edit3, Plus, Trash2 } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronRight, Key, Coins, Zap, Edit3, Plus, Trash2 } from 'lucide-react'
 import { usePreferences } from '../hooks/usePreferences'
 import { useDebouncedCallback } from 'use-debounce'
 
@@ -310,394 +310,203 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
 
   return (
     <div className="space-y-4">
-      {/* Perspectives Selector - Hero Section */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/10 rounded-xl backdrop-blur">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Perspectives per Request</h2>
-              <p className="text-sm text-slate-400">How many AI models respond to each query</p>
-            </div>
-            {/* Tooltip */}
-            <div className="group relative">
-              <Info className="w-4 h-4 text-slate-500 cursor-help" />
-              <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-800 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-xs">
-                <p className="font-medium mb-1">💡 What are perspectives?</p>
-                <p className="text-slate-300">Each perspective is a response from a different AI model. More perspectives = more diverse opinions, but uses more credits (1 credit per model).</p>
-                <p className="text-slate-400 mt-2">Recommended: 2-3 perspectives for balanced cost and diversity.</p>
-              </div>
-            </div>
+      {/* Perspectives Selector - Compact */}
+      <div className="bg-slate-900 rounded-xl p-5 text-white">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span className="font-medium">Perspectives</span>
+            <span className="text-slate-400 text-sm">per request</span>
           </div>
-          <div className="text-4xl font-bold tabular-nums bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-            {perspectivesPerMessage}
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-slate-400 font-medium">1</span>
-          <div className="flex-1 relative">
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={perspectivesPerMessage}
-              onChange={(e) => debouncedUpdatePerspectives(parseInt(e.target.value))}
-              className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-white"
-              disabled={saving}
-            />
-            {/* Recommended indicator at 2-3 */}
-            <div className="absolute top-4 left-[15%] text-[10px] text-emerald-400 font-medium">
-              ↑ Recommended
-            </div>
-          </div>
-          <span className="text-sm text-slate-400 font-medium">10</span>
+          <div className="text-3xl font-bold tabular-nums">{perspectivesPerMessage}</div>
         </div>
 
-        {/* Recommended Badge */}
-        {(perspectivesPerMessage === 2 || perspectivesPerMessage === 3) && (
-          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-medium">
-            <Check className="w-3 h-3" />
-            Recommended setting for balanced cost & diversity
-          </div>
-        )}
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-xs text-slate-500">1</span>
+          <input
+            type="range"
+            min="1"
+            max="10"
+            value={perspectivesPerMessage}
+            onChange={(e) => debouncedUpdatePerspectives(parseInt(e.target.value))}
+            className="flex-1 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-white"
+            disabled={saving}
+          />
+          <span className="text-xs text-slate-500">10</span>
+        </div>
 
-        {/* Cost Estimate */}
+        {/* Cost + Models Preview */}
         {(() => {
           const creditsUsed = selectionPreview.filter(s => s.source === 'credits').length
           const freeCount = selectionPreview.filter(s => s.source === 'cli' || s.source === 'api').length
           return (
-            <div className="mt-3 flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Coins className="w-4 h-4 text-amber-400" />
-                <span className="text-slate-300">
-                  Estimated cost: <span className="font-semibold text-white">{creditsUsed} credit{creditsUsed !== 1 ? 's' : ''}</span>/request
-                </span>
+            <div className="flex items-center justify-between text-sm border-t border-slate-700/50 pt-3">
+              <div className="flex items-center gap-2 text-slate-400">
+                <Coins className="w-3.5 h-3.5 text-amber-400" />
+                <span>{creditsUsed} credit{creditsUsed !== 1 ? 's' : ''}/req</span>
+                {freeCount > 0 && <span className="text-slate-500">({freeCount} free)</span>}
               </div>
-              {freeCount > 0 && (
-                <span className="text-emerald-400 text-xs">
-                  ({freeCount} free via CLI/API)
-                </span>
-              )}
+              <div className="flex items-center gap-1.5">
+                {selectionPreview.slice(0, 5).map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 text-xs">
+                    {getProviderLogo(item.provider) && <img src={getProviderLogo(item.provider)} alt="" className="w-3.5 h-3.5 rounded" />}
+                    <span className="text-slate-300">{getProviderDisplayName(item.provider)}</span>
+                  </div>
+                ))}
+                {selectionPreview.length > 5 && (
+                  <span className="text-slate-500 text-xs">+{selectionPreview.length - 5}</span>
+                )}
+              </div>
             </div>
           )
         })()}
-
-        {/* Selected Models Preview */}
-        <div className="mt-4 pt-4 border-t border-slate-700/50">
-          <div className="flex items-center gap-2 mb-3">
-            <Zap className="w-4 h-4 text-amber-400" />
-            <span className="text-sm font-medium text-slate-300">Will query these {perspectivesPerMessage} model{perspectivesPerMessage > 1 ? 's' : ''}:</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {selectionPreview.map((item, idx) => (
-              <div 
-                key={idx} 
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 text-slate-200 border border-slate-600"
-              >
-                {getProviderLogo(item.provider) && <img src={getProviderLogo(item.provider)} alt="" className="w-4 h-4 rounded" />}
-                <span>{getProviderDisplayName(item.provider)}</span>
-                <span className="text-[10px] text-slate-400">
-                  {item.source === 'cli' ? 'CLI' : item.source === 'api' ? 'API' : 'Credits'}
-                </span>
-              </div>
-            ))}
-            {selectionPreview.length === 0 && (
-              <span className="text-slate-500 text-sm">No models configured</span>
-            )}
-          </div>
-          {/* Source Legend */}
-          <div className="flex flex-wrap gap-4 mt-3 text-[10px] text-slate-500">
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-              <span>CLI = Uses your installed CLI tool (free)</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-              <span>API = Direct API with your key (you pay provider)</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-              <span>Credits = Polydev credits (1 credit per request)</span>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Your API Keys - Priority Order */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="p-4 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <Key className="w-5 h-5 text-blue-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-slate-900">Your API Keys</h3>
-              <p className="text-xs text-slate-500">Reorder to set priority. CLI auto-selected when available.</p>
-            </div>
-            {onAddKey && (
-              <button
-                onClick={onAddKey}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add</span>
-              </button>
-            )}
+      {/* Your API Keys */}
+      <div className="bg-white rounded-xl border border-slate-200">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Key className="w-4 h-4 text-slate-500" />
+            <span className="font-medium text-slate-900">API Keys</span>
+            <span className="text-xs text-slate-400">({sortedApiKeys.length})</span>
           </div>
+          {onAddKey && (
+            <button
+              onClick={onAddKey}
+              className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 text-white text-xs font-medium rounded-md hover:bg-slate-700"
+            >
+              <Plus className="w-3 h-3" />
+              Add
+            </button>
+          )}
         </div>
 
-        <div className="p-4 space-y-2">
+        <div className="p-2 space-y-1">
           {sortedApiKeys.length > 0 ? (
             sortedApiKeys.map((key, idx) => {
               const cli = getCliStatus(key.provider)
-              const hasCli = !!cli
               const cliAvailable = cli?.available
               const isSelected = idx < perspectivesPerMessage
-              
+
               return (
-                <div 
+                <div
                   key={key.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                    isSelected 
-                      ? 'bg-slate-100 border-slate-300' 
-                      : 'bg-slate-50 border-slate-200'
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                    isSelected ? 'bg-slate-100' : 'hover:bg-slate-50'
                   }`}
                 >
-                  {/* Position number */}
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                     isSelected ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-500'
                   }`}>
                     {idx + 1}
                   </div>
 
-                  {/* Provider logo */}
                   {getProviderLogo(key.provider) && (
-                    <img src={getProviderLogo(key.provider)} alt="" className="w-8 h-8 rounded-lg" />
+                    <img src={getProviderLogo(key.provider)} alt="" className="w-6 h-6 rounded" />
                   )}
 
-                  {/* Provider info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-slate-900">{getProviderDisplayName(key.provider)}</span>
-                      {isSelected && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
-                          ACTIVE
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-500">{key.key_preview}</div>
+                    <span className="font-medium text-sm text-slate-900">{getProviderDisplayName(key.provider)}</span>
+                    {cliAvailable && <span className="ml-1.5 text-[10px] text-slate-500">CLI</span>}
                   </div>
 
-                  {/* CLI Status */}
-                  {hasCli && (
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
-                      cliAvailable 
-                        ? 'bg-slate-200 border border-slate-300' 
-                        : 'bg-slate-100 border border-slate-200'
-                    }`}>
-                      <Terminal className={`w-4 h-4 ${cliAvailable ? 'text-slate-700' : 'text-slate-400'}`} />
-                      <span className={`text-xs font-medium ${cliAvailable ? 'text-slate-700' : 'text-slate-500'}`}>
-                        {cli.cliName}
-                      </span>
-                      {cliAvailable ? (
-                        <Check className="w-3 h-3 text-slate-700" />
-                      ) : (
-                        <AlertCircle className="w-3 h-3 text-slate-400" />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Edit/Delete buttons */}
-                  <div className="flex gap-1">
+                  <div className="flex items-center gap-0.5">
                     {onEditKey && (
-                      <button
-                        onClick={() => onEditKey(key)}
-                        className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"
-                        title="Edit API key"
-                      >
-                        <Edit3 className="w-4 h-4 text-slate-500" />
+                      <button onClick={() => onEditKey(key)} className="p-1 hover:bg-slate-200 rounded" title="Edit">
+                        <Edit3 className="w-3.5 h-3.5 text-slate-400" />
                       </button>
                     )}
                     {onDeleteKey && (
-                      <button
-                        onClick={() => onDeleteKey(key.id)}
-                        className="p-1.5 hover:bg-red-100 rounded-lg transition-colors"
-                        title="Delete API key"
-                      >
-                        <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
+                      <button onClick={() => onDeleteKey(key.id)} className="p-1 hover:bg-red-50 rounded" title="Delete">
+                        <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
                       </button>
                     )}
-                  </div>
-
-                  {/* Reorder buttons */}
-                  <div className="flex gap-1">
                     <button
                       onClick={() => moveApiKey(idx, 'up')}
                       disabled={idx === 0 || saving}
-                      className="p-1.5 hover:bg-slate-200 rounded-lg disabled:opacity-30 transition-colors"
-                      title="Move up"
+                      className="p-1 hover:bg-slate-200 rounded disabled:opacity-30"
                     >
-                      <ChevronUp className="w-4 h-4 text-slate-600" />
+                      <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
                     </button>
                     <button
                       onClick={() => moveApiKey(idx, 'down')}
                       disabled={idx === sortedApiKeys.length - 1 || saving}
-                      className="p-1.5 hover:bg-slate-200 rounded-lg disabled:opacity-30 transition-colors"
-                      title="Move down"
+                      className="p-1 hover:bg-slate-200 rounded disabled:opacity-30"
                     >
-                      <ChevronDown className="w-4 h-4 text-slate-600" />
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                     </button>
                   </div>
                 </div>
               )
             })
           ) : (
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-6 border border-slate-200">
-              <div className="text-center">
-                <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-6 h-6 text-slate-600" />
-                </div>
-                <h4 className="font-semibold text-slate-900 mb-2">Get Started with Polydev</h4>
-                <p className="text-sm text-slate-600 mb-4">Add your first API key to start getting AI perspectives, or use Polydev Credits without any API keys.</p>
-                
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  {onAddKey && (
-                    <button
-                      onClick={onAddKey}
-                      className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-700 font-medium text-sm flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add API Key
-                    </button>
-                  )}
-                  <a
-                    href="/dashboard/api-tokens"
-                    className="px-4 py-2 bg-white text-slate-700 rounded-lg hover:bg-slate-100 font-medium text-sm border border-slate-200 flex items-center justify-center gap-2"
-                  >
-                    <Coins className="w-4 h-4" />
-                    Use Credits Instead
-                  </a>
-                </div>
-                
-                <div className="mt-4 pt-4 border-t border-slate-200">
-                  <p className="text-xs text-slate-500">💡 Tip: CLI tools (Claude Code, Codex CLI, Gemini CLI) are auto-detected and prioritized when available.</p>
-                </div>
-              </div>
+            <div className="p-4 text-center text-slate-500 text-sm">
+              <p>No API keys yet.</p>
+              {onAddKey && (
+                <button onClick={onAddKey} className="mt-2 text-slate-900 font-medium hover:underline">
+                  + Add your first API key
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Credits Section - Collapsible */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Credits Section - Compact */}
+      <div className="bg-white rounded-xl border border-slate-200">
         <button
           onClick={() => setCreditsExpanded(!creditsExpanded)}
-          className="w-full p-4 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors"
+          className="w-full px-4 py-3 flex items-center gap-2 text-left hover:bg-slate-50"
         >
-          <div className="p-2 bg-slate-100 rounded-lg">
-            <Coins className="w-5 h-5 text-slate-600" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-slate-900">Credits</h3>
-            <p className="text-xs text-slate-500">Perspective quota usage</p>
-          </div>
-          <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${creditsExpanded ? 'rotate-90' : ''}`} />
+          <Coins className="w-4 h-4 text-slate-500" />
+          <span className="font-medium text-slate-900 flex-1">Credits</span>
+          {(() => {
+            const { total, used } = getTierQuota('eco')
+            return <span className="text-sm text-slate-500">{total - used} / {total}</span>
+          })()}
+          <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${creditsExpanded ? 'rotate-90' : ''}`} />
         </button>
 
         {creditsExpanded && (
-          <div className="p-4 pt-0 border-t border-slate-100">
-            <div className="space-y-3 mt-3">
-              {visibleTiers.map((tier: string, tierIdx: number) => {
+          <div className="px-4 pb-3 border-t border-slate-100">
+            <div className="mt-3 space-y-2">
+              {visibleTiers.map((tier: string) => {
                 const { total, used } = getTierQuota(tier)
-                const remaining = total - used
                 const percentage = total > 0 ? (used / total) * 100 : 0
-                const tierProviders = getProvidersForTier(tier)
                 const sortedModels = getSortedModelsForTier(tier)
-                
+
                 return (
-                  <div key={tier} className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                    {/* Tier Header */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-base font-semibold text-slate-900">Credits</span>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
-                            <div
-                              className={`h-2 rounded-full transition-all ${
-                                percentage >= 90 ? 'bg-red-400' : percentage >= 70 ? 'bg-amber-400' : 'bg-emerald-400'
-                              }`}
-                              style={{ width: `${Math.min(percentage, 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium text-slate-600 tabular-nums">
-                            {remaining} / {total}
-                          </span>
-                        </div>
+                  <div key={tier}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-1.5 rounded-full ${percentage >= 90 ? 'bg-red-400' : percentage >= 70 ? 'bg-amber-400' : 'bg-slate-400'}`}
+                          style={{ width: `${Math.min(percentage, 100)}%` }}
+                        />
                       </div>
                     </div>
-
-                    {/* Tier Providers */}
-                    {tierProviders.length > 0 && (
-                      <div className="flex items-center gap-2 flex-wrap mb-3">
-                        {tierProviders.map(provider => {
-                          const logo = getProviderLogo(provider)
-                          return (
-                            <div key={provider} className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-slate-200">
-                              {logo ? (
-                                <img src={logo} alt={provider} className="w-4 h-4 object-contain" />
-                              ) : (
-                                <div className="w-4 h-4 bg-slate-200 rounded flex items-center justify-center text-[8px] font-bold text-slate-600">
-                                  {provider.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <span className="text-xs text-slate-700 font-medium">{getProviderDisplayName(provider)}</span>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-
-                    {/* Models (drag to reorder) */}
                     {sortedModels.length > 0 && (
-                      <div className="space-y-1">
-                        <div className="text-xs font-medium text-slate-500 mb-2">Models (drag to reorder):</div>
-                        {sortedModels.map((model, modelIdx) => {
-                          const logo = getProviderLogo(model.provider)
-                          return (
-                            <div key={model.id} className="flex items-center gap-2 bg-white px-3 py-2 rounded border border-slate-200 hover:border-slate-300 transition-colors group">
-                              <span className="text-xs font-bold text-slate-400 w-5 text-center">{modelIdx + 1}</span>
-                              {logo ? (
-                                <img src={logo} alt={model.provider} className="w-4 h-4 object-contain" />
-                              ) : (
-                                <div className="w-4 h-4 bg-slate-200 rounded flex items-center justify-center text-[7px] font-bold text-slate-500">
-                                  {model.provider.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <span className="text-sm text-slate-700 flex-1">{model.display_name}</span>
-                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => moveModelInTier(tier, model.id, 'up')}
-                                  disabled={modelIdx === 0 || saving}
-                                  className="p-1 hover:bg-slate-100 rounded disabled:opacity-30 transition-colors"
-                                  title="Move up"
-                                >
-                                  <ChevronUp className="w-3 h-3 text-slate-500" />
-                                </button>
-                                <button
-                                  onClick={() => moveModelInTier(tier, model.id, 'down')}
-                                  disabled={modelIdx === sortedModels.length - 1 || saving}
-                                  className="p-1 hover:bg-slate-100 rounded disabled:opacity-30 transition-colors"
-                                  title="Move down"
-                                >
-                                  <ChevronDown className="w-3 h-3 text-slate-500" />
-                                </button>
-                              </div>
+                      <div className="space-y-0.5">
+                        {sortedModels.slice(0, 5).map((model, idx) => (
+                          <div key={model.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-50 group text-xs">
+                            <span className="text-slate-400 w-4">{idx + 1}</span>
+                            {getProviderLogo(model.provider) && (
+                              <img src={getProviderLogo(model.provider)} alt="" className="w-3.5 h-3.5 rounded" />
+                            )}
+                            <span className="text-slate-600 flex-1 truncate">{model.display_name}</span>
+                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
+                              <button onClick={() => moveModelInTier(tier, model.id, 'up')} disabled={idx === 0} className="p-0.5 hover:bg-slate-200 rounded disabled:opacity-30">
+                                <ChevronUp className="w-3 h-3 text-slate-400" />
+                              </button>
+                              <button onClick={() => moveModelInTier(tier, model.id, 'down')} disabled={idx === sortedModels.length - 1} className="p-0.5 hover:bg-slate-200 rounded disabled:opacity-30">
+                                <ChevronDown className="w-3 h-3 text-slate-400" />
+                              </button>
                             </div>
-                          )
-                        })}
+                          </div>
+                        ))}
+                        {sortedModels.length > 5 && (
+                          <div className="text-xs text-slate-400 px-2">+{sortedModels.length - 5} more</div>
+                        )}
                       </div>
                     )}
                   </div>
