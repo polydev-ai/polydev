@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         .select('user_id, expires_at, revoked')
         .eq('token', mcpToken)
         .eq('revoked', false)
-        .single()
+        .maybeSingle()
 
       if (tokenError || !tokenData) {
         console.error('[Model Preferences] OAuth token lookup failed:', tokenError?.message || 'Token not found')
@@ -82,17 +82,31 @@ export async function GET(request: NextRequest) {
         .select('user_id, active')
         .eq('token_hash', tokenHash)
         .eq('active', true)
-        .single()
+        .maybeSingle()
 
-      if (tokenError || !tokenData) {
-        console.error('[Model Preferences] MCP token lookup failed:', tokenError?.message || 'Token not found')
-        return NextResponse.json(
-          { error: 'Invalid or revoked MCP token' },
-          { status: 401 }
-        )
+      // Fallback: Check legacy mcp_tokens table for backwards compatibility
+      if (!tokenData) {
+        console.log('[Model Preferences] Token not found in mcp_user_tokens, checking legacy table...')
+        const { data: legacyToken, error: legacyError } = await supabase
+          .from('mcp_tokens')
+          .select('user_id')
+          .eq('token', mcpToken)
+          .eq('revoked', false)
+          .maybeSingle()
+        
+        if (legacyToken) {
+          console.log('[Model Preferences] Found token in legacy mcp_tokens table')
+          userId = legacyToken.user_id
+        } else {
+          console.error('[Model Preferences] MCP token lookup failed in both tables:', tokenError?.message || legacyError?.message || 'Token not found')
+          return NextResponse.json(
+            { error: 'Invalid or revoked MCP token' },
+            { status: 401 }
+          )
+        }
+      } else {
+        userId = tokenData.user_id
       }
-
-      userId = tokenData.user_id
     }
 
     if (!userId) {
