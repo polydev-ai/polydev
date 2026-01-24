@@ -447,7 +447,7 @@ export default function RequestLogsSection({
                                   return null;
                                 };
                                 return getProviderLogoUrl(provider.provider) ? 'none' : 'flex';
-                              })()} }}>
+                              })()} }>
                                 {(provider.provider || 'P').charAt(0).toUpperCase()}
                               </div>
                             </div>
