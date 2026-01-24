@@ -342,6 +342,27 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
           <span className="text-sm text-slate-400 font-medium">10</span>
         </div>
 
+        {/* Cost Estimate */}
+        {(() => {
+          const creditsUsed = selectionPreview.filter(s => s.source === 'credits').length
+          const freeCount = selectionPreview.filter(s => s.source === 'cli' || s.source === 'api').length
+          return (
+            <div className="mt-3 flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Coins className="w-4 h-4 text-amber-400" />
+                <span className="text-slate-300">
+                  Estimated cost: <span className="font-semibold text-white">{creditsUsed} credit{creditsUsed !== 1 ? 's' : ''}</span>/request
+                </span>
+              </div>
+              {freeCount > 0 && (
+                <span className="text-emerald-400 text-xs">
+                  ({freeCount} free via CLI/API)
+                </span>
+              )}
+            </div>
+          )
+        })()}
+
         {/* Selected Models Preview */}
         <div className="mt-4 pt-4 border-t border-slate-700/50">
           <div className="flex items-center gap-2 mb-3">

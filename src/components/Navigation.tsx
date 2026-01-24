@@ -95,7 +95,7 @@ export default function Navigation() {
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Chat', href: '/chat' },
     { name: 'Models', href: '/dashboard/models' },
-    { name: 'API Tokens', href: '/dashboard/mcp-tokens' },
+    { name: 'Connect IDE', href: '/dashboard/mcp-tokens' },
     { name: 'Activity', href: '/dashboard/activity' },
     { name: 'Docs', href: '/docs' },
   ]
@@ -198,7 +198,7 @@ export default function Navigation() {
                           className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                           onClick={() => setUserDropdownOpen(false)}
                         >
-                          MCP Tokens
+                          Connect IDE
                         </Link>
                         <Link
                           href="/dashboard/usage"
@@ -347,7 +347,7 @@ export default function Navigation() {
                       onClick={() => setIsOpen(false)}
                       className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     >
-                      API Tokens
+                      Connect IDE
                     </Link>
                     <Link
                       href="/dashboard/subscription"

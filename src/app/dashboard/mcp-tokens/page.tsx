@@ -266,10 +266,10 @@ export default function MCPTokensPage() {
     >
       <motion.div className="mb-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-3xl font-bold text-slate-900 mb-2">
-          MCP API Tokens
+          Connect Your IDE
         </h1>
         <p className="text-slate-600 mb-6">
-          Connect AI coding assistants to Polydev for multi-model perspectives. Get insights from Claude, GPT-4, Gemini, and more in a single request.
+          Connect AI coding assistants to Polydev in just 2 steps. Get multi-model perspectives from Claude, GPT-4, Gemini, and more.
         </p>
 
         {/* Quick Start Cards */}
