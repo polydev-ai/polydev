@@ -2395,8 +2395,8 @@ export async function POST(request: NextRequest) {
                   apiKey: apiConfig.apiKey
                 }
                 
-                if (modelData?.supports_reasoning && reasoningEffort) {
-                  apiOptions.reasoningEffort = reasoningEffort
+                if (modelData?.supports_reasoning && reasoning_effort) {
+                  apiOptions.reasoning_effort = reasoning_effort
                 }
 
                 // Apply OpenAI parameter transformations
