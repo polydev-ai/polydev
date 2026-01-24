@@ -600,7 +600,8 @@ export default function SubscriptionPage() {
                 <Activity className="h-4 w-4" />
                 Usage by Model Tier
               </h4>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {creditsAnalytics.tierBreakdown.premium.credits > 0 && (
                 <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-amber-700">Premium</span>
@@ -614,6 +615,8 @@ export default function SubscriptionPage() {
                     {creditsAnalytics.tierBreakdown.premium.credits} credits
                   </p>
                 </div>
+                )}
+                {creditsAnalytics.tierBreakdown.normal.credits > 0 && (
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-blue-700">Normal</span>
@@ -627,6 +630,8 @@ export default function SubscriptionPage() {
                     {creditsAnalytics.tierBreakdown.normal.credits} credits
                   </p>
                 </div>
+                )}
+                {creditsAnalytics.tierBreakdown.eco.credits > 0 && (
                 <div className="bg-green-50 rounded-lg p-4 border border-green-100">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-green-700">Eco</span>
@@ -640,18 +645,29 @@ export default function SubscriptionPage() {
                     {creditsAnalytics.tierBreakdown.eco.credits} credits
                   </p>
                 </div>
+                )}
               </div>
+              {creditsAnalytics.tierBreakdown.premium.credits === 0 && 
+               creditsAnalytics.tierBreakdown.normal.credits === 0 && 
+               creditsAnalytics.tierBreakdown.eco.credits === 0 && (
+                <div className="text-center py-4 text-muted-foreground">
+                  No credits used in this period
+                </div>
+              )}
             </div>
 
             {/* Model Breakdown */}
-            {creditsAnalytics.modelBreakdown.length > 0 && (
+            {creditsAnalytics.modelBreakdown.filter(m => m.credits > 0).length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                   <Zap className="h-4 w-4" />
                   Top Models by Credits Used
                 </h4>
                 <div className="space-y-2">
-                  {creditsAnalytics.modelBreakdown.slice(0, 5).map((model, idx) => (
+                  {creditsAnalytics.modelBreakdown
+                    .filter(model => model.credits > 0)
+                    .slice(0, 5)
+                    .map((model, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-slate-500 w-5">{idx + 1}.</span>
@@ -685,7 +701,9 @@ export default function SubscriptionPage() {
                 Usage by Source
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(creditsAnalytics.sourceBreakdown).map(([source, data]) => (
+                {Object.entries(creditsAnalytics.sourceBreakdown)
+                  .filter(([_, data]) => data.credits > 0 || data.requests > 0)
+                  .map(([source, data]) => (
                   <div key={source} className="bg-slate-50 rounded-lg p-3 text-center">
                     <p className="text-xs text-slate-500 capitalize mb-1">
                       {source === 'admin_key' ? 'Platform' : 
@@ -698,10 +716,15 @@ export default function SubscriptionPage() {
                   </div>
                 ))}
               </div>
+              {Object.entries(creditsAnalytics.sourceBreakdown).every(([_, data]) => data.credits === 0 && data.requests === 0) && (
+                <div className="text-center py-4 text-muted-foreground">
+                  No usage data for this period
+                </div>
+              )}
             </div>
 
             {/* Recent Transactions */}
-            {creditsAnalytics.recentTransactions.length > 0 && (
+            {creditsAnalytics.recentTransactions.filter(tx => tx.credits > 0).length > 0 && (
               <div>
                 <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                   <Clock className="h-4 w-4" />
@@ -718,7 +741,10 @@ export default function SubscriptionPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {creditsAnalytics.recentTransactions.slice(0, 10).map((tx, idx) => (
+                      {creditsAnalytics.recentTransactions
+                        .filter(tx => tx.credits > 0)
+                        .slice(0, 10)
+                        .map((tx, idx) => (
                         <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
                           <td className="py-2 px-3 text-xs text-slate-500">
                             {new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

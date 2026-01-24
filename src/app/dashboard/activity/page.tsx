@@ -827,6 +827,7 @@ export default function ActivityPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
+                      {creditsData.tierBreakdown.premium.credits > 0 && (
                       <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
                         <div>
                           <div className="font-medium text-amber-800">Premium</div>
@@ -837,6 +838,8 @@ export default function ActivityPage() {
                           <div className="text-xs text-amber-600">credits</div>
                         </div>
                       </div>
+                      )}
+                      {creditsData.tierBreakdown.normal.credits > 0 && (
                       <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                         <div>
                           <div className="font-medium text-blue-800">Normal</div>
@@ -847,6 +850,8 @@ export default function ActivityPage() {
                           <div className="text-xs text-blue-600">credits</div>
                         </div>
                       </div>
+                      )}
+                      {creditsData.tierBreakdown.eco.credits > 0 && (
                       <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                         <div>
                           <div className="font-medium text-green-800">Eco</div>
@@ -857,6 +862,14 @@ export default function ActivityPage() {
                           <div className="text-xs text-green-600">credits</div>
                         </div>
                       </div>
+                      )}
+                      {creditsData.tierBreakdown.premium.credits === 0 && 
+                       creditsData.tierBreakdown.normal.credits === 0 && 
+                       creditsData.tierBreakdown.eco.credits === 0 && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          No credits used in this period
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -868,7 +881,10 @@ export default function ActivityPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {creditsData.modelBreakdown.slice(0, 8).map((model, index) => (
+                      {creditsData.modelBreakdown
+                        .filter(model => model.credits > 0)
+                        .slice(0, 8)
+                        .map((model, index) => (
                         <div key={model.model} className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium text-muted-foreground">#{index + 1}</span>
@@ -887,6 +903,11 @@ export default function ActivityPage() {
                           </div>
                         </div>
                       ))}
+                      {creditsData.modelBreakdown.filter(model => model.credits > 0).length === 0 && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          No credits used by any model
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -911,7 +932,9 @@ export default function ActivityPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {creditsData.recentTransactions.map((tx, index) => (
+                        {creditsData.recentTransactions
+                          .filter(tx => tx.credits > 0)
+                          .map((tx, index) => (
                           <tr key={index} className="border-t border-slate-200">
                             <td className="py-2 pr-4">{new Date(tx.date).toLocaleString()}</td>
                             <td className="py-2 pr-4 truncate max-w-[200px]" title={tx.model}>{tx.model}</td>
@@ -930,7 +953,7 @@ export default function ActivityPage() {
                             </td>
                           </tr>
                         ))}
-                        {creditsData.recentTransactions.length === 0 && (
+                        {creditsData.recentTransactions.filter(tx => tx.credits > 0).length === 0 && (
                           <tr>
                             <td colSpan={5} className="py-8 text-center text-muted-foreground">
                               No credit transactions found for this period
