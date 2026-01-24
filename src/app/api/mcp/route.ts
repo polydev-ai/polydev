@@ -1144,7 +1144,7 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
       .select('user_id, expires_at, revoked')
       .eq('token', token)
       .eq('revoked', false)
-      .single()
+      .maybeSingle()
     
     console.log(`[MCP Auth] Token query result:`, { tokenData, error })
     
@@ -1186,7 +1186,7 @@ async function authenticateBearerToken(request: NextRequest): Promise<{ success:
       .select('user_id, active, last_used_at')
       .eq('token_hash', tokenHash)
       .eq('active', true)
-      .single()
+      .maybeSingle()
     
     if (error || !tokenData) {
       return { success: false, error: 'Invalid or expired MCP token' }
@@ -1224,7 +1224,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ success: boo
       .select('user_id, active, last_used_at')
       .eq('token_hash', tokenHash)
       .eq('active', true)
-      .single()
+      .maybeSingle()
     
     if (error || !tokenData) {
       return { success: false, error: 'Invalid or expired MCP token' }
@@ -1246,7 +1246,7 @@ async function authenticateRequest(request: NextRequest): Promise<{ success: boo
       .select('user_id, expires_at, revoked')
       .eq('token', token)
       .eq('revoked', false)
-      .single()
+      .maybeSingle()
     
     if (error || !tokenData) {
       return { success: false, error: 'Invalid or expired OAuth token' }
@@ -3113,7 +3113,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
             .from('mcp_access_tokens')
             .select('id, client_id')
             .eq('token', token)
-            .single()
+            .maybeSingle()
           accessTokenId = tokenData?.id
           clientId = tokenData?.client_id || 'unknown'
         } else if (token.startsWith('pd_')) {
