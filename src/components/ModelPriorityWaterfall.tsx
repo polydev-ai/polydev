@@ -330,17 +330,31 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         
         <div className="flex items-center gap-4">
           <span className="text-sm text-slate-400 font-medium">1</span>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={perspectivesPerMessage}
-            onChange={(e) => debouncedUpdatePerspectives(parseInt(e.target.value))}
-            className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-white"
-            disabled={saving}
-          />
+          <div className="flex-1 relative">
+            <input
+              type="range"
+              min="1"
+              max="10"
+              value={perspectivesPerMessage}
+              onChange={(e) => debouncedUpdatePerspectives(parseInt(e.target.value))}
+              className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-white"
+              disabled={saving}
+            />
+            {/* Recommended indicator at 2-3 */}
+            <div className="absolute top-4 left-[15%] text-[10px] text-emerald-400 font-medium">
+              ↑ Recommended
+            </div>
+          </div>
           <span className="text-sm text-slate-400 font-medium">10</span>
         </div>
+
+        {/* Recommended Badge */}
+        {(perspectivesPerMessage === 2 || perspectivesPerMessage === 3) && (
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-medium">
+            <Check className="w-3 h-3" />
+            Recommended setting for balanced cost & diversity
+          </div>
+        )}
 
         {/* Cost Estimate */}
         {(() => {
