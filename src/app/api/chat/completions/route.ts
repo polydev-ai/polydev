@@ -556,7 +556,7 @@ export async function POST(request: NextRequest) {
         .select('provider, default_model, display_order, active')
         .eq('user_id', user.id)
         .eq('active', true)
-        .order('display_order', { ascending: true })
+        .eq('is_admin_key', false) // Only personal keys here
 
       if (!userApiKeys || userApiKeys.length === 0) {
         throw new Error('No model specified and no API keys configured. Please set up models at https://www.polydev.ai/dashboard/models')
@@ -1016,7 +1016,7 @@ export async function POST(request: NextRequest) {
                 metadata: { applicationName: 'https://www.polydev.ai', siteUrl: 'Polydev Multi-LLM Platform' }
               }
 
-              // Clamp maxTokens to model limits from models.dev when available
+              // Clamp maxTokens to model limits from model_tiers when available
               try {
                 const limits = await modelsDevService.getModelLimits(friendlyModelId, requiredProvider)
                 if (limits?.maxTokens && Number.isFinite(limits.maxTokens)) {
@@ -1036,12 +1036,32 @@ export async function POST(request: NextRequest) {
                   } else {
                     switch (selectedProvider) {
                       case 'openai':
+                      case 'openrouter':
                       case 'groq':
                       case 'deepseek':
                       case 'mistral':
+                      case 'zai':
+                      case 'zai-coding-plan':
+                      case 'zhipuai':
+                      case 'together':
+                      case 'togetherai':
+                      case 'cerebras':
+                      case 'sambanova':
+                      case 'xai':
+                      case 'x-ai':
+                      case 'fireworks-ai':
                         apiOptions.openAiBaseUrl = selectedConfig.baseUrl
                         break
+                      case 'anthropic':
+                        apiOptions.anthropicBaseUrl = selectedConfig.baseUrl
+                        break
+                      case 'gemini':
+                      case 'google':
+                        apiOptions.googleBaseUrl = selectedConfig.baseUrl
+                        break
                       default:
+                        // For unknown providers, use openAiBaseUrl as default (most common format)
+                        apiOptions.openAiBaseUrl = selectedConfig.baseUrl
                         break
                     }
                   }
@@ -1054,7 +1074,7 @@ export async function POST(request: NextRequest) {
               let upstream: ReadableStream | undefined
               try {
                 // For OpenAI-compatible providers, request usage in the final streamed chunk
-                if (['openai','openrouter','groq','deepseek','mistral','xai'].includes(selectedProvider)) {
+                if (['openai','openrouter','groq','deepseek','mistral','xai','zai','zai-coding-plan','zhipuai','together','togetherai','cerebras','sambanova','fireworks-ai'].includes(selectedProvider)) {
                   (apiOptions as any).streamOptions = { include_usage: true }
                   ;(apiOptions as any).stream_options = { include_usage: true }
                 }
@@ -1787,7 +1807,7 @@ export async function POST(request: NextRequest) {
             
             // Add reasoning effort for reasoning models
             if (modelData?.supports_reasoning && reasoning_effort) {
-              apiOptions.reasoning_effort = reasoning_effort
+              apiOptions.reasoningEffort = reasoning_effort
             }
 
             // Apply OpenAI parameter transformations
@@ -1803,6 +1823,7 @@ export async function POST(request: NextRequest) {
                 // Fallback to common patterns
                 switch (selectedProvider) {
                   case 'openai':
+                  case 'openrouter':
                   case 'groq':
                   case 'deepseek':
                   case 'mistral':
@@ -2075,7 +2096,7 @@ export async function POST(request: NextRequest) {
             
             // Add reasoning effort for reasoning models if supported
             if (modelData?.supports_reasoning && reasoning_effort) {
-              apiOptions.reasoning_effort = reasoning_effort
+              apiOptions.reasoningEffort = reasoning_effort
             }
 
             // Apply OpenAI parameter transformations
@@ -2225,7 +2246,7 @@ export async function POST(request: NextRequest) {
 
                 // Add reasoning effort for reasoning models if supported
                 if (modelData?.supports_reasoning && reasoning_effort) {
-                  retryApiOptions.reasoning_effort = reasoning_effort
+                  retryApiOptions.reasoningEffort = reasoning_effort
                 }
 
                 // Retry with user API key
@@ -2306,7 +2327,7 @@ export async function POST(request: NextRequest) {
 
                 // Add reasoning effort for reasoning models if supported
                 if (modelData?.supports_reasoning && reasoning_effort) {
-                  retryApiOptions.reasoning_effort = reasoning_effort
+                  retryApiOptions.reasoningEffort = reasoning_effort
                 }
 
                 // Retry with admin key
@@ -2396,7 +2417,7 @@ export async function POST(request: NextRequest) {
                 }
                 
                 if (modelData?.supports_reasoning && reasoning_effort) {
-                  apiOptions.reasoning_effort = reasoning_effort
+                  apiOptions.reasoningEffort = reasoning_effort
                 }
 
                 // Apply OpenAI parameter transformations
@@ -2431,8 +2452,8 @@ export async function POST(request: NextRequest) {
                     const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
                     const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
                     costInfo = {
-                      input_cost: inputCost,
-                      output_cost: outputCost,
+                      input_cost: Number(inputCost.toFixed(6)),
+                      output_cost: Number(outputCost.toFixed(6)),
                       total_cost: responseCost
                     }
                   }
@@ -2857,7 +2878,7 @@ export async function POST(request: NextRequest) {
               type: 'api'
             }
             totalCost += responseCost
-            totalCreditsUsed += (response as any).credits_used || 0
+            totalCreditsUsed += (response as any).creditsUsed || 0
           }
         } catch (error) {
           console.warn(`Failed to get pricing for ${response.model}:`, error)
@@ -2914,7 +2935,7 @@ export async function POST(request: NextRequest) {
                   total_cost: (r as any).costInfo?.total_cost || 0
                 },
                 fallback_method: r!.fallback_method,
-                credits_used: (r as any).credits_used || 0
+                credits_used: (r as any).creditsUsed || 0
               }))
           }
 
@@ -2963,7 +2984,7 @@ export async function POST(request: NextRequest) {
               tps: tps ? Number(tps.toFixed(1)) : null,
               finish: 'stop',
               fallback_method: (r as any).fallback_method,
-              credits_used: (r as any).credits_used || 0
+              credits_used: (r as any).creditsUsed || 0
             }
           })
       }
@@ -2982,7 +3003,7 @@ export async function POST(request: NextRequest) {
           tokens_used: r?.usage?.total_tokens || 0,
           cost: r?.costInfo || null,
           fallback_method: r?.fallback_method,
-          credits_used: r?.credits_used || 0,
+          credits_used: r?.creditsUsed || 0,
           error: r?.error || null
         }))
       },

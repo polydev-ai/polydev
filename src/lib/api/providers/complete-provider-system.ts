@@ -1035,7 +1035,25 @@ export class UniversalProviderHandler {
   }
 
   private getEndpoint(config: ProviderConfig, options: ApiHandlerOptions): string {
+    // Check for custom base URL from options (admin keys may have different base URLs)
+    // Priority: provider-specific baseUrl options > generic baseUrl option > config.baseUrl
     let endpoint = config.baseUrl
+    
+    // Check for custom base URL overrides from options
+    if (options.openAiBaseUrl && ['openai', 'openai-native', 'groq', 'deepseek', 'mistral', 'zhipuai', 'zai', 'zai-coding-plan', 'together', 'togetherai', 'cerebras', 'sambanova', 'xai', 'x-ai', 'fireworks-ai'].includes(config.id)) {
+      endpoint = options.openAiBaseUrl
+      console.log(`[getEndpoint] Using custom openAiBaseUrl for ${config.id}: ${endpoint}`)
+    } else if (options.anthropicBaseUrl && config.id === 'anthropic') {
+      endpoint = options.anthropicBaseUrl
+      console.log(`[getEndpoint] Using custom anthropicBaseUrl: ${endpoint}`)
+    } else if (options.googleBaseUrl && ['gemini', 'google'].includes(config.id)) {
+      endpoint = options.googleBaseUrl
+      console.log(`[getEndpoint] Using custom googleBaseUrl: ${endpoint}`)
+    } else if ((options as any).baseUrl) {
+      // Generic baseUrl fallback for any provider
+      endpoint = (options as any).baseUrl
+      console.log(`[getEndpoint] Using generic custom baseUrl for ${config.id}: ${endpoint}`)
+    }
 
     // Provider-specific endpoint logic
     switch (config.id) {
