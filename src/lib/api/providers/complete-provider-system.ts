@@ -968,9 +968,8 @@ export class UniversalProviderHandler {
     
     const endpoint = this.getEndpoint(config, options)
 
-    // Determine timeout based on model - GPT-5 models need longer timeout
-    const isGPT5Model = options.model && (options.model === 'gpt-5' || options.model.includes('gpt-5'))
-    const timeoutMs = isGPT5Model ? 90000 : 30000 // 90 seconds for GPT-5, 30 seconds for others
+    // Use generous timeout for all models - Z AI and other slow providers need 400+ seconds
+    const timeoutMs = 400000 // 400 seconds for all providers
 
     // Make request with retry logic
     const retryHandler = this.retryHandlers.get(providerId)
