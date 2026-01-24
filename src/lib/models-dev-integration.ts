@@ -387,8 +387,28 @@ class ModelsDevService {
   }
 
   async getProviderSpecificModelId(friendlyId: string, providerId: string): Promise<string | null> {
+    // First try model_mappings table
     const mapping = await this.getModelByFriendlyId(friendlyId)
-    return mapping?.providers[providerId]?.api_model_id || null
+    if (mapping?.providers[providerId]?.api_model_id) {
+      return mapping.providers[providerId].api_model_id
+    }
+    
+    // Fallback to models_registry.provider_model_id
+    const supabase = await this.getSupabaseClient()
+    const { data, error } = await supabase
+      .from('models_registry')
+      .select('provider_model_id')
+      .eq('friendly_id', friendlyId)
+      .eq('provider_id', providerId)
+      .eq('is_active', true)
+      .maybeSingle()
+    
+    if (!error && data?.provider_model_id) {
+      console.log(`[ModelsDevService] Resolved ${friendlyId} via models_registry: ${data.provider_model_id}`)
+      return data.provider_model_id
+    }
+    
+    return null
   }
 
   async getFriendlyIdFromProviderModelId(providerModelId: string, providerId?: string): Promise<string | null> {
