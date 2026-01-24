@@ -1168,9 +1168,41 @@ export default function EnhancedApiKeysPage() {
                   return (
                     <div
                       key={key.id}
-                      className="border rounded-lg p-4 bg-slate-50 border-slate-200"
+                      className={`border rounded-lg p-4 transition-all ${
+                        key.active 
+                          ? 'bg-green-50 border-green-200 hover:border-green-300' 
+                          : 'bg-slate-100 border-slate-200 opacity-60'
+                      }`}
                     >
                       <div className="flex items-center space-x-3">
+                        {/* Quick Enable/Disable Toggle */}
+                        <button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`/api/api-keys/${key.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ active: !key.active })
+                              })
+                              if (response.ok) {
+                                refresh()
+                              }
+                            } catch (error) {
+                              console.error('Error toggling key active status:', error)
+                            }
+                          }}
+                          className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                            key.active ? 'bg-green-500' : 'bg-slate-300'
+                          }`}
+                          title={key.active ? 'Disable this key' : 'Enable this key'}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              key.active ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                        
                         {/* Arrow buttons for reordering */}
                         <div className="flex flex-col space-y-1">
                           <button
