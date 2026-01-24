@@ -87,6 +87,9 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
   const tierPriority = (preferences?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
   const modelOrder = (preferences?.mcp_settings as any)?.model_order || {} as { [tier: string]: string[] }
 
+  // Filter to only show eco tier (single-tier system)
+  const visibleTiers = tierPriority.filter((tier: string) => tier === 'eco')
+
   // Debounced perspective slider update
   const debouncedUpdatePerspectives = useDebouncedCallback(async (value: number) => {
     try {
@@ -526,7 +529,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         {creditsExpanded && (
           <div className="p-4 pt-0 border-t border-slate-100">
             <div className="space-y-3 mt-3">
-              {tierPriority.map((tier: string, tierIdx: number) => {
+              {visibleTiers.map((tier: string, tierIdx: number) => {
                 const { total, used } = getTierQuota(tier)
                 const remaining = total - used
                 const percentage = total > 0 ? (used / total) * 100 : 0
