@@ -310,29 +310,29 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
 
   return (
     <div className="space-y-4">
-      {/* Perspectives Selector - Compact */}
-      <div className="bg-slate-900 rounded-xl p-5 text-white">
-        <div className="flex items-center justify-between mb-3">
+      {/* Perspectives Selector */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-400" />
-            <span className="font-medium">Perspectives</span>
-            <span className="text-slate-400 text-sm">per request</span>
+            <Zap className="w-4 h-4 text-amber-500" />
+            <span className="font-medium text-slate-900">Perspectives</span>
+            <span className="text-slate-500 text-sm">per request</span>
           </div>
-          <div className="text-3xl font-bold tabular-nums">{perspectivesPerMessage}</div>
+          <div className="text-3xl font-bold text-slate-900 tabular-nums">{perspectivesPerMessage}</div>
         </div>
 
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-xs text-slate-500">1</span>
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-sm text-slate-400 w-3">1</span>
           <input
             type="range"
             min="1"
             max="10"
             value={perspectivesPerMessage}
             onChange={(e) => debouncedUpdatePerspectives(parseInt(e.target.value))}
-            className="flex-1 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-white"
+            className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900"
             disabled={saving}
           />
-          <span className="text-xs text-slate-500">10</span>
+          <span className="text-sm text-slate-400 w-4">10</span>
         </div>
 
         {/* Cost + Models Preview */}
@@ -340,21 +340,21 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
           const creditsUsed = selectionPreview.filter(s => s.source === 'credits').length
           const freeCount = selectionPreview.filter(s => s.source === 'cli' || s.source === 'api').length
           return (
-            <div className="flex items-center justify-between text-sm border-t border-slate-700/50 pt-3">
-              <div className="flex items-center gap-2 text-slate-400">
-                <Coins className="w-3.5 h-3.5 text-amber-400" />
+            <div className="flex items-center justify-between text-sm border-t border-slate-100 pt-4">
+              <div className="flex items-center gap-2 text-slate-600">
+                <Coins className="w-4 h-4 text-amber-500" />
                 <span>{creditsUsed} credit{creditsUsed !== 1 ? 's' : ''}/req</span>
-                {freeCount > 0 && <span className="text-slate-500">({freeCount} free)</span>}
+                {freeCount > 0 && <span className="text-slate-400">({freeCount} free)</span>}
               </div>
               <div className="flex items-center gap-1.5">
                 {selectionPreview.slice(0, 5).map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 text-xs">
-                    {getProviderLogo(item.provider) && <img src={getProviderLogo(item.provider)} alt="" className="w-3.5 h-3.5 rounded" />}
-                    <span className="text-slate-300">{getProviderDisplayName(item.provider)}</span>
+                  <div key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-100 text-sm">
+                    {getProviderLogo(item.provider) && <img src={getProviderLogo(item.provider)} alt="" className="w-4 h-4 rounded" />}
+                    <span className="text-slate-700">{getProviderDisplayName(item.provider)}</span>
                   </div>
                 ))}
                 {selectionPreview.length > 5 && (
-                  <span className="text-slate-500 text-xs">+{selectionPreview.length - 5}</span>
+                  <span className="text-slate-500 text-sm">+{selectionPreview.length - 5}</span>
                 )}
               </div>
             </div>
@@ -364,24 +364,24 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
 
       {/* Your API Keys */}
       <div className="bg-white rounded-xl border border-slate-200">
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Key className="w-4 h-4 text-slate-500" />
             <span className="font-medium text-slate-900">API Keys</span>
-            <span className="text-xs text-slate-400">({sortedApiKeys.length})</span>
+            <span className="text-sm text-slate-400">({sortedApiKeys.length})</span>
           </div>
           {onAddKey && (
             <button
               onClick={onAddKey}
-              className="flex items-center gap-1 px-2.5 py-1 bg-slate-900 text-white text-xs font-medium rounded-md hover:bg-slate-700"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-700"
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-3.5 h-3.5" />
               Add
             </button>
           )}
         </div>
 
-        <div className="p-2 space-y-1">
+        <div className="p-3 space-y-1">
           {sortedApiKeys.length > 0 ? (
             sortedApiKeys.map((key, idx) => {
               const cli = getCliStatus(key.provider)
@@ -391,11 +391,11 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
               return (
                 <div
                   key={key.id}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                    isSelected ? 'bg-slate-100' : 'hover:bg-slate-50'
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                    isSelected ? 'bg-slate-50' : 'hover:bg-slate-50'
                   }`}
                 >
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${
                     isSelected ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-500'
                   }`}>
                     {idx + 1}
@@ -406,41 +406,41 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                   )}
 
                   <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm text-slate-900">{getProviderDisplayName(key.provider)}</span>
-                    {cliAvailable && <span className="ml-1.5 text-[10px] text-slate-500">CLI</span>}
+                    <span className="font-medium text-slate-900">{getProviderDisplayName(key.provider)}</span>
+                    {cliAvailable && <span className="ml-2 text-xs text-slate-400 uppercase tracking-wide">CLI</span>}
                   </div>
 
                   <div className="flex items-center gap-0.5">
                     {onEditKey && (
-                      <button onClick={() => onEditKey(key)} className="p-1 hover:bg-slate-200 rounded" title="Edit">
-                        <Edit3 className="w-3.5 h-3.5 text-slate-400" />
+                      <button onClick={() => onEditKey(key)} className="p-1.5 hover:bg-slate-200 rounded" title="Edit">
+                        <Edit3 className="w-4 h-4 text-slate-400" />
                       </button>
                     )}
                     {onDeleteKey && (
-                      <button onClick={() => onDeleteKey(key.id)} className="p-1 hover:bg-red-50 rounded" title="Delete">
-                        <Trash2 className="w-3.5 h-3.5 text-slate-400 hover:text-red-500" />
+                      <button onClick={() => onDeleteKey(key.id)} className="p-1.5 hover:bg-red-50 rounded" title="Delete">
+                        <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-500" />
                       </button>
                     )}
                     <button
                       onClick={() => moveApiKey(idx, 'up')}
                       disabled={idx === 0 || saving}
-                      className="p-1 hover:bg-slate-200 rounded disabled:opacity-30"
+                      className="p-1.5 hover:bg-slate-200 rounded disabled:opacity-30"
                     >
-                      <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                      <ChevronUp className="w-4 h-4 text-slate-400" />
                     </button>
                     <button
                       onClick={() => moveApiKey(idx, 'down')}
                       disabled={idx === sortedApiKeys.length - 1 || saving}
-                      className="p-1 hover:bg-slate-200 rounded disabled:opacity-30"
+                      className="p-1.5 hover:bg-slate-200 rounded disabled:opacity-30"
                     >
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
                     </button>
                   </div>
                 </div>
               )
             })
           ) : (
-            <div className="p-4 text-center text-slate-500 text-sm">
+            <div className="p-6 text-center text-slate-500">
               <p>No API keys yet.</p>
               {onAddKey && (
                 <button onClick={onAddKey} className="mt-2 text-slate-900 font-medium hover:underline">
@@ -452,11 +452,11 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         </div>
       </div>
 
-      {/* Credits Section - Compact */}
+      {/* Credits Section */}
       <div className="bg-white rounded-xl border border-slate-200">
         <button
           onClick={() => setCreditsExpanded(!creditsExpanded)}
-          className="w-full px-4 py-3 flex items-center gap-2 text-left hover:bg-slate-50"
+          className="w-full px-5 py-4 flex items-center gap-2 text-left hover:bg-slate-50 rounded-xl"
         >
           <Coins className="w-4 h-4 text-slate-500" />
           <span className="font-medium text-slate-900 flex-1">Credits</span>
@@ -468,8 +468,8 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
         </button>
 
         {creditsExpanded && (
-          <div className="px-4 pb-3 border-t border-slate-100">
-            <div className="mt-3 space-y-2">
+          <div className="px-5 pb-4 border-t border-slate-100">
+            <div className="mt-4 space-y-3">
               {visibleTiers.map((tier: string) => {
                 const { total, used } = getTierQuota(tier)
                 const percentage = total > 0 ? (used / total) * 100 : 0
@@ -477,35 +477,35 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
 
                 return (
                   <div key={tier}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
                         <div
-                          className={`h-1.5 rounded-full ${percentage >= 90 ? 'bg-red-400' : percentage >= 70 ? 'bg-amber-400' : 'bg-slate-400'}`}
+                          className={`h-2 rounded-full ${percentage >= 90 ? 'bg-red-400' : percentage >= 70 ? 'bg-amber-400' : 'bg-slate-400'}`}
                           style={{ width: `${Math.min(percentage, 100)}%` }}
                         />
                       </div>
                     </div>
                     {sortedModels.length > 0 && (
-                      <div className="space-y-0.5">
+                      <div className="space-y-1">
                         {sortedModels.slice(0, 5).map((model, idx) => (
-                          <div key={model.id} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-slate-50 group text-xs">
-                            <span className="text-slate-400 w-4">{idx + 1}</span>
+                          <div key={model.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-50 group">
+                            <span className="text-slate-400 w-4 text-sm">{idx + 1}</span>
                             {getProviderLogo(model.provider) && (
-                              <img src={getProviderLogo(model.provider)} alt="" className="w-3.5 h-3.5 rounded" />
+                              <img src={getProviderLogo(model.provider)} alt="" className="w-5 h-5 rounded" />
                             )}
-                            <span className="text-slate-600 flex-1 truncate">{model.display_name}</span>
+                            <span className="text-slate-700 flex-1 truncate">{model.display_name}</span>
                             <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
-                              <button onClick={() => moveModelInTier(tier, model.id, 'up')} disabled={idx === 0} className="p-0.5 hover:bg-slate-200 rounded disabled:opacity-30">
-                                <ChevronUp className="w-3 h-3 text-slate-400" />
+                              <button onClick={() => moveModelInTier(tier, model.id, 'up')} disabled={idx === 0} className="p-1 hover:bg-slate-200 rounded disabled:opacity-30">
+                                <ChevronUp className="w-4 h-4 text-slate-400" />
                               </button>
-                              <button onClick={() => moveModelInTier(tier, model.id, 'down')} disabled={idx === sortedModels.length - 1} className="p-0.5 hover:bg-slate-200 rounded disabled:opacity-30">
-                                <ChevronDown className="w-3 h-3 text-slate-400" />
+                              <button onClick={() => moveModelInTier(tier, model.id, 'down')} disabled={idx === sortedModels.length - 1} className="p-1 hover:bg-slate-200 rounded disabled:opacity-30">
+                                <ChevronDown className="w-4 h-4 text-slate-400" />
                               </button>
                             </div>
                           </div>
                         ))}
                         {sortedModels.length > 5 && (
-                          <div className="text-xs text-slate-400 px-2">+{sortedModels.length - 5} more</div>
+                          <div className="text-sm text-slate-400 px-3 py-1">+{sortedModels.length - 5} more</div>
                         )}
                       </div>
                     )}
@@ -518,7 +518,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       </div>
 
       {saving && (
-        <div className="flex items-center justify-center gap-2 py-2 text-sm text-slate-500">
+        <div className="flex items-center justify-center gap-2 py-3 text-sm text-slate-500">
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-300 border-t-slate-600" />
           <span>Saving...</span>
         </div>
