@@ -941,7 +941,24 @@ export default function EnhancedApiKeysPage() {
             <h2 className="text-lg font-semibold text-slate-900">Model Usage Analytics</h2>
             <span className="text-xs text-slate-500">(Last 30 Days)</span>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-4">
+            {/* Mini Preview Stats when collapsed */}
+            {!showAnalytics && modelAnalytics && (
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 rounded">
+                  <span className="text-slate-500">Credits:</span>
+                  <span className="font-semibold text-slate-900">{modelAnalytics.totalCreditsUsed.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 rounded">
+                  <span className="text-slate-500">Requests:</span>
+                  <span className="font-semibold text-slate-900">{modelAnalytics.totalRequests.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 rounded">
+                  <span className="text-slate-500">Models:</span>
+                  <span className="font-semibold text-slate-900">{modelAnalytics.modelBreakdown.length}</span>
+                </div>
+              </div>
+            )}
             {analyticsLoading && <RefreshCw className="w-4 h-4 animate-spin text-slate-400" />}
             <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${showAnalytics ? 'rotate-180' : ''}`} />
           </div>
