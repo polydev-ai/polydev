@@ -8,7 +8,7 @@ import { useCredits } from '../hooks/useCredits'
 import { createClient } from '../app/utils/supabase/client'
 import PolydevLogo from './PolydevLogo'
 import { EncryptionStatus } from './EncryptionStatus'
-import { Coins } from 'lucide-react'
+import { Coins, HelpCircle } from 'lucide-react'
 
 interface UserProfile {
   id: string
@@ -165,6 +165,14 @@ export default function Navigation() {
                     {creditsLoading ? '...' : `${(balance.balance + balance.promotionalBalance).toFixed(0)}`}
                   </span>
                   <span className="text-amber-500 text-xs">credits</span>
+                </Link>
+                {/* Help/Setup Guide */}
+                <Link
+                  href="/docs"
+                  className="flex items-center gap-1 px-2 py-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                  title="Setup Guide & Documentation"
+                >
+                  <HelpCircle className="w-5 h-5" />
                 </Link>
                 <EncryptionStatus variant="icon" />
                 <div className="relative" ref={dropdownRef}>
