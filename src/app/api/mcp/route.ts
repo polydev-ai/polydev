@@ -147,7 +147,10 @@ function getProviderDisplayName(provider: string): string {
     'azure': '', // Azure URLs are dynamic based on deployment
     'mistral': 'Mistral AI',
     'perplexity': 'Perplexity',
-    'fireworks': 'Fireworks AI'
+    'fireworks': 'Fireworks AI',
+    'zai': 'Z.AI',
+    'zhipuai': 'Zhipu AI',
+    'zai-coding-plan': 'Z.AI (GLM)'
   }
   return displayNames[provider.toLowerCase()] || provider
 }
@@ -2110,26 +2113,52 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               let result: any
               
               if (contentType.includes('text/event-stream') || contentType.includes('text/plain')) {
-                // Parse SSE response format
+                // Parse SSE response format - handle various SSE implementations
                 console.log(`[MCP] Admin key: parsing SSE response from ${providerName}`)
                 const textResult = await apiResponse.text()
                 
-                const chunks = textResult.split('\n\n').filter(chunk => chunk.startsWith('data: '))
+                // Debug log first 500 chars of response to help diagnose parsing issues
+                console.log(`[MCP] SSE raw response preview (first 500 chars):`, textResult.substring(0, 500))
+                
+                // Try multiple SSE parsing strategies
                 let finalContent = ''
                 let finalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                 
+                // Strategy 1: Split by double newlines (standard SSE)
+                let chunks = textResult.split('\n\n').filter(chunk => 
+                  chunk.startsWith('data:') || chunk.startsWith('data: ')
+                )
+                
+                // Strategy 2: If no chunks found, try single newline split
+                if (chunks.length === 0) {
+                  chunks = textResult.split('\n').filter(line => 
+                    line.startsWith('data:') || line.startsWith('data: ')
+                  )
+                }
+                
+                // Strategy 3: If still no chunks, check if response contains data lines anywhere
+                if (chunks.length === 0) {
+                  const dataMatches = textResult.match(/data:\s*(\{.*?\})/g)
+                  if (dataMatches) {
+                    chunks = dataMatches
+                  }
+                }
+                
+                console.log(`[MCP] SSE parsing found ${chunks.length} data chunks`)
+                
                 for (const chunk of chunks) {
                   try {
-                    const data = chunk.replace('data: ', '').trim()
-                    if (data === '[DONE]') break
+                    // Handle both 'data: ' and 'data:' prefixes
+                    const data = chunk.replace(/^data:\s*/, '').trim()
+                    if (data === '[DONE]' || data === '') continue
                     
                     const parsed = JSON.parse(data)
                     
-                    // Extract content from streaming chunk
+                    // Extract content from streaming chunk (delta format)
                     if (parsed.choices?.[0]?.delta?.content) {
                       finalContent += parsed.choices[0].delta.content
                     }
-                    // Also handle non-delta format
+                    // Also handle non-delta format (message format)
                     if (parsed.choices?.[0]?.message?.content) {
                       finalContent += parsed.choices[0].message.content
                     }
@@ -2139,7 +2168,25 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                       finalUsage = parsed.usage
                     }
                   } catch (parseError) {
-                    // Skip unparseable chunks
+                    // Skip unparseable chunks but log for debugging
+                    console.log(`[MCP] SSE chunk parse error:`, parseError instanceof Error ? parseError.message : parseError)
+                  }
+                }
+                
+                // Strategy 4: If SSE parsing yielded nothing, try parsing entire response as JSON
+                if (!finalContent && textResult.trim()) {
+                  console.log(`[MCP] SSE parsing yielded no content, trying direct JSON parse`)
+                  try {
+                    const directParsed = JSON.parse(textResult)
+                    if (directParsed.choices?.[0]?.message?.content) {
+                      finalContent = directParsed.choices[0].message.content
+                      if (directParsed.usage) {
+                        finalUsage = directParsed.usage
+                      }
+                    }
+                  } catch {
+                    // Not valid JSON either
+                    console.log(`[MCP] Direct JSON parse also failed`)
                   }
                 }
                 
@@ -2151,6 +2198,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                     completion_tokens: estimatedTokens,
                     total_tokens: estimatedTokens + Math.ceil(contextualPrompt.length / 4)
                   }
+                }
+                
+                // If we still have no content, throw an error with helpful debugging info
+                if (!finalContent) {
+                  console.error(`[MCP] SSE parsing failed - no content extracted from ${providerName}`)
+                  console.error(`[MCP] Raw response length: ${textResult.length}, chunks found: ${chunks.length}`)
+                  throw new Error(`Failed to parse SSE response from ${provider.display_name} - no content extracted`)
                 }
                 
                 result = {
@@ -2378,26 +2432,52 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
               let result: any
               
               if (contentType.includes('text/event-stream') || contentType.includes('text/plain')) {
-                // Parse SSE response format
+                // Parse SSE response format - handle various SSE implementations
                 console.log(`[MCP] Admin key: parsing SSE response from ${providerName}`)
                 const textResult = await apiResponse.text()
                 
-                const chunks = textResult.split('\n\n').filter(chunk => chunk.startsWith('data: '))
+                // Debug log first 500 chars of response to help diagnose parsing issues
+                console.log(`[MCP] SSE raw response preview (first 500 chars):`, textResult.substring(0, 500))
+                
+                // Try multiple SSE parsing strategies
                 let finalContent = ''
                 let finalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
                 
+                // Strategy 1: Split by double newlines (standard SSE)
+                let chunks = textResult.split('\n\n').filter(chunk => 
+                  chunk.startsWith('data:') || chunk.startsWith('data: ')
+                )
+                
+                // Strategy 2: If no chunks found, try single newline split
+                if (chunks.length === 0) {
+                  chunks = textResult.split('\n').filter(line => 
+                    line.startsWith('data:') || line.startsWith('data: ')
+                  )
+                }
+                
+                // Strategy 3: If still no chunks, check if response contains data lines anywhere
+                if (chunks.length === 0) {
+                  const dataMatches = textResult.match(/data:\s*(\{.*?\})/g)
+                  if (dataMatches) {
+                    chunks = dataMatches
+                  }
+                }
+                
+                console.log(`[MCP] SSE parsing found ${chunks.length} data chunks`)
+                
                 for (const chunk of chunks) {
                   try {
-                    const data = chunk.replace('data: ', '').trim()
-                    if (data === '[DONE]') break
+                    // Handle both 'data: ' and 'data:' prefixes
+                    const data = chunk.replace(/^data:\s*/, '').trim()
+                    if (data === '[DONE]' || data === '') continue
                     
                     const parsed = JSON.parse(data)
                     
-                    // Extract content from streaming chunk
+                    // Extract content from streaming chunk (delta format)
                     if (parsed.choices?.[0]?.delta?.content) {
                       finalContent += parsed.choices[0].delta.content
                     }
-                    // Also handle non-delta format
+                    // Also handle non-delta format (message format)
                     if (parsed.choices?.[0]?.message?.content) {
                       finalContent += parsed.choices[0].message.content
                     }
@@ -2407,7 +2487,25 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                       finalUsage = parsed.usage
                     }
                   } catch (parseError) {
-                    // Skip unparseable chunks
+                    // Skip unparseable chunks but log for debugging
+                    console.log(`[MCP] SSE chunk parse error:`, parseError instanceof Error ? parseError.message : parseError)
+                  }
+                }
+                
+                // Strategy 4: If SSE parsing yielded nothing, try parsing entire response as JSON
+                if (!finalContent && textResult.trim()) {
+                  console.log(`[MCP] SSE parsing yielded no content, trying direct JSON parse`)
+                  try {
+                    const directParsed = JSON.parse(textResult)
+                    if (directParsed.choices?.[0]?.message?.content) {
+                      finalContent = directParsed.choices[0].message.content
+                      if (directParsed.usage) {
+                        finalUsage = directParsed.usage
+                      }
+                    }
+                  } catch {
+                    // Not valid JSON either
+                    console.log(`[MCP] Direct JSON parse also failed`)
                   }
                 }
                 
@@ -2419,6 +2517,13 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
                     completion_tokens: estimatedTokens,
                     total_tokens: estimatedTokens + Math.ceil(contextualPrompt.length / 4)
                   }
+                }
+                
+                // If we still have no content, throw an error with helpful debugging info
+                if (!finalContent) {
+                  console.error(`[MCP] SSE parsing failed - no content extracted from ${providerName}`)
+                  console.error(`[MCP] Raw response length: ${textResult.length}, chunks found: ${chunks.length}`)
+                  throw new Error(`Failed to parse SSE response from ${provider.display_name} - no content extracted`)
                 }
                 
                 result = {
@@ -3627,7 +3732,7 @@ async function callPerspectivesAPI(args: any, user: any, request?: NextRequest):
         available_apikeys: apiKeys?.map((k: any) => ({ provider: k.provider, model: k.default_model })) || []
       }
     }
-    formatted += `\n\n\n\u0060\u0060\u0060json\n${JSON.stringify(summary)}\n\u0060\u0060\u0060\n`
+    formatted += `\n\n\n\`\`\`json\n${JSON.stringify(summary)}\n\`\`\`\n`
   } catch (e) {
     // Do not fail the request if summary building fails
   }
