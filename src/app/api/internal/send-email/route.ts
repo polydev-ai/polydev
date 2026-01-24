@@ -4,9 +4,9 @@ import { NextRequest, NextResponse } from 'next/server'
 // This should only be called by other API routes, not directly by clients
 export async function POST(request: NextRequest) {
   try {
-    // Verify this is an internal call (basic check)
-    const userAgent = request.headers.get('user-agent')
-    if (!userAgent?.includes('Next')) {
+    // Verify this is an internal call using secret header
+    const internalSecret = request.headers.get('x-internal-secret')
+    if (!process.env.INTERNAL_API_SECRET || internalSecret !== process.env.INTERNAL_API_SECRET) {
       return NextResponse.json({ error: 'Unauthorized - internal use only' }, { status: 401 })
     }
 

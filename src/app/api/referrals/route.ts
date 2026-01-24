@@ -57,7 +57,10 @@ export async function POST(request: NextRequest) {
               
               await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-email`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-internal-secret': process.env.INTERNAL_API_SECRET || ''
+                },
                 body: JSON.stringify({
                   to: referrerEmail,
                   from: 'noreply@polydev.ai',
@@ -78,7 +81,10 @@ export async function POST(request: NextRequest) {
               
               await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-email`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-internal-secret': process.env.INTERNAL_API_SECRET || ''
+                },
                 body: JSON.stringify({
                   to: user.email,
                   from: 'noreply@polydev.ai',
