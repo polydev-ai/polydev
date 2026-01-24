@@ -189,6 +189,7 @@ export default function EnhancedApiKeysPage() {
   const [hasCompletedInitialSync, setHasCompletedInitialSync] = useState(false)
   const [cliStatusLoading, setCliStatusLoading] = useState(false)
   const [viewMode, setViewMode] = useState<'simple' | 'advanced'>('simple')
+  const [showOnboarding, setShowOnboarding] = useState(true)
 
   // Model usage analytics state
   const [modelAnalytics, setModelAnalytics] = useState<{
@@ -841,6 +842,94 @@ export default function EnhancedApiKeysPage() {
         )}
       </AnimatePresence>
 
+      {/* Setup Progress Card - Show for new users */}
+      {showOnboarding && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-5 relative">
+          <button
+            onClick={() => setShowOnboarding(false)}
+            className="absolute top-3 right-3 text-slate-400 hover:text-slate-600"
+            title="Dismiss"
+          >
+            ×
+          </button>
+          <h3 className="text-lg font-semibold text-slate-900 mb-3">Welcome! Get Started in 3 Steps</h3>
+          
+          {/* Progress Bar */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
+              <span>Setup Progress</span>
+              <span>
+                {[apiKeys.length > 0, preferences?.mcp_settings?.perspectives_per_message !== undefined, true].filter(Boolean).length} of 3 complete
+              </span>
+            </div>
+            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-blue-500 transition-all duration-300"
+                style={{ 
+                  width: `${([apiKeys.length > 0, preferences?.mcp_settings?.perspectives_per_message !== undefined, true].filter(Boolean).length / 3) * 100}%` 
+                }}
+              />
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            {/* Step 1: Add API Key */}
+            <div className={`flex items-center gap-3 p-3 rounded-lg ${apiKeys.length > 0 ? 'bg-green-50 border border-green-200' : 'bg-white border border-slate-200'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${apiKeys.length > 0 ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                {apiKeys.length > 0 ? <Check className="w-4 h-4" /> : '1'}
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${apiKeys.length > 0 ? 'text-green-700' : 'text-slate-700'}`}>
+                  Add your first API key
+                </p>
+                <p className="text-xs text-slate-500">Connect OpenAI, Anthropic, or another provider</p>
+              </div>
+              {apiKeys.length === 0 && (
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                >
+                  Add Key
+                </button>
+              )}
+            </div>
+            
+            {/* Step 2: Set Perspectives */}
+            <div className={`flex items-center gap-3 p-3 rounded-lg ${preferences?.mcp_settings?.perspectives_per_message !== undefined ? 'bg-green-50 border border-green-200' : 'bg-white border border-slate-200'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${preferences?.mcp_settings?.perspectives_per_message !== undefined ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                {preferences?.mcp_settings?.perspectives_per_message !== undefined ? <Check className="w-4 h-4" /> : '2'}
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${preferences?.mcp_settings?.perspectives_per_message !== undefined ? 'text-green-700' : 'text-slate-700'}`}>
+                  Configure perspectives count
+                </p>
+                <p className="text-xs text-slate-500">Choose how many AI models to query per request</p>
+              </div>
+              <span className="text-xs text-blue-600">↓ Scroll below</span>
+            </div>
+            
+            {/* Step 3: Connect IDE */}
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-white border border-slate-200">
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium bg-slate-200 text-slate-600">
+                3
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-700">
+                  Connect your IDE
+                </p>
+                <p className="text-xs text-slate-500">Copy your MCP token and configure your editor</p>
+              </div>
+              <Link
+                href="/dashboard/mcp-tokens"
+                className="px-3 py-1.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-700"
+              >
+                Setup
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Model Usage Analytics - Collapsible Section */}
       <div className="bg-white rounded-lg border border-slate-200 hover:shadow-lg transition-shadow">
         <button
@@ -948,7 +1037,7 @@ export default function EnhancedApiKeysPage() {
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-bold text-slate-900">{model.credits} credits</p>
-                            <p className="text-xs text-slate-500">{model.requests} requests</p>
+                            <p className="text-xs text-slate-600">{model.requests} requests</p>
                           </div>
                         </div>
                       ))}
@@ -1902,7 +1991,7 @@ export default function EnhancedApiKeysPage() {
                         background: `linear-gradient(to right, #0f172a 0%, #0f172a ${((formData.reasoning_level - 1) / ((selectedModel.reasoning_levels || 5) - 1)) * 100}%, #cbd5e1 ${((formData.reasoning_level - 1) / ((selectedModel.reasoning_levels || 5) - 1)) * 100}%, #cbd5e1 100%)`
                       }}
                     />
-                    <div className="flex justify-between text-xs text-slate-600 mt-1">
+                    <div className="flex justify-between text-xs">
                       <span>Faster</span>
                       <span>More thorough</span>
                     </div>
