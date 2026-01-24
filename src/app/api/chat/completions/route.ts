@@ -2306,7 +2306,7 @@ export async function POST(request: NextRequest) {
 
                 // Add reasoning effort for reasoning models if supported
                 if (modelData?.supports_reasoning && reasoning_effort) {
-                  retryApiOptions.reasoning_effort = reasoning_effort
+                  retryApiOptions.reasoning_effort = reasoningEffort
                 }
 
                 // Retry with admin key
@@ -2395,8 +2395,8 @@ export async function POST(request: NextRequest) {
                   apiKey: apiConfig.apiKey
                 }
                 
-                if (modelData?.supports_reasoning && reasoning_effort) {
-                  apiOptions.reasoning_effort = reasoning_effort
+                if (modelData?.supports_reasoning && reasoningEffort) {
+                  apiOptions.reasoningEffort = reasoningEffort
                 }
 
                 // Apply OpenAI parameter transformations
@@ -2705,20 +2705,14 @@ export async function POST(request: NextRequest) {
       const usage = response?.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
       let costInfo: any = { input_cost: 0, output_cost: 0, total_cost: 0 }
       
-      if (response?.fallback_method === 'cli') {
-        // CLI is free
-        if (!providerBreakdown[response.provider]) {
-          providerBreakdown[response.provider] = { cost: 0, tokens: 0, type: 'cli' }
-        }
-        providerBreakdown[response.provider].tokens += usage.total_tokens
-      } else {
+      if (response?.fallback_method !== 'cli') {
         // API key usage - calculate cost from model limits (uses corrected pricing data)
         try {
           const modelLimits = await modelsDevService.getModelLimits(response.model, response.provider)
           if (modelLimits?.pricing && usage) {
             const responseCost = computeCostUSD(usage.prompt_tokens, usage.completion_tokens, modelLimits.pricing.input, modelLimits.pricing.output)
-            const inputCost = (usage.prompt_tokens / 1000000) * modelLimits.pricing.input
-            const outputCost = (usage.completion_tokens / 1000000) * modelLimits.pricing.output
+            const inputCost = ((usage.prompt_tokens || 0) / 1000000) * modelLimits.pricing.input
+            const outputCost = ((usage.completion_tokens || 0) / 1000000) * modelLimits.pricing.output
             costInfo = {
               input_cost: Number(inputCost.toFixed(6)),
               output_cost: Number(outputCost.toFixed(6)),
@@ -2729,6 +2723,7 @@ export async function POST(request: NextRequest) {
           console.warn(`Failed to get pricing for ${response.model}:`, error)
         }
       }
+      // CLI is free, costInfo stays at 0
 
       // Handle streaming response
       if (stream) {
