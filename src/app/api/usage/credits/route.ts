@@ -102,14 +102,28 @@ export async function GET(request: NextRequest) {
 
     perspectiveUsage?.forEach(usage => {
       const tier = usage.model_tier || 'normal'
-      // Use actual credits_deducted if available, otherwise calculate from tier
-      const credits = usage.credits_deducted || (tier === 'premium' ? 20 : tier === 'eco' ? 1 : 4)
+      // Determine source type - handle both 'source_type' and 'source' in metadata
+      const sourceType = usage.request_metadata?.source_type || 
+                        usage.request_metadata?.source || 
+                        'admin_key'
+      
+      // Only count credits for admin-based sources (admin_credits, admin_key, admin)
+      // User's own API keys (user_key, api, cli) should NOT show credit deductions
+      const isAdminSource = sourceType === 'admin_credits' || 
+                           sourceType === 'admin_key' || 
+                           sourceType === 'admin'
+      
+      // Use actual credits_deducted if available, otherwise calculate ONLY for admin sources
+      // For user_key/api/cli sources, credits should be 0
+      const credits = isAdminSource 
+        ? (usage.credits_deducted || (tier === 'premium' ? 20 : tier === 'eco' ? 1 : 4))
+        : 0
+      
       const cost = parseFloat(usage.estimated_cost?.toString() || '0')
-      const sourceType = usage.request_metadata?.source_type || 'admin_key'
       const dateKey = usage.created_at.substring(0, 10) // YYYY-MM-DD
 
-      // Tier stats
-      if (tierStats[tier]) {
+      // Tier stats - only count for admin sources
+      if (tierStats[tier] && isAdminSource) {
         tierStats[tier].requests += 1
         tierStats[tier].credits += credits
         tierStats[tier].estimatedCost += cost
@@ -121,31 +135,51 @@ export async function GET(request: NextRequest) {
         modelStats[modelName] = { tier, requests: 0, credits: 0, estimatedCost: 0 }
       }
       modelStats[modelName].requests += 1
-      modelStats[modelName].credits += credits
+      // Only add credits for admin sources
+      if (isAdminSource) {
+        modelStats[modelName].credits += credits
+      }
       modelStats[modelName].estimatedCost += cost
 
       // Source stats
       if (sourceStats[sourceType]) {
         sourceStats[sourceType].requests += 1
-        sourceStats[sourceType].credits += credits
+        // Only add credits for admin sources
+        if (isAdminSource) {
+          sourceStats[sourceType].credits += credits
+        }
+      } else {
+        // Handle unmapped source types
+        const mappedSource = isAdminSource ? 'admin_credits' : 'user_key'
+        if (sourceStats[mappedSource]) {
+          sourceStats[mappedSource].requests += 1
+          if (isAdminSource) {
+            sourceStats[mappedSource].credits += credits
+          }
+        }
       }
 
-      // Daily stats
+      // Daily stats - only count credits for admin sources
       if (!dailyStats[dateKey]) {
         dailyStats[dateKey] = { credits: 0, requests: 0 }
       }
-      dailyStats[dateKey].credits += credits
+      if (isAdminSource) {
+        dailyStats[dateKey].credits += credits
+      }
       dailyStats[dateKey].requests += 1
 
-      totalCreditsUsed += credits
+      // Only add to total credits used for admin sources
+      if (isAdminSource) {
+        totalCreditsUsed += credits
+      }
 
-      // Recent transactions (first 50)
+      // Recent transactions (first 50) - show credits as 0 for user_key
       if (recentTransactions.length < 50) {
         recentTransactions.push({
           date: usage.created_at,
           model: modelName,
           tier,
-          credits,
+          credits: isAdminSource ? credits : 0, // Show 0 for user keys
           source: sourceType
         })
       }
