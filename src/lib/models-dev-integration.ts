@@ -394,6 +394,7 @@ class ModelsDevService {
     }
     
     // Fallback to models_registry.provider_model_id
+    console.log(`[ModelsDevService] model_mappings lookup failed for ${friendlyId}, checking models_registry...`)
     const supabase = await this.getSupabaseClient()
     const { data, error } = await supabase
       .from('models_registry')
@@ -403,11 +404,16 @@ class ModelsDevService {
       .eq('is_active', true)
       .maybeSingle()
     
+    if (error) {
+      console.log(`[ModelsDevService] models_registry query error for ${friendlyId}/${providerId}:`, (error as any).message)
+    }
+    
     if (!error && data?.provider_model_id) {
       console.log(`[ModelsDevService] Resolved ${friendlyId} via models_registry: ${data.provider_model_id}`)
       return data.provider_model_id
     }
     
+    console.log(`[ModelsDevService] No provider_model_id found in models_registry for ${friendlyId}/${providerId}`)
     return null
   }
 
