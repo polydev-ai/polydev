@@ -49,10 +49,10 @@ export abstract class BaseEnhancedHandler implements ApiHandler {
     }
   }
   
-  protected createAbortController(timeoutMs: number = 30000): AbortController {
+  protected createAbortController(timeoutMs: number = 400000): AbortController {
     // Ensure timeout is valid (not undefined, null, Infinity, or negative)
-    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 300000) {
-      timeoutMs = 30000 // Default to 30 seconds
+    if (!timeoutMs || timeoutMs === Infinity || timeoutMs < 1 || timeoutMs > 600000) {
+      timeoutMs = 400000 // Default to 400 seconds (was 30 seconds)
     }
     
     const controller = new AbortController()
