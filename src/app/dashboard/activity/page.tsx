@@ -578,7 +578,37 @@ export default function ActivityPage() {
         </Card>
       </div>
 
+      {/* Empty State for New Users */}
+      {summary.totalSessions === 0 && summary.totalTokens === 0 && (
+        <Card className="shadow hover:shadow-lg transition-shadow bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100">
+          <CardContent className="py-12 text-center">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Activity className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">No activity yet</h3>
+            <p className="text-slate-600 mb-4 max-w-md mx-auto">
+              Make your first request to see analytics here. Connect your IDE and start getting AI perspectives.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Link
+                href="/dashboard/mcp-tokens"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
+              >
+                Connect IDE
+              </Link>
+              <Link
+                href="/docs"
+                className="px-4 py-2 bg-white text-slate-700 rounded-lg hover:bg-slate-100 font-medium text-sm border border-slate-200"
+              >
+                View Docs
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Summary Cards */}
+      {(summary.totalSessions > 0 || summary.totalTokens > 0) && (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="shadow hover:shadow-lg transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -645,8 +675,10 @@ export default function ActivityPage() {
           </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Analytics Tabs */}
+      {(summary.totalSessions > 0 || summary.totalTokens > 0) && (
       <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
         <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
@@ -1076,6 +1108,7 @@ export default function ActivityPage() {
         </TabsContent>
         </Tabs>
       </div>
+      )}
     </div>
   )
 }
