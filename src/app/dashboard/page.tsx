@@ -89,13 +89,38 @@ export default function Dashboard() {
 
   // Get provider logo from models.dev providersRegistry (same as models page) - Memoized
   const getProviderLogoUrl = useCallback((providerName: string): string | null => {
-    if (!providerName || !providersRegistry || providersRegistry.length === 0) return null
+    if (!providerName || !providersRegistry || providersRegistry.length === 0) {
+      // Check hardcoded fallbacks even if registry is empty
+      const normalized = providerName?.toLowerCase() || ''
+      if (normalized.includes('zai') || normalized.includes('zhipu') || normalized.includes('glm')) {
+        return 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg'
+      }
+      return null
+    }
 
     const normalized = providerName.toLowerCase()
 
     // CLI tools don't have logos in the registry - return special marker
     if (normalized.includes('cli')) {
       return 'CLI_TOOL' // Special marker for CLI tools
+    }
+
+    // Hardcoded logo fallbacks for providers not in external registry
+    const LOGO_FALLBACKS: Record<string, string> = {
+      'zai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+      'zai-coding-plan': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+      'zhipuai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+      'zhipu-ai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+      'z-ai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+    }
+
+    // Check hardcoded fallbacks first for providers not in registry
+    if (LOGO_FALLBACKS[normalized]) {
+      return LOGO_FALLBACKS[normalized]
+    }
+    // Also check if provider name contains zai/zhipu/glm
+    if (normalized.includes('zai') || normalized.includes('zhipu') || normalized.includes('glm')) {
+      return 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg'
     }
 
     // Helper function to normalize provider IDs for matching
@@ -112,6 +137,9 @@ export default function Dashboard() {
         'moonshot': 'moonshotai', // Use moonshotai for proper logo
         'zhipu-ai': 'zhipu-ai',
         'zhipuai': 'zhipu-ai',
+        'zai': 'zhipu-ai',
+        'zai-coding-plan': 'zhipu-ai',
+        'z-ai': 'zhipu-ai',
         'alibaba': 'alibaba',
         'mistral': 'mistral',
         'together-ai': 'together-ai',
