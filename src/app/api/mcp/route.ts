@@ -11,11 +11,11 @@ import { apiManager } from '@/lib/api'
 import { SmartCliCache } from '@/lib/smartCliCache'
 import { CLIRouter, CLI_PROVIDER_MAP, PROVIDER_TO_CLI } from '@/lib/cliRouter'
 
-// Tier-based credit costs (eco=1, normal=4, premium=20)
+// Tier-based credit costs - Single tier system (all models = 1 credit)
 const TIER_CREDIT_COSTS: Record<string, number> = {
   eco: 1,
-  normal: 4,
-  premium: 20
+  normal: 1,  // Legacy fallback - same as eco
+  premium: 1  // Legacy fallback - same as eco
 }
 
 // Vercel configuration for MCP server
