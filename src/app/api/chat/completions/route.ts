@@ -2306,7 +2306,7 @@ export async function POST(request: NextRequest) {
 
                 // Add reasoning effort for reasoning models if supported
                 if (modelData?.supports_reasoning && reasoning_effort) {
-                  retryApiOptions.reasoning_effort = reasoningEffort
+                  retryApiOptions.reasoning_effort = reasoning_effort
                 }
 
                 // Retry with admin key
@@ -2395,8 +2395,8 @@ export async function POST(request: NextRequest) {
                   apiKey: apiConfig.apiKey
                 }
                 
-                if (modelData?.supports_reasoning && reasoningEffort) {
-                  apiOptions.reasoning_effort = reasoningEffort
+                if (modelData?.supports_reasoning && reasoning_effort) {
+                  apiOptions.reasoning_effort = reasoning_effort
                 }
 
                 // Apply OpenAI parameter transformations
@@ -2706,20 +2706,16 @@ export async function POST(request: NextRequest) {
       let costInfo: any = { input_cost: 0, output_cost: 0, total_cost: 0 }
       
       if (response?.fallback_method === 'cli') {
-        costInfo = { input_cost: 0, output_cost: 0, total_cost: 0 } // CLI is free
+        // CLI is free
+        if (!providerBreakdown[response.provider]) {
+          providerBreakdown[response.provider] = { cost: 0, tokens: 0, type: 'cli' }
+        }
+        providerBreakdown[response.provider].tokens += usage.total_tokens
       } else {
-        // Try to get pricing from model limits using the correct provider
+        // API key usage - calculate cost from model limits (uses corrected pricing data)
         try {
-          const providerLabel = (response?.provider || '').toString().toLowerCase()
-          const providerId = providerLabel.startsWith('openrouter') ? 'openrouter'
-            : providerLabel.startsWith('openai') ? 'openai'
-            : providerLabel.startsWith('anthropic') ? 'anthropic'
-            : (providerLabel.startsWith('google') || providerLabel.startsWith('gemini')) ? 'google'
-            : providerLabel.startsWith('xai') ? 'xai'
-            : providerLabel.startsWith('groq') ? 'groq'
-            : 'openai'
-          const modelLimits = await modelsDevService.getModelLimits(response?.model || model, providerId)
-          if (modelLimits?.pricing) {
+          const modelLimits = await modelsDevService.getModelLimits(response.model, response.provider)
+          if (modelLimits?.pricing && usage) {
             const responseCost = computeCostUSD(usage.prompt_tokens, usage.completion_tokens, modelLimits.pricing.input, modelLimits.pricing.output)
             const inputCost = (usage.prompt_tokens / 1000000) * modelLimits.pricing.input
             const outputCost = (usage.completion_tokens / 1000000) * modelLimits.pricing.output
@@ -2730,11 +2726,11 @@ export async function POST(request: NextRequest) {
             }
           }
         } catch (error) {
-          console.warn(`Failed to get pricing for ${response?.model || model}:`, error)
+          console.warn(`Failed to get pricing for ${response.model}:`, error)
         }
       }
 
-      // Handle streaming response for single model (OpenAI-like SSE to client)
+      // Handle streaming response
       if (stream) {
         const encoder = new TextEncoder()
 
