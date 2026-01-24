@@ -68,7 +68,6 @@ interface Props {
   onEditKey?: (key: ApiKey) => void
   onAddKey?: () => void
   onDeleteKey?: (keyId: string) => void
-  viewMode?: 'simple' | 'advanced'
 }
 
 // Provider to CLI mapping
@@ -78,7 +77,7 @@ const PROVIDER_CLI_MAP: Record<string, { cliId: string; cliName: string; model: 
   'google': { cliId: 'gemini_cli', cliName: 'Gemini CLI', model: 'gemini-2.5-flash' }
 }
 
-export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cliStatuses, modelsDevProviders, onRefresh, onEditKey, onAddKey, onDeleteKey, viewMode = 'simple' }: Props) {
+export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cliStatuses, modelsDevProviders, onRefresh, onEditKey, onAddKey, onDeleteKey }: Props) {
   const { preferences, updatePreferences } = usePreferences()
   const [saving, setSaving] = useState(false)
   const [creditsExpanded, setCreditsExpanded] = useState(false)
@@ -396,16 +395,12 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
             {selectionPreview.map((item, idx) => (
               <div 
                 key={idx} 
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium ${
-                  item.source === 'cli' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
-                  item.source === 'api' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
-                  'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                }`}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-700 text-slate-200 border border-slate-600"
               >
                 {getProviderLogo(item.provider) && <img src={getProviderLogo(item.provider)} alt="" className="w-4 h-4 rounded" />}
                 <span>{getProviderDisplayName(item.provider)}</span>
-                <span className="text-[10px] opacity-60">
-                  {item.source === 'cli' ? 'CLI' : item.source === 'api' ? 'API' : item.tier}
+                <span className="text-[10px] text-slate-400">
+                  {item.source === 'cli' ? 'CLI' : item.source === 'api' ? 'API' : 'Credits'}
                 </span>
               </div>
             ))}
@@ -416,15 +411,15 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
           {/* Source Legend */}
           <div className="flex flex-wrap gap-4 mt-3 text-[10px] text-slate-500">
             <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
               <span>CLI = Uses your installed CLI tool (free)</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
               <span>API = Direct API with your key (you pay provider)</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
               <span>Credits = Polydev credits (1 credit per request)</span>
             </div>
           </div>
@@ -467,9 +462,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                   key={key.id}
                   className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
                     isSelected 
-                      ? cliAvailable 
-                        ? 'bg-emerald-50 border-emerald-200' 
-                        : 'bg-blue-50 border-blue-200'
+                      ? 'bg-slate-100 border-slate-300' 
                       : 'bg-slate-50 border-slate-200'
                   }`}
                 >
@@ -490,10 +483,8 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-slate-900">{getProviderDisplayName(key.provider)}</span>
                       {isSelected && (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          cliAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          WILL USE
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                          ACTIVE
                         </span>
                       )}
                     </div>
@@ -504,15 +495,15 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                   {hasCli && (
                     <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
                       cliAvailable 
-                        ? 'bg-emerald-100 border border-emerald-200' 
+                        ? 'bg-slate-200 border border-slate-300' 
                         : 'bg-slate-100 border border-slate-200'
                     }`}>
-                      <Terminal className={`w-4 h-4 ${cliAvailable ? 'text-emerald-600' : 'text-slate-400'}`} />
-                      <span className={`text-xs font-medium ${cliAvailable ? 'text-emerald-700' : 'text-slate-500'}`}>
+                      <Terminal className={`w-4 h-4 ${cliAvailable ? 'text-slate-700' : 'text-slate-400'}`} />
+                      <span className={`text-xs font-medium ${cliAvailable ? 'text-slate-700' : 'text-slate-500'}`}>
                         {cli.cliName}
                       </span>
                       {cliAvailable ? (
-                        <Check className="w-3 h-3 text-emerald-600" />
+                        <Check className="w-3 h-3 text-slate-700" />
                       ) : (
                         <AlertCircle className="w-3 h-3 text-slate-400" />
                       )}
@@ -564,10 +555,10 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
               )
             })
           ) : (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-6 border border-slate-200">
               <div className="text-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-6 h-6 text-slate-600" />
                 </div>
                 <h4 className="font-semibold text-slate-900 mb-2">Get Started with Polydev</h4>
                 <p className="text-sm text-slate-600 mb-4">Add your first API key to start getting AI perspectives, or use Polydev Credits without any API keys.</p>
@@ -576,7 +567,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                   {onAddKey && (
                     <button
                       onClick={onAddKey}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center justify-center gap-2"
+                      className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-700 font-medium text-sm flex items-center justify-center gap-2"
                     >
                       <Plus className="w-4 h-4" />
                       Add API Key
@@ -591,7 +582,7 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
                   </a>
                 </div>
                 
-                <div className="mt-4 pt-4 border-t border-blue-100">
+                <div className="mt-4 pt-4 border-t border-slate-200">
                   <p className="text-xs text-slate-500">💡 Tip: CLI tools (Claude Code, Codex CLI, Gemini CLI) are auto-detected and prioritized when available.</p>
                 </div>
               </div>
@@ -606,12 +597,12 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
           onClick={() => setCreditsExpanded(!creditsExpanded)}
           className="w-full p-4 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors"
         >
-          <div className="p-2 bg-purple-50 rounded-lg">
-            <Crown className="w-5 h-5 text-purple-600" />
+          <div className="p-2 bg-slate-100 rounded-lg">
+            <Coins className="w-5 h-5 text-slate-600" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-slate-900">Credits Tier Priority</h3>
-            <p className="text-xs text-slate-500">Perspective quota usage order</p>
+            <h3 className="font-semibold text-slate-900">Credits</h3>
+            <p className="text-xs text-slate-500">Perspective quota usage</p>
           </div>
           <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${creditsExpanded ? 'rotate-90' : ''}`} />
         </button>
