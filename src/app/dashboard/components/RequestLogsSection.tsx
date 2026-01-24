@@ -406,6 +406,7 @@ export default function RequestLogsSection({
                                   if (normalized.includes('cohere')) return 'https://avatars.githubusercontent.com/u/30046380?s=200&v=4';
                                   if (normalized.includes('huggingface') || normalized.includes('hugging-face')) return 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg';
                                   if (normalized.includes('deepseek')) return 'https://avatars.githubusercontent.com/u/159560534?s=200&v=4';
+                                  if (normalized.includes('zhipu') || normalized.includes('zai') || normalized.includes('glm')) return 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg';
                                   return null;
                                 };
 
@@ -442,10 +443,11 @@ export default function RequestLogsSection({
                                   if (normalized.includes('cohere')) return 'url';
                                   if (normalized.includes('huggingface') || normalized.includes('hugging-face')) return 'url';
                                   if (normalized.includes('deepseek')) return 'url';
+                                  if (normalized.includes('zhipu') || normalized.includes('zai') || normalized.includes('glm')) return 'url';
                                   return null;
                                 };
                                 return getProviderLogoUrl(provider.provider) ? 'none' : 'flex';
-                              })()} }>
+                              })()} }}>
                                 {(provider.provider || 'P').charAt(0).toUpperCase()}
                               </div>
                             </div>

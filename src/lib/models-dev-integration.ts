@@ -749,7 +749,10 @@ class ModelsDevService {
       'meta-llama': 'https://models.dev/logos/meta.svg',
       'qwen': 'https://models.dev/logos/qwen.svg',
       'microsoft': 'https://models.dev/logos/microsoft.svg',
-      'cohere': 'https://models.dev/logos/cohere.svg'
+      'cohere': 'https://models.dev/logos/cohere.svg',
+      'zhipuai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+      'zai-coding-plan': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+      'zai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg'
     }
     return logoMap[providerId] || `https://models.dev/logos/${providerId}.svg`
   }
