@@ -27,11 +27,14 @@ export async function GET(request: NextRequest) {
 
     const tierPriority = (preferences?.mcp_settings as any)?.tier_priority || ['normal', 'eco', 'premium']
 
-    // Fetch all active model tiers (these are the admin-provided models available to all users)
+    // Fetch only ECO tier active model tiers
+    // Premium and Normal tier models are NOT shown in chat - only available via MCP/CLI with credits
+    // ECO tier models are available to all users as free/low-cost options
     const { data: modelTiers, error: tiersError } = await supabase
       .from('model_tiers')
       .select('id, tier, provider, model_name, display_name')
       .eq('active', true)
+      .eq('tier', 'eco') // Only return eco tier models for chat
 
     if (tiersError) {
       console.error('Error fetching model tiers:', tiersError)

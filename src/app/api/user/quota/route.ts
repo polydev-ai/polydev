@@ -73,34 +73,50 @@ export async function GET() {
     if (usageStats && !usageError) {
       usageStats.forEach(usage => {
         const tier = usage.model_tier as 'premium' | 'normal' | 'eco'
-        // Use actual credits_deducted if available, otherwise calculate from tier
-        const credits = usage.credits_deducted || tierCreditCosts[tier] || 4
+        
+        // Determine source type from request_metadata
+        const sourceType = usage.request_metadata?.source_type || 
+                          usage.request_metadata?.source || 
+                          'admin_key'
+        
+        // Only count credits for admin-based sources (admin_credits, admin_key, admin)
+        // User's own API keys (user_key, api, cli) should NOT show credit usage
+        const isAdminSource = sourceType === 'admin_credits' || 
+                             sourceType === 'admin_key' || 
+                             sourceType === 'admin'
+        
+        // Use actual credits_deducted if available, otherwise calculate ONLY for admin sources
+        const credits = isAdminSource 
+          ? (usage.credits_deducted || tierCreditCosts[tier] || 4)
+          : 0
         
         if (tierUsage[tier]) {
           tierUsage[tier].count += usage.perspectives_deducted || 0
           tierUsage[tier].cost += usage.estimated_cost || 0
-          tierUsage[tier].credits += credits
+          // Only add credits for admin sources
+          if (isAdminSource) {
+            tierUsage[tier].credits += credits
+          }
         }
 
         // Extract source type from request_metadata
-        const sourceType = usage.request_metadata?.source_type
         if (sourceType === 'user_cli') {
           sourceUsage.cli.count += usage.perspectives_deducted || 0
           sourceUsage.cli.cost += usage.estimated_cost || 0
-          sourceUsage.cli.credits += credits
+          // No credits for CLI (user's own tool)
           sourceUsage.cli.requests += 1
         } else if (sourceType === 'user_key') {
           sourceUsage.user_key.count += usage.perspectives_deducted || 0
           sourceUsage.user_key.cost += usage.estimated_cost || 0
-          sourceUsage.user_key.credits += credits
+          // No credits for user's own API keys
           sourceUsage.user_key.requests += 1
-        } else if (sourceType === 'admin_credits') {
+        } else if (sourceType === 'admin_credits' || isAdminSource) {
           sourceUsage.admin_credits.count += usage.perspectives_deducted || 0
           sourceUsage.admin_credits.cost += usage.estimated_cost || 0
           sourceUsage.admin_credits.credits += credits
           sourceUsage.admin_credits.requests += 1
         } else {
-          // Default to web if no source type or 'admin_key'
+          // Default to web if no source type
           sourceUsage.web.count += usage.perspectives_deducted || 0
           sourceUsage.web.cost += usage.estimated_cost || 0
           sourceUsage.web.credits += credits
