@@ -15,8 +15,11 @@ import {
   MessageCircle,
   RefreshCw,
   Filter,
-  Coins
+  Coins,
+  Home,
+  ChevronRight
 } from 'lucide-react'
+import Link from 'next/link'
 import { AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -428,6 +431,16 @@ export default function ActivityPage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-2 text-sm text-slate-500">
+        <Link href="/dashboard" className="flex items-center gap-1 hover:text-slate-900 transition-colors">
+          <Home className="w-4 h-4" />
+          <span>Dashboard</span>
+        </Link>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-slate-900 font-medium">Activity</span>
+      </nav>
+
       {/* Header - Settings-like card style */}
       <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
         <div className="px-6 py-4 border-b border-slate-200">

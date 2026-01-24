@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../../hooks/useAuth'
 import { createClient } from '../../utils/supabase/client'
 import { motion } from 'framer-motion'
-import { Plus, Eye, EyeOff, Copy, Trash2, Key, AlertCircle, Check, Clock, ExternalLink, Terminal, Zap, Calendar, RefreshCw } from 'lucide-react'
+import { Plus, Eye, EyeOff, Copy, Trash2, Key, AlertCircle, Check, Clock, ExternalLink, Terminal, Zap, Calendar, RefreshCw, Home, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 
 interface MCPToken {
   id: string
@@ -264,6 +265,16 @@ export default function MCPTokensPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
+        <Link href="/dashboard" className="flex items-center gap-1 hover:text-slate-900 transition-colors">
+          <Home className="w-4 h-4" />
+          <span>Dashboard</span>
+        </Link>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-slate-900 font-medium">Connect IDE</span>
+      </nav>
+
       <motion.div className="mb-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-3xl font-bold text-slate-900 mb-2">
           Connect Your IDE

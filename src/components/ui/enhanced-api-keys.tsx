@@ -5,7 +5,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { usePreferences } from '../../hooks/usePreferences'
 import { useEnhancedApiKeysData } from '../../hooks/useEnhancedApiKeysData'
 import { createClient } from '../../app/utils/supabase/client'
-import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, AlertCircle, Check, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Terminal, CheckCircle, XCircle, Clock, RefreshCw, Copy, BarChart3, Activity, TrendingUp } from 'lucide-react'
+import { Plus, Eye, EyeOff, Edit3, Trash2, Settings, AlertCircle, Check, ChevronDown, ChevronRight, ArrowUp, ArrowDown, Terminal, CheckCircle, XCircle, Clock, RefreshCw, Copy, BarChart3, Activity, TrendingUp, Home } from 'lucide-react'
+import Link from 'next/link'
 import { AnimatePresence } from 'framer-motion'
 import { ProviderConfig } from '../../types/providers'
 import { PROVIDER_ICONS } from '../../lib/provider-icons'
@@ -755,6 +756,16 @@ export default function EnhancedApiKeysPage() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-2 text-sm text-slate-500">
+        <Link href="/dashboard" className="flex items-center gap-1 hover:text-slate-900 transition-colors">
+          <Home className="w-4 h-4" />
+          <span>Dashboard</span>
+        </Link>
+        <ChevronRight className="w-4 h-4" />
+        <span className="text-slate-900 font-medium">Models</span>
+      </nav>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
