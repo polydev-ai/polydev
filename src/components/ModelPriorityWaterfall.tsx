@@ -244,7 +244,8 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
       'groq': 'Groq',
       'cerebras': 'Cerebras',
       'together': 'Together',
-      'openrouter': 'OpenRouter'
+      'openrouter': 'OpenRouter',
+      'zai-coding-plan': 'ZAI'
     }
     return displayNames[providerId] || providerId
   }
@@ -312,6 +313,15 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
               <h2 className="text-lg font-semibold">Perspectives per Request</h2>
               <p className="text-sm text-slate-400">How many AI models respond to each query</p>
             </div>
+            {/* Tooltip */}
+            <div className="group relative">
+              <Info className="w-4 h-4 text-slate-500 cursor-help" />
+              <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-800 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-xs">
+                <p className="font-medium mb-1">💡 What are perspectives?</p>
+                <p className="text-slate-300">Each perspective is a response from a different AI model. More perspectives = more diverse opinions, but uses more credits (1 credit per model).</p>
+                <p className="text-slate-400 mt-2">Recommended: 2-3 perspectives for balanced cost and diversity.</p>
+              </div>
+            </div>
           </div>
           <div className="text-4xl font-bold tabular-nums bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
             {perspectivesPerMessage}
@@ -358,6 +368,21 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
             {selectionPreview.length === 0 && (
               <span className="text-slate-500 text-sm">No models configured</span>
             )}
+          </div>
+          {/* Source Legend */}
+          <div className="flex flex-wrap gap-4 mt-3 text-[10px] text-slate-500">
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>CLI = Uses your installed CLI tool (free)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              <span>API = Direct API with your key (you pay provider)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+              <span>Credits = Polydev credits (1 credit per request)</span>
+            </div>
           </div>
         </div>
       </div>
@@ -495,16 +520,37 @@ export default function ModelPriorityWaterfall({ apiKeys, quota, modelTiers, cli
               )
             })
           ) : (
-            <div className="text-center py-6 text-slate-400 text-sm bg-slate-50 rounded-lg">
-              <p>No API keys configured.</p>
-              {onAddKey && (
-                <button
-                  onClick={onAddKey}
-                  className="mt-2 text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Add your first API key →
-                </button>
-              )}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-6 h-6 text-blue-600" />
+                </div>
+                <h4 className="font-semibold text-slate-900 mb-2">Get Started with Polydev</h4>
+                <p className="text-sm text-slate-600 mb-4">Add your first API key to start getting AI perspectives, or use Polydev Credits without any API keys.</p>
+                
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  {onAddKey && (
+                    <button
+                      onClick={onAddKey}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add API Key
+                    </button>
+                  )}
+                  <a
+                    href="/dashboard/api-tokens"
+                    className="px-4 py-2 bg-white text-slate-700 rounded-lg hover:bg-slate-100 font-medium text-sm border border-slate-200 flex items-center justify-center gap-2"
+                  >
+                    <Coins className="w-4 h-4" />
+                    Use Credits Instead
+                  </a>
+                </div>
+                
+                <div className="mt-4 pt-4 border-t border-blue-100">
+                  <p className="text-xs text-slate-500">💡 Tip: CLI tools (Claude Code, Codex CLI, Gemini CLI) are auto-detected and prioritized when available.</p>
+                </div>
+              </div>
             </div>
           )}
         </div>

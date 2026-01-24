@@ -14,6 +14,18 @@ import { getModelTier } from '../../lib/model-tiers'
 import ModelSourcePriorityPicker from '../ModelSourcePriorityPicker'
 import ModelPriorityWaterfall from '../ModelPriorityWaterfall'
 
+// Recommended models per provider - these are the flagship models for each
+const RECOMMENDED_MODELS: Record<string, string> = {
+  'anthropic': 'claude-sonnet-4-5-20250514',
+  'openai': 'gpt-4.1',
+  'google': 'gemini-2.5-pro',
+  'x-ai': 'grok-3',
+  'groq': 'llama-3.3-70b-versatile',
+  'cerebras': 'llama-3.3-70b',
+  'together': 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+  'openrouter': 'anthropic/claude-sonnet-4'
+}
+
 // Lazy load Advanced mode components to reduce initial bundle size
 const ModelPreferenceSelector = lazy(() => import('../ModelPreferenceSelector'))
 
@@ -679,10 +691,10 @@ export default function EnhancedApiKeysPage() {
       if (!response.ok) throw new Error('Failed to update preference')
 
       // Add or remove model from preferences based on the new preference state
-      if (!currentPreferred && apiKey.default_model && apiKey.provider) {
+      if (!currentPreferred && apiKey.is_preferred && apiKey.default_model && apiKey.provider) {
         // Adding to preferences
         await addModelToProvider(apiKey.provider, apiKey.default_model)
-      } else if (currentPreferred && apiKey.default_model && apiKey.provider) {
+      } else if (currentPreferred && apiKey.is_preferred && apiKey.default_model && apiKey.provider) {
         // Removing from preferences
         await removeModelFromProvider(apiKey.provider, apiKey.default_model)
       }
@@ -838,7 +850,7 @@ export default function EnhancedApiKeysPage() {
         {showAnalytics && (
           <div className="px-6 pb-6 border-t border-slate-100">
             {!modelAnalytics ? (
-              <div className="py-8 text-center text-slate-500">
+              <div className="py-8 text-center text-slate-600">
                 <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
                 <p>Loading analytics...</p>
               </div>
@@ -1039,7 +1051,7 @@ export default function EnhancedApiKeysPage() {
                               {cliProvider.name}
                             </h3>
                             {status?.cli_version && (
-                              <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                              <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
                                 v{status.cli_version}
                               </span>
                             )}
@@ -1438,40 +1450,50 @@ export default function EnhancedApiKeysPage() {
                               {/* Load and display models for this provider */}
                               {provider.models && provider.models.length > 0 && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-                                  {provider.models.map((model) => (
-                                    <div key={model.id} className="bg-white border border-slate-200 rounded-lg p-3">
-                                      <div className="font-medium text-slate-900 text-sm">
-                                        {model.name}
-                                      </div>
-                                      {(model.pricing?.input || model.pricing?.output) && (
-                                        <div className="text-xs text-slate-600 mt-1">
-                                          ${model.pricing.input?.toFixed(2) || '0.00'} / ${model.pricing.output?.toFixed(2) || '0.00'} per 1M tokens
+                                  {provider.models.map((model) => {
+                                    const isRecommended = RECOMMENDED_MODELS[provider.id] === model.id
+                                    const recommendedBadge = isRecommended ? ' ⭐ Recommended' : ''
+                                    return (
+                                      <div key={model.id} className="bg-white border border-slate-200 rounded-lg p-3">
+                                        <div className="font-medium text-slate-900 text-sm">
+                                          {model.name}
                                         </div>
-                                      )}
-                                      {model.contextWindow && (
-                                        <div className="text-xs text-slate-600 mt-1">
-                                          {model.contextWindow.toLocaleString()} tokens
+                                        {(model.pricing?.input || model.pricing?.output) && (
+                                          <div className="text-xs text-slate-600 mt-1">
+                                            ${model.pricing.input?.toFixed(2) || '0.00'} / ${model.pricing.output?.toFixed(2) || '0.00'} per 1M tokens
+                                          </div>
+                                        )}
+                                        {model.contextWindow && (
+                                          <div className="text-xs text-slate-600 mt-1">
+                                            {model.contextWindow.toLocaleString()} tokens
+                                          </div>
+                                        )}
+                                        <div className="flex items-center space-x-2 mt-2">
+                                          {(model.supportsVision || model.supports_vision) && (
+                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
+                                              Vision
+                                            </span>
+                                          )}
+                                          {(model.supportsTools || model.supports_tools) && (
+                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
+                                              Tools
+                                            </span>
+                                          )}
+                                          {(model.supportsReasoning || model.supports_reasoning) && (
+                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
+                                              Reasoning
+                                            </span>
+                                          )}
                                         </div>
-                                      )}
-                                      <div className="flex items-center space-x-2 mt-2">
-                                        {(model.supportsVision || model.supports_vision) && (
-                                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
-                                            Vision
-                                          </span>
-                                        )}
-                                        {(model.supportsTools || model.supports_tools) && (
-                                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
-                                            Tools
-                                          </span>
-                                        )}
-                                        {(model.supportsReasoning || model.supports_reasoning) && (
-                                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-900 border border-slate-200">
-                                            Reasoning
-                                          </span>
+                                        {recommendedBadge && (
+                                          <div className="mt-2 flex items-center gap-1">
+                                            <span className="text-sm font-medium text-slate-900">Recommended</span>
+                                            <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">for {provider.name}</span>
+                                          </div>
                                         )}
                                       </div>
-                                    </div>
-                                  ))}
+                                    )
+                                  })}
                                 </div>
                               )}
 
@@ -1520,7 +1542,9 @@ export default function EnhancedApiKeysPage() {
                     value={formData.provider}
                     onChange={async (e) => {
                       const providerId = e.target.value
-                      setFormData(prev => ({...prev, provider: providerId, default_model: ''}))
+                      // Auto-set recommended model for the provider
+                      const recommendedModel = RECOMMENDED_MODELS[providerId] || ''
+                      setFormData(prev => ({...prev, provider: providerId, default_model: recommendedModel}))
                       if (providerId) {
                         await fetchProviderModels(providerId)
                       }
@@ -1741,9 +1765,11 @@ export default function EnhancedApiKeysPage() {
                     const priceText = inputCost > 0 || outputCost > 0
                       ? ` - $${inputCost.toFixed(2)}/$${outputCost.toFixed(2)} per 1M`
                       : ''
+                    const isRecommended = RECOMMENDED_MODELS[formData.provider] === model.id
+                    const recommendedBadge = isRecommended ? ' ⭐ Recommended' : ''
                     return (
                       <option key={model.id} value={model.id}>
-                        {model.display_name || model.name}{tierBadge}{priceText}
+                        {model.display_name || model.name}{recommendedBadge}{tierBadge}{priceText}
                       </option>
                     )
                   })}
