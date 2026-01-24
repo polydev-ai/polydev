@@ -39,7 +39,8 @@ const PROVIDER_LOGOS: Record<string, string> = {
   'Google': 'https://www.gstatic.com/devrel-devsite/prod/v2210deb8920cd4a55bd580441aa58e7853afc04b39a9d9ac4198e1cd7fbe04ef/google/images/branding/lockup.svg',
   'x-ai': 'https://avatars.githubusercontent.com/u/127140994',
   'Cerebras': 'https://avatars.githubusercontent.com/u/40857028',
-  'zai-coding-plan': 'https://raw.githubusercontent.com/alibaba/TinyNeuralNetwork/main/assets/logo.jpg',
+  'zai-coding-plan': 'https://avatars.githubusercontent.com/u/137628472?s=200&v=4',
+  'ZAI': 'https://avatars.githubusercontent.com/u/137628472?s=200&v=4',
 };
 
 const SAMPLE_QUESTIONS = [

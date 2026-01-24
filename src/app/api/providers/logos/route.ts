@@ -113,6 +113,8 @@ export async function GET(request: NextRequest) {
       // Zhipu AI (GLM)
       'glm': 'https://avatars.githubusercontent.com/u/137628472?s=200&v=4',
       'zhipuai': 'https://avatars.githubusercontent.com/u/137628472?s=200&v=4',
+      'zai': 'https://avatars.githubusercontent.com/u/137628472?s=200&v=4',
+      'zaicodingplan': 'https://avatars.githubusercontent.com/u/137628472?s=200&v=4',
 
       // Other providers
       'mistral': 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4',
