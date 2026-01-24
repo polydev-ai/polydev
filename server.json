@@ -6,12 +6,12 @@
     "url": "https://github.com/polydev-ai/perspectives-mcp",
     "source": "github"
   },
-  "version": "1.8.42",
+  "version": "1.8.59",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "polydev-ai",
-      "version": "1.8.42",
+      "version": "1.8.59",
       "transport": {
         "type": "stdio"
       },

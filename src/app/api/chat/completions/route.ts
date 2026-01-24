@@ -1837,6 +1837,7 @@ export async function POST(request: NextRequest) {
                     apiOptions.googleBaseUrl = selectedConfig.baseUrl
                     break
                   default:
+                    // For unknown providers, use openAiBaseUrl as default (most common format)
                     apiOptions.openAiBaseUrl = selectedConfig.baseUrl
                 }
               }
@@ -1862,25 +1863,57 @@ export async function POST(request: NextRequest) {
               console.log(`[Streaming] Collecting streaming response from ${selectedProvider}`)
               const textResult = await response.text()
               
-              // Parse Server-Sent Events format
-              const chunks = textResult.split('\n\n').filter(chunk => chunk.startsWith('data: '))
+              // Parse Server-Sent Events format with multiple strategies (matching MCP robustness)
+              // Strategy 1: Split by double newlines (standard SSE)
+              let chunks = textResult.split('\n\n').filter(chunk => 
+                chunk.startsWith('data:') || chunk.startsWith('data: ')
+              )
+              
+              // Strategy 2: If no chunks found, try single newline split
+              if (chunks.length === 0) {
+                chunks = textResult.split('\n').filter(line => 
+                  line.startsWith('data:') || line.startsWith('data: ')
+                )
+              }
+              
+              // Strategy 3: If still no chunks, check if response contains data lines anywhere
+              if (chunks.length === 0) {
+                const dataMatches = textResult.match(/data:\s*(\{.*?\})/g)
+                if (dataMatches) {
+                  chunks = dataMatches
+                }
+              }
+              
+              console.log(`[Streaming] SSE parsing found ${chunks.length} data chunks from ${selectedProvider}`)
+              
               let finalContent = ''
               let finalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
               let finalModel = actualModelId
               
               for (const chunk of chunks) {
                 try {
-                  const data = chunk.replace('data: ', '').trim()
-                  if (data === '[DONE]') break
+                  // Handle both 'data: ' and 'data:' prefixes
+                  const data = chunk.replace(/^data:\s*/, '').trim()
+                  if (data === '[DONE]' || data === '') continue
                   
                   const parsed = JSON.parse(data)
                   
-                  // Extract content from streaming chunk
+                  // Extract content from streaming chunk (delta format)
                   if (parsed.choices?.[0]?.delta?.content) {
                     finalContent += parsed.choices[0].delta.content
                   }
+                  // Also handle reasoning_content for GLM/zhipuai models
+                  if (parsed.choices?.[0]?.delta?.reasoning_content) {
+                    // Some GLM models send reasoning separately - optionally include or skip
+                    // For now, we'll include it in the response
+                    finalContent += parsed.choices[0].delta.reasoning_content
+                  }
+                  // Also handle non-delta format (message format)
+                  if (parsed.choices?.[0]?.message?.content) {
+                    finalContent += parsed.choices[0].message.content
+                  }
                   
-                  // Extract usage information from any chunk that has it
+                  // Extract usage information (typically in last chunk)
                   if (parsed.usage) {
                     finalUsage = parsed.usage
                     console.log(`[Streaming] Found usage in chunk for ${selectedProvider}:`, parsed.usage)
@@ -1891,7 +1924,24 @@ export async function POST(request: NextRequest) {
                     finalModel = parsed.model
                   }
                 } catch (parseError) {
-                  console.warn(`[Streaming] Failed to parse streaming chunk: ${chunk}`)
+                  console.warn(`[Streaming] Failed to parse streaming chunk: ${chunk.substring(0, 100)}...`)
+                }
+              }
+              
+              // Strategy 4: If SSE parsing yielded nothing, try parsing entire response as JSON
+              if (!finalContent && textResult.trim()) {
+                console.log(`[Streaming] SSE parsing yielded no content for ${selectedProvider}, trying direct JSON parse`)
+                try {
+                  const directParsed = JSON.parse(textResult)
+                  if (directParsed.choices?.[0]?.message?.content) {
+                    finalContent = directParsed.choices[0].message.content
+                    if (directParsed.usage) {
+                      finalUsage = directParsed.usage
+                    }
+                  }
+                } catch {
+                  // Not valid JSON either
+                  console.log(`[Streaming] Direct JSON parse also failed for ${selectedProvider}`)
                 }
               }
               
@@ -2057,8 +2107,8 @@ export async function POST(request: NextRequest) {
             
             if (modelPricing && usage && (usage.prompt_tokens > 0 || usage.completion_tokens > 0)) {
               const responseCost = computeCostUSD(usage.prompt_tokens, usage.completion_tokens, modelPricing.input, modelPricing.output)
-              const inputCost = ((usage.prompt_tokens || 0) / 1000000) * modelPricing.input
-              const outputCost = ((usage.completion_tokens || 0) / 1000000) * modelPricing.output
+              const inputCost = (usage.prompt_tokens / 1000000) * modelPricing.input
+              const outputCost = (usage.completion_tokens / 1000000) * modelPricing.output
               costInfo = {
                 input_cost: Number(inputCost.toFixed(6)),
                 output_cost: Number(outputCost.toFixed(6)),
@@ -2135,6 +2185,7 @@ export async function POST(request: NextRequest) {
                   // Extract usage information (typically in last chunk)
                   if (parsed.usage) {
                     finalUsage = parsed.usage
+                    console.log(`[Streaming] Found usage in chunk for ${selectedProvider}:`, parsed.usage)
                   }
                   
                   // Extract model information
