@@ -468,30 +468,6 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-
-            {/* Tier Usage Breakdown */}
-            {quotaData?.tierUsage && (
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-600 mb-3">Model Tier Usage (This Month)</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-2 bg-slate-50 rounded-lg border border-slate-100">
-                    <p className="text-lg font-semibold text-slate-900">{quotaData.tierUsage.premium?.count || 0}</p>
-                    <p className="text-[10px] text-slate-600">Premium</p>
-                    <p className="text-[10px] text-slate-400">{quotaData.tierUsage.premium?.credits || 0} credits</p>
-                  </div>
-                  <div className="text-center p-2 bg-slate-50 rounded-lg border border-slate-100">
-                    <p className="text-lg font-semibold text-slate-900">{quotaData.tierUsage.normal?.count || 0}</p>
-                    <p className="text-[10px] text-slate-600">Normal</p>
-                    <p className="text-[10px] text-slate-400">{quotaData.tierUsage.normal?.credits || 0} credits</p>
-                  </div>
-                  <div className="text-center p-2 bg-slate-50 rounded-lg border border-slate-100">
-                    <p className="text-lg font-semibold text-slate-900">{quotaData.tierUsage.eco?.count || 0}</p>
-                    <p className="text-[10px] text-slate-600">Eco</p>
-                    <p className="text-[10px] text-slate-400">{quotaData.tierUsage.eco?.credits || 0} credits</p>
-                  </div>
-                </div>
-              </div>
-            )}
           </AnimatedCard>
 
           {/* Models Used Card */}

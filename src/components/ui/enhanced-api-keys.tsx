@@ -842,88 +842,33 @@ export default function EnhancedApiKeysPage() {
         )}
       </AnimatePresence>
 
-      {/* Setup Progress Card - Show for new users */}
-      {showOnboarding && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-5 relative">
+      {/* Setup Progress Card - Show only for new users without API keys */}
+      {showOnboarding && apiKeys.length === 0 && (
+        <div className="bg-blue-50 rounded-lg border border-blue-200 p-4 relative">
           <button
             onClick={() => setShowOnboarding(false)}
-            className="absolute top-3 right-3 text-slate-400 hover:text-slate-600"
+            className="absolute top-2 right-2 text-slate-400 hover:text-slate-600 text-lg"
             title="Dismiss"
           >
             ×
           </button>
-          <h3 className="text-lg font-semibold text-slate-900 mb-3">Welcome! Get Started in 3 Steps</h3>
-          
-          {/* Progress Bar */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
-              <span>Setup Progress</span>
-              <span>
-                {[apiKeys.length > 0, preferences?.mcp_settings?.perspectives_per_message !== undefined, true].filter(Boolean).length} of 3 complete
-              </span>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <h3 className="text-sm font-semibold text-slate-900">Get Started</h3>
+              <p className="text-xs text-slate-600">Add an API key to start using Polydev</p>
             </div>
-            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-blue-500 transition-all duration-300"
-                style={{ 
-                  width: `${([apiKeys.length > 0, preferences?.mcp_settings?.perspectives_per_message !== undefined, true].filter(Boolean).length / 3) * 100}%` 
-                }}
-              />
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            {/* Step 1: Add API Key */}
-            <div className={`flex items-center gap-3 p-3 rounded-lg ${apiKeys.length > 0 ? 'bg-green-50 border border-green-200' : 'bg-white border border-slate-200'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${apiKeys.length > 0 ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
-                {apiKeys.length > 0 ? <Check className="w-4 h-4" /> : '1'}
-              </div>
-              <div className="flex-1">
-                <p className={`text-sm font-medium ${apiKeys.length > 0 ? 'text-green-700' : 'text-slate-700'}`}>
-                  Add your first API key
-                </p>
-                <p className="text-xs text-slate-500">Connect OpenAI, Anthropic, or another provider</p>
-              </div>
-              {apiKeys.length === 0 && (
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
-                >
-                  Add Key
-                </button>
-              )}
-            </div>
-            
-            {/* Step 2: Set Perspectives */}
-            <div className={`flex items-center gap-3 p-3 rounded-lg ${preferences?.mcp_settings?.perspectives_per_message !== undefined ? 'bg-green-50 border border-green-200' : 'bg-white border border-slate-200'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium ${preferences?.mcp_settings?.perspectives_per_message !== undefined ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
-                {preferences?.mcp_settings?.perspectives_per_message !== undefined ? <Check className="w-4 h-4" /> : '2'}
-              </div>
-              <div className="flex-1">
-                <p className={`text-sm font-medium ${preferences?.mcp_settings?.perspectives_per_message !== undefined ? 'text-green-700' : 'text-slate-700'}`}>
-                  Configure perspectives count
-                </p>
-                <p className="text-xs text-slate-500">Choose how many AI models to query per request</p>
-              </div>
-              <span className="text-xs text-blue-600">↓ Scroll below</span>
-            </div>
-            
-            {/* Step 3: Connect IDE */}
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-white border border-slate-200">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium bg-slate-200 text-slate-600">
-                3
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-slate-700">
-                  Connect your IDE
-                </p>
-                <p className="text-xs text-slate-500">Copy your MCP token and configure your editor</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+              >
+                Add API Key
+              </button>
               <Link
                 href="/dashboard/mcp-tokens"
-                className="px-3 py-1.5 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-700"
+                className="px-4 py-2 bg-white text-slate-700 text-sm font-medium rounded-lg border border-slate-300 hover:bg-slate-50"
               >
-                Setup
+                Connect IDE
               </Link>
             </div>
           </div>
@@ -974,7 +919,7 @@ export default function EnhancedApiKeysPage() {
             ) : (
               <>
                 {/* Summary Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 mb-6">
+                <div className="grid grid-cols-3 gap-4 mt-4 mb-6">
                   <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                     <p className="text-xs text-slate-500 mb-1">Total Credits Used</p>
                     <p className="text-2xl font-bold text-slate-900">{modelAnalytics.totalCreditsUsed.toLocaleString()}</p>
@@ -984,50 +929,8 @@ export default function EnhancedApiKeysPage() {
                     <p className="text-2xl font-bold text-slate-900">{modelAnalytics.totalRequests.toLocaleString()}</p>
                   </div>
                   <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1">Avg Credits/Request</p>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {modelAnalytics.totalRequests > 0
-                        ? (modelAnalytics.totalCreditsUsed / modelAnalytics.totalRequests).toFixed(1)
-                        : '0'}
-                    </p>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                     <p className="text-xs text-slate-500 mb-1">Models Used</p>
                     <p className="text-2xl font-bold text-slate-900">{modelAnalytics.modelBreakdown.length}</p>
-                  </div>
-                </div>
-
-                {/* Tier Breakdown */}
-                <div className="mb-6">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                    <Activity className="w-4 h-4" />
-                    Usage by Tier
-                  </h3>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-slate-700">Premium</span>
-                        <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded">20 cr/req</span>
-                      </div>
-                      <p className="text-xl font-bold text-slate-900">{modelAnalytics.tierBreakdown.premium.requests}</p>
-                      <p className="text-xs text-slate-600">requests • {modelAnalytics.tierBreakdown.premium.credits} credits</p>
-                    </div>
-                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-slate-700">Normal</span>
-                        <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded">4 cr/req</span>
-                      </div>
-                      <p className="text-xl font-bold text-slate-900">{modelAnalytics.tierBreakdown.normal.requests}</p>
-                      <p className="text-xs text-slate-600">requests • {modelAnalytics.tierBreakdown.normal.credits} credits</p>
-                    </div>
-                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-slate-700">Eco</span>
-                        <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded">1 cr/req</span>
-                      </div>
-                      <p className="text-xl font-bold text-slate-900">{modelAnalytics.tierBreakdown.eco.requests}</p>
-                      <p className="text-xs text-slate-600">requests • {modelAnalytics.tierBreakdown.eco.credits} credits</p>
-                    </div>
                   </div>
                 </div>
 
