@@ -234,6 +234,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch chat logs' }, { status: 500 })
     }
 
+    // Deduplicate chat logs by session_id - keep only the latest entry per session
+    // This prevents duplicate entries when chat_logs is updated multiple times per session
+    const uniqueChatLogs = chatLogs ? (() => {
+      const sessionMap = new Map<string, any>()
+      for (const log of chatLogs) {
+        const existing = sessionMap.get(log.session_id)
+        if (!existing || new Date(log.created_at) > new Date(existing.created_at)) {
+          sessionMap.set(log.session_id, log)
+        }
+      }
+      return Array.from(sessionMap.values())
+    })() : []
+
     // Transform MCP logs to unified format - OPTIMIZED for performance
     const transformedMcpLogs = mcpLogs?.map(log => {
       // Apply consistent cost filtering - skip unrealistic costs over $10
@@ -410,14 +423,14 @@ export async function GET(request: NextRequest) {
     // Fetch provider info from chat_messages for all chat log sessions
     // This tells us if credits (admin) or user API keys were used
     // Also fetch message content to display in request details
-    const chatSessionIds = chatLogs?.map(log => log.session_id).filter(Boolean) || []
+    const chatSessionIds = uniqueChatLogs.map(log => log.session_id).filter(Boolean) || []
     let chatProviderInfoMap: Record<string, Record<string, string>> = {}
-    let chatMessageContentMap: Record<string, Array<{ model_id: string, content: string, role: string }>> = {}
+    let chatMessageContentMap: Record<string, Array<{ model_id: string, content: string, role: string, timestamp: string }>> = {}
 
     if (chatSessionIds.length > 0) {
       const { data: chatMessages } = await supabase
         .from('chat_messages')
-        .select('session_id, model_id, provider_info, content, role')
+        .select('session_id, model_id, provider_info, content, role, created_at')
         .in('session_id', chatSessionIds)
         .order('created_at', { ascending: true })
 
@@ -439,13 +452,14 @@ export async function GET(request: NextRequest) {
         chatMessageContentMap[msg.session_id].push({
           model_id: msg.model_id,
           content: msg.content,
-          role: msg.role
+          role: msg.role,
+          timestamp: msg.created_at
         })
       })
     }
 
     // Transform chat logs to unified format - simplified for performance
-    const transformedChatLogs = chatLogs?.map(log => {
+    const transformedChatLogs = uniqueChatLogs.map(log => {
       // Get basic session info without complex joins
       const chatSession = Array.isArray(log.chat_sessions) ? log.chat_sessions[0] : log.chat_sessions
 
