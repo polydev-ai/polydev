@@ -487,7 +487,7 @@ export class SubscriptionManager {
         .single()
 
       if (error && error.code === 'PGRST116') {
-        // Create new credits record with initial free credits
+        // Create new credits record with initial free credits as bonus
         const subscription = await this.getUserSubscription(userId, useServiceRole)
         const monthlyAllocation = subscription?.tier === 'pro' && subscription?.status === 'active' ? 5.0 : 0.0
         
@@ -495,8 +495,8 @@ export class SubscriptionManager {
           .from('user_credits')
           .insert({
             user_id: userId,
-            balance: FREE_TIER_INITIAL_CREDITS, // Grant free tier initial credits
-            promotional_balance: 0.0,
+            balance: 0, // Purchased credits start at 0
+            promotional_balance: FREE_TIER_INITIAL_CREDITS, // Grant free tier credits as bonus
             monthly_allocation: monthlyAllocation,
             total_purchased: 0.0,
             total_spent: 0.0,

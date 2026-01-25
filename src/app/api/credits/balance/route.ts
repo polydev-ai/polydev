@@ -39,13 +39,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (creditsError && creditsError.code === 'PGRST116') {
-      // No credits record exists, create one with initial free credits
+      // No credits record exists, create one with initial free credits as bonus
       const { data: newCredits, error: insertError } = await serviceSupabase
         .from('user_credits')
         .insert({
           user_id: user.id,
-          balance: FREE_TIER_INITIAL_CREDITS, // Grant free tier credits
-          promotional_balance: 0,
+          balance: 0, // Purchased credits start at 0
+          promotional_balance: FREE_TIER_INITIAL_CREDITS, // Grant free tier credits as bonus
           total_purchased: 0,
           total_spent: 0
         })
@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
         console.error('[Credits Balance] Failed to create credits record:', insertError)
         // Return default values with initial credits even if insert failed
         userCredits = {
-          balance: FREE_TIER_INITIAL_CREDITS,
-          promotional_balance: 0,
+          balance: 0,
+          promotional_balance: FREE_TIER_INITIAL_CREDITS,
           total_purchased: 0,
           total_spent: 0,
           created_at: new Date().toISOString(),
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         }
       } else {
         userCredits = newCredits
-        console.log(`[Credits Balance] Created new user credits with ${FREE_TIER_INITIAL_CREDITS} initial credits for user ${user.id}`)
+        console.log(`[Credits Balance] Created new user credits with ${FREE_TIER_INITIAL_CREDITS} bonus credits for user ${user.id}`)
       }
     } else if (!creditsError && credits) {
       userCredits = credits
