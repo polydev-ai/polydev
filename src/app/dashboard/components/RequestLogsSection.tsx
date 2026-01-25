@@ -401,7 +401,7 @@ export default function RequestLogsSection({
                                   if (normalized.includes('mistral')) return 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4';
                                   if (normalized.includes('together')) return 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4';
                                   if (normalized.includes('cerebras')) return 'https://avatars.githubusercontent.com/u/76206399?s=200&v=4';
-                                  if (normalized.includes('xai') || normalized.includes('x-ai') || normalized.includes('grok')) return 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4';
+                                  if (normalized.includes('xai') || normalized.includes('x-ai') || normalized.includes('grok')) return 'https://avatars.githubusercontent.com/u/130314967?s=200&v=4';
                                   if (normalized.includes('perplexity')) return 'https://avatars.githubusercontent.com/u/83043819?s=200&v=4';
                                   if (normalized.includes('cohere')) return 'https://avatars.githubusercontent.com/u/30046380?s=200&v=4';
                                   if (normalized.includes('huggingface') || normalized.includes('hugging-face')) return 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg';
