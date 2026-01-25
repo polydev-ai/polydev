@@ -407,6 +407,28 @@ export async function GET(request: NextRequest) {
       }
     }) || []
 
+    // Fetch provider info from chat_messages for all chat log sessions
+    // This tells us if credits (admin) or user API keys were used
+    const chatSessionIds = chatLogs?.map(log => log.session_id).filter(Boolean) || []
+    let chatProviderInfoMap: Record<string, Record<string, string>> = {}
+
+    if (chatSessionIds.length > 0) {
+      const { data: chatMessages } = await supabase
+        .from('chat_messages')
+        .select('session_id, model_id, provider_info')
+        .in('session_id', chatSessionIds)
+        .eq('role', 'assistant')
+
+      // Build a map of session_id -> model_id -> fallback_method
+      chatMessages?.forEach((msg: any) => {
+        if (!chatProviderInfoMap[msg.session_id]) {
+          chatProviderInfoMap[msg.session_id] = {}
+        }
+        const providerInfo = msg.provider_info || {}
+        chatProviderInfoMap[msg.session_id][msg.model_id] = providerInfo.fallback_method || 'unknown'
+      })
+    }
+
     // Transform chat logs to unified format - simplified for performance
     const transformedChatLogs = chatLogs?.map(log => {
       // Get basic session info without complex joins
@@ -415,6 +437,9 @@ export async function GET(request: NextRequest) {
       // Apply consistent cost filtering to chat logs as well
       const rawChatCost = parseFloat(log.total_cost || '0')
       const filteredChatCost = rawChatCost > 10 ? 0 : rawChatCost
+
+      // Get provider info for this session's models
+      const sessionProviderInfo = chatProviderInfoMap[log.session_id] || {}
 
       return {
         id: log.id,
@@ -499,6 +524,11 @@ export async function GET(request: NextRequest) {
           const rawChatProviderCost = parseFloat(log.total_cost || '0') / (log.models_used?.length || 1)
           const filteredChatProviderCost = rawChatProviderCost > 10 ? 0 : rawChatProviderCost
 
+          // Determine payment method from provider_info.fallback_method
+          // 'admin' = platform credits, 'user' or other = user's own API key
+          const modelFallbackMethod = sessionProviderInfo[model] || 'unknown'
+          const modelPaymentMethod = modelFallbackMethod === 'admin' ? 'credits' : 'api_key'
+
           return {
             provider: getProviderFromModel(model),
             model: model.includes('/') ? model.split('/')[1] : model,
@@ -507,7 +537,7 @@ export async function GET(request: NextRequest) {
             tokens: Math.round((log.total_tokens || 0) / (log.models_used?.length || 1)),
             success: true,
             response: null,
-            paymentMethod: 'api_key' // Chat logs typically use API keys (no credits integration yet)
+            paymentMethod: modelPaymentMethod
           }
         }),
 
@@ -515,7 +545,8 @@ export async function GET(request: NextRequest) {
         avgLatency: 0,
         tokensPerSecond: 0,
         messageCount: log.message_count,
-        paymentMethod: 'api_key' // Chat logs typically use API keys (no credits integration yet)
+        // Request-level: show 'credits' if any model used admin credits
+        paymentMethod: Object.values(sessionProviderInfo).some(method => method === 'admin') ? 'credits' : 'api_key'
       }
     }) || []
 
