@@ -1,4 +1,5 @@
 import { createClient } from '@/app/utils/supabase/server'
+import { SUBSCRIPTION_PLANS } from '@/lib/stripeConfig'
 
 export interface UserSubscription {
   id: string
@@ -475,6 +476,9 @@ export class SubscriptionManager {
     try {
       const supabase = await this.getSupabase(useServiceRole)
       
+      // Get free tier initial credits from config
+      const FREE_TIER_INITIAL_CREDITS = SUBSCRIPTION_PLANS.free.monthlyCredits || 500
+      
       // Get or create user credits
       let { data: credits, error } = await supabase
         .from('user_credits')
@@ -483,7 +487,7 @@ export class SubscriptionManager {
         .single()
 
       if (error && error.code === 'PGRST116') {
-        // Create new credits record
+        // Create new credits record with initial free credits
         const subscription = await this.getUserSubscription(userId, useServiceRole)
         const monthlyAllocation = subscription?.tier === 'pro' && subscription?.status === 'active' ? 5.0 : 0.0
         
@@ -491,7 +495,7 @@ export class SubscriptionManager {
           .from('user_credits')
           .insert({
             user_id: userId,
-            balance: 0.0,
+            balance: FREE_TIER_INITIAL_CREDITS, // Grant free tier initial credits
             promotional_balance: 0.0,
             monthly_allocation: monthlyAllocation,
             total_purchased: 0.0,
@@ -505,6 +509,7 @@ export class SubscriptionManager {
           throw createError
         }
         
+        console.log(`[SubscriptionManager] Created new user credits with ${FREE_TIER_INITIAL_CREDITS} initial credits for user ${userId}`)
         credits = newCredits
       } else if (error) {
         throw error

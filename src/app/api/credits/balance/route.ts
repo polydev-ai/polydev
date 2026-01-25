@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/app/utils/supabase/server'
 import { createClient as createServerClient } from '@supabase/supabase-js'
+import { SUBSCRIPTION_PLANS } from '@/lib/stripeConfig'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +18,9 @@ export async function GET(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
+
+    // Get free tier initial credits from config
+    const FREE_TIER_INITIAL_CREDITS = SUBSCRIPTION_PLANS.free.monthlyCredits || 500
 
     // Check if user_credits table exists and get balance
     const { data: credits, error: creditsError } = await serviceSupabase
@@ -35,12 +39,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (creditsError && creditsError.code === 'PGRST116') {
-      // No credits record exists, create one
+      // No credits record exists, create one with initial free credits
       const { data: newCredits, error: insertError } = await serviceSupabase
         .from('user_credits')
         .insert({
           user_id: user.id,
-          balance: 0,
+          balance: FREE_TIER_INITIAL_CREDITS, // Grant free tier credits
           promotional_balance: 0,
           total_purchased: 0,
           total_spent: 0
@@ -50,9 +54,9 @@ export async function GET(request: NextRequest) {
 
       if (insertError) {
         console.error('[Credits Balance] Failed to create credits record:', insertError)
-        // Return default values if table doesn't exist
+        // Return default values with initial credits even if insert failed
         userCredits = {
-          balance: 0,
+          balance: FREE_TIER_INITIAL_CREDITS,
           promotional_balance: 0,
           total_purchased: 0,
           total_spent: 0,
@@ -61,6 +65,7 @@ export async function GET(request: NextRequest) {
         }
       } else {
         userCredits = newCredits
+        console.log(`[Credits Balance] Created new user credits with ${FREE_TIER_INITIAL_CREDITS} initial credits for user ${user.id}`)
       }
     } else if (!creditsError && credits) {
       userCredits = credits
