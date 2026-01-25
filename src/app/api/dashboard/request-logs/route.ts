@@ -367,8 +367,8 @@ export async function GET(request: NextRequest) {
             response: response?.content || null,
             fullResponse: response || null,
             // FIXED: Determine paymentMethod based on individual provider's source field
-            // Each provider response has its own source: 'admin_credits', 'user_key', 'cli', etc.
-            paymentMethod: response?.source === 'admin_credits' ? 'credits' : 
+            // Admin keys (admin_key, admin_credits) = credits, user_key = api_key
+            paymentMethod: response?.source === 'admin_credits' || response?.source === 'admin_key' ? 'credits' : 
                           response?.source === 'cli' ? 'cli' : 'api_key',
             // CLI indicator fields
             source: response?.source || 'api',
@@ -385,9 +385,9 @@ export async function GET(request: NextRequest) {
           ? parseFloat((log.total_tokens / (log.response_time_ms / 1000)).toFixed(1))
           : 0,
         // FIXED: Determine request-level paymentMethod from individual provider sources
-        // Show 'credits' if any provider used credits, otherwise 'api_key'
-        paymentMethod: Object.values(providerResponses).some((r: any) => r?.source === 'admin_credits') 
-          ? 'credits' : (log.source_type === 'admin_credits' ? 'credits' : 'api_key'),
+        // Admin keys (admin_key, admin_credits) = credits
+        paymentMethod: Object.values(providerResponses).some((r: any) => r?.source === 'admin_credits' || r?.source === 'admin_key') 
+          ? 'credits' : (log.source_type === 'admin_credits' || log.source_type === 'admin_key' ? 'credits' : 'api_key'),
         // Request-level CLI indicator (if any provider is CLI)
         hasCliResponse: cliProviders.length > 0 || Object.values(providerResponses).some((r: any) => r?.source === 'cli'),
         cliCount: cliProviders.length

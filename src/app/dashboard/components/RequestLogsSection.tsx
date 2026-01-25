@@ -401,12 +401,15 @@ export default function RequestLogsSection({
                                   if (normalized.includes('mistral')) return 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4';
                                   if (normalized.includes('together')) return 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4';
                                   if (normalized.includes('cerebras')) return 'https://avatars.githubusercontent.com/u/76206399?s=200&v=4';
-                                  if (normalized.includes('xai') || normalized.includes('x-ai')) return 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4';
+                                  if (normalized.includes('xai') || normalized.includes('x-ai') || normalized.includes('grok')) return 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4';
                                   if (normalized.includes('perplexity')) return 'https://avatars.githubusercontent.com/u/83043819?s=200&v=4';
                                   if (normalized.includes('cohere')) return 'https://avatars.githubusercontent.com/u/30046380?s=200&v=4';
                                   if (normalized.includes('huggingface') || normalized.includes('hugging-face')) return 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg';
                                   if (normalized.includes('deepseek')) return 'https://avatars.githubusercontent.com/u/159560534?s=200&v=4';
                                   if (normalized.includes('zhipu') || normalized.includes('zai') || normalized.includes('glm')) return 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg';
+                                  if (normalized.includes('groq')) return 'https://avatars.githubusercontent.com/u/76236773?s=200&v=4';
+                                  if (normalized.includes('llama') || normalized.includes('meta')) return 'https://avatars.githubusercontent.com/u/69631?s=200&v=4';
+                                  if (normalized.includes('qwen') || normalized.includes('alibaba')) return 'https://cdn.worldvectorlogo.com/logos/alibaba-group-holding-limited.svg';
                                   return null;
                                 };
 
@@ -438,16 +441,19 @@ export default function RequestLogsSection({
                                   if (normalized.includes('mistral')) return 'url';
                                   if (normalized.includes('together')) return 'url';
                                   if (normalized.includes('cerebras')) return 'url';
-                                  if (normalized.includes('xai') || normalized.includes('x-ai')) return 'url';
+                                  if (normalized.includes('xai') || normalized.includes('x-ai') || normalized.includes('grok')) return 'url';
                                   if (normalized.includes('perplexity')) return 'url';
                                   if (normalized.includes('cohere')) return 'url';
                                   if (normalized.includes('huggingface') || normalized.includes('hugging-face')) return 'url';
                                   if (normalized.includes('deepseek')) return 'url';
                                   if (normalized.includes('zhipu') || normalized.includes('zai') || normalized.includes('glm')) return 'url';
+                                  if (normalized.includes('groq')) return 'url';
+                                  if (normalized.includes('llama') || normalized.includes('meta')) return 'url';
+                                  if (normalized.includes('qwen') || normalized.includes('alibaba')) return 'url';
                                   return null;
                                 };
                                 return getProviderLogoUrl(provider.provider) ? 'none' : 'flex';
-                              })()} }>
+                              })()} }}>
                                 {(provider.provider || 'P').charAt(0).toUpperCase()}
                               </div>
                             </div>
