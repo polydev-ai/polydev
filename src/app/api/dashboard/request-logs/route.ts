@@ -320,7 +320,20 @@ export async function GET(request: NextRequest) {
           const provider = parts[0]
           const modelName = parts.length === 1 ? provider : (parts[1] || provider)
           const latency = providerLatencies[key] || 0
-          const response = providerResponses[key]
+
+          // FIXED: Look up response by exact key first, then fallback to model name match
+          // This handles cases where provider_costs has "unknown:model" but provider_responses has "actual-provider:model"
+          let response = providerResponses[key]
+          if (!response && modelName) {
+            // Try to find response by matching model name (part after colon)
+            const matchingKey = Object.keys(providerResponses).find(k => {
+              const responseModel = k.includes(':') ? k.split(':')[1] : k
+              return responseModel === modelName
+            })
+            if (matchingKey) {
+              response = providerResponses[matchingKey]
+            }
+          }
 
           // Optimize provider inference with early return for common providers
           let correctProvider = provider.toLowerCase()
