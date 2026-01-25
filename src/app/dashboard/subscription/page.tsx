@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -125,6 +126,70 @@ const containerVariants = {
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+}
+
+// Provider logo URLs for displaying in analytics
+const PROVIDER_LOGOS: Record<string, string> = {
+  'openai': 'https://avatars.githubusercontent.com/u/14957082?s=200&v=4',
+  'gpt': 'https://avatars.githubusercontent.com/u/14957082?s=200&v=4',
+  'anthropic': 'https://avatars.githubusercontent.com/u/76263028?s=200&v=4',
+  'claude': 'https://avatars.githubusercontent.com/u/76263028?s=200&v=4',
+  'google': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
+  'gemini': 'https://cdn.worldvectorlogo.com/logos/google-g-2015.svg',
+  'deepseek': 'https://avatars.githubusercontent.com/u/159560534?s=200&v=4',
+  'xai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
+  'x-ai': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
+  'grok': 'https://avatars.githubusercontent.com/u/165790280?s=200&v=4',
+  'mistral': 'https://avatars.githubusercontent.com/u/132372032?s=200&v=4',
+  'together': 'https://avatars.githubusercontent.com/u/59926009?s=200&v=4',
+  'cerebras': 'https://avatars.githubusercontent.com/u/76206399?s=200&v=4',
+  'perplexity': 'https://avatars.githubusercontent.com/u/83043819?s=200&v=4',
+  'cohere': 'https://avatars.githubusercontent.com/u/30046380?s=200&v=4',
+  'huggingface': 'https://huggingface.co/front/assets/huggingface_logo-noborder.svg',
+  'zhipu': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+  'zai': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+  'glm': 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg',
+  'groq': 'https://avatars.githubusercontent.com/u/76236773?s=200&v=4',
+  'meta': 'https://avatars.githubusercontent.com/u/69631?s=200&v=4',
+  'llama': 'https://avatars.githubusercontent.com/u/69631?s=200&v=4',
+  'qwen': 'https://cdn.worldvectorlogo.com/logos/alibaba-group-holding-limited.svg',
+  'alibaba': 'https://cdn.worldvectorlogo.com/logos/alibaba-group-holding-limited.svg',
+}
+
+// Get provider logo URL from model name
+function getProviderLogoFromModel(modelName: string): string | null {
+  if (!modelName) return null
+  const normalized = modelName.toLowerCase()
+  
+  // Check each provider pattern
+  for (const [key, url] of Object.entries(PROVIDER_LOGOS)) {
+    if (normalized.includes(key)) {
+      return url
+    }
+  }
+  return null
+}
+
+// Get provider abbreviation for fallback
+function getProviderAbbrev(modelName: string): string {
+  if (!modelName) return '?'
+  const normalized = modelName.toLowerCase()
+  
+  if (normalized.includes('gpt') || normalized.includes('openai')) return 'OA'
+  if (normalized.includes('claude') || normalized.includes('anthropic')) return 'A'
+  if (normalized.includes('gemini') || normalized.includes('google')) return 'G'
+  if (normalized.includes('deepseek')) return 'DS'
+  if (normalized.includes('grok') || normalized.includes('xai') || normalized.includes('x-ai')) return 'xi'
+  if (normalized.includes('mistral')) return 'M'
+  if (normalized.includes('llama') || normalized.includes('meta')) return 'L'
+  if (normalized.includes('glm') || normalized.includes('zhipu') || normalized.includes('zai')) return 'Z'
+  if (normalized.includes('qwen') || normalized.includes('alibaba')) return 'Q'
+  if (normalized.includes('groq')) return 'GQ'
+  if (normalized.includes('cerebras')) return 'CB'
+  if (normalized.includes('perplexity')) return 'PP'
+  if (normalized.includes('cohere')) return 'CO'
+  
+  return modelName.substring(0, 2).toUpperCase()
 }
 
 export default function SubscriptionPage() {
@@ -667,10 +732,34 @@ export default function SubscriptionPage() {
                   {creditsAnalytics.modelBreakdown
                     .filter(model => model.credits > 0)
                     .slice(0, 5)
-                    .map((model, idx) => (
+                    .map((model, idx) => {
+                    const logoUrl = getProviderLogoFromModel(model.model)
+                    const abbrev = getProviderAbbrev(model.model)
+                    return (
                     <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-slate-500 w-5">{idx + 1}.</span>
+                        {/* Provider Logo */}
+                        <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center bg-white border border-slate-200">
+                          {logoUrl ? (
+                            <img
+                              src={logoUrl}
+                              alt=""
+                              className="w-6 h-6 object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                                const fallback = target.nextElementSibling as HTMLElement
+                                if (fallback) fallback.style.display = 'flex'
+                              }}
+                            />
+                          ) : null}
+                          <div 
+                            className={`w-8 h-8 bg-gradient-to-br from-slate-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs ${logoUrl ? 'hidden' : ''}`}
+                          >
+                            {abbrev}
+                          </div>
+                        </div>
                         <div>
                           <p className="text-sm font-medium text-slate-900 truncate max-w-[200px]" title={model.model}>
                             {model.model}
@@ -689,7 +778,7 @@ export default function SubscriptionPage() {
                         <p className="text-xs text-slate-500">{model.requests} requests</p>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             )}
@@ -736,7 +825,6 @@ export default function SubscriptionPage() {
                       <tr className="border-b border-slate-200">
                         <th className="text-left py-2 px-3 text-xs font-medium text-slate-500">Time</th>
                         <th className="text-left py-2 px-3 text-xs font-medium text-slate-500">Model</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-slate-500">Tier</th>
                         <th className="text-right py-2 px-3 text-xs font-medium text-slate-500">Credits</th>
                       </tr>
                     </thead>
@@ -744,26 +832,45 @@ export default function SubscriptionPage() {
                       {creditsAnalytics.recentTransactions
                         .filter(tx => tx.credits > 0)
                         .slice(0, 10)
-                        .map((tx, idx) => (
+                        .map((tx, idx) => {
+                        const logoUrl = getProviderLogoFromModel(tx.model)
+                        const abbrev = getProviderAbbrev(tx.model)
+                        return (
                         <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
                           <td className="py-2 px-3 text-xs text-slate-500">
                             {new Date(tx.date).toLocaleDateString()} {new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </td>
-                          <td className="py-2 px-3 text-xs font-medium text-slate-900 truncate max-w-[150px]" title={tx.model}>
-                            {tx.model}
-                          </td>
                           <td className="py-2 px-3">
-                            <Badge variant="outline" className={`text-[10px] ${
-                              tx.tier === 'premium' ? 'bg-amber-50 text-amber-700' :
-                              tx.tier === 'eco' ? 'bg-green-50 text-green-700' :
-                              'bg-blue-50 text-blue-700'
-                            }`}>
-                              {tx.tier === 'eco' ? 'credits' : tx.tier}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              {/* Provider Logo */}
+                              <div className="w-6 h-6 rounded-md overflow-hidden flex items-center justify-center bg-white border border-slate-200 flex-shrink-0">
+                                {logoUrl ? (
+                                  <img
+                                    src={logoUrl}
+                                    alt=""
+                                    className="w-4 h-4 object-contain"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement
+                                      target.style.display = 'none'
+                                      const fallback = target.nextElementSibling as HTMLElement
+                                      if (fallback) fallback.style.display = 'flex'
+                                    }}
+                                  />
+                                ) : null}
+                                <div 
+                                  className={`w-6 h-6 bg-gradient-to-br from-slate-600 to-indigo-600 rounded-md flex items-center justify-center text-white font-bold text-[10px] ${logoUrl ? 'hidden' : ''}`}
+                                >
+                                  {abbrev}
+                                </div>
+                              </div>
+                              <span className="text-xs font-medium text-slate-900 truncate max-w-[120px]" title={tx.model}>
+                                {tx.model}
+                              </span>
+                            </div>
                           </td>
                           <td className="py-2 px-3 text-right text-xs font-medium text-slate-900">-{tx.credits}</td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                 </div>
