@@ -409,23 +409,38 @@ export async function GET(request: NextRequest) {
 
     // Fetch provider info from chat_messages for all chat log sessions
     // This tells us if credits (admin) or user API keys were used
+    // Also fetch message content to display in request details
     const chatSessionIds = chatLogs?.map(log => log.session_id).filter(Boolean) || []
     let chatProviderInfoMap: Record<string, Record<string, string>> = {}
+    let chatMessageContentMap: Record<string, Array<{ model_id: string, content: string, role: string }>> = {}
 
     if (chatSessionIds.length > 0) {
       const { data: chatMessages } = await supabase
         .from('chat_messages')
-        .select('session_id, model_id, provider_info')
+        .select('session_id, model_id, provider_info, content, role')
         .in('session_id', chatSessionIds)
-        .eq('role', 'assistant')
+        .order('created_at', { ascending: true })
 
-      // Build a map of session_id -> model_id -> fallback_method
+      // Build maps for provider info and message content
       chatMessages?.forEach((msg: any) => {
+        // Provider info map (for payment method)
         if (!chatProviderInfoMap[msg.session_id]) {
           chatProviderInfoMap[msg.session_id] = {}
         }
-        const providerInfo = msg.provider_info || {}
-        chatProviderInfoMap[msg.session_id][msg.model_id] = providerInfo.fallback_method || 'unknown'
+        if (msg.role === 'assistant') {
+          const providerInfo = msg.provider_info || {}
+          chatProviderInfoMap[msg.session_id][msg.model_id] = providerInfo.fallback_method || 'unknown'
+        }
+        
+        // Message content map (for displaying responses)
+        if (!chatMessageContentMap[msg.session_id]) {
+          chatMessageContentMap[msg.session_id] = []
+        }
+        chatMessageContentMap[msg.session_id].push({
+          model_id: msg.model_id,
+          content: msg.content,
+          role: msg.role
+        })
       })
     }
 
@@ -440,13 +455,22 @@ export async function GET(request: NextRequest) {
 
       // Get provider info for this session's models
       const sessionProviderInfo = chatProviderInfoMap[log.session_id] || {}
+      
+      // Get actual conversation content for this session
+      const sessionMessages = chatMessageContentMap[log.session_id] || []
+      
+      // Get the last assistant response for quick preview
+      const lastAssistantMessage = [...sessionMessages].reverse().find(m => m.role === 'assistant')
+      const lastUserMessage = [...sessionMessages].reverse().find(m => m.role === 'user')
 
       return {
         id: log.id,
         timestamp: log.created_at,
-        prompt: `Chat Session (${log.message_count || 0} messages)`,
-        fullPrompt: `Chat Session: "${chatSession?.title || 'Untitled'}"`,
-        fullConversation: [], // Simplified - no detailed conversation for performance
+        prompt: lastUserMessage?.content 
+          ? (lastUserMessage.content.length > 200 ? lastUserMessage.content.substring(0, 200) + '...' : lastUserMessage.content)
+          : `Chat Session (${log.message_count || 0} messages)`,
+        fullPrompt: lastUserMessage?.content || `Chat Session: "${chatSession?.title || 'Untitled'}"`,
+        fullConversation: sessionMessages, // Include actual conversation for display
         models: log.models_used || [],
         totalTokens: log.total_tokens || 0,
         cost: filteredChatCost,
@@ -528,6 +552,9 @@ export async function GET(request: NextRequest) {
           // 'admin' = platform credits, 'user' or other = user's own API key
           const modelFallbackMethod = sessionProviderInfo[model] || 'unknown'
           const modelPaymentMethod = modelFallbackMethod === 'admin' ? 'credits' : 'api_key'
+          
+          // Find the assistant response for this model
+          const modelResponse = sessionMessages.find(m => m.role === 'assistant' && m.model_id === model)
 
           return {
             provider: getProviderFromModel(model),
@@ -536,7 +563,7 @@ export async function GET(request: NextRequest) {
             latency: 0,
             tokens: Math.round((log.total_tokens || 0) / (log.models_used?.length || 1)),
             success: true,
-            response: null,
+            response: modelResponse?.content || null,
             paymentMethod: modelPaymentMethod
           }
         }),

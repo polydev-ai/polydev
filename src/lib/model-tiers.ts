@@ -67,14 +67,6 @@ export const MODEL_TIERS: Record<string, ModelTierInfo> = {
     costPer1k: { input: 0.075, output: 0.3 },
     routingStrategy: 'api_key'
   },
-  'gpt-5-mini': {
-    provider: 'openai',
-    modelId: 'gpt-5-mini',
-    tier: 'normal',
-    displayName: 'GPT-5 Mini',
-    costPer1k: { input: 0.15, output: 0.6 },
-    routingStrategy: 'api_key'
-  },
   'grok-code-fast-1': {
     provider: 'xai',
     modelId: 'grok-code-fast-1',
@@ -101,6 +93,14 @@ export const MODEL_TIERS: Record<string, ModelTierInfo> = {
   },
 
   // Eco Models (New Category)
+  'gpt-5-mini': {
+    provider: 'openai',
+    modelId: 'gpt-5-mini',
+    tier: 'eco',
+    displayName: 'GPT-5 Mini',
+    costPer1k: { input: 0.15, output: 0.6 },
+    routingStrategy: 'api_key'
+  },
   'gemini-2.5-flash-lite': {
     provider: 'google',
     modelId: 'gemini-2.5-flash-lite',

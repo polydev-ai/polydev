@@ -30,7 +30,6 @@ logs/
 
 # Vercel
 .vercel
-<<<<<<< Updated upstream
 
 # Archive (VM/WebRTC/development files)
 _archive/
@@ -38,11 +37,12 @@ _archive/
 # Temporary files
 *.tgz
 *.tar.gz
-.deploy-trigger
-=======
 **/*.tgz
 **/*.tar.gz
-# Deployment trigger - Mon Sep 15 12:16:25 PDT 2025
-*.tsbuildinfo
+.deploy-trigger
+
+# MCP config
 .mcp.json
+
+# Remotion intro (separate project)
 remotion-intro/
