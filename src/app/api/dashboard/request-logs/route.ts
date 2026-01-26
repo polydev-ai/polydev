@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '../../../utils/supabase/server'
 
-// Simple in-memory cache for request logs - cache for 30 seconds
+// Simple in-memory cache for request logs - cache for 10 seconds (reduced to avoid stale data)
 const requestLogsCache = new Map<string, { data: any; timestamp: number }>()
-const CACHE_DURATION = 30 * 1000 // 30 seconds
+const CACHE_DURATION = 10 * 1000 // 10 seconds
 
 // Helper function to infer provider from model name - ENHANCED with all mappings
 const getProviderFromModel = (modelName: string) => {
@@ -592,7 +592,20 @@ export async function GET(request: NextRequest) {
     }) || []
 
     // Combine and sort all logs by timestamp
-    const allLogs = [...transformedMcpLogs, ...transformedChatLogs]
+    // Also deduplicate by id to handle any edge cases
+    const combinedLogs = [...transformedMcpLogs, ...transformedChatLogs]
+    
+    // Final deduplication by id to ensure no duplicates in the combined list
+    const seenIds = new Set<string>()
+    const deduplicatedLogs = combinedLogs.filter(log => {
+      if (seenIds.has(log.id)) {
+        return false
+      }
+      seenIds.add(log.id)
+      return true
+    })
+    
+    const allLogs = deduplicatedLogs
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(offset, offset + limit)
 
