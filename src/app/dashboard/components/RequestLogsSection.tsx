@@ -299,12 +299,13 @@ export default function RequestLogsSection({
                         Chat Session: "{(selectedLog as any).sessionTitle}"
                       </p>
                       <p className="text-xs text-slate-700 mt-1">
-                        {(selectedLog as any).fullConversation.filter((m: any) => m.role === 'user').length} user message(s) • {(selectedLog as any).fullConversation.filter((m: any) => m.role === 'assistant').length} AI response(s)
+                        {(selectedLog as any).fullConversation.filter((m: any) => m.role === 'user').length} user message(s) • AI responses shown in Provider Breakdown below
                       </p>
                     </div>
 
                     {/* Only show User messages here - AI responses shown in Provider Breakdown */}
                     <div className="space-y-3">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">User Messages</p>
                       {(selectedLog as any).fullConversation
                         .filter((message: any) => message.role === 'user')
                         .map((message: any, index: number) => (
