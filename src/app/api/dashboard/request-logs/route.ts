@@ -238,13 +238,24 @@ export async function GET(request: NextRequest) {
     // This prevents duplicate entries when chat_logs is updated multiple times per session
     const uniqueChatLogs = chatLogs ? (() => {
       const sessionMap = new Map<string, any>()
+      console.log(`[Dedup] Processing ${chatLogs.length} chat logs`)
+      
       for (const log of chatLogs) {
+        // Skip logs without session_id
+        if (!log.session_id) {
+          console.log(`[Dedup] Skipping log without session_id: ${log.id}`)
+          continue
+        }
+        
         const existing = sessionMap.get(log.session_id)
         if (!existing || new Date(log.created_at) > new Date(existing.created_at)) {
           sessionMap.set(log.session_id, log)
         }
       }
-      return Array.from(sessionMap.values())
+      
+      const result = Array.from(sessionMap.values())
+      console.log(`[Dedup] After deduplication: ${result.length} unique sessions (removed ${chatLogs.length - result.length} duplicates)`)
+      return result
     })() : []
 
     // Transform MCP logs to unified format - OPTIMIZED for performance
@@ -595,15 +606,32 @@ export async function GET(request: NextRequest) {
     // Also deduplicate by id to handle any edge cases
     const combinedLogs = [...transformedMcpLogs, ...transformedChatLogs]
     
-    // Final deduplication by id to ensure no duplicates in the combined list
+    console.log(`[Combine] MCP logs: ${transformedMcpLogs.length}, Chat logs: ${transformedChatLogs.length}, Combined: ${combinedLogs.length}`)
+    
+    // Final deduplication by id AND by session-based key for chat logs
     const seenIds = new Set<string>()
-    const deduplicatedLogs = combinedLogs.filter(log => {
+    const seenChatSessions = new Set<string>()
+    const deduplicatedLogs = (combinedLogs as any[]).filter((log: any) => {
+      // For chat logs, deduplicate by session title + timestamp to catch any remaining duplicates
+      if (log.source === 'chat' && log.sessionTitle) {
+        const sessionKey = `chat:${log.sessionTitle}:${log.timestamp}`
+        if (seenChatSessions.has(sessionKey)) {
+          console.log(`[Combine] Filtered duplicate chat session: ${sessionKey}`)
+          return false
+        }
+        seenChatSessions.add(sessionKey)
+      }
+      
+      // Always deduplicate by id
       if (seenIds.has(log.id)) {
+        console.log(`[Combine] Filtered duplicate by id: ${log.id}`)
         return false
       }
       seenIds.add(log.id)
       return true
     })
+    
+    console.log(`[Combine] After final dedup: ${deduplicatedLogs.length}`)
     
     const allLogs = deduplicatedLogs
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
