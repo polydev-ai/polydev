@@ -287,7 +287,7 @@ export default function RequestLogsSection({
               <div>
                 <h4 className="text-sm font-medium text-slate-900 mb-3">
                   {(selectedLog as any).source === 'chat' && (selectedLog as any).fullConversation
-                    ? 'Full Conversation'
+                    ? 'Conversation'
                     : 'Full Prompt'}
                 </h4>
 
