@@ -212,7 +212,7 @@ const FAQ_DATA = [
   },
   {
     question: "Can I use my existing AI subscriptions?",
-    answer: "Yes! If you have ChatGPT Plus, Claude Pro, or Gemini Advanced, add your API keys in the dashboard. Polydev uses YOUR keys first (unlimited, at your own cost), then falls back to credits. No double-paying for AI services you already have."
+    answer: "Yes! If you have ChatGPT Plus, Claude Pro, or Gemini Advanced, just login to your CLI tool (Claude Code, Codex CLI, Gemini CLI) with your subscription account. Polydev queries models through your authenticated CLI session—no API keys needed, no extra cost."
   },
   {
     question: "What context do models receive?",
@@ -232,7 +232,7 @@ const FAQ_DATA = [
   },
   {
     question: "How does the credit system work?",
-    answer: "1 perspective call = 1 credit. Model tiers: Eco (cheapest), Normal (balanced), Premium (powerful). Your subscription includes monthly credit allowance. Or bring your own API keys for unlimited usage."
+    answer: "1 perspective call = 1 credit. Model tiers: Eco (cheapest), Normal (balanced), Premium (powerful). Your subscription includes monthly credit allowance. Or use your existing CLI subscriptions for unlimited usage."
   }
 ]
 
@@ -514,7 +514,7 @@ export default function LandingPage() {
               {
                 icon: Check,
                 title: "Use your subscriptions",
-                desc: "Already pay for ChatGPT Plus or Claude Pro? Add your API keys and use them—no extra cost."
+                desc: "Already pay for ChatGPT Plus or Claude Pro? Login to your CLI and use them—no API keys needed."
               }
             ].map((feature, i) => (
               <motion.div
@@ -821,35 +821,35 @@ export default function LandingPage() {
                   <Zap className="w-3 h-3 text-white" />
                 </div>
                 <h3 className="font-semibold text-slate-900">Use Your Subscriptions</h3>
-                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">No Extra Cost</span>
+                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">No API Keys</span>
               </div>
 
               <p className="text-sm text-slate-600 mb-4">
-                <strong>Already paying for ChatGPT Plus, Claude Pro, or Gemini Advanced?</strong> Add your API keys and use those subscriptions through Polydev—unlimited, at your existing cost.
+                <strong>Already paying for ChatGPT Plus, Claude Pro, or Gemini Advanced?</strong> Login to your CLI tool with your subscription account. Polydev uses your authenticated session—no API keys needed.
               </p>
 
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {[
-                  { name: 'OpenAI', logo: 'https://models.dev/logos/openai.svg', sub: 'ChatGPT Plus' },
-                  { name: 'Anthropic', logo: 'https://models.dev/logos/anthropic.svg', sub: 'Claude Pro' },
-                  { name: 'Google AI', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png', sub: 'Gemini Advanced' },
-                  { name: 'xAI', logo: 'https://models.dev/logos/xai.svg', sub: 'Grok Premium' },
+                  { name: 'Claude Pro', logo: 'https://models.dev/logos/anthropic.svg', cli: 'Claude Code' },
+                  { name: 'ChatGPT Plus', logo: 'https://models.dev/logos/openai.svg', cli: 'Codex CLI' },
+                  { name: 'Gemini Advanced', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png', cli: 'Gemini CLI' },
+                  { name: 'Grok Premium', logo: 'https://models.dev/logos/xai.svg', cli: 'xAI CLI' },
                 ].map((provider) => (
                   <div key={provider.name} className="flex items-center gap-2 p-2 border border-slate-200 rounded text-xs">
                     <Image src={provider.logo} alt={provider.name} width={14} height={14} />
                     <div>
                       <span className="text-slate-700 font-medium">{provider.name}</span>
-                      <span className="text-slate-400 ml-1">({provider.sub})</span>
+                      <span className="text-slate-400 ml-1">→ {provider.cli}</span>
                     </div>
                   </div>
                 ))}
               </div>
 
               <Link
-                href="/auth"
+                href="/docs"
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
               >
-                Add API Keys
+                Setup Guide
                 <ArrowRight className="w-3 h-3" />
               </Link>
             </motion.div>
