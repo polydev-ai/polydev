@@ -1,11 +1,11 @@
 {
   "name": "polydev-ai",
-  "version": "1.8.61",
+  "version": "1.8.70",
   "engines": {
     "node": ">=20.x <=22.x"
   },
   "mcpName": "io.github.backspacevenkat/perspectives",
-  "description": "Agentic workflow assistant with CLI integration - get diverse perspectives from multiple LLMs when stuck or need enhanced reasoning",
+  "description": "Multi-model AI perspectives for coding agents - query GPT 5.2, Claude Opus 4.5, Gemini 3, and Grok 4.1 simultaneously through one MCP server",
   "keywords": [
     "mcp",
     "model-context-protocol",

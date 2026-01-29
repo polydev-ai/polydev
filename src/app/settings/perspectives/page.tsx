@@ -25,21 +25,21 @@ const PROVIDER_INFO = {
   openai: {
     name: 'OpenAI',
     icon: '🤖',
-    models: ['gpt-4', 'gpt-3.5-turbo'],
+    models: ['gpt-5.2', 'gpt-4o'],
     keyFormat: 'sk-...',
     docs: 'https://platform.openai.com/api-keys'
   },
   anthropic: {
     name: 'Anthropic',
     icon: '🧠',
-    models: ['claude-3-sonnet', 'claude-3-haiku'],
+    models: ['claude-opus-4.5', 'claude-sonnet-4'],
     keyFormat: 'sk-ant-...',
     docs: 'https://console.anthropic.com/account/keys'
   },
   google: {
     name: 'Google AI',
     icon: '💎',
-    models: ['gemini-pro', 'gemini-1.5-pro'],
+    models: ['gemini-3-pro', 'gemini-2.5-flash'],
     keyFormat: 'AI...',
     docs: 'https://aistudio.google.com/app/apikey'
   }

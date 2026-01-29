@@ -211,6 +211,10 @@ const FAQ_DATA = [
     answer: "Ask your MCP-enabled editor (Claude Code, Cursor, Cline) to get perspectives. Example: 'Can you get multiple perspectives on this?' Your editor calls the Polydev MCP tool with your context."
   },
   {
+    question: "Can I use my existing AI subscriptions?",
+    answer: "Yes! If you have ChatGPT Plus, Claude Pro, or Gemini Advanced, add your API keys in the dashboard. Polydev uses YOUR keys first (unlimited, at your own cost), then falls back to credits. No double-paying for AI services you already have."
+  },
+  {
     question: "What context do models receive?",
     answer: "Models receive the context your MCP client provides - typically your current file, selected code, recent changes, and your question. The amount depends on your editor's MCP implementation."
   },
@@ -228,11 +232,7 @@ const FAQ_DATA = [
   },
   {
     question: "How does the credit system work?",
-    answer: "1 perspective call = 1 credit. Model tiers: Eco (cheapest), Normal (balanced), Premium (powerful). Your subscription includes monthly credit allowance."
-  },
-  {
-    question: "Can I use my own API keys?",
-    answer: "Yes! Add API keys from OpenAI, Anthropic, Google, etc. in dashboard. Polydev uses your keys first before credits. Unlimited access at your own API costs."
+    answer: "1 perspective call = 1 credit. Model tiers: Eco (cheapest), Normal (balanced), Premium (powerful). Your subscription includes monthly credit allowance. Or bring your own API keys for unlimited usage."
   }
 ]
 
@@ -494,22 +494,27 @@ export default function LandingPage() {
           </div>
 
           {/* Feature cards - minimal with hover states */}
-          <div className="grid md:grid-cols-3 gap-px bg-slate-200 rounded-2xl overflow-hidden">
+          <div className="grid md:grid-cols-4 gap-px bg-slate-200 rounded-2xl overflow-hidden">
             {[
               {
                 icon: Sparkles,
                 title: "Diverse solutions",
-                desc: "Claude suggests functional patterns. GPT recommends OOP. Gemini offers a hybrid. See all approaches, then choose."
+                desc: "Claude suggests functional patterns. GPT recommends OOP. Gemini offers a hybrid. See all approaches."
               },
               {
                 icon: Zap,
                 title: "More coverage",
-                desc: "One model finds the bug. Another spots the security flaw. A third optimizes performance. Together, nothing slips through."
+                desc: "One model finds the bug. Another spots the security flaw. A third optimizes performance."
               },
               {
                 icon: Code2,
                 title: "Zero context switching",
-                desc: "Stop juggling tabs between ChatGPT and Claude. Get every perspective in one call, right where you're already working."
+                desc: "Stop juggling tabs between ChatGPT and Claude. Get every perspective in one call."
+              },
+              {
+                icon: Check,
+                title: "Use your subscriptions",
+                desc: "Already pay for ChatGPT Plus or Claude Pro? Add your API keys and use them—no extra cost."
               }
             ].map((feature, i) => (
               <motion.div
@@ -612,7 +617,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
           >
             <h2 className="text-2xl font-bold text-slate-900 mb-2">
-              See It In Action
+              See it In Action
             </h2>
             <p className="text-slate-600">
               Same problem, different perspectives
@@ -815,24 +820,27 @@ export default function LandingPage() {
                 <div className="w-6 h-6 bg-slate-900 rounded flex items-center justify-center">
                   <Zap className="w-3 h-3 text-white" />
                 </div>
-                <h3 className="font-semibold text-slate-900">Bring Your Own Keys</h3>
-                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Unlimited</span>
+                <h3 className="font-semibold text-slate-900">Use Your Subscriptions</h3>
+                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">No Extra Cost</span>
               </div>
 
               <p className="text-sm text-slate-600 mb-4">
-                Add your own API keys for unlimited usage at your own costs. Polydev uses your keys first, then falls back to credits.
+                <strong>Already paying for ChatGPT Plus, Claude Pro, or Gemini Advanced?</strong> Add your API keys and use those subscriptions through Polydev—unlimited, at your existing cost.
               </p>
 
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {[
-                  { name: 'OpenAI', logo: 'https://models.dev/logos/openai.svg' },
-                  { name: 'Anthropic', logo: 'https://models.dev/logos/anthropic.svg' },
-                  { name: 'Google AI', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png' },
-                  { name: 'xAI', logo: 'https://models.dev/logos/xai.svg' },
+                  { name: 'OpenAI', logo: 'https://models.dev/logos/openai.svg', sub: 'ChatGPT Plus' },
+                  { name: 'Anthropic', logo: 'https://models.dev/logos/anthropic.svg', sub: 'Claude Pro' },
+                  { name: 'Google AI', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Google_Gemini_logo.svg/1024px-Google_Gemini_logo.svg.png', sub: 'Gemini Advanced' },
+                  { name: 'xAI', logo: 'https://models.dev/logos/xai.svg', sub: 'Grok Premium' },
                 ].map((provider) => (
                   <div key={provider.name} className="flex items-center gap-2 p-2 border border-slate-200 rounded text-xs">
                     <Image src={provider.logo} alt={provider.name} width={14} height={14} />
-                    <span className="text-slate-700">{provider.name}</span>
+                    <div>
+                      <span className="text-slate-700 font-medium">{provider.name}</span>
+                      <span className="text-slate-400 ml-1">({provider.sub})</span>
+                    </div>
                   </div>
                 ))}
               </div>

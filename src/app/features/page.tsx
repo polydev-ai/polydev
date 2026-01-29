@@ -153,10 +153,10 @@ export default function Features() {
   ]
 
   const integrations = [
-    { name: 'OpenAI', logo: '🤖', description: 'GPT-4, GPT-3.5, DALL-E, Whisper' },
-    { name: 'Anthropic', logo: '🧠', description: 'Claude 3.5 Sonnet, Haiku, Opus' },
-    { name: 'Google AI', logo: '🔍', description: 'Gemini Pro, PaLM, Bard' },
-    { name: 'Meta', logo: '🦙', description: 'Llama 2, Code Llama' },
+    { name: 'OpenAI', logo: '🤖', description: 'GPT-5.2, GPT-4o, DALL-E, Whisper' },
+    { name: 'Anthropic', logo: '🧠', description: 'Claude Opus 4.5, Sonnet 4, Haiku 4.5' },
+    { name: 'Google AI', logo: '🔍', description: 'Gemini 3 Pro, Gemini 2.5 Flash' },
+    { name: 'xAI', logo: '🦙', description: 'Grok 4.1, Grok 3' },
     { name: 'Cohere', logo: '💬', description: 'Command, Embed, Rerank' },
     { name: 'Hugging Face', logo: '🤗', description: 'Open source models' },
     { name: 'Replicate', logo: '🔄', description: 'Custom model deployment' },

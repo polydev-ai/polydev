@@ -24,6 +24,26 @@ Get insights from GPT 5.2, Claude Opus 4.5, Gemini 3, and Grok 4.1 — all throu
 
 ---
 
+## 🔑 Key Advantage: Use Your CLI Subscriptions
+
+**Already paying for ChatGPT Plus, Claude Pro, or Gemini Advanced?** Use those subscriptions through Polydev — no extra API costs.
+
+| Subscription | Works With Polydev |
+|--------------|-------------------|
+| ChatGPT Plus ($20/mo) | ✅ Use GPT-4 |
+| Claude Pro ($20/mo) | ✅ Use Claude Opus |
+| Gemini Advanced ($20/mo) | ✅ Use Gemini Pro |
+| **Your own API keys** | ✅ Unlimited usage |
+
+**How it works:**
+1. Add your own API keys in the [dashboard](https://polydev.ai/dashboard)
+2. Polydev uses YOUR keys first (your costs, unlimited)
+3. Falls back to Polydev credits only when needed
+
+**No double-paying.** If you're already subscribed to AI services, maximize that investment.
+
+---
+
 ## Quick Start
 
 ### 1. Get your free API token
