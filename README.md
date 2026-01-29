@@ -24,23 +24,23 @@ Get insights from GPT 5.2, Claude Opus 4.5, Gemini 3, and Grok 4.1 — all throu
 
 ---
 
-## 🔑 Key Advantage: Use Your CLI Subscriptions
+## 🔑 Key Advantage: Use Your Existing Subscriptions
 
-**Already paying for ChatGPT Plus, Claude Pro, or Gemini Advanced?** Use those subscriptions through Polydev — no extra API costs.
+**Already paying for ChatGPT Plus, Claude Pro, or Gemini Advanced?** Use those subscriptions directly through your CLI tools — no API keys needed.
 
-| Subscription | Works With Polydev |
-|--------------|-------------------|
-| ChatGPT Plus ($20/mo) | ✅ Use GPT-4 |
-| Claude Pro ($20/mo) | ✅ Use Claude Opus |
-| Gemini Advanced ($20/mo) | ✅ Use Gemini Pro |
-| **Your own API keys** | ✅ Unlimited usage |
+| Subscription | CLI Tool | How to Use |
+|--------------|----------|------------|
+| Claude Pro ($20/mo) | Claude Code | `claude login` with your Anthropic account |
+| ChatGPT Plus ($20/mo) | Codex CLI | `codex login` with your OpenAI account |
+| Gemini Advanced ($20/mo) | Gemini CLI | `gemini login` with your Google account |
 
 **How it works:**
-1. Add your own API keys in the [dashboard](https://polydev.ai/dashboard)
-2. Polydev uses YOUR keys first (your costs, unlimited)
-3. Falls back to Polydev credits only when needed
+1. Login to your CLI tool with your subscription account (no API keys!)
+2. Add Polydev as an MCP server to your CLI
+3. Polydev queries models through your authenticated CLI sessions
+4. Your subscription quota is used — no extra costs
 
-**No double-paying.** If you're already subscribed to AI services, maximize that investment.
+**No API keys. No double-paying.** Your existing subscriptions just work.
 
 ---
 

@@ -2,7 +2,7 @@
   "$schema": "https://glama.ai/mcp/schemas/server.json",
   "name": "polydev-ai",
   "displayName": "Polydev AI - Multi-Model Perspectives",
-  "description": "Get AI perspectives from GPT 5.2, Claude Opus 4.5, Gemini 3, and Grok 4.1 simultaneously through one MCP server. Use your existing CLI subscriptions (ChatGPT Plus, Claude Pro, Gemini Advanced) without extra API costs.",
+  "description": "Get AI perspectives from GPT 5.2, Claude Opus 4.5, Gemini 3, and Grok 4.1 simultaneously through one MCP server. Works with your existing CLI subscriptions — just login to Claude Code, Codex CLI, or Gemini CLI with your account.",
   "version": "1.8.70",
   "author": {
     "name": "Polydev AI",
