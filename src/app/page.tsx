@@ -58,20 +58,20 @@ function TypewriterText({ texts, delay = 50, pauseDuration = 3000 }: {
 }
 
 const PROVIDERS = [
-  { name: 'OpenAI', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/openai.png' },
-  { name: 'Anthropic', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/anthropic.png' },
-  { name: 'Google', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/gemini-color.png' },
-  { name: 'xAI', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/grok.png' },
-  { name: 'Groq', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/groq-color.png' },
-  { name: 'OpenRouter', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/openrouter.png' }
+  { name: 'OpenAI', logo: 'https://www.google.com/s2/favicons?domain=openai.com&sz=64' },
+  { name: 'Anthropic', logo: 'https://www.google.com/s2/favicons?domain=anthropic.com&sz=64' },
+  { name: 'Google', logo: 'https://www.google.com/s2/favicons?domain=deepmind.google&sz=64' },
+  { name: 'xAI', logo: 'https://www.google.com/s2/favicons?domain=x.ai&sz=64' },
+  { name: 'Groq', logo: 'https://www.google.com/s2/favicons?domain=groq.com&sz=64' },
+  { name: 'OpenRouter', logo: 'https://www.google.com/s2/favicons?domain=openrouter.ai&sz=64' }
 ]
 
 const IDE_TOOLS = [
-  { name: 'Claude Code', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/claude-color.png' },
-  { name: 'Cursor', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/cursor.png' },
-  { name: 'Cline', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/cline.png' },
-  { name: 'Windsurf', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/windsurf.png' },
-  { name: 'Continue', logo: 'https://cdn.prod.website-files.com/663e06c56841363663ffbbcf/663e1b9fb023f0b622ad3608_log-text.svg' }
+  { name: 'Claude Code', logo: 'https://www.google.com/s2/favicons?domain=anthropic.com&sz=64' },
+  { name: 'Cursor', logo: 'https://www.google.com/s2/favicons?domain=cursor.com&sz=64' },
+  { name: 'Cline', logo: '/logos/cline.svg' },
+  { name: 'Windsurf', logo: 'https://www.google.com/s2/favicons?domain=codeium.com&sz=64' },
+  { name: 'Continue', logo: '/logos/continue.svg' }
 ]
 
 const PROBLEM_SCENARIOS = [
@@ -405,6 +405,14 @@ export default function LandingPage() {
               Query Claude Opus 4.5, GPT-5.2, Gemini 3 Pro, Grok 4.1 and more simultaneously—right from your IDE.
               Different models catch different things. Get unstuck faster.
             </p>
+
+            {/* Key value prop highlight */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full mb-6">
+              <Check className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-700">
+                Use your ChatGPT Plus / Claude Pro subscription — no API keys needed
+              </span>
+            </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
               <Link
