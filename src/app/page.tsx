@@ -58,20 +58,20 @@ function TypewriterText({ texts, delay = 50, pauseDuration = 3000 }: {
 }
 
 const PROVIDERS = [
-  { name: 'OpenAI', logo: 'https://www.google.com/s2/favicons?domain=openai.com&sz=64' },
-  { name: 'Anthropic', logo: 'https://www.google.com/s2/favicons?domain=anthropic.com&sz=64' },
-  { name: 'Google', logo: 'https://www.google.com/s2/favicons?domain=deepmind.google&sz=64' },
-  { name: 'xAI', logo: 'https://www.google.com/s2/favicons?domain=x.ai&sz=64' },
-  { name: 'Groq', logo: 'https://www.google.com/s2/favicons?domain=groq.com&sz=64' },
-  { name: 'OpenRouter', logo: 'https://www.google.com/s2/favicons?domain=openrouter.ai&sz=64' }
+  { name: 'OpenAI', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/openai.png' },
+  { name: 'Anthropic', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/anthropic.png' },
+  { name: 'Google', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/gemini-color.png' },
+  { name: 'xAI', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/grok.png' },
+  { name: 'Groq', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/groq-color.png' },
+  { name: 'OpenRouter', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/openrouter.png' }
 ]
 
 const IDE_TOOLS = [
-  { name: 'Claude Code', logo: 'https://www.google.com/s2/favicons?domain=anthropic.com&sz=64' },
-  { name: 'Cursor', logo: 'https://www.google.com/s2/favicons?domain=cursor.com&sz=64' },
-  { name: 'Cline', logo: '/logos/cline.svg' },
-  { name: 'Windsurf', logo: 'https://www.google.com/s2/favicons?domain=codeium.com&sz=64' },
-  { name: 'Continue', logo: '/logos/continue.svg' }
+  { name: 'Claude Code', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/claude-color.png' },
+  { name: 'Cursor', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/cursor.png' },
+  { name: 'Cline', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/cline.png' },
+  { name: 'Windsurf', logo: 'https://cdn.jsdelivr.net/npm/@lobehub/icons-static-png@latest/light/windsurf.png' },
+  { name: 'Continue', logo: 'https://cdn.prod.website-files.com/663e06c56841363663ffbbcf/663e1b9fb023f0b622ad3608_log-text.svg' }
 ]
 
 const PROBLEM_SCENARIOS = [
