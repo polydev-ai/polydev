@@ -49,11 +49,9 @@ const emailWrapper = (content: string) => `
 `
 
 // Feature box component for visual hierarchy
-const featureBox = (icon: string, title: string, description: string) => `
+const featureBox = (title: string, description: string) => `
   <div style="background: #f9fafb; border-radius: 10px; padding: 20px; margin-bottom: 12px;">
-    <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 600; color: #000;">
-      <span style="margin-right: 8px;">${icon}</span>${title}
-    </p>
+    <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 600; color: #000;">${title}</p>
     <p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.5;">${description}</p>
   </div>
 `
@@ -83,7 +81,7 @@ export const emailTemplates = {
     const modelsText = AVAILABLE_MODELS.join(', ')
 
     return {
-      subject: `🚀 You're in! ${planInfo.credits} credits + unlimited messages activated`,
+      subject: `Welcome to Polydev ${planName} — ${planInfo.credits} credits activated`,
       html: emailWrapper(`
         <h1 style="font-size: 32px; font-weight: 700; color: #000; margin: 0 0 12px 0; letter-spacing: -1px; text-align: center;">Welcome to Polydev ${planName}</h1>
         
@@ -94,18 +92,18 @@ export const emailTemplates = {
         <div style="margin: 32px 0;">
           <p style="font-size: 13px; font-weight: 600; color: #9ca3af; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 1px;">WHAT'S INCLUDED</p>
           
-          ${featureBox('∞', 'Unlimited Messages', 'No limits on API requests. Send as many queries as you need.')}
-          ${featureBox('↻', 'Credit Rollover', 'Unused credits roll over to next month while subscribed.')}
-          ${featureBox('🔗', 'CLI Integration', 'Connect your Claude Code, Codex CLI, or Gemini CLI subscriptions—these don\'t use your Polydev credits.')}
-          ${featureBox('⚡', 'All 4 Models', `${modelsText}—each costs just 1 credit.`)}
+          ${featureBox('Unlimited Messages', 'No limits on API requests. Send as many queries as you need.')}
+          ${featureBox('Credit Rollover', 'Unused credits roll over to next month while subscribed.')}
+          ${featureBox('CLI Integration', 'Connect your Claude Code, Codex CLI, or Gemini CLI subscriptions—these don\'t use your Polydev credits.')}
+          ${featureBox('All 4 Models', `${modelsText}—each costs just 1 credit.`)}
         </div>
 
         <div style="background: #f0fdf4; border-radius: 10px; padding: 20px; margin: 24px 0; border-left: 4px solid #22c55e;">
-          <p style="margin: 0; font-size: 14px; color: #166534;"><strong>💡 Pro tip:</strong> Bring your own API keys (BYOK) to use external models without consuming credits. Connect them in Settings → API Keys.</p>
+          <p style="margin: 0; font-size: 14px; color: #166534;"><strong>Pro tip:</strong> Bring your own API keys (BYOK) to use external models without consuming credits. Connect them in Settings → API Keys.</p>
         </div>
 
         <div style="text-align: center; margin: 36px 0;">
-          <a href="https://polydev.ai/dashboard" style="background: #000; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block;" class="button">Open Dashboard →</a>
+          <a href="https://polydev.ai/dashboard" style="background: #000; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block;" class="button">Open Dashboard</a>
         </div>
 
         <div style="border-top: 1px solid #e5e7eb; padding-top: 24px; margin-top: 32px;">
@@ -117,7 +115,7 @@ export const emailTemplates = {
           </ol>
         </div>
 
-        <p style="font-size: 14px; color: #6b7280; margin: 28px 0 0 0; text-align: center;">Questions? Just reply to this email—we read every message.</p>
+        <p style="font-size: 14px; color: #6b7280; margin: 28px 0 0 0; text-align: center;">Questions? Just reply to this email.</p>
       `),
       text: `Welcome to Polydev ${planName}!
 
@@ -162,9 +160,9 @@ Questions? Reply to this email.
         <div style="margin: 32px 0;">
           <p style="font-size: 13px; font-weight: 600; color: #9ca3af; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 1px;">BEFORE YOU GO</p>
           
-          ${featureBox('💳', 'Use Your Remaining Credits', `Make the most of your credits before ${endDate}. They won't roll over after cancellation.`)}
-          ${featureBox('📁', 'Your Data is Safe', 'Your conversation history and settings are preserved. Resubscribe anytime to restore full access.')}
-          ${featureBox('🎁', 'Free Tier Available', 'After cancellation, you\'ll still have access to 500 one-time credits on our free plan.')}
+          ${featureBox('Use Your Remaining Credits', `Make the most of your credits before ${endDate}. They won't roll over after cancellation.`)}
+          ${featureBox('Your Data is Safe', 'Your conversation history and settings are preserved. Resubscribe anytime to restore full access.')}
+          ${featureBox('Free Tier Available', 'After cancellation, you\'ll still have access to 500 one-time credits on our free plan.')}
         </div>
 
         <div style="background: #f9fafb; border-radius: 10px; padding: 20px; margin: 24px 0;">
@@ -175,7 +173,7 @@ Questions? Reply to this email.
           <a href="https://polydev.ai/dashboard/subscription" style="background: #000; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block;" class="button">Reactivate Subscription</a>
         </div>
 
-        <p style="font-size: 14px; color: #6b7280; margin: 28px 0 0 0; text-align: center;">We'd genuinely love to hear your feedback—just reply to this email and let us know how we can improve.</p>
+        <p style="font-size: 14px; color: #6b7280; margin: 28px 0 0 0; text-align: center;">We'd genuinely love to hear your feedback—just reply to this email.</p>
       `),
       text: `We're sorry to see you go
 
@@ -199,30 +197,30 @@ We'd love to hear your feedback—just reply to this email.
     const retry = new Date(retryDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
 
     return {
-      subject: `⚠️ Action needed: Update your payment method`,
+      subject: `Action needed: Update your payment method`,
       html: emailWrapper(`
         <h1 style="font-size: 32px; font-weight: 700; color: #000; margin: 0 0 12px 0; letter-spacing: -1px; text-align: center;">Payment unsuccessful</h1>
         
         <p style="font-size: 17px; color: #4b5563; margin: 0 0 32px 0; text-align: center; line-height: 1.6;">We couldn't process your payment of <strong>${amount}</strong>. Your access continues while we retry—update your payment method to avoid any interruption.</p>
 
         <div style="background: #fef2f2; border-radius: 12px; padding: 24px; margin: 24px 0; border-left: 4px solid #ef4444;">
-          <p style="font-size: 14px; color: #991b1b; margin: 0 0 8px 0; font-weight: 600;">⏰ Next automatic retry</p>
+          <p style="font-size: 14px; color: #991b1b; margin: 0 0 8px 0; font-weight: 600;">Next automatic retry</p>
           <p style="font-size: 24px; font-weight: 700; color: #991b1b; margin: 0;">${retry}</p>
         </div>
 
         <div style="margin: 32px 0;">
           <p style="font-size: 13px; font-weight: 600; color: #9ca3af; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 1px;">COMMON FIXES</p>
           
-          ${featureBox('💳', 'Update Card Details', 'Your card may have expired. Add a new payment method in your subscription settings.')}
-          ${featureBox('💰', 'Check Available Funds', 'Ensure your account has sufficient funds for the ${amount} charge.')}
-          ${featureBox('🏦', 'Contact Your Bank', 'Some banks block recurring payments by default. A quick call can resolve this.')}
+          ${featureBox('Update Card Details', 'Your card may have expired. Add a new payment method in your subscription settings.')}
+          ${featureBox('Check Available Funds', `Ensure your account has sufficient funds for the ${amount} charge.`)}
+          ${featureBox('Contact Your Bank', 'Some banks block recurring payments by default. A quick call can resolve this.')}
         </div>
 
         <div style="text-align: center; margin: 36px 0;">
           <a href="https://polydev.ai/dashboard/subscription" style="background: #000; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block;" class="button">Update Payment Method</a>
         </div>
 
-        <p style="font-size: 14px; color: #6b7280; margin: 28px 0 0 0; text-align: center;">Questions? Reply to this email or contact <a href="mailto:support@polydev.ai" style="color: #000;">support@polydev.ai</a></p>
+        <p style="font-size: 14px; color: #6b7280; margin: 28px 0 0 0; text-align: center;">Questions? Reply to this email or contact support@polydev.ai</p>
       `),
       text: `Payment unsuccessful
 
@@ -248,9 +246,10 @@ Questions? Reply to this email.
     const planKey = planName.toLowerCase()
     const planInfo = PLAN_DETAILS[planKey] || { credits: formatCredits(creditsAdded), price: '$10' }
     const nextDate = new Date(periodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+    const modelsText = AVAILABLE_MODELS.join(', ')
 
     return {
-      subject: `✅ +${planInfo.credits} credits added to your account`,
+      subject: `+${planInfo.credits} credits added to your account`,
       html: emailWrapper(`
         <h1 style="font-size: 32px; font-weight: 700; color: #000; margin: 0 0 12px 0; letter-spacing: -1px; text-align: center;">You're all set for another month</h1>
         
@@ -262,7 +261,7 @@ Questions? Reply to this email.
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <td style="padding: 10px 0; color: #6b7280; font-size: 14px;">Rollover credits</td>
-              <td style="padding: 10px 0; text-align: right; color: #166534; font-weight: 600;">Included ✓</td>
+              <td style="padding: 10px 0; text-align: right; color: #166534; font-weight: 600;">Included</td>
             </tr>
             <tr>
               <td style="padding: 10px 0; color: #6b7280; font-size: 14px; border-top: 1px solid #e5e7eb;">Next renewal</td>
@@ -272,7 +271,7 @@ Questions? Reply to this email.
         </div>
 
         <div style="background: #f0f9ff; border-radius: 10px; padding: 20px; margin: 24px 0; border-left: 4px solid #3b82f6;">
-          <p style="margin: 0; font-size: 14px; color: #1e40af;"><strong>Reminder:</strong> Your credits are for Polydev's models (${AVAILABLE_MODELS.join(', ')}). CLI subscriptions and BYOK models don't consume credits.</p>
+          <p style="margin: 0; font-size: 14px; color: #1e40af;"><strong>Reminder:</strong> Your credits are for Polydev's models (${modelsText}). CLI subscriptions and BYOK models don't consume credits.</p>
         </div>
 
         <div style="text-align: center; margin: 36px 0;">
@@ -284,11 +283,11 @@ Questions? Reply to this email.
 Your ${planName} subscription has renewed. +${planInfo.credits} credits have been added to your account.
 
 DETAILS
-───────
-• Rollover credits: Included ✓
+───────────────
+• Rollover credits: Included
 • Next renewal: ${nextDate}
 
-Reminder: Credits are for Polydev's models (${AVAILABLE_MODELS.join(', ')}). CLI subscriptions and BYOK don't consume credits.
+Reminder: Credits are for Polydev's models (${modelsText}). CLI subscriptions and BYOK don't consume credits.
 
 View your balance: https://polydev.ai/dashboard
 
@@ -334,7 +333,7 @@ View your balance: https://polydev.ai/dashboard
 Thanks for your payment of ${amount}.
 
 RECEIPT
-───────
+─────────
 Amount paid: ${amount}
 Payment date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
 Next billing date: ${nextDate}
@@ -346,7 +345,7 @@ View billing history: https://polydev.ai/dashboard/subscription
   },
 
   welcomeFreeCredits: (userEmail: string): EmailTemplate => ({
-    subject: `🎉 Welcome to Polydev — 500 credits to explore multi-model AI`,
+    subject: `Welcome to Polydev — 500 credits to explore multi-model AI`,
     html: emailWrapper(`
       <h1 style="font-size: 32px; font-weight: 700; color: #000; margin: 0 0 12px 0; letter-spacing: -1px; text-align: center;">Welcome to Polydev</h1>
       
@@ -369,18 +368,18 @@ View billing history: https://polydev.ai/dashboard/subscription
       <div style="margin: 32px 0;">
         <p style="font-size: 13px; font-weight: 600; color: #9ca3af; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 1px;">THREE WAYS TO USE POLYDEV</p>
         
-        ${featureBox('🌐', 'Web Interface', 'Start chatting immediately at polydev.ai. No setup required.')}
-        ${featureBox('🔌', 'MCP Integration', 'Use Polydev in Claude Code, Cursor, Cline, Windsurf, or Continue. One-line setup.')}
-        ${featureBox('🔗', 'Connect Your CLI Tools', 'Link your Claude Code, Codex CLI, or Gemini CLI subscriptions. These don\'t consume your Polydev credits.')}
+        ${featureBox('Web Interface', 'Start chatting immediately at polydev.ai. No setup required.')}
+        ${featureBox('MCP Integration', 'Use Polydev in Claude Code, Cursor, Cline, Windsurf, or Continue.')}
+        ${featureBox('Connect Your CLI Tools', 'Link your Claude Code, Codex CLI, or Gemini CLI subscriptions. These don\'t consume your Polydev credits.')}
       </div>
 
       <div style="background: #f0fdf4; border-radius: 10px; padding: 20px; margin: 24px 0; border-left: 4px solid #22c55e;">
-        <p style="margin: 0; font-size: 14px; color: #166534;"><strong>💡 Credit-free options</strong></p>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #166534; font-weight: 600;">Credit-free options</p>
         <p style="margin: 0; font-size: 14px; color: #166534;">Bring your own API keys (BYOK) or connect your existing CLI subscriptions to use models without consuming Polydev credits.</p>
       </div>
 
       <div style="text-align: center; margin: 36px 0;">
-        <a href="https://polydev.ai/dashboard" style="background: #000; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block;" class="button">Start Building →</a>
+        <a href="https://polydev.ai/dashboard" style="background: #000; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block;" class="button">Start Building</a>
       </div>
 
       <div style="border-top: 1px solid #e5e7eb; padding-top: 24px; margin-top: 32px;">
@@ -393,10 +392,10 @@ View billing history: https://polydev.ai/dashboard/subscription
       </div>
 
       <div style="background: #f9fafb; border-radius: 10px; padding: 20px; margin: 28px 0;">
-        <p style="margin: 0; font-size: 14px; color: #374151;"><strong>Need more?</strong> Upgrade to Premium for 10,000 credits/month + unlimited messages at just $10/mo. <a href="https://polydev.ai/dashboard/subscription" style="color: #000; font-weight: 500;">Upgrade →</a></p>
+        <p style="margin: 0; font-size: 14px; color: #374151;"><strong>Need more?</strong> Upgrade to Premium for 10,000 credits/month + unlimited messages at just $10/mo. <a href="https://polydev.ai/dashboard/subscription" style="color: #000; font-weight: 500;">Upgrade</a></p>
       </div>
 
-      <p style="font-size: 14px; color: #6b7280; margin: 0; text-align: center;">Questions? Just reply to this email—we're here to help.</p>
+      <p style="font-size: 14px; color: #6b7280; margin: 0; text-align: center;">Questions? Just reply to this email.</p>
     `),
     text: `Welcome to Polydev
 
@@ -407,22 +406,18 @@ Query multiple AI models simultaneously and get diverse perspectives on every co
 You have 500 free credits to start.
 
 AVAILABLE MODELS (1 CREDIT EACH)
-────────────────────────────────
-${AVAILABLE_MODELS.join(' • ')}
+${AVAILABLE_MODELS.join(' | ')}
 
 THREE WAYS TO USE POLYDEV
-─────────────────────────
 1. Web Interface — Chat at polydev.ai
 2. MCP Integration — Works with Claude Code, Cursor, Cline, Windsurf, Continue
 3. Connect CLI Tools — Link Claude Code, Codex, Gemini (don't use credits)
 
 CREDIT-FREE OPTIONS
-───────────────────
-• Bring your own API keys (BYOK)
-• Connect existing CLI subscriptions
+- Bring your own API keys (BYOK)
+- Connect existing CLI subscriptions
 
 QUICK SETUP
-───────────
 1. Copy MCP config from: https://polydev.ai/docs/mcp-integration
 2. Add to your IDE's MCP settings
 3. Start querying with polydev.query("your question")
@@ -436,7 +431,7 @@ Questions? Reply to this email.
 
   // Legacy template for backward compatibility
   creditPurchase: (userEmail: string, creditAmount: number, packageName: string, amountPaid: number): EmailTemplate => ({
-    subject: `✅ +${formatCredits(creditAmount)} credits added to your account`,
+    subject: `+${formatCredits(creditAmount)} credits added to your account`,
     html: emailWrapper(`
       <h1 style="font-size: 32px; font-weight: 700; color: #000; margin: 0 0 12px 0; letter-spacing: -1px; text-align: center;">Credits added successfully</h1>
       
@@ -466,7 +461,7 @@ Questions? Reply to this email.
 +${formatCredits(creditAmount)} credits have been added to your account.
 
 RECEIPT
-───────
+─────────
 Package: ${packageName}
 Amount paid: $${amountPaid.toFixed(2)}
 
@@ -477,9 +472,9 @@ Use your credits: https://polydev.ai/dashboard
 
   // Referral email templates
   referralSuccess: (referrerEmail: string, newUserName: string, creditsEarned: number, totalReferrals: number): EmailTemplate => ({
-    subject: `🎁 You earned ${creditsEarned} credits — someone joined with your link!`,
+    subject: `You earned ${creditsEarned} credits — someone joined with your link`,
     html: emailWrapper(`
-      <h1 style="font-size: 32px; font-weight: 700; color: #000; margin: 0 0 12px 0; letter-spacing: -1px; text-align: center;">Nice! You earned credits</h1>
+      <h1 style="font-size: 32px; font-weight: 700; color: #000; margin: 0 0 12px 0; letter-spacing: -1px; text-align: center;">You earned credits</h1>
       
       <p style="font-size: 17px; color: #4b5563; margin: 0 0 32px 0; text-align: center; line-height: 1.6;">A friend just signed up using your referral link. Bonus credits have been added to your account.</p>
       
@@ -498,7 +493,7 @@ Use your credits: https://polydev.ai/dashboard
         <a href="https://polydev.ai/dashboard/referrals" style="background: #000; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block;" class="button">View Referral Dashboard</a>
       </div>
     `),
-    text: `Nice! You earned credits
+    text: `You earned credits
 
 A friend signed up using your referral link, and you've earned +${creditsEarned} bonus credits.
 
@@ -512,7 +507,7 @@ View your referrals: https://polydev.ai/dashboard/referrals
   }),
 
   referralWelcome: (newUserEmail: string, creditsReceived: number, referrerName?: string): EmailTemplate => ({
-    subject: `🎉 ${creditsReceived} bonus credits added — welcome to Polydev!`,
+    subject: `${creditsReceived} bonus credits added — welcome to Polydev`,
     html: emailWrapper(`
       <h1 style="font-size: 32px; font-weight: 700; color: #000; margin: 0 0 12px 0; letter-spacing: -1px; text-align: center;">Welcome to Polydev</h1>
       
@@ -535,13 +530,13 @@ View your referrals: https://polydev.ai/dashboard/referrals
       <div style="margin: 32px 0;">
         <p style="font-size: 13px; font-weight: 600; color: #9ca3af; margin: 0 0 16px 0; text-transform: uppercase; letter-spacing: 1px;">THREE WAYS TO USE POLYDEV</p>
         
-        ${featureBox('🌐', 'Web Interface', 'Start chatting immediately at polydev.ai. No setup required.')}
-        ${featureBox('🔌', 'MCP Integration', 'Use Polydev in Claude Code, Cursor, Cline, Windsurf, or Continue.')}
-        ${featureBox('🔗', 'Connect Your CLI Tools', 'Link your Claude Code, Codex CLI, or Gemini CLI subscriptions—these don\'t consume credits.')}
+        ${featureBox('Web Interface', 'Start chatting immediately at polydev.ai. No setup required.')}
+        ${featureBox('MCP Integration', 'Use Polydev in Claude Code, Cursor, Cline, Windsurf, or Continue.')}
+        ${featureBox('Connect Your CLI Tools', 'Link your Claude Code, Codex CLI, or Gemini CLI subscriptions—these don\'t consume credits.')}
       </div>
 
       <div style="text-align: center; margin: 36px 0;">
-        <a href="https://polydev.ai/dashboard" style="background: #000; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block;" class="button">Start Building →</a>
+        <a href="https://polydev.ai/dashboard" style="background: #000; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 16px; display: inline-block;" class="button">Start Building</a>
       </div>
 
       <div style="background: #f0fdf4; border-radius: 10px; padding: 20px; margin: 24px 0; border-left: 4px solid #22c55e;">
@@ -553,11 +548,9 @@ View your referrals: https://polydev.ai/dashboard/referrals
 ${referrerName ? `Your friend ${referrerName} referred you, so you're ` : 'You\'re '}starting with ${creditsReceived} bonus credits!
 
 AVAILABLE MODELS (1 CREDIT EACH)
-────────────────────────────────
-${AVAILABLE_MODELS.join(' • ')}
+${AVAILABLE_MODELS.join(' | ')}
 
 THREE WAYS TO USE POLYDEV
-─────────────────────────
 1. Web Interface — Chat at polydev.ai
 2. MCP Integration — Works with Claude Code, Cursor, Cline, Windsurf, Continue
 3. Connect CLI Tools — Link Claude Code, Codex, Gemini (don't use credits)
