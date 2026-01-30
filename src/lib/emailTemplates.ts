@@ -25,7 +25,7 @@ const emailWrapper = (content: string) => `
   <div style="max-width: 560px; margin: 0 auto; padding: 40px 20px;">
     <div style="background: #fff; border-radius: 12px; padding: 48px 40px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);" class="container">
       <div style="text-align: center; margin-bottom: 32px;">
-        <div style="display: inline-block; background: #000; color: #fff; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 18px; letter-spacing: -0.5px;">Polydev</div>
+        <img src="https://www.polydev.ai/logo.png" alt="Polydev" width="40" height="40" style="display: inline-block;">
       </div>
       ${content}
     </div>
