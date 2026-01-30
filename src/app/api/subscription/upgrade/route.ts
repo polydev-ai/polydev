@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
     // Get tier and interval from request body
     const body = await request.json().catch(() => ({}))
-    const tier = body.tier || 'plus' // Default to plus
+    const tier = body.tier || 'premium' // Default to premium (new default)
     const interval = body.interval || 'month' // Default to monthly
 
     // Fetch pricing config from database
@@ -46,7 +46,18 @@ export async function POST(request: NextRequest) {
     let priceId: string
     let planKey: string
 
-    if (tier === 'plus') {
+    if (tier === 'premium') {
+      // New Premium tier ($10/month)
+      if (!config.subscription_pricing?.premium_tier) {
+        console.error('[Subscription] Premium tier configuration not found in database')
+        return NextResponse.json({ error: 'Premium tier configuration not found' }, { status: 500 })
+      }
+      priceId = interval === 'year'
+        ? config.subscription_pricing.premium_tier.stripe_price_id_annual
+        : config.subscription_pricing.premium_tier.stripe_price_id_monthly
+      planKey = 'premium'
+    } else if (tier === 'plus') {
+      // Legacy Plus tier
       if (!config.subscription_pricing?.plus_tier) {
         console.error('[Subscription] Plus tier configuration not found in database')
         return NextResponse.json({ error: 'Plus tier configuration not found' }, { status: 500 })
@@ -56,6 +67,7 @@ export async function POST(request: NextRequest) {
         : config.subscription_pricing.plus_tier.stripe_price_id_monthly
       planKey = 'plus'
     } else if (tier === 'pro') {
+      // Legacy Pro tier
       if (!config.subscription_pricing?.pro_tier) {
         console.error('[Subscription] Pro tier configuration not found in database')
         return NextResponse.json({ error: 'Pro tier configuration not found' }, { status: 500 })

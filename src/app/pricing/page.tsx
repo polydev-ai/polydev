@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
-import { Check, Zap, Star, Sparkles } from 'lucide-react'
+import { Check, Zap, Star } from 'lucide-react'
 
 export default function Pricing() {
   const { isAuthenticated } = useAuth()
@@ -12,53 +12,36 @@ export default function Pricing() {
     {
       name: 'Free',
       price: '$0',
-      period: 'forever',
-      description: 'Try it out',
-      credits: '500 credits',
+      period: '',
+      description: 'Get started',
+      credits: 'First 500 credits',
       features: [
-        '500 credits to start',
+        'First 500 credits (one-time)',
         'All AI models access',
         'MCP integration',
-        'Basic support'
+        'Community support'
       ],
       cta: 'Get Started',
       highlighted: false,
       icon: <Zap className="w-8 h-8 text-slate-900" />
     },
     {
-      name: 'Plus',
-      price: '$25',
+      name: 'Premium',
+      price: '$10',
       period: '/month',
-      description: 'Most popular for developers',
-      credits: '20,000 credits/month',
+      description: 'For serious developers',
+      credits: '10,000 credits/month',
       features: [
-        '20,000 credits/month',
+        '10,000 credits/month',
+        'Unlimited messages',
         'Credits rollover (while subscribed)',
         'All AI models access',
-        'BYOK (use your own API keys)',
+        'Use your CLI subscriptions',
         'Priority support'
       ],
-      cta: 'Upgrade to Plus',
+      cta: 'Upgrade to Premium',
       highlighted: true,
       icon: <Star className="w-8 h-8 text-white" />
-    },
-    {
-      name: 'Pro',
-      price: '$50',
-      period: '/month',
-      description: 'For power users',
-      credits: '50,000 credits/month',
-      features: [
-        '50,000 credits/month',
-        'Credits rollover (while subscribed)',
-        'All AI models access',
-        'BYOK (use your own API keys)',
-        'Priority support',
-        'Advanced analytics'
-      ],
-      cta: 'Upgrade to Pro',
-      highlighted: false,
-      icon: <Sparkles className="w-8 h-8 text-slate-900" />
     }
   ]
 
@@ -66,29 +49,28 @@ export default function Pricing() {
     {
       category: 'Credits & Usage',
       items: [
-        { name: 'Monthly credits', free: '500 (one-time)', plus: '20,000', pro: '50,000' },
-        { name: 'Credits rollover', free: false, plus: true, pro: true },
-        { name: 'Premium models (20 credits)', free: true, plus: true, pro: true },
-        { name: 'Normal models (4 credits)', free: true, plus: true, pro: true },
-        { name: 'Eco models (1 credit)', free: true, plus: true, pro: true }
+        { name: 'Credits', free: '500 (one-time)', premium: '10,000/month' },
+        { name: 'Unlimited messages', free: false, premium: true },
+        { name: 'Credits rollover', free: false, premium: true },
+        { name: 'Premium models (20 credits)', free: true, premium: true },
+        { name: 'Normal models (4 credits)', free: true, premium: true },
+        { name: 'Eco models (1 credit)', free: true, premium: true }
       ]
     },
     {
       category: 'Features',
       items: [
-        { name: 'All 340+ AI models', free: true, plus: true, pro: true },
-        { name: 'MCP integration', free: true, plus: true, pro: true },
-        { name: 'BYOK (your own API keys)', free: false, plus: true, pro: true },
-        { name: 'Usage analytics', free: false, plus: true, pro: true },
-        { name: 'Advanced analytics', free: false, plus: false, pro: true }
+        { name: 'All 340+ AI models', free: true, premium: true },
+        { name: 'MCP integration', free: true, premium: true },
+        { name: 'Use your CLI subscriptions', free: true, premium: true },
+        { name: 'Usage analytics', free: false, premium: true }
       ]
     },
     {
       category: 'Support',
       items: [
-        { name: 'Community support', free: true, plus: true, pro: true },
-        { name: 'Priority support', free: false, plus: true, pro: true },
-        { name: 'Dedicated support', free: false, plus: false, pro: true }
+        { name: 'Community support', free: true, premium: true },
+        { name: 'Priority support', free: false, premium: true }
       ]
     }
   ]
@@ -117,8 +99,8 @@ export default function Pricing() {
               <span className="text-slate-600">Pay for what you use.</span>
             </h1>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-8 leading-relaxed">
-              Start free with 500 credits. Upgrade to Plus for $25/month or Pro for $50/month.
-              Credits rollover as long as you stay subscribed.
+              Start free with 500 credits. Upgrade to Premium for just $10/month
+              with unlimited messages and 10,000 credits.
             </p>
 
             {/* Credit costs explanation */}
@@ -133,10 +115,10 @@ export default function Pricing() {
         </div>
       </section>
 
-      {/* Pricing Cards */}
+      {/* Pricing Cards - 2 tiers */}
       <section className="py-16 bg-white">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-6 mb-16">
+        <div className="max-w-3xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-6 mb-16">
             {plans.map((plan, index) => (
               <div
                 key={index}
@@ -148,8 +130,8 @@ export default function Pricing() {
               >
                 {plan.highlighted && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-white text-slate-900 px-6 py-1 rounded-full text-sm font-semibold">
-                      Most Popular
+                    <span className="bg-emerald-500 text-white px-6 py-1 rounded-full text-sm font-semibold">
+                      Best Value
                     </span>
                   </div>
                 )}
@@ -182,7 +164,7 @@ export default function Pricing() {
                 <ul className="space-y-4 mb-8">
                   {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-start">
-                      <Check className={`w-5 h-5 mr-3 mt-0.5 flex-shrink-0 ${plan.highlighted ? 'text-white' : 'text-slate-900'}`} />
+                      <Check className={`w-5 h-5 mr-3 mt-0.5 flex-shrink-0 ${plan.highlighted ? 'text-emerald-400' : 'text-slate-900'}`} />
                       <span className={`text-sm leading-relaxed ${plan.highlighted ? 'text-slate-300' : 'text-slate-700'}`}>
                         {feature}
                       </span>
@@ -206,9 +188,9 @@ export default function Pricing() {
         </div>
       </section>
 
-      {/* Feature Comparison Table */}
+      {/* Feature Comparison Table - 2 columns */}
       <section className="py-16 bg-white border-t border-slate-200">
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
               Compare plans
@@ -230,10 +212,7 @@ export default function Pricing() {
                       Free
                     </th>
                     <th className="px-6 py-4 text-center text-sm font-semibold">
-                      Plus
-                    </th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold">
-                      Pro
+                      Premium
                     </th>
                   </tr>
                 </thead>
@@ -242,7 +221,7 @@ export default function Pricing() {
                     <React.Fragment key={`category-group-${categoryIndex}`}>
                       <tr key={`category-${categoryIndex}`}>
                         <td
-                          colSpan={4}
+                          colSpan={3}
                           className="px-6 py-4 bg-slate-50 text-sm font-bold text-slate-900"
                         >
                           {category.category}
@@ -257,10 +236,7 @@ export default function Pricing() {
                             <FeatureValue value={item.free} />
                           </td>
                           <td className="px-6 py-4 text-sm text-center">
-                            <FeatureValue value={item.plus} />
-                          </td>
-                          <td className="px-6 py-4 text-sm text-center">
-                            <FeatureValue value={item.pro} />
+                            <FeatureValue value={item.premium} />
                           </td>
                         </tr>
                       ))}
@@ -299,21 +275,21 @@ export default function Pricing() {
                 Do unused credits expire?
               </h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                <strong>Free tier:</strong> Credits don't expire but don't refill.
+                <strong>Free tier:</strong> Your 500 credits don't expire but don't refill.
                 <br /><br />
-                <strong>Plus & Pro:</strong> Credits rollover indefinitely as long as you maintain
-                at least a Plus subscription. If you cancel, unused credits expire at the end of your billing period.
+                <strong>Premium:</strong> Credits rollover indefinitely as long as you maintain
+                your subscription. If you cancel, unused credits expire at the end of your billing period.
               </p>
             </div>
 
             <div className="bg-slate-50 rounded-xl p-6">
               <h3 className="text-lg font-bold text-slate-900 mb-3">
-                Can I use my own API keys?
+                Can I use my CLI subscriptions?
               </h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                Yes! Plus and Pro plans include BYOK (Bring Your Own Keys). Add your OpenAI,
-                Anthropic, Google, etc. API keys in the dashboard. When using your own keys,
-                you pay the provider directly and don't use Polydev credits.
+                Yes! If you have ChatGPT Plus, Claude Pro, or Gemini Advanced, you can use those
+                subscriptions directly through your CLI tools. Login with your subscription account,
+                and Polydev routes queries through your authenticated CLI session — no API keys needed.
               </p>
             </div>
 
@@ -323,8 +299,7 @@ export default function Pricing() {
               </h3>
               <p className="text-slate-600 text-sm leading-relaxed">
                 Yes, cancel anytime. You'll keep access until the end of your billing period.
-                Your rolled-over credits will be available if you resubscribe within 30 days
-                (with at least a Plus plan).
+                Your rolled-over credits will be available if you resubscribe within 30 days.
               </p>
             </div>
 
@@ -344,7 +319,7 @@ export default function Pricing() {
                 Need more credits?
               </h3>
               <p className="text-slate-600 text-sm leading-relaxed">
-                If you consistently need more than 50,000 credits/month, contact us for
+                If you consistently need more than 10,000 credits/month, contact us for
                 custom enterprise pricing. We also offer team plans with shared credit pools.
               </p>
             </div>

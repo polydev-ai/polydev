@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 
 interface Subscription {
-  tier: 'free' | 'plus' | 'pro'
+  tier: 'free' | 'premium' | 'plus' | 'pro'  // Added premium, kept legacy
   status: 'active' | 'past_due' | 'canceled' | 'trialing'
   current_period_end: string | null
   cancel_at_period_end: boolean
@@ -317,7 +317,7 @@ export default function SubscriptionPage() {
   }, [])
 
   // Memoized handlers to prevent unnecessary re-renders
-  const handleUpgrade = useCallback(async (tier: 'plus' | 'pro' = 'plus', interval: 'month' | 'year' = 'month') => {
+  const handleUpgrade = useCallback(async (tier: 'premium' | 'plus' | 'pro' = 'premium', interval: 'month' | 'year' = 'month') => {
     setIsUpgrading(true)
     try {
       const response = await fetch('/api/subscription/upgrade', {
@@ -376,10 +376,11 @@ export default function SubscriptionPage() {
     const actualMessagesSent = messageUsage?.actual_messages_sent ?? messageUsage?.messages_sent ?? 0
     const messageUsagePercentage = messageUsage
       ? Math.min((actualMessagesSent / messageUsage.messages_limit) * 100, 100)
-      : 0
+      : 100
+    const isPremium = subscription?.tier === 'premium'
     const isPro = subscription?.tier === 'pro'
     const isPlus = subscription?.tier === 'plus'
-    const isFree = !isPro && !isPlus
+    const isFree = !isPremium && !isPro && !isPlus
     const isActive = subscription?.status === 'active'
     const currentPeriodEndDate = subscription?.current_period_end
       ? new Date(subscription.current_period_end).toLocaleDateString()
@@ -388,6 +389,7 @@ export default function SubscriptionPage() {
     return {
       actualMessagesSent,
       messageUsagePercentage,
+      isPremium,
       isPro,
       isPlus,
       isFree,
@@ -414,6 +416,7 @@ export default function SubscriptionPage() {
   const {
     actualMessagesSent,
     messageUsagePercentage,
+    isPremium,
     isPro,
     isPlus,
     isFree,
@@ -424,22 +427,21 @@ export default function SubscriptionPage() {
   return (
     <div
       className="container mx-auto p-6 space-y-6"
-      
-      
-      
     >
-      <div className="flex items-center justify-between" >
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             Subscription
-            {isPro && <Badge variant="default" className="ml-2 bg-slate-900 text-white">Pro</Badge>}
+            {isPremium && <Badge variant="default" className="ml-2 bg-slate-900 text-white">Premium</Badge>}
+            {isPro && <Badge variant="default" className="ml-2 bg-slate-900 text-white">Pro (Legacy)</Badge>}
+            {isPlus && <Badge variant="default" className="ml-2 bg-slate-900 text-white">Plus (Legacy)</Badge>}
           </h1>
           <p className="text-muted-foreground mt-1">
             Manage your Polydev subscription and usage
           </p>
         </div>
-        <Badge variant={(isPro || isPlus) ? "default" : "secondary"} className="text-sm">
-          {isPro ? 'Pro Plan' : isPlus ? 'Plus Plan' : 'Free Plan'}
+        <Badge variant={(isPremium || isPro || isPlus) ? "default" : "secondary"} className="text-sm">
+          {isPremium ? 'Premium Plan' : isPro ? 'Pro Plan (Legacy)' : isPlus ? 'Plus Plan (Legacy)' : 'Free Plan'}
         </Badge>
       </div>
 
@@ -457,7 +459,7 @@ export default function SubscriptionPage() {
       )}
 
       {/* Current Plan Status */}
-      <div >
+      <div>
       <Card className="hover:shadow-lg transition-shadow">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -469,26 +471,33 @@ export default function SubscriptionPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                {isPro ? (
+                {isPremium ? (
+                  <>
+                    <Badge variant="default" className="bg-slate-900 text-white">Premium</Badge>
+                    Polydev Premium
+                  </>
+                ) : isPro ? (
                   <>
                     <Badge variant="default" className="bg-slate-900 text-white">Pro</Badge>
-                    Polydev Pro
+                    Polydev Pro (Legacy)
                   </>
                 ) : isPlus ? (
                   <>
                     <Badge variant="default" className="bg-slate-900 text-white">Plus</Badge>
-                    Polydev Plus
+                    Polydev Plus (Legacy)
                   </>
                 ) : (
                   'Free Plan'
                 )}
               </h3>
               <p className="text-sm text-muted-foreground">
-                {isPro
+                {isPremium
+                  ? `$10/month • ${isActive ? 'Active' : subscription?.status}`
+                  : isPro
                   ? `$50/month • ${isActive ? 'Active' : subscription?.status}`
                   : isPlus
                   ? `$25/month • ${isActive ? 'Active' : subscription?.status}`
-                  : 'Limited features'
+                  : 'First 500 credits free'
                 }
               </p>
             </div>
@@ -506,8 +515,8 @@ export default function SubscriptionPage() {
 
           <div className="flex gap-2">
             {isFree ? (
-              <Button onClick={() => handleUpgrade('plus', 'month')} disabled={isUpgrading}>
-                {isUpgrading ? 'Upgrading...' : 'Upgrade to Plus'}
+              <Button onClick={() => handleUpgrade('premium', 'month')} disabled={isUpgrading}>
+                {isUpgrading ? 'Upgrading...' : 'Upgrade to Premium'}
               </Button>
             ) : (
               <Button variant="outline" onClick={openBillingPortal}>
@@ -881,7 +890,7 @@ export default function SubscriptionPage() {
       )}
 
       {/* Plan Comparison */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Free Plan */}
         <Card className={isFree ? 'border-slate-300 bg-slate-50/30' : ''}>
           <CardHeader>
@@ -891,15 +900,12 @@ export default function SubscriptionPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-2xl font-bold">$0 forever</div>
+            <div className="text-2xl font-bold">$0</div>
+            <p className="text-sm text-muted-foreground">Get started with Polydev</p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                100 messages/month
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                500 credits to start
+                First 500 credits (one-time)
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
@@ -910,31 +916,45 @@ export default function SubscriptionPage() {
                 MCP integration
               </li>
               <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-slate-900" />
+                Community support
+              </li>
+              <li className="flex items-center gap-2">
                 <X className="h-4 w-4 text-slate-400" />
-                Credits don't rollover
+                No credits rollover
+              </li>
+              <li className="flex items-center gap-2">
+                <X className="h-4 w-4 text-slate-400" />
+                No unlimited messages
               </li>
             </ul>
           </CardContent>
         </Card>
 
-        {/* Plus Plan */}
-        <Card className={isPlus ? 'border-slate-200 bg-white' : ''}>
+        {/* Premium Plan */}
+        <Card className={isPremium ? 'border-2 border-slate-900 bg-white' : 'border-2 border-slate-900'}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                Plus Plan
+                Premium Plan
+                <Badge className="bg-emerald-500 text-white text-xs">Popular</Badge>
               </div>
-              {isPlus && <Badge className="bg-slate-900 text-white">Current</Badge>}
+              {isPremium && <Badge className="bg-slate-900 text-white">Current</Badge>}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <div className="text-2xl font-bold">$25/month</div>
+              <div className="text-2xl font-bold">$10/month</div>
             </div>
+            <p className="text-sm text-muted-foreground">For serious developers</p>
             <ul className="space-y-2">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                20,000 credits/month
+                10,000 credits/month
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-slate-900" />
+                <span className="font-medium">Unlimited messages</span>
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
@@ -946,72 +966,20 @@ export default function SubscriptionPage() {
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
-                BYOK (use your own API keys)
+                Use your CLI subscriptions
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-slate-900" />
                 Priority support
               </li>
             </ul>
-            {!isPlus && !isPro && (
+            {!isPremium && !isPro && !isPlus && (
               <Button
                 className="w-full bg-slate-900 text-white hover:bg-slate-700"
-                onClick={() => handleUpgrade('plus', 'month')}
+                onClick={() => handleUpgrade('premium', 'month')}
                 disabled={isUpgrading}
               >
-                {isUpgrading ? 'Processing...' : 'Upgrade to Plus - $25/mo'}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Pro Plan */}
-        <Card className={isPro ? 'border-2 border-slate-900 bg-white' : 'border-2 border-slate-900'}>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                Pro Plan
-              </div>
-              {isPro && <Badge className="bg-slate-900 text-white">Current</Badge>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="text-2xl font-bold">$50/month</div>
-            </div>
-            <ul className="space-y-2">
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                50,000 credits/month
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                Credits rollover (while subscribed)
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                All AI models access
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                BYOK (use your own API keys)
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                Priority support
-              </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-slate-900" />
-                Advanced analytics
-              </li>
-            </ul>
-            {!isPro && (
-              <Button
-                className="w-full bg-slate-900 text-white hover:bg-slate-700"
-                onClick={() => handleUpgrade('pro', 'month')}
-                disabled={isUpgrading}
-              >
-                {isUpgrading ? 'Processing...' : 'Upgrade to Pro - $50/mo'}
+                {isUpgrading ? 'Processing...' : 'Upgrade to Premium - $10/mo'}
               </Button>
             )}
           </CardContent>

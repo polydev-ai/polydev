@@ -878,9 +878,10 @@ export default function LandingPage() {
             <p className="text-slate-600">Start free, upgrade when you need more</p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {/* Free Plan */}
             <motion.div
-              className="border border-slate-200 rounded-xl p-8"
+              className="border border-slate-200 rounded-xl p-8 bg-white"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -888,13 +889,13 @@ export default function LandingPage() {
               <div className="mb-8">
                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Free</h3>
                 <div className="text-4xl font-bold text-slate-900 mb-1">$0</div>
-                <p className="text-sm text-slate-600">Try it out</p>
+                <p className="text-sm text-slate-600">Get started</p>
               </div>
 
               <ul className="space-y-3 mb-8 text-sm">
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-slate-900" />
-                  <span className="text-slate-700">500 credits</span>
+                  <span className="text-slate-700"><strong>First 500 credits</strong> (one-time)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-slate-900" />
@@ -903,6 +904,10 @@ export default function LandingPage() {
                 <li className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-slate-900" />
                   <span className="text-slate-700">MCP integration</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-slate-900" />
+                  <span className="text-slate-700">Use your CLI subscriptions</span>
                 </li>
               </ul>
 
@@ -915,6 +920,7 @@ export default function LandingPage() {
               </Link>
             </motion.div>
 
+            {/* Premium Plan */}
             <motion.div
               className="bg-slate-900 text-white rounded-xl p-8 relative"
               initial={{ opacity: 0, y: 20 }}
@@ -922,73 +928,44 @@ export default function LandingPage() {
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
             >
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white text-slate-900 px-4 py-1 rounded-full text-sm font-semibold">
-                Popular
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                Best Value
               </div>
               <div className="mb-8">
-                <h3 className="text-2xl font-bold mb-2">Plus</h3>
-                <div className="text-4xl font-bold mb-1">$25</div>
+                <h3 className="text-2xl font-bold mb-2">Premium</h3>
+                <div className="text-4xl font-bold mb-1">$10</div>
                 <p className="text-sm text-slate-400">per month</p>
               </div>
 
               <ul className="space-y-3 mb-8 text-sm">
                 <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4" />
-                  <span>20,000 credits/month</span>
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span><strong>10,000 credits/month</strong></span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4" />
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span><strong>Unlimited messages</strong></span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400" />
                   <span>Credits rollover</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4" />
+                  <Check className="w-4 h-4 text-emerald-400" />
                   <span>All AI models</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4" />
+                  <Check className="w-4 h-4 text-emerald-400" />
+                  <span>Use your CLI subscriptions</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-emerald-400" />
                   <span>Priority support</span>
                 </li>
               </ul>
 
-              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors">
-                Upgrade
-              </Link>
-            </motion.div>
-
-            <motion.div
-              className="border border-slate-200 rounded-xl p-8"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="mb-8">
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">Pro</h3>
-                <div className="text-4xl font-bold text-slate-900 mb-1">$50</div>
-                <p className="text-sm text-slate-600">per month</p>
-              </div>
-
-              <ul className="space-y-3 mb-8 text-sm">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900" />
-                  <span className="text-slate-700">50,000 credits/month</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900" />
-                  <span className="text-slate-700">Credits rollover</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900" />
-                  <span className="text-slate-700">All AI models</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900" />
-                  <span className="text-slate-700">Priority support</span>
-                </li>
-              </ul>
-
-              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors">
-                Upgrade
+              <Link href="/dashboard/subscription" className="w-full block text-center px-6 py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors">
+                Upgrade to Premium
               </Link>
             </motion.div>
           </div>
