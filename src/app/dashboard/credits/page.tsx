@@ -9,9 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Zap,
   TrendingUp,
-  Crown,
-  Star,
-  Leaf,
+  Coins,
   MessageCircle,
   Calendar,
   Activity,
@@ -26,39 +24,27 @@ import {
 import Link from 'next/link'
 
 interface QuotaData {
-  planTier: 'free' | 'plus' | 'pro'
+  planTier: 'free' | 'plus' | 'pro' | 'premium'
   currentMonth: string
   limits: {
     messages: number | null
-    premium: number
-    normal: number
-    eco: number
+    credits: number
   }
   used: {
     messages: number
-    premium: number
-    normal: number
-    eco: number
+    credits: number
   }
   remaining: {
     messages: number | null
     bonusMessages: number
-    premium: number
-    normal: number
-    eco: number
+    credits: number
   }
   percentages: {
     messages: number
-    premium: number
-    normal: number
-    eco: number
+    credits: number
   }
   bonusMessages: number
-  tierUsage: {
-    premium: { count: number, cost: number }
-    normal: { count: number, cost: number }
-    eco: { count: number, cost: number }
-  }
+  totalRequests: number
   sourceUsage: {
     cli: { count: number, cost: number, requests: number }
     web: { count: number, cost: number, requests: number }
@@ -68,34 +54,11 @@ interface QuotaData {
   updatedAt: string
 }
 
-const PLAN_NAMES = {
+const PLAN_NAMES: Record<string, string> = {
   free: 'Free Plan',
-  plus: 'Plus Plan',
-  pro: 'Pro Plan'
-}
-
-const TIER_ICONS = {
-  premium: Crown,
-  normal: Star,
-  eco: Leaf
-}
-
-const TIER_COLORS = {
-  premium: {
-    bg: 'bg-slate-900',
-    badge: 'bg-slate-100 text-slate-900',
-    progress: 'bg-slate-900'
-  },
-  normal: {
-    bg: 'bg-slate-900',
-    badge: 'bg-slate-100 text-slate-900',
-    progress: 'bg-slate-900'
-  },
-  eco: {
-    bg: 'bg-slate-900',
-    badge: 'bg-slate-100 text-slate-900',
-    progress: 'bg-slate-900'
-  }
+  premium: 'Premium Plan',
+  plus: 'Plus Plan (Legacy)',
+  pro: 'Pro Plan (Legacy)'
 }
 
 export default function CreditsPage() {
@@ -117,7 +80,43 @@ export default function CreditsPage() {
       }
 
       const data = await response.json()
-      setQuotaData(data)
+      // Transform legacy data format to new simplified format
+      const transformedData: QuotaData = {
+        planTier: data.planTier,
+        currentMonth: data.currentMonth,
+        limits: {
+          messages: data.limits?.messages ?? null,
+          credits: data.limits?.eco ?? data.limits?.credits ?? 500
+        },
+        used: {
+          messages: data.used?.messages ?? 0,
+          credits: (data.tierUsage?.premium?.count ?? 0) + 
+                   (data.tierUsage?.normal?.count ?? 0) + 
+                   (data.tierUsage?.eco?.count ?? 0) +
+                   (data.used?.credits ?? 0)
+        },
+        remaining: {
+          messages: data.remaining?.messages ?? null,
+          bonusMessages: data.remaining?.bonusMessages ?? data.bonusMessages ?? 0,
+          credits: data.remaining?.eco ?? data.remaining?.credits ?? 0
+        },
+        percentages: {
+          messages: data.percentages?.messages ?? 0,
+          credits: data.percentages?.eco ?? data.percentages?.credits ?? 0
+        },
+        bonusMessages: data.bonusMessages ?? 0,
+        totalRequests: (data.tierUsage?.premium?.count ?? 0) + 
+                       (data.tierUsage?.normal?.count ?? 0) + 
+                       (data.tierUsage?.eco?.count ?? 0),
+        sourceUsage: data.sourceUsage ?? {
+          cli: { count: 0, cost: 0, requests: 0 },
+          web: { count: 0, cost: 0, requests: 0 },
+          user_key: { count: 0, cost: 0, requests: 0 },
+          admin_credits: { count: 0, cost: 0, requests: 0 }
+        },
+        updatedAt: data.updatedAt
+      }
+      setQuotaData(transformedData)
       setError(null)
     } catch (err: any) {
       console.error('Error fetching quota data:', err)
@@ -157,7 +156,7 @@ export default function CreditsPage() {
     )
   }
 
-  const currentPlan = PLAN_NAMES[quotaData.planTier]
+  const currentPlan = PLAN_NAMES[quotaData.planTier] || 'Free Plan'
   const nextResetDate = quotaData.currentMonth
     ? new Date(new Date(quotaData.currentMonth).setMonth(new Date(quotaData.currentMonth).getMonth() + 1))
     : new Date()
@@ -167,9 +166,9 @@ export default function CreditsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Message & Perspective Quotas</h1>
+          <h1 className="text-3xl font-bold">Credits & Usage</h1>
           <p className="text-muted-foreground mt-2">
-            Track your usage across Premium, Normal, and Eco perspectives
+            Track your credit usage across all AI models
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -188,7 +187,7 @@ export default function CreditsPage() {
       <Card className="border border-slate-200 bg-white">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Your Plan</span>
+            <span>Your Credits</span>
             {quotaData.planTier === 'free' && (
               <Link href="/dashboard/subscription">
                 <Button size="sm" className="bg-slate-900 text-white hover:bg-slate-700">
@@ -197,22 +196,25 @@ export default function CreditsPage() {
               </Link>
             )}
           </CardTitle>
-          <CardDescription>Current billing period and usage limits</CardDescription>
+          <CardDescription>1 credit = 1 AI request (any model)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Messages this month</p>
+              <p className="text-sm text-muted-foreground">Credits Used</p>
               <p className="text-2xl font-bold">
-                {quotaData.used.messages}
-                {quotaData.limits.messages && ` / ${quotaData.limits.messages}`}
+                {quotaData.used.credits}
               </p>
-              {!quotaData.limits.messages && (
-                <Badge variant="secondary">Unlimited</Badge>
-              )}
+              <p className="text-xs text-muted-foreground">this billing period</p>
             </div>
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Bonus Messages</p>
+              <p className="text-sm text-muted-foreground">Credits Remaining</p>
+              <p className="text-2xl font-bold text-green-600">
+                {quotaData.remaining.credits}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Bonus Credits</p>
               <p className="text-2xl font-bold flex items-center">
                 <Gift className="h-5 w-5 mr-2 text-slate-900" />
                 {quotaData.bonusMessages}
@@ -225,184 +227,136 @@ export default function CreditsPage() {
                 {Math.ceil((nextResetDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days remaining
               </p>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Total API Calls</p>
-              <p className="text-2xl font-bold">
-                {quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count}
-              </p>
-            </div>
           </div>
 
-          {quotaData.limits.messages && (
+          {quotaData.limits.credits > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>Monthly message usage</span>
-                <span className="font-medium">{quotaData.percentages.messages.toFixed(1)}%</span>
+                <span>Credit usage</span>
+                <span className="font-medium">{quotaData.percentages.credits.toFixed(1)}%</span>
               </div>
-              <Progress value={quotaData.percentages.messages} className="h-2" />
+              <Progress value={quotaData.percentages.credits} className="h-2" />
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="perspectives" className="space-y-6">
+      {/* Available Models */}
+      <Card className="border border-slate-200">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Zap className="h-5 w-5 mr-2" />
+            Available Models
+          </CardTitle>
+          <CardDescription>
+            All models cost 1 credit per request
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-4 border rounded-lg bg-slate-50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold">GLM-4.7</span>
+                <Badge variant="outline">1 credit</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">Zhipu AI</p>
+            </div>
+            <div className="p-4 border rounded-lg bg-slate-50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold">Gemini 3 Flash</span>
+                <Badge variant="outline">1 credit</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">Google</p>
+            </div>
+            <div className="p-4 border rounded-lg bg-slate-50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold">Grok 4.1 Fast</span>
+                <Badge variant="outline">1 credit</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">xAI</p>
+            </div>
+            <div className="p-4 border rounded-lg bg-slate-50">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold">GPT-5 Mini</span>
+                <Badge variant="outline">1 credit</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">OpenAI</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="usage" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="perspectives">Perspectives</TabsTrigger>
-          <TabsTrigger value="usage-breakdown">Usage Breakdown</TabsTrigger>
+          <TabsTrigger value="usage">Usage Summary</TabsTrigger>
           <TabsTrigger value="request-sources">Request Sources</TabsTrigger>
-          <TabsTrigger value="bonus-credits">Bonus Messages</TabsTrigger>
+          <TabsTrigger value="bonus-credits">Bonus Credits</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="perspectives" className="space-y-4">
-          {/* Perspective Tier Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Premium Tier */}
-            <Card className="border border-slate-200">
-              <CardHeader className={`${TIER_COLORS.premium.bg} text-white rounded-t-lg`}>
-                <CardTitle className="flex items-center">
-                  <Crown className="h-5 w-5 mr-2" />
-                  Premium Perspectives
-                </CardTitle>
-                <CardDescription className="text-slate-100">
-                  Highest quality models (GPT-5, Claude Sonnet 4, Gemini Pro)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-4">
-                <div className="text-center">
-                  <p className="text-3xl font-bold">{quotaData.tierUsage.premium.count}</p>
-                  <p className="text-sm text-muted-foreground">API calls this month</p>
-                </div>
-                <div className="pt-4 border-t text-center">
-                  <p className="text-lg font-semibold">${quotaData.tierUsage.premium.cost.toFixed(4)}</p>
-                  <p className="text-xs text-muted-foreground">Estimated cost</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Normal Tier */}
-            <Card className="border border-slate-200">
-              <CardHeader className={`${TIER_COLORS.normal.bg} text-white rounded-t-lg`}>
-                <CardTitle className="flex items-center">
-                  <Star className="h-5 w-5 mr-2" />
-                  Normal Perspectives
-                </CardTitle>
-                <CardDescription className="text-slate-100">
-                  Balanced performance (GPT-5 Mini, Claude Haiku, Gemini Flash)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-4">
-                <div className="text-center">
-                  <p className="text-3xl font-bold">{quotaData.tierUsage.normal.count}</p>
-                  <p className="text-sm text-muted-foreground">API calls this month</p>
-                </div>
-                <div className="pt-4 border-t text-center">
-                  <p className="text-lg font-semibold">${quotaData.tierUsage.normal.cost.toFixed(4)}</p>
-                  <p className="text-xs text-muted-foreground">Estimated cost</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Eco Tier */}
-            <Card className="border border-slate-200">
-              <CardHeader className={`${TIER_COLORS.eco.bg} text-white rounded-t-lg`}>
-                <CardTitle className="flex items-center">
-                  <Leaf className="h-5 w-5 mr-2" />
-                  Eco Perspectives
-                </CardTitle>
-                <CardDescription className="text-slate-100">
-                  Cost-effective models (Llama, Mistral, Phi)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-4">
-                <div className="text-center">
-                  <p className="text-3xl font-bold">{quotaData.tierUsage.eco.count}</p>
-                  <p className="text-sm text-muted-foreground">API calls this month</p>
-                </div>
-                <div className="pt-4 border-t text-center">
-                  <p className="text-lg font-semibold">${quotaData.tierUsage.eco.cost.toFixed(4)}</p>
-                  <p className="text-xs text-muted-foreground">Estimated cost</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="usage-breakdown" className="space-y-4">
+        <TabsContent value="usage" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Monthly Usage Summary</CardTitle>
-              <CardDescription>Detailed breakdown of your API usage by perspective tier</CardDescription>
+              <CardDescription>Overview of your API usage this billing period</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {/* Usage Chart */}
+                {/* Usage Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium flex items-center">
-                        <Crown className="h-4 w-4 mr-2 text-slate-900" />
-                        Premium
+                        <Coins className="h-4 w-4 mr-2 text-slate-900" />
+                        Total Credits Used
                       </span>
-                      <Badge variant="outline">{quotaData.tierUsage.premium.count} calls</Badge>
                     </div>
-                    <Progress
-                      value={(quotaData.tierUsage.premium.count / Math.max(1, quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count)) * 100}
-                      className="h-2"
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      ${quotaData.tierUsage.premium.cost.toFixed(4)} estimated cost
+                    <p className="text-3xl font-bold">{quotaData.used.credits}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      = {quotaData.used.credits} API requests
                     </p>
                   </div>
 
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium flex items-center">
-                        <Star className="h-4 w-4 mr-2 text-slate-900" />
-                        Normal
+                        <MessageCircle className="h-4 w-4 mr-2 text-slate-900" />
+                        Messages Sent
                       </span>
-                      <Badge variant="outline">{quotaData.tierUsage.normal.count} calls</Badge>
                     </div>
-                    <Progress
-                      value={(quotaData.tierUsage.normal.count / Math.max(1, quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count)) * 100}
-                      className="h-2"
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      ${quotaData.tierUsage.normal.cost.toFixed(4)} estimated cost
-                    </p>
+                    <p className="text-3xl font-bold">{quotaData.used.messages}</p>
+                    {quotaData.limits.messages && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        of {quotaData.limits.messages} limit
+                      </p>
+                    )}
                   </div>
 
                   <div className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium flex items-center">
-                        <Leaf className="h-4 w-4 mr-2 text-slate-900" />
-                        Eco
+                        <Activity className="h-4 w-4 mr-2 text-slate-900" />
+                        Total Requests
                       </span>
-                      <Badge variant="outline">{quotaData.tierUsage.eco.count} calls</Badge>
                     </div>
-                    <Progress
-                      value={(quotaData.tierUsage.eco.count / Math.max(1, quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count)) * 100}
-                      className="h-2"
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      ${quotaData.tierUsage.eco.cost.toFixed(4)} estimated cost
+                    <p className="text-3xl font-bold">{quotaData.totalRequests}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      API calls this month
                     </p>
                   </div>
                 </div>
 
-                {/* Total Cost */}
-                <div className="p-6 bg-white rounded-lg border border-slate-200">
-                  <div className="flex items-center justify-between">
+                {/* Info Box */}
+                <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="flex items-start gap-4">
+                    <Zap className="h-6 w-6 text-slate-900 flex-shrink-0" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Estimated Cost</p>
-                      <p className="text-3xl font-bold">
-                        ${(quotaData.tierUsage.premium.cost + quotaData.tierUsage.normal.cost + quotaData.tierUsage.eco.cost).toFixed(4)}
+                      <h4 className="font-semibold mb-1">Simple Credit System</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Every AI request costs exactly <strong>1 credit</strong>, regardless of which model you use. 
+                        This makes it easy to track and budget your usage.
                       </p>
                     </div>
-                    <Activity className="h-12 w-12 text-slate-200" />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Based on {quotaData.tierUsage.premium.count + quotaData.tierUsage.normal.count + quotaData.tierUsage.eco.count} total API calls this month
-                  </p>
                 </div>
               </div>
             </CardContent>
@@ -432,12 +386,8 @@ export default function CreditsPage() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Perspectives</span>
+                        <span className="text-xs text-muted-foreground">Credits Used</span>
                         <span className="text-lg font-bold">{quotaData.sourceUsage?.cli?.count || 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Est. Cost</span>
-                        <span className="text-sm font-semibold">${(quotaData.sourceUsage?.cli?.cost || 0).toFixed(4)}</span>
                       </div>
                     </div>
                   </div>
@@ -455,12 +405,8 @@ export default function CreditsPage() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Perspectives</span>
+                        <span className="text-xs text-muted-foreground">Credits Used</span>
                         <span className="text-lg font-bold">{quotaData.sourceUsage?.web?.count || 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Est. Cost</span>
-                        <span className="text-sm font-semibold">${(quotaData.sourceUsage?.web?.cost || 0).toFixed(4)}</span>
                       </div>
                     </div>
                   </div>
@@ -478,12 +424,8 @@ export default function CreditsPage() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Perspectives</span>
+                        <span className="text-xs text-muted-foreground">Credits Used</span>
                         <span className="text-lg font-bold">{quotaData.sourceUsage?.user_key?.count || 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Est. Cost</span>
-                        <span className="text-sm font-semibold">${(quotaData.sourceUsage?.user_key?.cost || 0).toFixed(4)}</span>
                       </div>
                     </div>
                   </div>
@@ -501,77 +443,8 @@ export default function CreditsPage() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Perspectives</span>
+                        <span className="text-xs text-muted-foreground">Credits Used</span>
                         <span className="text-lg font-bold">{quotaData.sourceUsage?.admin_credits?.count || 0}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Est. Cost</span>
-                        <span className="text-sm font-semibold">${(quotaData.sourceUsage?.admin_credits?.cost || 0).toFixed(4)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Source Distribution */}
-                <div className="p-6 bg-white rounded-lg border border-slate-200">
-                  <h3 className="text-lg font-semibold mb-4">Request Distribution</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Total Requests by Source</p>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center">
-                            <Terminal className="h-3 w-3 mr-2 text-slate-900" />
-                            CLI
-                          </span>
-                          <span className="font-medium">{quotaData.sourceUsage?.cli?.requests || 0}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center">
-                            <Globe className="h-3 w-3 mr-2 text-slate-900" />
-                            Web
-                          </span>
-                          <span className="font-medium">{quotaData.sourceUsage?.web?.requests || 0}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center">
-                            <Key className="h-3 w-3 mr-2 text-slate-900" />
-                            User Keys
-                          </span>
-                          <span className="font-medium">{quotaData.sourceUsage?.user_key?.requests || 0}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center">
-                            <Database className="h-3 w-3 mr-2 text-slate-900" />
-                            Platform
-                          </span>
-                          <span className="font-medium">{quotaData.sourceUsage?.admin_credits?.requests || 0}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Total Cost by Source</p>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span>CLI</span>
-                          <span className="font-medium">${(quotaData.sourceUsage?.cli?.cost || 0).toFixed(4)}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Web</span>
-                          <span className="font-medium">${(quotaData.sourceUsage?.web?.cost || 0).toFixed(4)}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span>User Keys</span>
-                          <span className="font-medium">${(quotaData.sourceUsage?.user_key?.cost || 0).toFixed(4)}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Platform</span>
-                          <span className="font-medium">${(quotaData.sourceUsage?.admin_credits?.cost || 0).toFixed(4)}</span>
-                        </div>
-                        <div className="pt-2 border-t flex items-center justify-between font-bold">
-                          <span>Total</span>
-                          <span>${((quotaData.sourceUsage?.cli?.cost || 0) + (quotaData.sourceUsage?.web?.cost || 0) + (quotaData.sourceUsage?.user_key?.cost || 0) + (quotaData.sourceUsage?.admin_credits?.cost || 0)).toFixed(4)}</span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -634,10 +507,10 @@ export default function CreditsPage() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Gift className="h-5 w-5 mr-2 text-slate-900" />
-                Bonus Messages
+                Bonus Credits
               </CardTitle>
               <CardDescription>
-                Extra messages from promotions and bonuses
+                Extra credits from promotions and referrals
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -645,21 +518,26 @@ export default function CreditsPage() {
                 <div className="p-6 bg-white rounded-lg border border-slate-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Available Bonus Messages</p>
+                      <p className="text-sm text-muted-foreground">Available Bonus Credits</p>
                       <p className="text-4xl font-bold text-slate-900">{quotaData.bonusMessages}</p>
                     </div>
                     <Gift className="h-16 w-16 text-slate-200 opacity-50" />
                   </div>
                   <p className="text-sm text-muted-foreground mt-4">
-                    Bonus messages are used automatically when your regular quota is exhausted
+                    Bonus credits are used automatically when your regular credits are exhausted
                   </p>
                 </div>
 
                 {quotaData.bonusMessages === 0 && (
                   <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
                     <p className="text-sm text-slate-900">
-                      You don't have any bonus messages currently. Check back later for promotions!
+                      You don't have any bonus credits currently. Refer friends to earn more!
                     </p>
+                    <Link href="/dashboard/referrals">
+                      <Button variant="outline" size="sm" className="mt-3">
+                        View Referral Program
+                      </Button>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -674,9 +552,9 @@ export default function CreditsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold mb-2">Need more perspectives?</h3>
+                <h3 className="text-xl font-bold mb-2">Need more credits?</h3>
                 <p className="text-muted-foreground">
-                  Upgrade to Plus or Pro for higher limits and more API calls
+                  Upgrade to Premium for 10,000 credits/month + unlimited messages
                 </p>
               </div>
               <Link href="/dashboard/subscription">

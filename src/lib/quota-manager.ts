@@ -89,21 +89,23 @@ export class QuotaManager {
             modelId: dbModel.model_name,
             tier: dbModel.tier as 'premium' | 'normal' | 'eco',
             displayName: dbModel.model_name,
+            creditCost: 1, // All models cost 1 credit
             costPer1k: { input: 0, output: 0 }, // Will be calculated from actual usage
             routingStrategy: 'api_key'
           }
         }
       }
       
-      // If still not found, default to 'normal' tier to allow the request
+      // If still not found, default to 'eco' tier (1 credit) to allow the request
       // This prevents blocking legitimate requests for models not in our tier lists
       if (!modelInfo) {
-        console.warn(`[QuotaManager] Model "${modelName}" not found in tier lists, defaulting to normal tier`)
+        console.warn(`[QuotaManager] Model "${modelName}" not found in tier lists, defaulting to eco tier`)
         modelInfo = {
           provider: 'unknown',
           modelId: modelName,
-          tier: 'normal',
+          tier: 'eco',
           displayName: modelName,
+          creditCost: 1, // All models cost 1 credit
           costPer1k: { input: 0, output: 0 },
           routingStrategy: 'api_key'
         }
@@ -234,20 +236,22 @@ export class QuotaManager {
             modelId: dbModel.model_name,
             tier: dbModel.tier as 'premium' | 'normal' | 'eco',
             displayName: dbModel.model_name,
+            creditCost: 1, // All models cost 1 credit
             costPer1k: { input: 0, output: 0 },
             routingStrategy: 'api_key'
           }
         }
       }
       
-      // If still not found, default to 'normal' tier
+      // If still not found, default to 'eco' tier (1 credit)
       if (!modelInfo) {
-        console.warn(`[QuotaManager] deductQuota: Model "${modelName}" not found, defaulting to normal tier`)
+        console.warn(`[QuotaManager] deductQuota: Model "${modelName}" not found, defaulting to eco tier`)
         modelInfo = {
           provider: 'unknown',
           modelId: modelName,
-          tier: 'normal',
+          tier: 'eco',
           displayName: modelName,
+          creditCost: 1, // All models cost 1 credit
           costPer1k: { input: 0, output: 0 },
           routingStrategy: 'api_key'
         }
@@ -256,9 +260,9 @@ export class QuotaManager {
       // Calculate actual cost if not provided (in dollars) - for record keeping
       const actualCost = estimatedCost || calculatePerspectiveCost(modelName, inputTokens, outputTokens)
 
-      // Use tier-based credit costs: Eco=1, Normal=4, Premium=20
-      const creditsToDeduct = this.getTierCreditCost(modelInfo.tier)
-      console.log(`[QuotaManager] Deducting ${creditsToDeduct} credits for ${modelInfo.tier} tier model: ${modelName}`)
+      // All models now cost 1 credit
+      const creditsToDeduct = 1
+      console.log(`[QuotaManager] Deducting ${creditsToDeduct} credit for model: ${modelName}`)
 
       // Deduct credits from user_credits when using admin-provided models
       if (deduction.sourceType === 'admin_credits' || deduction.sourceType === 'admin_key' || !deduction.sourceType) {

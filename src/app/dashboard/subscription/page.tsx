@@ -672,54 +672,27 @@ export default function SubscriptionPage() {
             <div>
               <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                Usage by Model Tier
+                Credits Usage
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {creditsAnalytics.tierBreakdown.premium.credits > 0 && (
-                <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-amber-700">Premium</span>
-                    <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">
-                      {creditsAnalytics.tierCosts.premium} credits/req
+                    <span className="text-sm font-medium text-slate-700">Total Credits Used</span>
+                    <Badge variant="outline" className="text-xs bg-slate-100 text-slate-700 border-slate-200">
+                      1 credit/request
                     </Badge>
                   </div>
-                  <p className="text-xl font-bold text-amber-900">{creditsAnalytics.tierBreakdown.premium.requests}</p>
-                  <p className="text-xs text-amber-600">requests</p>
-                  <p className="text-sm font-medium text-amber-700 mt-1">
-                    {creditsAnalytics.tierBreakdown.premium.credits} credits
+                  <p className="text-2xl font-bold text-slate-900">
+                    {creditsAnalytics.tierBreakdown.premium.credits + 
+                     creditsAnalytics.tierBreakdown.normal.credits + 
+                     creditsAnalytics.tierBreakdown.eco.credits}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {creditsAnalytics.tierBreakdown.premium.requests + 
+                     creditsAnalytics.tierBreakdown.normal.requests + 
+                     creditsAnalytics.tierBreakdown.eco.requests} requests
                   </p>
                 </div>
-                )}
-                {creditsAnalytics.tierBreakdown.normal.credits > 0 && (
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-blue-700">Normal</span>
-                    <Badge variant="outline" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">
-                      {creditsAnalytics.tierCosts.normal} credits/req
-                    </Badge>
-                  </div>
-                  <p className="text-xl font-bold text-blue-900">{creditsAnalytics.tierBreakdown.normal.requests}</p>
-                  <p className="text-xs text-blue-600">requests</p>
-                  <p className="text-sm font-medium text-blue-700 mt-1">
-                    {creditsAnalytics.tierBreakdown.normal.credits} credits
-                  </p>
-                </div>
-                )}
-                {creditsAnalytics.tierBreakdown.eco.credits > 0 && (
-                <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-green-700">Credits Tier</span>
-                    <Badge variant="outline" className="text-[10px] bg-green-100 text-green-700 border-green-200">
-                      {creditsAnalytics.tierCosts.eco} credit/req
-                    </Badge>
-                  </div>
-                  <p className="text-xl font-bold text-green-900">{creditsAnalytics.tierBreakdown.eco.requests}</p>
-                  <p className="text-xs text-green-600">requests</p>
-                  <p className="text-sm font-medium text-green-700 mt-1">
-                    {creditsAnalytics.tierBreakdown.eco.credits} credits
-                  </p>
-                </div>
-                )}
               </div>
               {creditsAnalytics.tierBreakdown.premium.credits === 0 && 
                creditsAnalytics.tierBreakdown.normal.credits === 0 && 

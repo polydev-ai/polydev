@@ -85,10 +85,16 @@ export const LEGACY_PLANS: Record<string, SubscriptionPlan> = {
 }
 
 // Credit cost per model tier (used for deduction calculations)
+// Simplified: All models now cost 1 credit per request
 export const CREDIT_COSTS = {
-  premium: 20,  // Premium models (GPT-5.2, Claude Opus 4.5, etc.)
-  normal: 4,    // Normal models
-  eco: 1        // Eco/fast models
+  default: 1  // All models cost 1 credit per request
+} as const
+
+// Legacy tier costs (deprecated - kept for backward compatibility)
+export const LEGACY_CREDIT_COSTS = {
+  premium: 20,  // Deprecated
+  normal: 4,    // Deprecated
+  eco: 1        // Deprecated
 } as const
 
 // Legacy credit packages (deprecated - kept for backward compatibility)
