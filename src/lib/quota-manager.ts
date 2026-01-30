@@ -512,7 +512,7 @@ export class QuotaManager {
    */
   async updateUserPlan(
     userId: string,
-    newTier: 'free' | 'plus' | 'pro' | 'enterprise'
+    newTier: 'free' | 'premium' | 'plus' | 'pro' | 'enterprise'
   ): Promise<void> {
     try {
       // Fetch tier limits from database

@@ -21,7 +21,7 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 /**
  * Helper function to determine subscription tier from Stripe price ID
  */
-async function determineTierFromPriceId(priceId: string, supabase: any): Promise<'plus' | 'pro'> {
+async function determineTierFromPriceId(priceId: string, supabase: any): Promise<'premium' | 'plus' | 'pro'> {
   try {
     // Fetch pricing config from database
     const { data: pricingData, error } = await supabase
@@ -32,13 +32,21 @@ async function determineTierFromPriceId(priceId: string, supabase: any): Promise
 
     if (error || !pricingData) {
       console.error('[Stripe Webhook] Failed to fetch pricing config:', error)
-      // Default to 'plus' if config not found
-      return 'plus'
+      // Default to 'premium' if config not found (new pricing)
+      return 'premium'
     }
 
     const config = pricingData.config_value
 
-    // Check each tier for matching price ID
+    // Check premium tier first (new pricing)
+    if (config.premium_tier) {
+      if (priceId === config.premium_tier.stripe_price_id_monthly ||
+          priceId === config.premium_tier.stripe_price_id_annual) {
+        return 'premium'
+      }
+    }
+
+    // Check legacy tiers for existing subscribers
     if (config.plus_tier) {
       if (priceId === config.plus_tier.stripe_price_id_monthly ||
           priceId === config.plus_tier.stripe_price_id_annual) {
@@ -53,12 +61,12 @@ async function determineTierFromPriceId(priceId: string, supabase: any): Promise
       }
     }
 
-    // Default to 'plus' if no match found
-    console.warn(`[Stripe Webhook] No tier found for price ID ${priceId}, defaulting to 'plus'`)
-    return 'plus'
+    // Default to 'premium' if no match found (new pricing)
+    console.warn(`[Stripe Webhook] No tier found for price ID ${priceId}, defaulting to 'premium'`)
+    return 'premium'
   } catch (error) {
     console.error('[Stripe Webhook] Error determining tier from price ID:', error)
-    return 'plus'
+    return 'premium'
   }
 }
 
@@ -365,8 +373,8 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, supa
 
     // Initialize credits for paid users - integer credits based on tier
     if (subscription.status === 'active') {
-      // Credit allocations: Pro = 50,000, Plus = 20,000
-      const creditAllocation = tier === 'pro' ? 50000 : 20000
+      // Credit allocations: Pro = 50,000, Plus = 20,000, Premium = 10,000
+      const creditAllocation = tier === 'pro' ? 50000 : tier === 'plus' ? 20000 : 10000
 
       await supabase
         .from('user_credits')
@@ -495,7 +503,8 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription, supab
 
     // Allocate monthly credits based on tier
     if (subscription.status === 'active') {
-      const creditAllocation = tier === 'pro' ? 50000 : 20000
+      // Credit allocations: Pro = 50,000, Plus = 20,000, Premium = 10,000
+      const creditAllocation = tier === 'pro' ? 50000 : tier === 'plus' ? 20000 : 10000
       
       await supabase
         .from('user_credits')
@@ -588,8 +597,8 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice, supabase: any) {
       .single()
 
     if (subscription?.user_id) {
-      // Add monthly credits based on tier: Pro = 50,000, Plus = 20,000
-      const creditAmount = subscription.tier === 'pro' ? 50000 : 20000
+      // Add monthly credits based on tier: Pro = 50,000, Plus = 20,000, Premium = 10,000
+      const creditAmount = subscription.tier === 'pro' ? 50000 : subscription.tier === 'plus' ? 20000 : 10000
       await supabase.rpc('allocate_monthly_credits', {
         p_user_id: subscription.user_id,
         p_amount: creditAmount

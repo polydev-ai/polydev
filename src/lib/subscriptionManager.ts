@@ -594,7 +594,16 @@ export class SubscriptionManager {
   // Initialize user data (called on first signup)
   async initializeUserData(userId: string): Promise<void> {
     try {
-      const supabase = await this.getSupabase()
+      const supabase = await this.getSupabase(true) // Use service role for auth access
+      
+      // Check if this is a new user by checking if they already have a subscription record
+      const { data: existingSubscription } = await supabase
+        .from('user_subscriptions')
+        .select('id, created_at')
+        .eq('user_id', userId)
+        .single()
+
+      const isNewUser = !existingSubscription
       
       // Initialize subscription record (free tier)
       await supabase
@@ -605,19 +614,61 @@ export class SubscriptionManager {
           status: 'active'
         })
 
-      // Initialize credits
+      // Initialize credits with 500 free credits (one-time bonus)
+      const FREE_TIER_CREDITS = SUBSCRIPTION_PLANS.free.monthlyCredits || 500
+      
       await supabase
         .from('user_credits')
         .upsert({
           user_id: userId,
-          balance: 0.0,
-          promotional_balance: 1.0, // Give $1 promotional credit to new users
-          monthly_allocation: 0.0,
-          total_purchased: 0.0,
-          total_spent: 0.0
+          balance: FREE_TIER_CREDITS, // 500 free credits
+          promotional_balance: 0,
+          monthly_allocation: 0,
+          total_purchased: 0,
+          total_spent: 0
         })
 
-      console.log(`Initialized user data for ${userId}`)
+      console.log(`[SubscriptionManager] Initialized user data for ${userId} (new user: ${isNewUser})`)
+
+      // Send welcome email only for new users
+      if (isNewUser) {
+        try {
+          // Get user email from auth.users
+          const { data: authData } = await supabase.auth.admin.getUserById(userId)
+          const userEmail = authData?.user?.email
+
+          if (userEmail) {
+            // Import email template
+            const { emailTemplates } = await import('@/lib/emailTemplates')
+            const template = emailTemplates.welcomeFreeCredits(userEmail)
+
+            // Send via internal email API
+            const emailResult = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL}/api/internal/send-email`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-internal-secret': process.env.INTERNAL_API_SECRET || ''
+              },
+              body: JSON.stringify({
+                to: userEmail,
+                from: 'Polydev <noreply@polydev.ai>',
+                subject: template.subject,
+                html: template.html,
+                text: template.text
+              })
+            })
+
+            if (emailResult.ok) {
+              console.log(`[SubscriptionManager] Welcome email sent to ${userEmail}`)
+            } else {
+              console.warn(`[SubscriptionManager] Failed to send welcome email: ${emailResult.statusText}`)
+            }
+          }
+        } catch (emailError) {
+          // Don't fail the whole initialization if email fails
+          console.warn('[SubscriptionManager] Failed to send welcome email:', emailError)
+        }
+      }
     } catch (error) {
       console.error('Error initializing user data:', error)
       throw error

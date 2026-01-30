@@ -7,17 +7,51 @@ export interface EmailTemplate {
 // Helper to format credits with commas
 const formatCredits = (credits: number): string => credits.toLocaleString()
 
+// Polydev text-based logo for email compatibility (SVG/images often don't render in email clients)
+const getPolydevLogo = (size: 'large' | 'small' = 'large') => {
+  if (size === 'large') {
+    return `<div style="font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 16px;">
+      <span style="color: #60a5fa;">Poly</span><span style="color: white;">dev</span>
+    </div>`
+  }
+  return `<span style="font-size: 16px; font-weight: 700; letter-spacing: -0.5px;">
+    <span style="color: #60a5fa;">Poly</span><span style="color: #0f172a;">dev</span>
+  </span>`
+}
+
 // Plan details for emails
 const PLAN_DETAILS: Record<string, { credits: string; price: string }> = {
+  premium: { credits: '10,000', price: '$10' },
+  // Legacy plans (kept for backward compatibility with existing subscribers)
   plus: { credits: '20,000', price: '$25' },
   pro: { credits: '50,000', price: '$50' }
 }
 
+// Shared email header with Polydev logo
+const getEmailHeader = (title: string, subtitle?: string, gradientColors: string = '#0f172a, #1e293b') => `
+  <div style="background: linear-gradient(135deg, ${gradientColors}); padding: 40px 20px; text-align: center; border-radius: 10px; margin-bottom: 30px;">
+    ${getPolydevLogo('large')}
+    <h1 style="color: white; margin: 0; font-size: 28px;">${title}</h1>
+    ${subtitle ? `<p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">${subtitle}</p>` : ''}
+  </div>
+`
+
+// Shared email footer
+const getEmailFooter = () => `
+  <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
+    <p>Questions? Reply to this email or visit our <a href="https://www.polydev.ai/docs" style="color: #0284c7;">documentation</a></p>
+    <p style="margin-top: 20px;">
+      ${getPolydevLogo('small')}<br>
+      <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
+    </p>
+  </div>
+`
+
 export const emailTemplates = {
   subscriptionCreated: (userEmail: string, planName: string): EmailTemplate => {
     const planKey = planName.toLowerCase()
-    const planInfo = PLAN_DETAILS[planKey] || { credits: '20,000', price: '$25' }
-    const isPro = planKey === 'pro'
+    const planInfo = PLAN_DETAILS[planKey] || { credits: '10,000', price: '$10' }
+    const isPremium = planKey === 'premium'
 
     return {
       subject: `Welcome to Polydev ${planName}! Your subscription is active`,
@@ -30,20 +64,17 @@ export const emailTemplates = {
         <title>Welcome to Polydev ${planName}</title>
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 40px 20px; text-align: center; border-radius: 10px; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Polydev ${planName}!</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Your subscription is now active</p>
-        </div>
+        ${getEmailHeader(`Welcome to Polydev ${planName}!`, 'Your subscription is now active')}
 
         <div style="background: #f8fafc; padding: 30px; border-radius: 10px; margin-bottom: 20px;">
           <h2 style="color: #0f172a; margin-top: 0;">Your ${planName} Plan Includes:</h2>
           <ul style="padding-left: 20px;">
             <li style="margin-bottom: 10px;"><strong style="color: #0f172a;">${planInfo.credits} credits/month</strong> - Use across all AI models</li>
+            ${isPremium ? '<li style="margin-bottom: 10px;"><strong>Unlimited messages</strong> - No message limits</li>' : ''}
             <li style="margin-bottom: 10px;"><strong>Credits rollover</strong> - Unused credits carry forward while subscribed</li>
-            <li style="margin-bottom: 10px;"><strong>340+ AI models</strong> - GPT-5.2, Claude Opus 4.5, Gemini 3 Pro, and more</li>
-            <li style="margin-bottom: 10px;"><strong>BYOK support</strong> - Use your own API keys for unlimited usage</li>
+            <li style="margin-bottom: 10px;"><strong>All AI models</strong> - GPT-5.2, Claude Opus 4.5, Gemini 3, and more</li>
+            <li style="margin-bottom: 10px;"><strong>Use your CLI subscriptions</strong> - Connect Claude Code, Codex CLI, Gemini CLI</li>
             <li style="margin-bottom: 10px;"><strong>Priority support</strong> - Get help when you need it</li>
-            ${isPro ? '<li style="margin-bottom: 10px;"><strong>Advanced analytics</strong> - Track your usage in detail</li>' : ''}
           </ul>
         </div>
 
@@ -60,13 +91,7 @@ export const emailTemplates = {
           <a href="https://www.polydev.ai/dashboard" style="background: #0f172a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Go to Dashboard</a>
         </div>
 
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
-          <p>Questions? Reply to this email or visit our <a href="https://www.polydev.ai/docs" style="color: #0284c7;">documentation</a></p>
-          <p style="margin-top: 20px;">
-            Polydev Team<br>
-            <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-          </p>
-        </div>
+        ${getEmailFooter()}
       </body>
       </html>
     `,
@@ -77,11 +102,11 @@ Your subscription is now active and ready to use.
 
 Your ${planName} Plan Includes:
 - ${planInfo.credits} credits/month - Use across all AI models
-- Credits rollover - Unused credits carry forward while subscribed
-- 340+ AI models - GPT-5.2, Claude Opus 4.5, Gemini 3 Pro, and more
-- BYOK support - Use your own API keys for unlimited usage
+${isPremium ? '- Unlimited messages - No message limits\n' : ''}- Credits rollover - Unused credits carry forward while subscribed
+- All AI models - GPT-5.2, Claude Opus 4.5, Gemini 3, and more
+- Use your CLI subscriptions - Connect Claude Code, Codex CLI, Gemini CLI
 - Priority support - Get help when you need it
-${isPro ? '- Advanced analytics - Track your usage in detail\n' : ''}
+
 How Credits Work:
 - Premium models (GPT-5.2, Claude Opus 4.5) = 20 credits
 - Normal models = 4 credits
@@ -99,7 +124,7 @@ The Polydev Team
 
   subscriptionCancelled: (userEmail: string, planName: string, periodEnd: string): EmailTemplate => {
     const planKey = planName.toLowerCase()
-    const planInfo = PLAN_DETAILS[planKey] || { credits: '20,000', price: '$25' }
+    const planInfo = PLAN_DETAILS[planKey] || { credits: '10,000', price: '$10' }
 
     return {
       subject: `Your Polydev ${planName} subscription has been cancelled`,
@@ -113,6 +138,9 @@ The Polydev Team
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="background: #f8fafc; padding: 30px; text-align: center; border-radius: 10px; margin-bottom: 30px; border-left: 4px solid #64748b;">
+          <div style="font-size: 24px; font-weight: 800; letter-spacing: -1px; margin-bottom: 12px;">
+            <span style="color: #60a5fa;">Poly</span><span style="color: #0f172a;">dev</span>
+          </div>
           <h1 style="color: #0f172a; margin: 0; font-size: 24px;">Subscription Cancelled</h1>
         </div>
 
@@ -127,7 +155,7 @@ The Polydev Team
           <h3 style="color: #92400e; margin-top: 0;">What happens to your credits?</h3>
           <ul style="padding-left: 20px; margin-bottom: 0; color: #78350f;">
             <li>Your rolled-over credits will expire when your billing period ends</li>
-            <li>If you resubscribe within 30 days (to at least Plus), your credits are restored</li>
+            <li>If you resubscribe within 30 days, your credits are restored</li>
             <li>After 30 days, unused credits are permanently lost</li>
           </ul>
         </div>
@@ -150,13 +178,7 @@ The Polydev Team
           <p><strong>We'd love your feedback!</strong> If you have a moment, please let us know why you cancelled so we can improve Polydev for everyone.</p>
         </div>
 
-        <div style="text-align: center; color: #64748b; font-size: 14px; margin-top: 20px;">
-          <p>Thanks for using Polydev!</p>
-          <p>
-            The Polydev Team<br>
-            <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-          </p>
-        </div>
+        ${getEmailFooter()}
       </body>
       </html>
     `,
@@ -173,7 +195,7 @@ You'll continue to have full ${planName} access and can use your remaining credi
 
 What happens to your credits?
 - Your rolled-over credits will expire when your billing period ends
-- If you resubscribe within 30 days (to at least Plus), your credits are restored
+- If you resubscribe within 30 days, your credits are restored
 - After 30 days, unused credits are permanently lost
 
 What happens next?
@@ -411,15 +433,12 @@ The Polydev Team
         <title>Welcome to Polydev</title>
       </head>
       <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 40px 20px; text-align: center; border-radius: 10px; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Polydev!</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 18px;">500 free credits are ready to use</p>
-        </div>
+        ${getEmailHeader('Welcome to Polydev!', '500 free credits are ready to use')}
 
         <div style="background: #f0fdf4; padding: 30px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
           <h2 style="color: #166534; margin-top: 0;">Your Free Credits</h2>
           <p style="font-size: 36px; font-weight: bold; color: #22c55e; margin: 10px 0;">500 credits</p>
-          <p style="color: #166534; margin: 0;">Use them across 340+ AI models</p>
+          <p style="color: #166534; margin: 0;">One-time bonus to get you started</p>
         </div>
 
         <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #0284c7;">
@@ -434,9 +453,9 @@ The Polydev Team
         <div style="background: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0;">
           <h3 style="color: #0f172a; margin-top: 0;">What's included:</h3>
           <ul style="padding-left: 20px; margin-bottom: 0;">
-            <li style="margin-bottom: 8px;">Access to 340+ AI models from 37+ providers</li>
-            <li style="margin-bottom: 8px;">MCP integration for Claude Code and other IDEs</li>
-            <li style="margin-bottom: 8px;">Web interface, CLI, and API access</li>
+            <li style="margin-bottom: 8px;">Access to all AI models (GPT-5.2, Claude Opus 4.5, Gemini 3, Grok 4.1)</li>
+            <li style="margin-bottom: 8px;">MCP integration for Claude Code, Cursor, and other IDEs</li>
+            <li style="margin-bottom: 8px;">Use your existing CLI subscriptions</li>
             <li style="margin-bottom: 8px;">No credit card required</li>
           </ul>
         </div>
@@ -448,27 +467,19 @@ The Polydev Team
         <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #f59e0b;">
           <h3 style="color: #92400e; margin-top: 0;">Need more credits?</h3>
           <p style="margin: 0; color: #78350f;">
-            Upgrade to <strong>Plus ($25/mo)</strong> for 20,000 credits/month<br>
-            Or <strong>Pro ($50/mo)</strong> for 50,000 credits/month<br>
+            Upgrade to <strong>Premium ($10/mo)</strong> for 10,000 credits/month + unlimited messages.<br>
             Credits rollover as long as you stay subscribed!
           </p>
         </div>
 
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
-          <p>Questions? Check our <a href="https://www.polydev.ai/docs" style="color: #0284c7;">documentation</a> or reply to this email</p>
-          <p style="margin-top: 20px;">
-            Happy coding!<br>
-            The Polydev Team<br>
-            <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-          </p>
-        </div>
+        ${getEmailFooter()}
       </body>
       </html>
     `,
     text: `
 Welcome to Polydev!
 
-500 free credits are ready to use across 340+ AI models.
+500 free credits are ready to use - a one-time bonus to get you started.
 
 How Credits Work:
 - Premium models (GPT-5.2, Claude Opus 4.5) = 20 credits
@@ -476,16 +487,15 @@ How Credits Work:
 - Eco models = 1 credit
 
 What's included:
-- Access to 340+ AI models from 37+ providers
-- MCP integration for Claude Code and other IDEs
-- Web interface, CLI, and API access
+- Access to all AI models (GPT-5.2, Claude Opus 4.5, Gemini 3, Grok 4.1)
+- MCP integration for Claude Code, Cursor, and other IDEs
+- Use your existing CLI subscriptions
 - No credit card required
 
 Start using Polydev: https://www.polydev.ai/dashboard
 
 Need more credits?
-- Plus ($25/mo): 20,000 credits/month
-- Pro ($50/mo): 50,000 credits/month
+Upgrade to Premium ($10/mo) for 10,000 credits/month + unlimited messages.
 Credits rollover as long as you stay subscribed!
 
 Questions? Check our documentation: https://www.polydev.ai/docs
