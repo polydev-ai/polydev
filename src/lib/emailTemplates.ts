@@ -7,45 +7,35 @@ export interface EmailTemplate {
 // Helper to format credits with commas
 const formatCredits = (credits: number): string => credits.toLocaleString()
 
-// Polydev text-based logo for email compatibility (SVG/images often don't render in email clients)
-const getPolydevLogo = (size: 'large' | 'small' = 'large') => {
-  if (size === 'large') {
-    return `<div style="font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 16px;">
-      <span style="color: #60a5fa;">Poly</span><span style="color: white;">dev</span>
-    </div>`
-  }
-  return `<span style="font-size: 16px; font-weight: 700; letter-spacing: -0.5px;">
-    <span style="color: #60a5fa;">Poly</span><span style="color: #0f172a;">dev</span>
-  </span>`
-}
+// Clean minimal email wrapper - black and white design
+const emailWrapper = (content: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #000; max-width: 600px; margin: 0 auto; padding: 40px 20px; background: #fff;">
+  <div style="text-align: center; margin-bottom: 40px;">
+    <img src="https://www.polydev.ai/logo.svg" alt="Polydev" width="48" height="48" style="display: inline-block;">
+  </div>
+  ${content}
+  <div style="border-top: 1px solid #eee; margin-top: 40px; padding-top: 20px; text-align: center;">
+    <p style="color: #666; font-size: 14px; margin: 0;">
+      Questions? Reply to this email.<br><br>
+      <a href="https://www.polydev.ai" style="color: #000;">polydev.ai</a>
+    </p>
+  </div>
+</body>
+</html>
+`
 
 // Plan details for emails
 const PLAN_DETAILS: Record<string, { credits: string; price: string }> = {
   premium: { credits: '10,000', price: '$10' },
-  // Legacy plans (kept for backward compatibility with existing subscribers)
   plus: { credits: '20,000', price: '$25' },
   pro: { credits: '50,000', price: '$50' }
 }
-
-// Shared email header with Polydev logo
-const getEmailHeader = (title: string, subtitle?: string, gradientColors: string = '#0f172a, #1e293b') => `
-  <div style="background: linear-gradient(135deg, ${gradientColors}); padding: 40px 20px; text-align: center; border-radius: 10px; margin-bottom: 30px;">
-    ${getPolydevLogo('large')}
-    <h1 style="color: white; margin: 0; font-size: 28px;">${title}</h1>
-    ${subtitle ? `<p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">${subtitle}</p>` : ''}
-  </div>
-`
-
-// Shared email footer
-const getEmailFooter = () => `
-  <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
-    <p>Questions? Reply to this email or visit our <a href="https://www.polydev.ai/docs" style="color: #0284c7;">documentation</a></p>
-    <p style="margin-top: 20px;">
-      ${getPolydevLogo('small')}<br>
-      <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-    </p>
-  </div>
-`
 
 export const emailTemplates = {
   subscriptionCreated: (userEmail: string, planName: string): EmailTemplate => {
@@ -55,46 +45,39 @@ export const emailTemplates = {
 
     return {
       subject: `Welcome to Polydev ${planName}! Your subscription is active`,
-      html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to Polydev ${planName}</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        ${getEmailHeader(`Welcome to Polydev ${planName}!`, 'Your subscription is now active')}
+      html: emailWrapper(`
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">Welcome to Polydev ${planName}</h1>
+      
+      <p style="margin: 0 0 24px 0;">Your subscription is now active and ready to use.</p>
+      
+      <div style="background: #f9f9f9; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+        <p style="font-size: 36px; font-weight: 700; margin: 0;">${planInfo.credits}</p>
+        <p style="color: #666; margin: 8px 0 0 0;">credits/month - Use across all AI models</p>
+      </div>
 
-        <div style="background: #f8fafc; padding: 30px; border-radius: 10px; margin-bottom: 20px;">
-          <h2 style="color: #0f172a; margin-top: 0;">Your ${planName} Plan Includes:</h2>
-          <ul style="padding-left: 20px;">
-            <li style="margin-bottom: 10px;"><strong style="color: #0f172a;">${planInfo.credits} credits/month</strong> - Use across all AI models</li>
-            ${isPremium ? '<li style="margin-bottom: 10px;"><strong>Unlimited messages</strong> - No message limits</li>' : ''}
-            <li style="margin-bottom: 10px;"><strong>Credits rollover</strong> - Unused credits carry forward while subscribed</li>
-            <li style="margin-bottom: 10px;"><strong>All AI models</strong> - GPT-5.2, Claude Opus 4.5, Gemini 3, and more</li>
-            <li style="margin-bottom: 10px;"><strong>Use your CLI subscriptions</strong> - Connect Claude Code, Codex CLI, Gemini CLI</li>
-            <li style="margin-bottom: 10px;"><strong>Priority support</strong> - Get help when you need it</li>
-          </ul>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">How Credits Work</h3>
+        <p style="margin: 0;">
+          <strong>Premium models</strong> (GPT-5.2, Claude Opus 4.5) = 20 credits<br>
+          <strong>Normal models</strong> = 4 credits<br>
+          <strong>Eco models</strong> = 1 credit
+        </p>
+      </div>
 
-        <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #0284c7;">
-          <h3 style="color: #0369a1; margin-top: 0;">How Credits Work</h3>
-          <p style="margin: 0; color: #0c4a6e;">
-            <strong>Premium models</strong> (GPT-5.2, Claude Opus 4.5) = 20 credits<br>
-            <strong>Normal models</strong> = 4 credits<br>
-            <strong>Eco models</strong> = 1 credit
-          </p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">What's included:</h3>
+        <ul style="padding-left: 20px; margin: 0;">
+          <li style="margin-bottom: 8px;">Access to all AI models (GPT-5.2, Claude Opus 4.5, Gemini 3, Grok 4.1)</li>
+          <li style="margin-bottom: 8px;">MCP integration for Claude Code, Cursor, and other IDEs</li>
+          <li style="margin-bottom: 8px;">Use your existing CLI subscriptions</li>
+          <li style="margin-bottom: 8px;">No credit card required</li>
+        </ul>
+      </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://www.polydev.ai/dashboard" style="background: #0f172a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Go to Dashboard</a>
-        </div>
-
-        ${getEmailFooter()}
-      </body>
-      </html>
-    `,
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://www.polydev.ai/dashboard" style="background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Go to Dashboard</a>
+      </div>
+    `),
       text: `
 Welcome to Polydev ${planName}!
 
@@ -128,64 +111,42 @@ The Polydev Team
 
     return {
       subject: `Your Polydev ${planName} subscription has been cancelled`,
-      html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Subscription Cancelled</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #f8fafc; padding: 30px; text-align: center; border-radius: 10px; margin-bottom: 30px; border-left: 4px solid #64748b;">
-          <div style="font-size: 24px; font-weight: 800; letter-spacing: -1px; margin-bottom: 12px;">
-            <span style="color: #60a5fa;">Poly</span><span style="color: #0f172a;">dev</span>
-          </div>
-          <h1 style="color: #0f172a; margin: 0; font-size: 24px;">Subscription Cancelled</h1>
-        </div>
+      html: emailWrapper(`
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">Subscription Cancelled</h1>
+      
+      <p style="margin: 0 0 24px 0;">We're sorry to see you go! Your Polydev ${planName} subscription has been cancelled as requested.</p>
+      
+      <p style="margin: 0 0 24px 0;"><strong>Access until:</strong> ${new Date(periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      
+      <p style="margin: 0 0 24px 0;">You'll continue to have full ${planName} access and can use your remaining credits until your current billing period ends.</p>
 
-        <div style="margin-bottom: 20px;">
-          <p>Hi there,</p>
-          <p>We're sorry to see you go! Your Polydev ${planName} subscription has been cancelled as requested.</p>
-          <p><strong>Access until:</strong> ${new Date(periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          <p>You'll continue to have full ${planName} access and can use your remaining credits until your current billing period ends.</p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">What happens to your credits?</h3>
+        <ul style="padding-left: 20px; margin: 0;">
+          <li style="margin-bottom: 6px;">Your rolled-over credits will expire when your billing period ends</li>
+          <li style="margin-bottom: 6px;">If you resubscribe within 30 days, your credits are restored</li>
+          <li style="margin-bottom: 6px;">After 30 days, unused credits are permanently lost</li>
+        </ul>
+      </div>
 
-        <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-          <h3 style="color: #92400e; margin-top: 0;">What happens to your credits?</h3>
-          <ul style="padding-left: 20px; margin-bottom: 0; color: #78350f;">
-            <li>Your rolled-over credits will expire when your billing period ends</li>
-            <li>If you resubscribe within 30 days, your credits are restored</li>
-            <li>After 30 days, unused credits are permanently lost</li>
-          </ul>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">What happens next?</h3>
+        <ul style="padding-left: 20px; margin: 0;">
+          <li style="margin-bottom: 6px;">Your ${planName} features remain active until ${new Date(periodEnd).toLocaleDateString()}</li>
+          <li style="margin-bottom: 6px;">After that, you'll be moved to our free plan (500 credits one-time)</li>
+          <li style="margin-bottom: 6px;">Your account and data will be preserved</li>
+          <li style="margin-bottom: 6px;">You can resubscribe anytime from your dashboard</li>
+        </ul>
+      </div>
 
-        <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin: 20px 0;">
-          <h3 style="color: #166534; margin-top: 0;">What happens next?</h3>
-          <ul style="padding-left: 20px; margin-bottom: 0;">
-            <li>Your ${planName} features remain active until ${new Date(periodEnd).toLocaleDateString()}</li>
-            <li>After that, you'll be moved to our free plan (500 credits one-time)</li>
-            <li>Your account and data will be preserved</li>
-            <li>You can resubscribe anytime from your dashboard</li>
-          </ul>
-        </div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://www.polydev.ai/dashboard/subscription" style="background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Resubscribe</a>
+      </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://www.polydev.ai/dashboard/subscription" style="background: #0f172a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Resubscribe</a>
-        </div>
-
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px;">
-          <p><strong>We'd love your feedback!</strong> If you have a moment, please let us know why you cancelled so we can improve Polydev for everyone.</p>
-        </div>
-
-        ${getEmailFooter()}
-      </body>
-      </html>
-    `,
+      <p style="margin: 24px 0 0 0; text-align: center; color: #666; font-size: 14px;">Thank you for using Polydev!</p>
+    `),
       text: `
 Subscription Cancelled
-
-Hi there,
 
 We're sorry to see you go! Your Polydev ${planName} subscription has been cancelled as requested.
 
@@ -206,9 +167,7 @@ What happens next?
 
 Resubscribe: https://www.polydev.ai/dashboard/subscription
 
-We'd love your feedback! If you have a moment, please let us know why you cancelled so we can improve Polydev for everyone.
-
-Thanks for using Polydev!
+Thank you for using Polydev!
 The Polydev Team
     `
     }
@@ -216,58 +175,35 @@ The Polydev Team
 
   paymentFailed: (userEmail: string, amount: string, retryDate: string): EmailTemplate => ({
     subject: 'Action Required: Payment Failed for Your Polydev Subscription',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Payment Failed</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #fef3c7; padding: 30px; text-align: center; border-radius: 10px; margin-bottom: 30px; border-left: 4px solid #f59e0b;">
-          <h1 style="color: #92400e; margin: 0; font-size: 24px;">Payment Failed</h1>
-          <p style="color: #92400e; margin: 10px 0 0 0;">Action required for your Polydev subscription</p>
-        </div>
+    html: emailWrapper(`
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">Payment Failed</h1>
+      
+      <p style="margin: 0 0 24px 0;">We weren't able to process your payment of <strong>${amount}</strong> for your Polydev subscription.</p>
+      
+      <p style="margin: 0 0 24px 0;">This can happen for various reasons like expired cards, insufficient funds, or bank restrictions.</p>
 
-        <div style="margin-bottom: 20px;">
-          <p>Hi there,</p>
-          <p>We weren't able to process your payment of <strong>${amount}</strong> for your Polydev subscription.</p>
-          <p>This can happen for various reasons like expired cards, insufficient funds, or bank restrictions.</p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">What you need to do:</h3>
+        <ol style="padding-left: 20px; margin: 0;">
+          <li style="margin-bottom: 6px;">Update your payment method</li>
+          <li style="margin-bottom: 6px;">Ensure your card has sufficient funds</li>
+          <li style="margin-bottom: 6px;">Contact your bank if needed</li>
+        </ol>
+      </div>
 
-        <div style="background: #fef2f2; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #ef4444;">
-          <h3 style="color: #991b1b; margin-top: 0;">What you need to do:</h3>
-          <ol style="padding-left: 20px; margin-bottom: 0;">
-            <li>Update your payment method</li>
-            <li>Ensure your card has sufficient funds</li>
-            <li>Contact your bank if needed</li>
-          </ol>
-        </div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://www.polydev.ai/dashboard/subscription" style="background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Update Payment Method</a>
+      </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://www.polydev.ai/dashboard/subscription" style="background: #ef4444; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Update Payment Method</a>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <p style="margin: 0;"><strong>Next retry:</strong> ${new Date(retryDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+        <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">We'll automatically retry the payment. Your access continues until we resolve this.</p>
+      </div>
 
-        <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Next retry:</strong> ${new Date(retryDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
-          <p style="margin: 10px 0 0 0; font-size: 14px; color: #64748b;">We'll automatically retry the payment. Your access continues until we resolve this.</p>
-        </div>
-
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
-          <p>Need help? Contact us at <a href="mailto:support@polydev.ai" style="color: #0284c7;">support@polydev.ai</a></p>
-          <p>
-            The Polydev Team<br>
-            <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-          </p>
-        </div>
-      </body>
-      </html>
-    `,
+      <p style="margin: 24px 0 0 0; text-align: center; color: #666; font-size: 14px;">Need help? Contact us at <a href="mailto:support@polydev.ai" style="color: #000;">support@polydev.ai</a></p>
+    `),
     text: `
 Payment Failed - Action Required
-
-Hi there,
 
 We weren't able to process your payment of ${amount} for your Polydev subscription.
 
@@ -296,51 +232,36 @@ The Polydev Team
 
     return {
       subject: `Your Polydev ${planName} subscription renewed - ${planInfo.credits} credits added`,
-      html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Subscription Renewed</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 40px 20px; text-align: center; border-radius: 10px; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Subscription Renewed!</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 18px;">+${planInfo.credits} credits added to your account</p>
-        </div>
+      html: emailWrapper(`
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">Subscription Renewed</h1>
+      <p style="font-size: 18px; margin: 0 0 24px 0; color: #666;">+${planInfo.credits} credits added to your account</p>
 
-        <div style="background: #f0fdf4; padding: 30px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
-          <h2 style="color: #166534; margin-top: 0;">Renewal Details</h2>
-          <div style="background: white; padding: 20px; border-radius: 8px;">
-            <p style="margin: 5px 0;"><strong>Plan:</strong> Polydev ${planName}</p>
-            <p style="margin: 5px 0;"><strong>Credits Added:</strong> <span style="color: #22c55e; font-weight: bold;">${planInfo.credits}</span></p>
-            <p style="margin: 5px 0;"><strong>Next renewal:</strong> ${new Date(periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-          </div>
-        </div>
+      <div style="background: #f9f9f9; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+        <p style="font-size: 48px; font-weight: 700; margin: 0;">${planInfo.credits}</p>
+        <p style="color: #666; margin: 8px 0 0 0;">credits added to your account</p>
+      </div>
 
-        <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #0284c7;">
-          <h3 style="color: #0369a1; margin-top: 0;">Your Credits Rollover!</h3>
-          <p style="margin: 0; color: #0c4a6e;">
-            Any unused credits from previous months have been preserved. Your new ${planInfo.credits} credits are added on top of your existing balance.
-          </p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Renewal Details</h3>
+        <p style="margin: 5px 0;"><strong>Plan:</strong> Polydev ${planName}</p>
+        <p style="margin: 5px 0;"><strong>Credits Added:</strong> ${planInfo.credits}</p>
+        <p style="margin: 5px 0;"><strong>Next renewal:</strong> ${new Date(periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://www.polydev.ai/dashboard" style="background: #0f172a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block; margin-right: 10px;">Use Your Credits</a>
-          <a href="https://www.polydev.ai/dashboard/credits" style="background: #64748b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">View Balance</a>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Your Credits Rollover!</h3>
+        <p style="margin: 0;">
+          Any unused credits from previous months have been preserved. Your new ${planInfo.credits} credits are added on top of your existing balance.
+        </p>
+      </div>
 
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
-          <p>Thank you for being a Polydev subscriber!</p>
-          <p>
-            The Polydev Team<br>
-            <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-          </p>
-        </div>
-      </body>
-      </html>
-    `,
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://www.polydev.ai/dashboard" style="background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block; margin-right: 10px;">Use Your Credits</a>
+        <a href="https://www.polydev.ai/dashboard/credits" style="background: #fff; color: #000; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block; border: 1px solid #000;">View Balance</a>
+      </div>
+
+      <p style="margin: 24px 0 0 0; text-align: center; color: #666; font-size: 14px;">Thank you for being a Polydev subscriber!</p>
+    `),
       text: `
 Subscription Renewed!
 
@@ -365,49 +286,25 @@ The Polydev Team
 
   paymentSucceeded: (userEmail: string, amount: string, periodEnd: string): EmailTemplate => ({
     subject: 'Payment Received - Your Polydev subscription is active',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Payment Received</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #f0fdf4; padding: 30px; text-align: center; border-radius: 10px; margin-bottom: 30px; border-left: 4px solid #22c55e;">
-          <h1 style="color: #166534; margin: 0; font-size: 24px;">Payment Received</h1>
-          <p style="color: #166534; margin: 10px 0 0 0;">Your Polydev subscription is active</p>
-        </div>
+    html: emailWrapper(`
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">Payment Received</h1>
+      
+      <p style="margin: 0 0 24px 0;">Thank you! We've successfully processed your payment of <strong>${amount}</strong> for your Polydev subscription.</p>
 
-        <div style="margin-bottom: 20px;">
-          <p>Hi there,</p>
-          <p>Thank you! We've successfully processed your payment of <strong>${amount}</strong> for your Polydev subscription.</p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Payment Details</h3>
+        <p style="margin: 5px 0;"><strong>Amount:</strong> ${amount}</p>
+        <p style="margin: 5px 0;"><strong>Next billing:</strong> ${new Date(periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      </div>
 
-        <div style="background: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0;">
-          <h3 style="margin-top: 0;">Payment Details:</h3>
-          <p style="margin: 5px 0;"><strong>Amount:</strong> ${amount}</p>
-          <p style="margin: 5px 0;"><strong>Next billing:</strong> ${new Date(periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-        </div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://www.polydev.ai/dashboard" style="background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Go to Dashboard</a>
+      </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://www.polydev.ai/dashboard" style="background: #0f172a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Go to Dashboard</a>
-        </div>
-
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
-          <p>View your billing history: <a href="https://www.polydev.ai/dashboard/subscription" style="color: #0284c7;">Manage Subscription</a></p>
-          <p>
-            The Polydev Team<br>
-            <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-          </p>
-        </div>
-      </body>
-      </html>
-    `,
+      <p style="margin: 24px 0 0 0; text-align: center; color: #666; font-size: 14px;">View your billing history: <a href="https://www.polydev.ai/dashboard/subscription" style="color: #000;">Manage Subscription</a></p>
+    `),
     text: `
 Payment Received
-
-Hi there,
 
 Thank you! We've successfully processed your payment of ${amount} for your Polydev subscription.
 
@@ -424,58 +321,45 @@ The Polydev Team
 
   welcomeFreeCredits: (userEmail: string): EmailTemplate => ({
     subject: 'Welcome to Polydev! Your 500 free credits are ready',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome to Polydev</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        ${getEmailHeader('Welcome to Polydev!', '500 free credits are ready to use')}
+    html: emailWrapper(`
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">Welcome to Polydev!</h1>
 
-        <div style="background: #f0fdf4; padding: 30px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
-          <h2 style="color: #166534; margin-top: 0;">Your Free Credits</h2>
-          <p style="font-size: 36px; font-weight: bold; color: #22c55e; margin: 10px 0;">500 credits</p>
-          <p style="color: #166534; margin: 0;">One-time bonus to get you started</p>
-        </div>
+      <div style="background: #f9f9f9; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+        <p style="font-size: 36px; font-weight: 700; margin: 0;">500 credits</p>
+        <p style="color: #666; margin: 8px 0 0 0;">One-time bonus to get you started</p>
+      </div>
 
-        <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #0284c7;">
-          <h3 style="color: #0369a1; margin-top: 0;">How Credits Work</h3>
-          <p style="margin: 0; color: #0c4a6e;">
-            <strong>Premium models</strong> (GPT-5.2, Claude Opus 4.5) = 20 credits<br>
-            <strong>Normal models</strong> = 4 credits<br>
-            <strong>Eco models</strong> = 1 credit
-          </p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">How Credits Work</h3>
+        <p style="margin: 0;">
+          <strong>Premium models</strong> (GPT-5.2, Claude Opus 4.5) = 20 credits<br>
+          <strong>Normal models</strong> = 4 credits<br>
+          <strong>Eco models</strong> = 1 credit
+        </p>
+      </div>
 
-        <div style="background: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0;">
-          <h3 style="color: #0f172a; margin-top: 0;">What's included:</h3>
-          <ul style="padding-left: 20px; margin-bottom: 0;">
-            <li style="margin-bottom: 8px;">Access to all AI models (GPT-5.2, Claude Opus 4.5, Gemini 3, Grok 4.1)</li>
-            <li style="margin-bottom: 8px;">MCP integration for Claude Code, Cursor, and other IDEs</li>
-            <li style="margin-bottom: 8px;">Use your existing CLI subscriptions</li>
-            <li style="margin-bottom: 8px;">No credit card required</li>
-          </ul>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">What's included:</h3>
+        <ul style="padding-left: 20px; margin: 0;">
+          <li style="margin-bottom: 8px;">Access to all AI models (GPT-5.2, Claude Opus 4.5, Gemini 3, Grok 4.1)</li>
+          <li style="margin-bottom: 8px;">MCP integration for Claude Code, Cursor, and other IDEs</li>
+          <li style="margin-bottom: 8px;">Use your existing CLI subscriptions</li>
+          <li style="margin-bottom: 8px;">No credit card required</li>
+        </ul>
+      </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://www.polydev.ai/dashboard" style="background: #0f172a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Start Using Polydev</a>
-        </div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://www.polydev.ai/dashboard" style="background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Start Using Polydev</a>
+      </div>
 
-        <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-          <h3 style="color: #92400e; margin-top: 0;">Need more credits?</h3>
-          <p style="margin: 0; color: #78350f;">
-            Upgrade to <strong>Premium ($10/mo)</strong> for 10,000 credits/month + unlimited messages.<br>
-            Credits rollover as long as you stay subscribed!
-          </p>
-        </div>
-
-        ${getEmailFooter()}
-      </body>
-      </html>
-    `,
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Need more credits?</h3>
+        <p style="margin: 0;">
+          Upgrade to <strong>Premium ($10/mo)</strong> for 10,000 credits/month + unlimited messages.<br>
+          Credits rollover as long as you stay subscribed!
+        </p>
+      </div>
+    `),
     text: `
 Welcome to Polydev!
 
@@ -508,41 +392,25 @@ The Polydev Team
   // Legacy template for backward compatibility (deprecated)
   creditPurchase: (userEmail: string, creditAmount: number, packageName: string, amountPaid: number): EmailTemplate => ({
     subject: 'Credits Added to Your Polydev Account',
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Credits Added</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 40px 20px; text-align: center; border-radius: 10px; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Credits Added!</h1>
-        </div>
+    html: emailWrapper(`
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">Credits Added!</h1>
 
-        <div style="background: #f0fdf4; padding: 30px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
-          <h2 style="color: #166534; margin-top: 0;">Purchase Details</h2>
-          <div style="background: white; padding: 20px; border-radius: 8px;">
-            <p style="margin: 5px 0;"><strong>Credits Added:</strong> <span style="color: #22c55e; font-weight: bold;">${formatCredits(creditAmount)}</span></p>
-            <p style="margin: 5px 0;"><strong>Package:</strong> ${packageName}</p>
-            <p style="margin: 5px 0;"><strong>Amount Paid:</strong> $${amountPaid.toFixed(2)}</p>
-          </div>
-        </div>
+      <div style="background: #f9f9f9; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+        <p style="font-size: 36px; font-weight: 700; margin: 0;">${formatCredits(creditAmount)}</p>
+        <p style="color: #666; margin: 8px 0 0 0;">credits added to your account</p>
+      </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://www.polydev.ai/dashboard" style="background: #0f172a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Use Your Credits</a>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Purchase Details</h3>
+        <p style="margin: 5px 0;"><strong>Credits Added:</strong> ${formatCredits(creditAmount)}</p>
+        <p style="margin: 5px 0;"><strong>Package:</strong> ${packageName}</p>
+        <p style="margin: 5px 0;"><strong>Amount Paid:</strong> $${amountPaid.toFixed(2)}</p>
+      </div>
 
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
-          <p>
-            The Polydev Team<br>
-            <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-          </p>
-        </div>
-      </body>
-      </html>
-    `,
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://www.polydev.ai/dashboard" style="background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Use Your Credits</a>
+      </div>
+    `),
     text: `
 Credits Added to Your Polydev Account
 
@@ -560,54 +428,35 @@ The Polydev Team
   // Referral email templates
   referralSuccess: (referrerEmail: string, newUserName: string, creditsEarned: number, totalReferrals: number): EmailTemplate => ({
     subject: `You earned ${creditsEarned} credits! Someone used your referral code`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Referral Reward</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 40px 20px; text-align: center; border-radius: 10px; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">You Earned Credits!</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 18px;">Someone joined using your referral code</p>
-        </div>
+    html: emailWrapper(`
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">You Earned Credits!</h1>
+      <p style="margin: 0 0 24px 0; color: #666;">Someone joined using your referral code</p>
 
-        <div style="background: #f5f3ff; padding: 30px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #8b5cf6;">
-          <h2 style="color: #5b21b6; margin-top: 0;">Referral Reward</h2>
-          <p style="font-size: 48px; font-weight: bold; color: #7c3aed; margin: 10px 0;">+${creditsEarned}</p>
-          <p style="color: #5b21b6; margin: 0;">credits added to your account</p>
-        </div>
+      <div style="background: #f9f9f9; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+        <p style="font-size: 48px; font-weight: 700; margin: 0;">+${creditsEarned}</p>
+        <p style="color: #666; margin: 8px 0 0 0;">credits added to your account</p>
+      </div>
 
-        <div style="background: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0;">
-          <h3 style="color: #0f172a; margin-top: 0;">Your Referral Stats</h3>
-          <p style="margin: 5px 0;"><strong>Total successful referrals:</strong> ${totalReferrals}</p>
-          <p style="margin: 5px 0;"><strong>Credits earned this referral:</strong> ${creditsEarned}</p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Your Referral Stats</h3>
+        <p style="margin: 5px 0;"><strong>Total successful referrals:</strong> ${totalReferrals}</p>
+        <p style="margin: 5px 0;"><strong>Credits earned this referral:</strong> ${creditsEarned}</p>
+      </div>
 
-        <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-          <h3 style="color: #92400e; margin-top: 0;">Keep sharing!</h3>
-          <p style="margin: 0; color: #78350f;">
-            Every friend you refer earns you <strong>500 credits</strong>.<br>
-            Share your referral link to keep growing your credits!
-          </p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Keep sharing!</h3>
+        <p style="margin: 0;">
+          Every friend you refer earns you <strong>500 credits</strong>.<br>
+          Share your referral link to keep growing your credits!
+        </p>
+      </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://www.polydev.ai/dashboard/referrals" style="background: #7c3aed; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">View Referrals</a>
-        </div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://www.polydev.ai/dashboard/referrals" style="background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">View Referrals</a>
+      </div>
 
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
-          <p>Thank you for spreading the word about Polydev!</p>
-          <p>
-            The Polydev Team<br>
-            <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-          </p>
-        </div>
-      </body>
-      </html>
-    `,
+      <p style="margin: 24px 0 0 0; text-align: center; color: #666; font-size: 14px;">Thank you for spreading the word about Polydev!</p>
+    `),
     text: `
 You Earned Credits!
 
@@ -632,68 +481,48 @@ The Polydev Team
 
   referralWelcome: (newUserEmail: string, creditsReceived: number, referrerName?: string): EmailTemplate => ({
     subject: `Welcome to Polydev! You received ${creditsReceived} bonus credits`,
-    html: `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Welcome Bonus</title>
-      </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 40px 20px; text-align: center; border-radius: 10px; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Polydev!</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 18px;">You've received ${creditsReceived} bonus credits</p>
-        </div>
+    html: emailWrapper(`
+      <h1 style="font-size: 24px; font-weight: 600; margin: 0 0 8px 0;">Welcome to Polydev!</h1>
+      <p style="margin: 0 0 24px 0; color: #666;">You've received ${creditsReceived} bonus credits</p>
 
-        <div style="background: #f0fdf4; padding: 30px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
-          <h2 style="color: #166534; margin-top: 0;">Your Welcome Bonus</h2>
-          <p style="font-size: 48px; font-weight: bold; color: #22c55e; margin: 10px 0;">${creditsReceived}</p>
-          <p style="color: #166534; margin: 0;">bonus credits added to your account</p>
-          ${referrerName ? `<p style="color: #166534; margin-top: 10px; font-size: 14px;">Thanks to your friend for sharing Polydev!</p>` : ''}
-        </div>
+      <div style="background: #f9f9f9; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+        <p style="font-size: 48px; font-weight: 700; margin: 0;">${creditsReceived}</p>
+        <p style="color: #666; margin: 8px 0 0 0;">bonus credits added to your account</p>
+        ${referrerName ? `<p style="color: #666; margin-top: 10px; font-size: 14px;">Thanks to your friend for sharing Polydev!</p>` : ''}
+      </div>
 
-        <div style="background: #f0f9ff; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #0284c7;">
-          <h3 style="color: #0369a1; margin-top: 0;">How to Use Your Credits</h3>
-          <p style="margin: 0; color: #0c4a6e;">
-            <strong>Premium models</strong> (GPT-5.2, Claude Opus 4.5) = 20 credits<br>
-            <strong>Normal models</strong> = 4 credits<br>
-            <strong>Eco models</strong> = 1 credit
-          </p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">How to Use Your Credits</h3>
+        <p style="margin: 0;">
+          <strong>Premium models</strong> (GPT-5.2, Claude Opus 4.5) = 20 credits<br>
+          <strong>Normal models</strong> = 4 credits<br>
+          <strong>Eco models</strong> = 1 credit
+        </p>
+      </div>
 
-        <div style="background: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0;">
-          <h3 style="color: #0f172a; margin-top: 0;">What you get with Polydev:</h3>
-          <ul style="padding-left: 20px; margin-bottom: 0;">
-            <li style="margin-bottom: 8px;">Access to 340+ AI models from 37+ providers</li>
-            <li style="margin-bottom: 8px;">MCP integration for Claude Code and other IDEs</li>
-            <li style="margin-bottom: 8px;">Web interface, CLI, and API access</li>
-            <li style="margin-bottom: 8px;">Unified billing across all providers</li>
-          </ul>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">What you get with Polydev:</h3>
+        <ul style="padding-left: 20px; margin: 0;">
+          <li style="margin-bottom: 8px;">Access to all AI models (GPT-5.2, Claude Opus 4.5, Gemini 3, Grok 4.1)</li>
+          <li style="margin-bottom: 8px;">MCP integration for Claude Code, Cursor, and other IDEs</li>
+          <li style="margin-bottom: 8px;">Web interface, CLI, and API access</li>
+          <li style="margin-bottom: 8px;">Use your existing CLI subscriptions</li>
+        </ul>
+      </div>
 
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="https://www.polydev.ai/dashboard" style="background: #0f172a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Start Using Polydev</a>
-        </div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://www.polydev.ai/dashboard" style="background: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Start Using Polydev</a>
+      </div>
 
-        <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-          <h3 style="color: #92400e; margin-top: 0;">Earn more credits!</h3>
-          <p style="margin: 0; color: #78350f;">
-            Share your own referral code and earn <strong>500 credits</strong> for each friend who joins!
-          </p>
-        </div>
+      <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 24px 0;">
+        <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 12px 0;">Earn more credits!</h3>
+        <p style="margin: 0;">
+          Share your own referral code and earn <strong>500 credits</strong> for each friend who joins!
+        </p>
+      </div>
 
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px; text-align: center; color: #64748b; font-size: 14px;">
-          <p>Questions? Check our <a href="https://www.polydev.ai/docs" style="color: #0284c7;">documentation</a> or reply to this email</p>
-          <p>
-            Happy coding!<br>
-            The Polydev Team<br>
-            <a href="https://www.polydev.ai" style="color: #0284c7;">www.polydev.ai</a>
-          </p>
-        </div>
-      </body>
-      </html>
-    `,
+      <p style="margin: 24px 0 0 0; text-align: center; color: #666; font-size: 14px;">Questions? Check our <a href="https://www.polydev.ai/docs" style="color: #000;">documentation</a> or reply to this email</p>
+    `),
     text: `
 Welcome to Polydev!
 
@@ -707,10 +536,10 @@ How to Use Your Credits:
 - Eco models = 1 credit
 
 What you get with Polydev:
-- Access to 340+ AI models from 37+ providers
-- MCP integration for Claude Code and other IDEs
+- Access to all AI models (GPT-5.2, Claude Opus 4.5, Gemini 3, Grok 4.1)
+- MCP integration for Claude Code, Cursor, and other IDEs
 - Web interface, CLI, and API access
-- Unified billing across all providers
+- Use your existing CLI subscriptions
 
 Start using Polydev: https://www.polydev.ai/dashboard
 
