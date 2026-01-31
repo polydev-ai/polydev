@@ -3,7 +3,7 @@
   "name": "polydev-ai",
   "displayName": "Polydev AI - Multi-Model Perspectives",
   "description": "Get AI perspectives from GPT 5.2, Claude Opus 4.5, Gemini 3, and Grok 4.1 simultaneously through one MCP server. Works with your existing CLI subscriptions — just login to Claude Code, Codex CLI, or Gemini CLI with your account.",
-  "version": "1.8.70",
+  "version": "1.8.71",
   "author": {
     "name": "Polydev AI",
     "url": "https://polydev.ai",
@@ -47,7 +47,7 @@
   "installation": {
     "npm": {
       "package": "polydev-ai",
-      "command": "npx polydev-stdio"
+      "command": "npx polydev-ai"
     }
   },
   "configuration": {

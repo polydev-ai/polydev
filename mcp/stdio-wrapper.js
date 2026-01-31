@@ -1706,4 +1706,73 @@ if (require.main === module) {
   });
 }
 
+/**
+ * Smithery sandbox server factory
+ * Creates a mock server instance for Smithery's capability scanning
+ * This allows Smithery to discover tools/resources without real credentials
+ */
+function createSandboxServer() {
+  // Embed manifest directly to work with Smithery bundling
+  // (file paths don't resolve in bundled context)
+  return {
+    serverInfo: {
+      name: 'polydev-perspectives',
+      version: '1.8.70'
+    },
+    capabilities: { tools: {} },
+    tools: [
+      {
+        name: 'get_perspectives',
+        description: 'Query GPT 5.2, Claude Opus 4.5, Gemini 3, and Grok 4.1 simultaneously for diverse AI perspectives when debugging, making architecture decisions, or reviewing code.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            prompt: {
+              type: 'string',
+              description: 'The prompt to get perspectives on'
+            },
+            user_token: {
+              type: 'string',
+              description: 'Polydev user authentication token'
+            }
+          },
+          required: ['prompt']
+        }
+      },
+      {
+        name: 'get_cli_status',
+        description: 'Check status of local CLI tools (Claude Code, Codex CLI, Gemini CLI)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            provider_id: {
+              type: 'string',
+              description: 'Optional specific provider to check'
+            }
+          }
+        }
+      },
+      {
+        name: 'force_cli_detection',
+        description: 'Force re-detection of installed local CLI tools',
+        inputSchema: { type: 'object', properties: {} }
+      },
+      {
+        name: 'send_cli_prompt',
+        description: 'Send prompt to local CLI with perspectives fallback',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            provider_id: { type: 'string', description: 'CLI provider ID' },
+            prompt: { type: 'string', description: 'Prompt to send' },
+            mode: { type: 'string', enum: ['args', 'stdin'], default: 'args' }
+          },
+          required: ['provider_id', 'prompt']
+        }
+      }
+    ]
+  };
+}
+
 module.exports = StdioMCPWrapper;
+module.exports.createSandboxServer = createSandboxServer;

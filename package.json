@@ -1,6 +1,6 @@
 {
   "name": "polydev-ai",
-  "version": "1.8.70",
+  "version": "1.8.71",
   "engines": {
     "node": ">=20.x <=22.x"
   },
@@ -22,7 +22,8 @@
   "private": false,
   "main": "mcp/stdio-wrapper.js",
   "bin": {
-    "polydev-stdio": "mcp/stdio-wrapper.js"
+    "polydev-stdio": "mcp/stdio-wrapper.js",
+    "polydev-ai": "mcp/stdio-wrapper.js"
   },
   "files": [
     "mcp/",
