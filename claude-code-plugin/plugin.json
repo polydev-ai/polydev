@@ -1,15 +1,31 @@
 {
   "name": "polydev",
-  "version": "1.0.0",
-  "description": "Multi-model AI consultation for Claude Code - get perspectives from GPT, Gemini, and Grok when stuck",
+  "version": "1.1.0",
+  "description": "Multi-model AI consultation for Claude Code - get perspectives from GPT, Gemini, Grok, and GLM when stuck",
   "author": "Polydev AI",
   "repository": "https://github.com/backspacevenkat/polydev-ai",
+  "homepage": "https://polydev.ai",
   "keywords": ["multi-model", "AI", "perspectives", "consultation", "MCP"],
   "license": "MIT",
   "skills": [
     {
+      "name": "polydev",
+      "description": "Get multi-model AI perspectives on any coding problem",
+      "command": "/polydev"
+    },
+    {
+      "name": "polydev-login",
+      "description": "Authenticate with Polydev via browser",
+      "command": "/polydev-login"
+    },
+    {
+      "name": "polydev-auth",
+      "description": "Check authentication status and account info",
+      "command": "/polydev-auth"
+    },
+    {
       "name": "perspectives",
-      "description": "Get multi-model AI perspectives on your current problem",
+      "description": "Alias for /polydev - get multi-model perspectives",
       "command": "/perspectives"
     },
     {
@@ -21,7 +37,7 @@
   "mcpServers": {
     "polydev": {
       "command": "npx",
-      "args": ["-y", "polydev-ai@latest", "serve"],
+      "args": ["-y", "polydev-mcp@latest"],
       "env": {
         "POLYDEV_USER_TOKEN": "${POLYDEV_USER_TOKEN}"
       }
@@ -30,6 +46,7 @@
   "configuration": {
     "requiresToken": true,
     "tokenEnvVar": "POLYDEV_USER_TOKEN",
-    "dashboardUrl": "https://polydev.ai/dashboard"
+    "dashboardUrl": "https://polydev.ai/dashboard",
+    "loginUrl": "https://polydev.ai/auth/device"
   }
 }
