@@ -1,6 +1,6 @@
 {
   "name": "polydev-perspectives",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Multi-model AI perspectives - query GPT 5.2, Claude Opus 4.5, Gemini 3, and Grok 4.1 simultaneously. Get diverse perspectives when stuck or need enhanced reasoning. Achieved 74.6% on SWE-bench Verified.",
   "author": "Polydev AI",
   "license": "MIT",
@@ -12,6 +12,75 @@
     "prompts": false
   },
   "tools": [
+    {
+      "name": "get_auth_status",
+      "description": "Check Polydev authentication status and get setup instructions. Use this first to verify your token is valid or get help setting up Polydev. Works in all IDEs (Claude Desktop, Cursor, Continue, Windsurf, VSCode, etc.).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_token": {
+            "type": "string",
+            "description": "Polydev user authentication token (optional - checks if provided, shows setup instructions if not)"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "description": "Whether the user is authenticated"
+          },
+          "user_email": {
+            "type": "string",
+            "description": "User email if authenticated"
+          },
+          "credits_remaining": {
+            "type": "integer",
+            "description": "Credits remaining if authenticated"
+          },
+          "subscription_tier": {
+            "type": "string",
+            "description": "Current subscription tier"
+          },
+          "setup_instructions": {
+            "type": "object",
+            "description": "Setup instructions if not authenticated"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable status message"
+          }
+        }
+      },
+      "examples": [
+        {
+          "description": "Check auth status without token",
+          "input": {},
+          "output": {
+            "authenticated": false,
+            "setup_instructions": {
+              "step_1": "Visit https://polydev.ai to create your free account",
+              "step_2": "Go to https://polydev.ai/dashboard/mcp-tools",
+              "step_3": "Generate your MCP access token",
+              "step_4": "Add the token to your IDE configuration"
+            },
+            "message": "Welcome to Polydev! Get started in 2 minutes."
+          }
+        },
+        {
+          "description": "Check auth status with valid token",
+          "input": { "user_token": "polydev_abc123..." },
+          "output": {
+            "authenticated": true,
+            "user_email": "user@example.com",
+            "credits_remaining": 9500,
+            "subscription_tier": "Premium",
+            "message": "Ready to use Polydev! You have 9,500 credits remaining."
+          }
+        }
+      ]
+    },
     {
       "name": "get_perspectives",
       "description": "When stuck in agentic workflows, get diverse perspectives from multiple LLMs to overcome roadblocks. All models use Polydev-managed API keys - just configure once in dashboard.",

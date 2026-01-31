@@ -145,6 +145,10 @@ class MCPServer {
       let result;
       
       switch (name) {
+        case 'get_auth_status':
+          result = await this.getAuthStatus(args);
+          break;
+        
         case 'get_perspectives':
           result = await this.callPerspectivesAPI(args);
           break;
@@ -262,10 +266,31 @@ class MCPServer {
     console.error(`[Polydev MCP] Debug - final userToken: ${userToken ? 'present' : 'missing'}`);
     
     if (!userToken || typeof userToken !== 'string') {
-      throw new Error('user_token is required. Either:\n' +
-        '1. Pass user_token parameter, or\n' +
-        '2. Set POLYDEV_USER_TOKEN environment variable\n' +
-        'Generate token at: https://polydev.ai/dashboard/mcp-tokens');
+      // Return helpful setup instructions instead of just throwing an error
+      const detectedIDE = this.detectIDE();
+      const setupInstructions = this.getSetupInstructions(detectedIDE);
+      
+      throw new Error(
+        '═══════════════════════════════════════════════════════════════\n' +
+        '                    POLYDEV SETUP REQUIRED\n' +
+        '═══════════════════════════════════════════════════════════════\n\n' +
+        'To use Polydev, you need an authentication token.\n\n' +
+        'QUICK SETUP (2 minutes):\n' +
+        '1. Create free account: https://polydev.ai/signup\n' +
+        '2. Get your token: https://polydev.ai/dashboard/mcp-tools\n' +
+        '3. Add token to your MCP configuration\n\n' +
+        'FREE TIER INCLUDES:\n' +
+        '• 500 credits/month (no credit card needed)\n' +
+        '• Access to GLM-4.7, Gemini 3 Flash, Grok 4.1, GPT-5 Mini\n' +
+        '• 1 credit per request (all models)\n\n' +
+        'CONFIGURATION:\n' +
+        'Set POLYDEV_USER_TOKEN in your MCP server env, or\n' +
+        'Pass user_token parameter with each request.\n\n' +
+        'NEED HELP?\n' +
+        '• Setup guide: https://polydev.ai/docs/mcp-integration\n' +
+        '• Use get_auth_status tool for personalized instructions\n' +
+        '═══════════════════════════════════════════════════════════════'
+      );
     }
 
     console.error(`[Polydev MCP] Getting perspectives for: "${args.prompt.substring(0, 60)}${args.prompt.length > 60 ? '...' : ''}"`);
@@ -307,7 +332,24 @@ class MCPServer {
       }
 
       if (response.status === 401) {
-        throw new Error(`Authentication failed: ${errorMessage}. Generate a new token at https://polydev.ai/dashboard/mcp-tools`);
+        throw new Error(
+          '═══════════════════════════════════════════════════════════════\n' +
+          '                 AUTHENTICATION FAILED\n' +
+          '═══════════════════════════════════════════════════════════════\n\n' +
+          `Error: ${errorMessage}\n\n` +
+          'YOUR TOKEN MAY BE:\n' +
+          '• Expired (tokens last 30 days)\n' +
+          '• Invalid or mistyped\n' +
+          '• From a different account\n\n' +
+          'TO FIX:\n' +
+          '1. Go to: https://polydev.ai/dashboard/mcp-tools\n' +
+          '2. Generate a new token\n' +
+          '3. Update your MCP configuration\n\n' +
+          'QUICK CHECK:\n' +
+          '• Use get_auth_status tool to verify your setup\n' +
+          '• Token should start with "polydev_"\n' +
+          '═══════════════════════════════════════════════════════════════'
+        );
       }
 
       throw new Error(`Polydev API error: ${errorMessage}`);
@@ -328,8 +370,328 @@ class MCPServer {
     return result;
   }
 
+  /**
+   * Get authentication status and setup instructions
+   * Works universally across all IDEs (Claude Desktop, Cursor, Continue, Windsurf, VSCode, etc.)
+   */
+  async getAuthStatus(args) {
+    const serverUrl = 'https://www.polydev.ai/api/mcp/auth-status';
+    const userToken = args.user_token || process.env.POLYDEV_USER_TOKEN;
+    
+    console.error('[Polydev MCP] Checking authentication status...');
+
+    // Detect IDE from environment
+    const detectedIDE = this.detectIDE();
+
+    // If no token provided, return setup instructions
+    if (!userToken) {
+      return {
+        authenticated: false,
+        detected_ide: detectedIDE,
+        setup_instructions: this.getSetupInstructions(detectedIDE),
+        quick_links: {
+          signup: 'https://polydev.ai/signup',
+          login: 'https://polydev.ai/login',
+          dashboard: 'https://polydev.ai/dashboard',
+          mcp_tools: 'https://polydev.ai/dashboard/mcp-tools',
+          documentation: 'https://polydev.ai/docs/mcp-integration'
+        },
+        available_models: ['GLM-4.7', 'Gemini 3 Flash', 'Grok 4.1 Fast Reasoning', 'GPT-5 Mini'],
+        pricing: {
+          free_tier: '500 credits/month (no credit card required)',
+          premium_tier: '$10/month for 10,000 credits',
+          credit_cost: '1 credit per request (all models)'
+        },
+        message: 'Welcome to Polydev! Create your free account to get started.',
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    // Validate token with the server
+    try {
+      const response = await fetch(serverUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`,
+          'User-Agent': 'polydev-mcp/1.4.0'
+        },
+        body: JSON.stringify({ action: 'check_status' })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          authenticated: true,
+          user_email: data.email,
+          credits_remaining: data.credits_remaining,
+          credits_used_today: data.credits_used_today || 0,
+          subscription_tier: data.subscription_tier || 'Free',
+          token_expires_at: data.token_expires_at,
+          enabled_models: data.enabled_models || ['GLM-4.7', 'Gemini 3 Flash', 'Grok 4.1 Fast Reasoning', 'GPT-5 Mini'],
+          cli_subscriptions: data.cli_subscriptions || [],
+          quick_links: {
+            dashboard: 'https://polydev.ai/dashboard',
+            usage: 'https://polydev.ai/dashboard/usage',
+            settings: 'https://polydev.ai/dashboard/settings',
+            upgrade: 'https://polydev.ai/dashboard/subscription'
+          },
+          message: `Ready to use Polydev! You have ${data.credits_remaining?.toLocaleString() || 0} credits remaining.`,
+          timestamp: new Date().toISOString()
+        };
+      } else if (response.status === 401) {
+        return {
+          authenticated: false,
+          error: 'invalid_token',
+          detected_ide: detectedIDE,
+          setup_instructions: this.getSetupInstructions(detectedIDE),
+          quick_links: {
+            regenerate_token: 'https://polydev.ai/dashboard/mcp-tools',
+            login: 'https://polydev.ai/login'
+          },
+          message: 'Your token is invalid or expired. Please generate a new one.',
+          timestamp: new Date().toISOString()
+        };
+      } else {
+        const errorText = await response.text();
+        return {
+          authenticated: false,
+          error: 'server_error',
+          error_details: errorText,
+          message: 'Unable to verify authentication. Please try again.',
+          timestamp: new Date().toISOString()
+        };
+      }
+    } catch (error) {
+      console.error('[Polydev MCP] Auth status check error:', error);
+      return {
+        authenticated: false,
+        error: 'connection_error',
+        error_details: error.message,
+        offline_mode: true,
+        message: 'Unable to connect to Polydev servers. Check your internet connection.',
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Detect the IDE/MCP client from environment
+   */
+  detectIDE() {
+    // Check common environment variables and process info
+    const env = process.env;
+    
+    if (env.CURSOR_CHANNEL || env.CURSOR_VERSION) return 'cursor';
+    if (env.CONTINUE_EXTENSION_ID) return 'continue';
+    if (env.VSCODE_PID || env.VSCODE_CWD) return 'vscode';
+    if (env.CLAUDE_DESKTOP) return 'claude-desktop';
+    if (env.WINDSURF_VERSION) return 'windsurf';
+    if (env.CLINE_VERSION) return 'cline';
+    
+    // Check process title/args for hints
+    const processTitle = process.title || '';
+    const args = process.argv.join(' ').toLowerCase();
+    
+    if (args.includes('cursor') || processTitle.includes('cursor')) return 'cursor';
+    if (args.includes('claude') || processTitle.includes('claude')) return 'claude-desktop';
+    if (args.includes('continue')) return 'continue';
+    if (args.includes('windsurf')) return 'windsurf';
+    
+    return 'unknown';
+  }
+
+  /**
+   * Get IDE-specific setup instructions
+   */
+  getSetupInstructions(ide) {
+    const baseSteps = {
+      step_1: 'Create your free Polydev account at https://polydev.ai/signup',
+      step_2: 'Go to https://polydev.ai/dashboard/mcp-tools',
+      step_3: 'Click "Generate Token" to create your MCP access token',
+      step_4: 'Copy the token (it starts with "polydev_")'
+    };
+
+    const ideConfigs = {
+      'cursor': {
+        ...baseSteps,
+        step_5: 'Open Cursor Settings (Cmd/Ctrl + ,)',
+        step_6: 'Search for "MCP" in settings',
+        step_7: 'Add Polydev server with your token',
+        config_example: `{
+  "mcpServers": {
+    "polydev": {
+      "command": "npx",
+      "args": ["-y", "polydev-mcp"],
+      "env": { "POLYDEV_USER_TOKEN": "polydev_your_token_here" }
+    }
+  }
+}`
+      },
+      'claude-desktop': {
+        ...baseSteps,
+        step_5: 'Open Claude Desktop settings',
+        step_6: 'Navigate to Developer > MCP Servers',
+        step_7: 'Add the Polydev server configuration',
+        config_example: `{
+  "mcpServers": {
+    "polydev": {
+      "command": "npx",
+      "args": ["-y", "polydev-mcp"],
+      "env": { "POLYDEV_USER_TOKEN": "polydev_your_token_here" }
+    }
+  }
+}`
+      },
+      'continue': {
+        ...baseSteps,
+        step_5: 'Open Continue extension settings in VSCode',
+        step_6: 'Add Polydev to your config.json',
+        config_example: `{
+  "mcpServers": [{
+    "name": "polydev",
+    "command": "npx",
+    "args": ["-y", "polydev-mcp"],
+    "env": { "POLYDEV_USER_TOKEN": "polydev_your_token_here" }
+  }]
+}`
+      },
+      'windsurf': {
+        ...baseSteps,
+        step_5: 'Open Windsurf Settings',
+        step_6: 'Navigate to MCP Configuration',
+        step_7: 'Add Polydev server with your token',
+        config_example: `{
+  "mcp": {
+    "servers": {
+      "polydev": {
+        "command": "npx",
+        "args": ["-y", "polydev-mcp"],
+        "env": { "POLYDEV_USER_TOKEN": "polydev_your_token_here" }
+      }
+    }
+  }
+}`
+      },
+      'vscode': {
+        ...baseSteps,
+        step_5: 'Install an MCP-compatible extension (Continue, Cline, etc.)',
+        step_6: 'Configure the extension with Polydev',
+        step_7: 'Add your token to the configuration'
+      },
+      'unknown': {
+        ...baseSteps,
+        step_5: 'Configure your MCP client with the Polydev server',
+        step_6: 'Set POLYDEV_USER_TOKEN environment variable with your token',
+        note: 'Visit https://polydev.ai/docs/mcp-integration for detailed setup guides'
+      }
+    };
+
+    return ideConfigs[ide] || ideConfigs['unknown'];
+  }
+
+  /**
+   * Format authentication status response for beautiful output
+   */
+  formatAuthStatusResponse(result) {
+    let formatted = '';
+
+    if (result.authenticated) {
+      formatted += `# Polydev Authentication Status\n\n`;
+      formatted += `## Account\n`;
+      formatted += `Email: ${result.user_email}\n`;
+      formatted += `Tier: ${result.subscription_tier}\n\n`;
+      
+      formatted += `## Credits\n`;
+      formatted += `Remaining: ${result.credits_remaining?.toLocaleString() || 0}\n`;
+      if (result.credits_used_today !== undefined) {
+        formatted += `Used Today: ${result.credits_used_today}\n`;
+      }
+      formatted += `\n`;
+      
+      formatted += `## Available Models (1 credit each)\n`;
+      if (result.enabled_models && result.enabled_models.length > 0) {
+        result.enabled_models.forEach(model => {
+          formatted += `- ${model}\n`;
+        });
+      }
+      formatted += `\n`;
+      
+      if (result.cli_subscriptions && result.cli_subscriptions.length > 0) {
+        formatted += `## Connected CLI Subscriptions (no credit cost)\n`;
+        result.cli_subscriptions.forEach(cli => {
+          formatted += `- ${cli}\n`;
+        });
+        formatted += `\n`;
+      }
+      
+      formatted += `## Quick Links\n`;
+      formatted += `- Dashboard: ${result.quick_links.dashboard}\n`;
+      formatted += `- Usage History: ${result.quick_links.usage}\n`;
+      formatted += `- Settings: ${result.quick_links.settings}\n`;
+      
+      if (result.subscription_tier === 'Free') {
+        formatted += `\n## Upgrade to Premium\n`;
+        formatted += `Get 10,000 credits/month for $10: ${result.quick_links.upgrade}\n`;
+      }
+    } else {
+      formatted += `# Welcome to Polydev\n\n`;
+      formatted += `Multi-model AI that helps when you're stuck. Query GPT-5, Claude, Gemini, and Grok simultaneously.\n\n`;
+      
+      if (result.error === 'invalid_token') {
+        formatted += `## Token Issue\n`;
+        formatted += `Your token is invalid or expired.\n`;
+        formatted += `Generate a new one: ${result.quick_links.regenerate_token}\n\n`;
+      }
+      
+      formatted += `## Get Started (Free)\n\n`;
+      
+      if (result.setup_instructions) {
+        Object.entries(result.setup_instructions).forEach(([key, value]) => {
+          if (key.startsWith('step_')) {
+            const stepNum = key.replace('step_', '');
+            formatted += `${stepNum}. ${value}\n`;
+          }
+        });
+        
+        if (result.setup_instructions.config_example) {
+          formatted += `\n## Configuration Example\n`;
+          formatted += `\`\`\`json\n${result.setup_instructions.config_example}\n\`\`\`\n`;
+        }
+        
+        if (result.setup_instructions.note) {
+          formatted += `\nNote: ${result.setup_instructions.note}\n`;
+        }
+      }
+      
+      formatted += `\n## Pricing\n`;
+      if (result.pricing) {
+        formatted += `- Free Tier: ${result.pricing.free_tier}\n`;
+        formatted += `- Premium: ${result.pricing.premium_tier}\n`;
+        formatted += `- Cost: ${result.pricing.credit_cost}\n`;
+      }
+      
+      formatted += `\n## Available Models\n`;
+      if (result.available_models) {
+        result.available_models.forEach(model => {
+          formatted += `- ${model}\n`;
+        });
+      }
+      
+      if (result.detected_ide && result.detected_ide !== 'unknown') {
+        formatted += `\n## Detected IDE\n`;
+        formatted += `${result.detected_ide.charAt(0).toUpperCase() + result.detected_ide.slice(1)}\n`;
+      }
+    }
+
+    return formatted;
+  }
+
   formatResponse(toolName, result) {
     switch (toolName) {
+      case 'get_auth_status':
+        return this.formatAuthStatusResponse(result);
+      
       case 'get_perspectives':
         return this.formatPerspectivesResponse(result);
       
