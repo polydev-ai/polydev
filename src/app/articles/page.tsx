@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, FileText, Zap, Code, MessageSquare, Terminal, Puzzle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, FileText, Zap, Code, MessageSquare, Terminal, Puzzle, Download } from 'lucide-react'
 
 // Article data - add new articles here
 const articles = [
@@ -16,6 +16,16 @@ const articles = [
     icon: FileText,
     featured: true,
     tags: ['SWE-bench', 'Research Paper', 'Benchmarks'],
+  },
+  {
+    slug: 'installation-guide',
+    category: 'Getting Started',
+    date: 'January 2026',
+    title: 'Complete Installation Guide',
+    description: 'Every way to install Polydev—from one-click plugin install to manual MCP configuration. Plus all available skills and commands.',
+    icon: Download,
+    featured: false,
+    tags: ['Installation', 'MCP', 'Skills', 'All IDEs'],
   },
   {
     slug: 'claude-code-guide',
