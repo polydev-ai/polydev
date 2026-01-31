@@ -1,89 +1,168 @@
 # Polydev - Multi-Model AI Perspectives
 
-## Description
-Get perspectives from multiple AI models (GPT-5, Claude, Gemini, Grok) simultaneously when you're stuck. Query 4 models with one request for diverse solutions.
+> Query 4 AI models simultaneously. Get unstuck faster with diverse perspectives from GPT-5, Claude, Gemini, and Grok.
+
+## Quick Start
+
+```bash
+# 1. Login (opens browser, auto-configures token)
+/polydev-login
+
+# 2. Use it
+/polydev How should I structure my React state?
+```
 
 ## Commands
 
-### /polydev
+### `/polydev [question]`
 Get multi-model AI perspectives on any coding problem.
 
-**Usage:**
-```
-/polydev [your question or problem]
-```
-
 **Examples:**
-- `/polydev How should I structure my React state management?`
-- `/polydev Debug this TypeScript error: Property 'map' does not exist on type 'string'`
-- `/polydev What's the best approach for caching API responses?`
-
-### /polydev-auth
-Check your Polydev authentication status or get setup instructions.
-
-**Usage:**
 ```
-/polydev-auth
+/polydev How should I structure my React state management?
+/polydev Debug this TypeScript error: Property 'map' does not exist on type 'string'
+/polydev What's the best approach for caching API responses?
+/polydev Compare REST vs GraphQL for my mobile app backend
 ```
 
-Shows: Account status, credits remaining, enabled models, and setup instructions if not authenticated.
+**What you get:**
+- 4 expert perspectives from different AI models
+- Diverse approaches to solve your problem
+- Consensus where models agree
+- Alternative solutions you might not have considered
 
-### /polydev-login
-Authenticate with Polydev by opening the browser for signup/login.
+---
 
-**Usage:**
+### `/polydev-login`
+Authenticate with Polydev - opens browser automatically.
+
 ```
 /polydev-login
 ```
 
-Opens your browser to authenticate and automatically configures your token.
+**What happens:**
+1. Browser opens to Polydev authentication
+2. Sign in with Google or GitHub
+3. Token is automatically configured
+4. Start using `/polydev` immediately
 
-## Setup
+No manual token copying needed.
 
-### Quick Start (2 minutes)
-1. Run `/polydev-login` to open browser and authenticate
-2. Your token is automatically configured
-3. Start using `/polydev` to get multi-model perspectives
+---
 
-### Manual Setup
-1. Visit https://polydev.ai/signup to create your free account
-2. Go to https://polydev.ai/dashboard/mcp-tools
-3. Generate your MCP access token
-4. Set `POLYDEV_USER_TOKEN` environment variable
+### `/polydev-auth`
+Check your authentication status and account info.
+
+```
+/polydev-auth
+```
+
+**Shows:**
+- Account email and subscription tier
+- Credits remaining
+- Enabled models
+- Setup instructions (if not authenticated)
+
+---
 
 ## Pricing
-- **Free Tier**: 500 credits/month (no credit card required)
-- **Premium**: $10/month for 10,000 credits
-- **Cost**: 1 credit per request (all models included)
+
+| Tier | Credits | Cost |
+|------|---------|------|
+| **Free** | 500/month | $0 (no card required) |
+| **Premium** | 10,000/month | $10/month |
+
+**1 credit = 1 request** (queries all 4 models)
+
+---
 
 ## Available Models
-- GLM-4.7
-- Gemini 3 Flash
-- Grok 4.1 Fast Reasoning
-- GPT-5 Mini
 
-## When to Use
-- Stuck on a complex problem
-- Need diverse perspectives on architecture decisions
-- Want validation from multiple AI models
-- Debugging difficult issues
-- Comparing different approaches
+All models are queried simultaneously:
+
+- **GLM-4.7** - Zhipu AI's flagship model
+- **Gemini 3 Flash** - Google's fast reasoning model
+- **Grok 4.1 Fast Reasoning** - xAI's quick inference model
+- **GPT-5 Mini** - OpenAI's efficient model
+
+---
+
+## IDE Support
+
+Works universally in any MCP-compatible IDE:
+
+| IDE | Status | Notes |
+|-----|--------|-------|
+| **Claude Code** | ✅ Full support | Skills + MCP |
+| **Cursor** | ✅ Full support | SKILL.md + MCP |
+| **Continue** | ✅ Full support | MCP tools |
+| **Windsurf** | ✅ Full support | MCP tools |
+| **VSCode** | ✅ Full support | With MCP extension |
+| **Claude Desktop** | ✅ Full support | MCP tools |
+
+---
 
 ## MCP Configuration
-If your IDE supports MCP, add this to your config:
+
+If your IDE doesn't auto-detect Polydev, add this to your MCP config:
+
 ```json
 {
   "mcpServers": {
     "polydev": {
       "command": "npx",
       "args": ["-y", "polydev-mcp"],
-      "env": { "POLYDEV_USER_TOKEN": "polydev_your_token_here" }
+      "env": {
+        "POLYDEV_USER_TOKEN": "your_token_here"
+      }
     }
   }
 }
 ```
 
+**Note:** Running `/polydev-login` automatically configures your token.
+
+---
+
+## When to Use Polydev
+
+✅ **Perfect for:**
+- Stuck on a complex problem
+- Architecture decisions
+- Debugging difficult issues
+- Comparing different approaches
+- Getting validation on your solution
+- Learning new patterns
+
+❌ **Not needed for:**
+- Simple, straightforward tasks
+- Tasks with obvious solutions
+- When you just need execution, not advice
+
+---
+
+## Tips for Best Results
+
+1. **Be specific** - Include error messages, code snippets, constraints
+2. **Provide context** - What have you tried? What's the goal?
+3. **Ask focused questions** - One problem at a time works best
+
+**Good prompt:**
+```
+/polydev I'm getting "Cannot read property 'map' of undefined" in my React component.
+The data comes from an async API call. Here's the code: [paste code]
+What's causing this and how should I fix it?
+```
+
+**Less effective:**
+```
+/polydev My code doesn't work
+```
+
+---
+
 ## Links
-- Dashboard: https://polydev.ai/dashboard
-- Documentation: https://polydev.ai/docs/mcp-integration
-- Support: support@polydev.ai
+
+- **Dashboard**: https://polydev.ai/dashboard
+- **Documentation**: https://polydev.ai/docs/mcp-integration
+- **Support**: support@polydev.ai
