@@ -149,6 +149,10 @@ class MCPServer {
           result = await this.getAuthStatus(args);
           break;
         
+        case 'login':
+          result = await this.login(args);
+          break;
+        
         case 'get_perspectives':
           result = await this.callPerspectivesAPI(args);
           break;
@@ -687,10 +691,233 @@ class MCPServer {
     return formatted;
   }
 
+  /**
+   * Browser-based login with automatic token retrieval
+   * Implements OAuth Device Authorization Grant (RFC 8628)
+   */
+  async login(args) {
+    const { open_browser = true, timeout_seconds = 300 } = args;
+    const deviceAuthUrl = 'https://www.polydev.ai/api/mcp/device-auth';
+    
+    console.error('[Polydev MCP] Initiating browser-based login...');
+
+    try {
+      // Step 1: Request device code from server
+      const initResponse = await fetch(deviceAuthUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'polydev-mcp/1.4.0'
+        },
+        body: JSON.stringify({ action: 'init' })
+      });
+
+      if (!initResponse.ok) {
+        const errorText = await initResponse.text();
+        throw new Error(`Failed to initiate login: ${errorText}`);
+      }
+
+      const deviceData = await initResponse.json();
+      const { device_code, user_code, verification_url, expires_in, interval } = deviceData;
+
+      console.error(`[Polydev MCP] Device code obtained. User code: ${user_code}`);
+      console.error(`[Polydev MCP] Verification URL: ${verification_url}`);
+
+      // Step 2: Open browser if requested
+      if (open_browser) {
+        const browserOpened = await this.openBrowser(verification_url);
+        if (!browserOpened) {
+          console.error('[Polydev MCP] Could not open browser automatically');
+        }
+      }
+
+      // Step 3: Poll for token
+      const pollInterval = (interval || 5) * 1000; // Convert to ms
+      const maxPollTime = Math.min(timeout_seconds, expires_in || 300) * 1000;
+      const startTime = Date.now();
+
+      console.error(`[Polydev MCP] Polling for token (timeout: ${maxPollTime / 1000}s)...`);
+
+      while (Date.now() - startTime < maxPollTime) {
+        await this.sleep(pollInterval);
+
+        const pollResponse = await fetch(deviceAuthUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'polydev-mcp/1.4.0'
+          },
+          body: JSON.stringify({ 
+            action: 'poll',
+            device_code 
+          })
+        });
+
+        if (pollResponse.ok) {
+          const pollData = await pollResponse.json();
+
+          if (pollData.status === 'completed' && pollData.token) {
+            console.error('[Polydev MCP] Authentication successful!');
+            
+            // Store token in environment for this session
+            process.env.POLYDEV_USER_TOKEN = pollData.token;
+
+            return {
+              success: true,
+              user_email: pollData.email,
+              token: pollData.token,
+              credits_remaining: pollData.credits_remaining || 500,
+              subscription_tier: pollData.subscription_tier || 'Free',
+              message: 'Successfully authenticated! Your token has been configured for this session.',
+              next_steps: [
+                'Your token is now active for this session',
+                'Add POLYDEV_USER_TOKEN to your MCP config for persistent access',
+                'Use get_perspectives to query multiple AI models'
+              ],
+              timestamp: new Date().toISOString()
+            };
+          }
+
+          if (pollData.status === 'pending') {
+            console.error('[Polydev MCP] Waiting for user to complete authentication...');
+            continue;
+          }
+
+          if (pollData.status === 'expired') {
+            throw new Error('Login session expired. Please try again.');
+          }
+
+          if (pollData.error) {
+            throw new Error(pollData.error);
+          }
+        }
+      }
+
+      // Timeout reached
+      return {
+        success: false,
+        error: 'timeout',
+        message: `Login timed out after ${timeout_seconds} seconds. Please try again.`,
+        auth_url: verification_url,
+        user_code: user_code,
+        instructions: 'Open the URL above and enter the user code to complete authentication.',
+        timestamp: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('[Polydev MCP] Login error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: 'Login failed. Please try again or use manual token setup.',
+        manual_setup_url: 'https://polydev.ai/dashboard/mcp-tools',
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Open browser to a URL (cross-platform)
+   */
+  async openBrowser(url) {
+    const { exec } = require('child_process');
+    const platform = process.platform;
+
+    let command;
+    if (platform === 'darwin') {
+      command = `open "${url}"`;
+    } else if (platform === 'win32') {
+      command = `start "" "${url}"`;
+    } else {
+      // Linux and others
+      command = `xdg-open "${url}" || sensible-browser "${url}" || x-www-browser "${url}"`;
+    }
+
+    return new Promise((resolve) => {
+      exec(command, (error) => {
+        if (error) {
+          console.error('[Polydev MCP] Browser open error:', error.message);
+          resolve(false);
+        } else {
+          console.error('[Polydev MCP] Browser opened successfully');
+          resolve(true);
+        }
+      });
+    });
+  }
+
+  /**
+   * Sleep utility for polling
+   */
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Format login response for beautiful output
+   */
+  formatLoginResponse(result) {
+    let formatted = '';
+
+    if (result.success) {
+      formatted += `# Polydev Login Successful\n\n`;
+      formatted += `## Account\n`;
+      formatted += `Email: ${result.user_email}\n`;
+      formatted += `Tier: ${result.subscription_tier}\n`;
+      formatted += `Credits: ${result.credits_remaining?.toLocaleString() || 'N/A'}\n\n`;
+      
+      formatted += `## Token\n`;
+      formatted += `\`\`\`\n${result.token}\n\`\`\`\n\n`;
+      
+      formatted += `## Next Steps\n`;
+      if (result.next_steps) {
+        result.next_steps.forEach((step, i) => {
+          formatted += `${i + 1}. ${step}\n`;
+        });
+      }
+      
+      formatted += `\n## Save Token for Persistent Access\n`;
+      formatted += `Add this to your MCP configuration:\n`;
+      formatted += `\`\`\`json\n`;
+      formatted += `{\n`;
+      formatted += `  "env": { "POLYDEV_USER_TOKEN": "${result.token}" }\n`;
+      formatted += `}\n`;
+      formatted += `\`\`\`\n`;
+    } else {
+      formatted += `# Polydev Login\n\n`;
+      
+      if (result.error === 'timeout') {
+        formatted += `## Timeout\n`;
+        formatted += `${result.message}\n\n`;
+        
+        if (result.auth_url) {
+          formatted += `## Complete Manually\n`;
+          formatted += `1. Open: ${result.auth_url}\n`;
+          formatted += `2. Enter code: **${result.user_code}**\n`;
+          formatted += `3. Run login again after completing\n`;
+        }
+      } else {
+        formatted += `## Error\n`;
+        formatted += `${result.message}\n\n`;
+        
+        if (result.manual_setup_url) {
+          formatted += `## Manual Setup\n`;
+          formatted += `Visit: ${result.manual_setup_url}\n`;
+          formatted += `Generate a token and add it to your MCP configuration.\n`;
+        }
+      }
+    }
+
+    return formatted;
+  }
+
   formatResponse(toolName, result) {
     switch (toolName) {
       case 'get_auth_status':
         return this.formatAuthStatusResponse(result);
+      
+      case 'login':
+        return this.formatLoginResponse(result);
       
       case 'get_perspectives':
         return this.formatPerspectivesResponse(result);

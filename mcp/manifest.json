@@ -82,6 +82,69 @@
       ]
     },
     {
+      "name": "login",
+      "description": "Authenticate with Polydev by opening your browser. Automatically configures your MCP token after successful login. Use this for a seamless signup/login experience - no manual token copying required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "open_browser": {
+            "type": "boolean",
+            "description": "Whether to automatically open the browser (default: true)",
+            "default": true
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "description": "How long to wait for authentication (default: 300 = 5 minutes)",
+            "minimum": 30,
+            "maximum": 600,
+            "default": 300
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether authentication was successful"
+          },
+          "user_email": {
+            "type": "string",
+            "description": "Authenticated user's email"
+          },
+          "token": {
+            "type": "string",
+            "description": "MCP access token (save this for future use)"
+          },
+          "credits_remaining": {
+            "type": "integer",
+            "description": "Available credits"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable status message"
+          },
+          "auth_url": {
+            "type": "string",
+            "description": "URL to open if browser didn't open automatically"
+          }
+        }
+      },
+      "examples": [
+        {
+          "description": "Login with browser auto-open",
+          "input": {},
+          "output": {
+            "success": true,
+            "user_email": "user@example.com",
+            "token": "polydev_abc123...",
+            "credits_remaining": 500,
+            "message": "Successfully authenticated! Token has been saved."
+          }
+        }
+      ]
+    },
+    {
       "name": "get_perspectives",
       "description": "When stuck in agentic workflows, get diverse perspectives from multiple LLMs to overcome roadblocks. All models use Polydev-managed API keys - just configure once in dashboard.",
       "inputSchema": {
