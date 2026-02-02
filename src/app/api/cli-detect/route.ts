@@ -40,7 +40,16 @@ async function executeCommand(command: string, args: string[], timeout = 10000):
         // Ensure CLI tools don't try to open browsers or expect TTY
         NO_BROWSER: '1',
         CI: '1',
-        TERM: 'dumb'
+        TERM: 'dumb',
+        // Additional environment variables to prevent browser opening
+        BROWSER: 'echo',  // Redirect browser opening to echo (no-op)
+        GEMINI_NO_BROWSER: '1',  // Gemini-specific flag
+        GOOGLE_NO_BROWSER: '1',  // Google-specific flag
+        HEADLESS: '1',
+        DISPLAY: '',  // Prevent X11 browser opening
+        // Prevent interactive prompts
+        NONINTERACTIVE: '1',
+        DEBIAN_FRONTEND: 'noninteractive'
       },
       detached: false
     })
@@ -380,7 +389,51 @@ async function detectGeminiCli(): Promise<CLIValidationResult> {
 
     const version = versionResult.stdout?.trim() || 'Gemini CLI'
 
-    // Check authentication
+    // SAFER APPROACH: First check for auth config files before running auth commands
+    // Gemini CLI stores credentials in ~/.config/gemini-cli/ or ~/.gemini/
+    const homeDir = process.env.HOME || process.env.USERPROFILE || ''
+    const configPaths = [
+      `${homeDir}/.config/gemini-cli/credentials.json`,
+      `${homeDir}/.config/gemini-cli/tokens.json`,
+      `${homeDir}/.gemini/credentials.json`,
+      `${homeDir}/.config/gcloud/application_default_credentials.json`
+    ]
+    
+    // Check if any auth config file exists
+    let hasConfigFile = false
+    for (const configPath of configPaths) {
+      try {
+        const fs = await import('fs')
+        if (fs.existsSync(configPath)) {
+          hasConfigFile = true
+          console.log(`[Gemini CLI] Found auth config at: ${configPath}`)
+          break
+        }
+      } catch (e) {
+        // File check failed, continue
+      }
+    }
+
+    // If no config file found, don't run auth commands that might trigger OAuth
+    if (!hasConfigFile) {
+      console.log('[Gemini CLI] No auth config file found, skipping auth status check to avoid OAuth trigger')
+      return {
+        provider: 'gemini_cli',
+        status: 'unavailable',
+        message: 'Gemini CLI not authenticated. Run: gemini auth login',
+        cli_version: version,
+        authenticated: false,
+        issue_type: 'not_authenticated',
+        solutions: [
+          'Run: gemini auth login',
+          'Follow browser authentication prompts',
+          'Ensure you have a Google account with Gemini access'
+        ],
+        auth_command: 'gemini auth login'
+      }
+    }
+
+    // Config file exists, safe to check auth status
     const authResult = await executeCommand('gemini', ['auth', 'status'], 5000)
     
     console.log('Gemini auth check result:', {
@@ -448,33 +501,22 @@ async function detectGeminiCli(): Promise<CLIValidationResult> {
       }
     }
 
-    // Fallback: try running 'gemini auth' without arguments
-    const authCheck = await executeCommand('gemini', ['auth'], 3000)
-    if (authCheck.success) {
-      const authOutput = (authCheck.stdout || '').toLowerCase()
-      if (authOutput.includes('logged in') || authOutput.includes('authenticated')) {
-        return {
-          provider: 'gemini_cli',
-          status: 'available',
-          message: 'Gemini CLI authenticated and ready',
-          cli_version: version,
-          authenticated: true
-        }
-      }
-    }
+    // REMOVED: Fallback that ran 'gemini auth' without arguments
+    // This was triggering OAuth flow. Instead, just report unknown status.
+    // The user can manually run 'gemini auth login' if needed.
 
-    // Default: status unknown
+    // Default: status unknown - don't try additional auth commands that might trigger OAuth
     return {
       provider: 'gemini_cli',
       status: 'unavailable',
-      message: 'Gemini CLI authentication status unknown',
+      message: 'Gemini CLI authentication status unknown. Please run: gemini auth login',
       cli_version: version,
       authenticated: false,
-      issue_type: 'environment_issue',
+      issue_type: 'not_authenticated',
       solutions: [
-        'Try: gemini auth login',
-        'Check: gemini auth status',
-        'Ensure you have a Google account with Gemini access'
+        'Run: gemini auth login',
+        'Follow browser authentication prompts',
+        'Then verify with: gemini auth status'
       ],
       auth_command: 'gemini auth login'
     }
