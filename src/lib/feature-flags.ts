@@ -3,42 +3,44 @@
  *
  * These flags control which features are enabled in the application.
  * - Open-source/self-hosted: Most features disabled by default
- * - Hosted (polydev.ai): All features enabled
+ * - Hosted (polydev.ai): All features enabled automatically when IS_HOSTED=true
  *
- * Set these in your .env.local file:
+ * For hosted version, just set:
+ * NEXT_PUBLIC_IS_HOSTED=true
  *
+ * For self-hosted, set individual flags:
  * NEXT_PUBLIC_CREDITS_ENABLED=true
  * NEXT_PUBLIC_CHAT_ENABLED=true
- * NEXT_PUBLIC_SUBSCRIPTION_ENABLED=true
- * NEXT_PUBLIC_ADMIN_ENABLED=true
+ * etc.
  */
-
-// Credits system - purchase and track credits
-export const CREDITS_ENABLED = process.env.NEXT_PUBLIC_CREDITS_ENABLED === 'true'
-
-// Chat interface - multi-model chat UI
-export const CHAT_ENABLED = process.env.NEXT_PUBLIC_CHAT_ENABLED === 'true'
-
-// Subscription system - Stripe integration, tiers
-export const SUBSCRIPTION_ENABLED = process.env.NEXT_PUBLIC_SUBSCRIPTION_ENABLED === 'true'
-
-// Admin panel - user management, analytics
-export const ADMIN_ENABLED = process.env.NEXT_PUBLIC_ADMIN_ENABLED === 'true'
-
-// VM/Browser features - Firecracker VMs
-export const VM_ENABLED = process.env.NEXT_PUBLIC_VM_ENABLED === 'true'
-
-// Referral system
-export const REFERRALS_ENABLED = process.env.NEXT_PUBLIC_REFERRALS_ENABLED === 'true'
-
-// Remote CLI features
-export const REMOTE_CLI_ENABLED = process.env.NEXT_PUBLIC_REMOTE_CLI_ENABLED === 'true'
 
 /**
  * Check if running in hosted mode (polydev.ai)
- * When hosted, all premium features are available
+ * When hosted, all premium features are automatically enabled
  */
 export const IS_HOSTED = process.env.NEXT_PUBLIC_IS_HOSTED === 'true'
+
+// Credits system - purchase and track credits
+// Enabled on hosted OR if explicitly enabled
+export const CREDITS_ENABLED = IS_HOSTED || process.env.NEXT_PUBLIC_CREDITS_ENABLED === 'true'
+
+// Chat interface - multi-model chat UI
+export const CHAT_ENABLED = IS_HOSTED || process.env.NEXT_PUBLIC_CHAT_ENABLED === 'true'
+
+// Subscription system - Stripe integration, tiers
+export const SUBSCRIPTION_ENABLED = IS_HOSTED || process.env.NEXT_PUBLIC_SUBSCRIPTION_ENABLED === 'true'
+
+// Admin panel - user management, analytics
+export const ADMIN_ENABLED = IS_HOSTED || process.env.NEXT_PUBLIC_ADMIN_ENABLED === 'true'
+
+// VM/Browser features - Firecracker VMs
+export const VM_ENABLED = IS_HOSTED || process.env.NEXT_PUBLIC_VM_ENABLED === 'true'
+
+// Referral system
+export const REFERRALS_ENABLED = IS_HOSTED || process.env.NEXT_PUBLIC_REFERRALS_ENABLED === 'true'
+
+// Remote CLI features
+export const REMOTE_CLI_ENABLED = IS_HOSTED || process.env.NEXT_PUBLIC_REMOTE_CLI_ENABLED === 'true'
 
 /**
  * Helper to check if a feature is enabled
