@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FeatureGate } from '@/components/FeatureGate'
 import {
   Zap,
   TrendingUp,
@@ -61,7 +62,7 @@ const PLAN_NAMES: Record<string, string> = {
   pro: 'Pro Plan (Legacy)'
 }
 
-export default function CreditsPage() {
+function CreditsContent() {
   const [quotaData, setQuotaData] = useState<QuotaData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -568,5 +569,13 @@ export default function CreditsPage() {
         </Card>
       )}
     </div>
+  )
+}
+
+export default function CreditsPage() {
+  return (
+    <FeatureGate feature="credits">
+      <CreditsContent />
+    </FeatureGate>
   )
 }

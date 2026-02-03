@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboardData } from '../../hooks/useDashboardData'
+import { CREDITS_ENABLED } from '@/lib/feature-flags'
 import {
   MessageSquare, Zap, DollarSign, Database,
   Activity, Clock, CheckCircle, TrendingUp,
@@ -279,7 +280,7 @@ export default function Dashboard() {
 
   // PERFORMANCE: Parallelize quota and initial logs fetch on mount
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchData = async () => {
       if (!user) return
       setLogsLoading(true)
       try {
@@ -309,7 +310,7 @@ export default function Dashboard() {
         setLogsLoading(false)
       }
     }
-    fetchInitialData()
+    fetchData()
   }, [user, logsFilter])
 
   // Refresh data periodically
@@ -453,8 +454,9 @@ export default function Dashboard() {
         </div>
 
         {/* Credits & Quota Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-          {/* Credits Balance Card */}
+        <div className={`grid grid-cols-1 ${CREDITS_ENABLED ? 'lg:grid-cols-2' : ''} gap-4 mb-8`}>
+          {/* Credits Balance Card - Only show when credits enabled */}
+          {CREDITS_ENABLED && (
           <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md transition-all">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -512,6 +514,7 @@ export default function Dashboard() {
               </div>
             </div>
           </AnimatedCard>
+          )}
 
           {/* Models Used Card */}
           <AnimatedCard className="bg-white border border-slate-200 rounded-xl p-6 hover:shadow-md transition-shadow">

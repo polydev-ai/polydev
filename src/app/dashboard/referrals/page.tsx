@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
+import { FeatureGate } from '@/components/FeatureGate'
 import {
   Users,
   Copy,
@@ -57,7 +58,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
 }
 
-export default function ReferralsPage() {
+function ReferralsContent() {
   const [stats, setStats] = useState<ReferralStats>({
     totalReferrals: 0,
     pendingReferrals: 0,
@@ -495,5 +496,14 @@ export default function ReferralsPage() {
       </Tabs>
       </motion.div>
     </motion.div>
+  )
+}
+
+
+export default function ReferralsPage() {
+  return (
+    <FeatureGate feature="referrals">
+      <ReferralsContent />
+    </FeatureGate>
   )
 }

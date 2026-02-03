@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { FeatureGate } from '@/components/FeatureGate'
 import {
   CreditCard,
   MessageSquare,
@@ -192,7 +193,7 @@ function getProviderAbbrev(modelName: string): string {
   return modelName.substring(0, 2).toUpperCase()
 }
 
-export default function SubscriptionPage() {
+function SubscriptionContent() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [messageUsage, setMessageUsage] = useState<MessageUsage | null>(null)
   const [credits, setCredits] = useState<Credits | null>(null)
@@ -959,5 +960,13 @@ export default function SubscriptionPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function SubscriptionPage() {
+  return (
+    <FeatureGate feature="subscription">
+      <SubscriptionContent />
+    </FeatureGate>
   )
 }

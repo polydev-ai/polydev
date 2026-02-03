@@ -2,8 +2,9 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { FeatureGate } from '@/components/FeatureGate'
 
-export default function ChatIndex() {
+function ChatContent() {
   const router = useRouter()
 
   useEffect(() => {
@@ -19,5 +20,13 @@ export default function ChatIndex() {
         <p className="text-slate-600">Starting new chat...</p>
       </div>
     </div>
+  )
+}
+
+export default function ChatIndex() {
+  return (
+    <FeatureGate feature="chat">
+      <ChatContent />
+    </FeatureGate>
   )
 }
