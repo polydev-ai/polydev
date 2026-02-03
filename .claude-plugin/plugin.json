@@ -1,0 +1,23 @@
+{
+  "name": "polydev-ai",
+  "version": "1.8.72",
+  "description": "Multi-model AI perspectives for coding - query GPT-5, Claude, Gemini, and Grok simultaneously to get diverse expert opinions on your code questions",
+  "author": {
+    "name": "Polydev AI",
+    "email": "ghanta.v.subrhmanyam@gmail.com",
+    "url": "https://polydev.ai"
+  },
+  "homepage": "https://polydev.ai",
+  "repository": "https://github.com/polydev-ai/polydev",
+  "license": "MIT",
+  "keywords": ["ai", "multi-model", "perspectives", "gpt", "claude", "gemini", "grok", "mcp"],
+  "mcpServers": {
+    "polydev": {
+      "command": "npx",
+      "args": ["-y", "polydev-ai"],
+      "env": {
+        "POLYDEV_USER_TOKEN": "${POLYDEV_USER_TOKEN}"
+      }
+    }
+  }
+}
