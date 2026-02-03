@@ -1,7 +1,7 @@
 # Polydev
 
 <p align="center">
-  <img src="public/logo.png" alt="Polydev Logo" width="120" />
+  <img src="https://raw.githubusercontent.com/polydev-ai/polydev/main/public/logo.png" alt="Polydev Logo" width="120" />
 </p>
 
 <p align="center">
