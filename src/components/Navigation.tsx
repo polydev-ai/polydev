@@ -9,6 +9,7 @@ import { createClient } from '../app/utils/supabase/client'
 import PolydevLogo from './PolydevLogo'
 import { EncryptionStatus } from './EncryptionStatus'
 import { Coins, HelpCircle } from 'lucide-react'
+import { CREDITS_ENABLED, CHAT_ENABLED, SUBSCRIPTION_ENABLED, REFERRALS_ENABLED } from '../lib/feature-flags'
 
 interface UserProfile {
   id: string
@@ -96,7 +97,7 @@ export default function Navigation() {
 
   const authenticatedNavigation = [
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Chat', href: '/chat' },
+    ...(CHAT_ENABLED ? [{ name: 'Chat', href: '/chat' }] : []),
     { name: 'Models', href: '/dashboard/models' },
     { name: 'Connect IDE', href: '/dashboard/mcp-tokens' },
     { name: 'Activity', href: '/dashboard/activity' },
@@ -156,16 +157,18 @@ export default function Navigation() {
             ) : isAuthenticated ? (
               <>
                 {/* Credits Balance - Prominent Display */}
-                <Link
-                  href="/dashboard/subscription"
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-sm font-medium transition-colors border border-amber-200"
-                >
-                  <Coins className="w-4 h-4" />
-                  <span>
-                    {creditsLoading ? '...' : `${(balance.balance + balance.promotionalBalance).toFixed(0)}`}
-                  </span>
-                  <span className="text-amber-500 text-xs">credits</span>
-                </Link>
+                {CREDITS_ENABLED && (
+                  <Link
+                    href="/dashboard/subscription"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-sm font-medium transition-colors border border-amber-200"
+                  >
+                    <Coins className="w-4 h-4" />
+                    <span>
+                      {creditsLoading ? '...' : `${(balance.balance + balance.promotionalBalance).toFixed(0)}`}
+                    </span>
+                    <span className="text-amber-500 text-xs">credits</span>
+                  </Link>
+                )}
                 {/* Help/Setup Guide */}
                 <Link
                   href="/docs"
@@ -229,20 +232,24 @@ export default function Navigation() {
                         >
                           Usage & Analytics
                         </Link>
-                        <Link
-                          href="/dashboard/subscription"
-                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                          onClick={() => setUserDropdownOpen(false)}
-                        >
-                          👑 Subscription
-                        </Link>
-                        <Link
-                          href="/dashboard/referrals"
-                          className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                          onClick={() => setUserDropdownOpen(false)}
-                        >
-                          🎁 Referrals
-                        </Link>
+                        {SUBSCRIPTION_ENABLED && (
+                          <Link
+                            href="/dashboard/subscription"
+                            className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                            onClick={() => setUserDropdownOpen(false)}
+                          >
+                            👑 Subscription
+                          </Link>
+                        )}
+                        {REFERRALS_ENABLED && (
+                          <Link
+                            href="/dashboard/referrals"
+                            className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                            onClick={() => setUserDropdownOpen(false)}
+                          >
+                            🎁 Referrals
+                          </Link>
+                        )}
                         <Link
                           href="/settings"
                           className="block px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -371,13 +378,15 @@ export default function Navigation() {
                     >
                       Connect IDE
                     </Link>
-                    <Link
-                      href="/dashboard/subscription"
-                      onClick={() => setIsOpen(false)}
-                      className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                    >
-                      👑 Subscription
-                    </Link>
+                    {SUBSCRIPTION_ENABLED && (
+                      <Link
+                        href="/dashboard/subscription"
+                        onClick={() => setIsOpen(false)}
+                        className="block px-3 py-2 text-base font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                      >
+                        👑 Subscription
+                      </Link>
+                    )}
                     <Link
                       href="/settings"
                       onClick={() => setIsOpen(false)}
