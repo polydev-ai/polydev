@@ -150,8 +150,9 @@ function CLIAuthContent() {
           <div className="border border-gray-200 rounded-lg p-8">
             {/* Header */}
             <div className="text-center mb-8">
-              <div className="flex justify-center mb-4">
-                <PolydevLogo size={48} className="text-black" />
+              <div className="flex justify-center items-center gap-1 mb-4">
+                <PolydevLogo size={56} className="text-black" />
+                <span className="text-3xl font-bold text-black -ml-2">Polydev</span>
               </div>
               <h1 className="text-2xl font-bold text-black mb-2">
                 Connect to Polydev
@@ -210,8 +211,9 @@ function CLIAuthContent() {
         <div className="border border-gray-200 rounded-lg p-8">
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="flex justify-center mb-4">
-              <PolydevLogo size={40} className="text-black" />
+            <div className="flex justify-center items-center gap-1 mb-4">
+              <PolydevLogo size={56} className="text-black" />
+              <span className="text-3xl font-bold text-black -ml-2">Polydev</span>
             </div>
             <h1 className="text-2xl font-bold text-black mb-2">
               {createdToken ? 'Token Created' : 'Welcome Back'}
