@@ -17,6 +17,27 @@
 
 ---
 
+## 🚀 One-Command Install
+
+### Claude Code
+```sh
+claude mcp add polydev -- npx -y polydev-ai@latest
+```
+
+### Cursor / Windsurf / Cline
+```sh
+npx polydev-ai@latest
+```
+
+### OpenAI Codex CLI
+```sh
+npx polydev-ai@latest
+```
+
+> Get your token at **[polydev.ai/dashboard/mcp-tokens](https://polydev.ai/dashboard/mcp-tokens)**
+
+---
+
 ## Why Polydev?
 
 **Stop copy-pasting between ChatGPT, Claude, and Gemini.** Get all their perspectives in your IDE with one request.
@@ -47,39 +68,48 @@ When your AI agent gets stuck, Polydev consults multiple frontier models simulta
 
 Get started instantly at **[polydev.ai](https://polydev.ai)**
 
-```bash
-# Install the MCP server
+**Step 1:** Install the MCP server
+```sh
 npx polydev-ai@latest
+```
 
-# Get your token from polydev.ai/dashboard/mcp-tokens
+**Step 2:** Set your token (get it from [polydev.ai/dashboard/mcp-tokens](https://polydev.ai/dashboard/mcp-tokens))
+```sh
 export POLYDEV_USER_TOKEN="pd_your_token_here"
 ```
 
 ### Option 2: Self-Host with Your Own API Keys
 
-Clone this repo and bring your own API keys:
-
-```bash
+**Step 1:** Clone and install
+```sh
 git clone https://github.com/polydev-ai/polydev.git
-cd polydev
-npm install
+```
+```sh
+cd polydev && npm install
+```
+
+**Step 2:** Configure environment
+```sh
 cp .env.example .env.local
-# Add your API keys to .env.local
+```
+
+**Step 3:** Add your API keys to `.env.local` and run
+```sh
 npm run dev
 ```
 
 ---
 
-## IDE Setup
+## IDE Configuration
 
 ### Claude Code
 
-```bash
+**One command:**
+```sh
 claude mcp add polydev -- npx -y polydev-ai@latest
 ```
 
-Or add to `~/.claude.json`:
-
+**Or add to `~/.claude.json`:**
 ```json
 {
   "mcpServers": {
@@ -96,8 +126,7 @@ Or add to `~/.claude.json`:
 
 ### Cursor / Windsurf / Cline
 
-Add to your MCP config:
-
+**Add to your MCP config (usually `~/.cursor/mcp.json` or similar):**
 ```json
 {
   "mcpServers": {
@@ -114,8 +143,7 @@ Add to your MCP config:
 
 ### OpenAI Codex CLI
 
-Add to `~/.codex/config.toml`:
-
+**Add to `~/.codex/config.toml`:**
 ```toml
 [mcp_servers.polydev]
 command = "npx"
@@ -135,7 +163,7 @@ session_timeout = 600
 
 Once connected, your agent can call:
 
-```typescript
+```json
 {
   "tool": "get_perspectives",
   "arguments": {
@@ -177,7 +205,9 @@ Polydev can route requests through your authenticated CLI sessions — your subs
 
 ### Environment Variables
 
-```bash
+Create a `.env.local` file:
+
+```sh
 # Database
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
@@ -192,15 +222,13 @@ XAI_API_KEY=...
 
 ### Database Setup
 
-```bash
-# Apply migrations
-cd supabase
-supabase db push
+```sh
+cd supabase && supabase db push
 ```
 
 ### Run
 
-```bash
+```sh
 npm run dev
 ```
 
@@ -242,11 +270,24 @@ polydev/
 
 Contributions are welcome! Please read our contributing guidelines before submitting PRs.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+```sh
+# Fork the repository, then:
+git clone https://github.com/YOUR_USERNAME/polydev.git
+```
+```sh
+cd polydev && npm install
+```
+```sh
+git checkout -b feature/amazing-feature
+```
+```sh
+git commit -m 'Add amazing feature'
+```
+```sh
+git push origin feature/amazing-feature
+```
+
+Then open a Pull Request.
 
 ---
 
