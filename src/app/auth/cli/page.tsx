@@ -8,9 +8,11 @@ import PolydevLogo from '../../../components/PolydevLogo'
 
 interface Token {
   id: string
-  name: string
-  token: string
+  token_name: string
+  token_preview: string
+  full_token?: string
   created_at: string
+  active: boolean
 }
 
 function CLIAuthContent() {
@@ -22,6 +24,7 @@ function CLIAuthContent() {
   const [copied, setCopied] = useState(false)
   const [copiedCommand, setCopiedCommand] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || 'claude-code'
@@ -37,14 +40,12 @@ function CLIAuthContent() {
       setUser(user)
 
       if (user) {
-        // Fetch existing tokens
-        const { data: tokensData } = await supabase
-          .from('api_tokens')
-          .select('id, name, token, created_at')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-
-        setTokens(tokensData || [])
+        // Fetch existing tokens via API
+        const response = await fetch('/api/mcp/tokens')
+        if (response.ok) {
+          const data = await response.json()
+          setTokens(data.tokens || [])
+        }
       }
     } catch (error) {
       console.error('Error checking user:', error)
@@ -70,28 +71,30 @@ function CLIAuthContent() {
   const createToken = async () => {
     if (!user) return
     setIsCreating(true)
+    setError(null)
 
     try {
-      // Generate a new token
-      const tokenValue = `pd_${crypto.randomUUID().replace(/-/g, '')}`
-
-      const { data, error } = await supabase
-        .from('api_tokens')
-        .insert({
-          user_id: user.id,
-          name: newTokenName || 'CLI Token',
-          token: tokenValue,
-          type: 'standard'
+      const response = await fetch('/api/mcp/tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          token_name: newTokenName || 'CLI Token',
+          expires_in_days: 365
         })
-        .select()
-        .single()
+      })
 
-      if (error) throw error
+      const data = await response.json()
 
-      setCreatedToken(tokenValue)
-      setTokens([data, ...tokens])
-    } catch (error: any) {
-      console.error('Error creating token:', error)
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create token')
+      }
+
+      // The API returns the full token only once
+      setCreatedToken(data.api_key)
+      setTokens([data.token, ...tokens])
+    } catch (err: any) {
+      console.error('Error creating token:', err)
+      setError(err.message || 'Failed to create token')
     } finally {
       setIsCreating(false)
     }
@@ -161,7 +164,7 @@ function CLIAuthContent() {
                 className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-slate-900 hover:bg-slate-950 border border-slate-700 rounded-xl transition-all duration-200"
               >
                 <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
-                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12z"/>
                 </svg>
                 <span className="text-sm font-semibold text-white">
                   Continue with GitHub
@@ -180,7 +183,9 @@ function CLIAuthContent() {
   }
 
   // Authenticated - show token
-  const displayToken = createdToken || (tokens.length > 0 ? tokens[0].token : null)
+  // Use createdToken if just created, otherwise try to get full_token from existing tokens
+  const displayToken = createdToken || (tokens.length > 0 && tokens[0].full_token ? tokens[0].full_token : null)
+  const hasExistingToken = tokens.length > 0
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-4">
@@ -189,19 +194,36 @@ function CLIAuthContent() {
           {/* Success Header */}
           <div className="text-center mb-6">
             <div className="flex justify-center mb-4">
-              <div className="bg-green-500/10 p-3 rounded-full">
-                <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+              <div className={`${createdToken ? 'bg-green-500/10' : 'bg-amber-500/10'} p-3 rounded-full`}>
+                {createdToken ? (
+                  <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <PolydevLogo size={32} className="text-amber-500" />
+                )}
               </div>
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">
               {createdToken ? 'Token Created!' : 'Welcome Back!'}
             </h1>
             <p className="text-slate-400 text-sm">
-              {displayToken ? 'Copy your token below to connect Claude Code' : 'Create a token to get started'}
+              {createdToken 
+                ? 'Copy your token below - it won\'t be shown again!' 
+                : hasExistingToken && !displayToken
+                  ? 'You have existing tokens. Create a new one or manage them in the dashboard.'
+                  : displayToken 
+                    ? 'Copy your token below to connect Claude Code' 
+                    : 'Create a token to get started'}
             </p>
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
 
           {displayToken ? (
             <>
