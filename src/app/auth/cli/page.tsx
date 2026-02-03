@@ -25,14 +25,30 @@ function CLIAuthContent() {
   const [copiedCommand, setCopiedCommand] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [redirecting, setRedirecting] = useState(false)
 
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || 'claude-code'
+  const callbackUrl = searchParams.get('callback')
   const supabase = createClient()
 
   useEffect(() => {
     checkUser()
   }, [])
+
+  // Handle callback redirect when we have a token
+  useEffect(() => {
+    if (callbackUrl && !redirecting) {
+      const tokenToSend = createdToken || (tokens.length > 0 && tokens[0].full_token ? tokens[0].full_token : null)
+      if (tokenToSend) {
+        setRedirecting(true)
+        // Redirect to callback with token
+        const url = new URL(callbackUrl)
+        url.searchParams.set('token', tokenToSend)
+        window.location.href = url.toString()
+      }
+    }
+  }, [callbackUrl, createdToken, tokens, redirecting])
 
   const checkUser = async () => {
     try {
@@ -55,10 +71,17 @@ function CLIAuthContent() {
 
   const handleOAuthSignIn = async (provider: 'google' | 'github') => {
     try {
+      // Preserve callback URL through OAuth flow
+      const redirectParams = new URLSearchParams()
+      redirectParams.set('redirect', redirect)
+      if (callbackUrl) {
+        redirectParams.set('callback', callbackUrl)
+      }
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/cli?redirect=${redirect}`
+          redirectTo: `${window.location.origin}/auth/cli?${redirectParams.toString()}`
         }
       })
       if (error) throw error

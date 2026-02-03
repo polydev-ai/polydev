@@ -23,7 +23,8 @@
   "main": "mcp/stdio-wrapper.js",
   "bin": {
     "polydev-stdio": "mcp/stdio-wrapper.js",
-    "polydev-ai": "mcp/stdio-wrapper.js"
+    "polydev-ai": "mcp/stdio-wrapper.js",
+    "polydev-login": "mcp/login.js"
   },
   "files": [
     "mcp/",

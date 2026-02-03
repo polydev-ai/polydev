@@ -1,0 +1,38 @@
+{
+  "manifest_version": "0.3",
+  "name": "polydev-ai",
+  "display_name": "Polydev AI",
+  "version": "1.8.72",
+  "description": "Query GPT-5, Claude, Gemini, and Grok simultaneously through one MCP server",
+  "author": {
+    "name": "Polydev AI",
+    "email": "ghanta.v.subrhmanyam@gmail.com",
+    "url": "https://polydev.ai"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/polydev-ai/polydev"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "mcp/stdio-wrapper.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/mcp/stdio-wrapper.js"]
+    }
+  },
+  "tools": [
+    {
+      "name": "get_perspectives",
+      "description": "Get multiple AI model perspectives on a coding question or problem"
+    }
+  ],
+  "user_config": {
+    "polydev_user_token": {
+      "type": "string",
+      "title": "Polydev User Token",
+      "description": "Your Polydev API token from polydev.ai/dashboard/mcp-tokens",
+      "required": true
+    }
+  }
+}

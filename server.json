@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.backspacevenkat/perspectives",
-  "description": "Query GPT 5.2, Claude Opus 4.5, Gemini 3, Grok 4.1 simultaneously for AI perspectives",
+  "name": "io.github.polydev-ai/polydev",
+  "description": "Query GPT-5, Claude, Gemini, and Grok simultaneously through one MCP server",
   "repository": {
-    "url": "https://github.com/polydev-ai/perspectives-mcp",
+    "url": "https://github.com/polydev-ai/polydev",
     "source": "github"
   },
-  "version": "1.8.70",
+  "version": "1.8.72",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "polydev-ai",
-      "version": "1.8.70",
+      "version": "1.8.72",
       "transport": {
         "type": "stdio"
       },
