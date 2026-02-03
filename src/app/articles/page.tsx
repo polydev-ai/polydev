@@ -3,10 +3,20 @@
 import React from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight, FileText, Zap, Code, MessageSquare, Terminal, Puzzle, Download } from 'lucide-react'
+import { ArrowLeft, ArrowRight, FileText, Zap, Code, MessageSquare, Terminal, Puzzle, Download, Github } from 'lucide-react'
 
 // Article data - add new articles here
 const articles = [
+  {
+    slug: 'open-source',
+    category: 'Open Source',
+    date: 'January 2026',
+    title: 'Polydev is Now Open Source',
+    description: 'Self-host Polydev with your own API keys. Get multi-model AI perspectives for your coding agents without any external dependencies.',
+    icon: Github,
+    featured: true,
+    tags: ['Open Source', 'Self-Hosted', 'GitHub'],
+  },
   {
     slug: 'swe-bench-paper',
     category: 'Research',
