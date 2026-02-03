@@ -9,9 +9,18 @@ build/
 dist/
 *.tsbuildinfo
 
-# Environment files
+# Environment files - ALL env files with secrets
+.env
 .env.local
 .env.*.local
+.env.production
+.env.development
+
+# MCP Registry tokens
+.mcpregistry_*
+
+# GitHub secrets
+.github/secrets/
 
 # Debug logs
 npm-debug.log*
@@ -46,3 +55,6 @@ _archive/
 
 # Remotion intro (separate project)
 remotion-intro/
+
+# Smithery local config
+.smithery/
