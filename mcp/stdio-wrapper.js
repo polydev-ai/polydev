@@ -249,7 +249,17 @@ class StdioMCPWrapper {
   constructor() {
     this.userToken = process.env.POLYDEV_USER_TOKEN;
     if (!this.userToken) {
-      console.error('POLYDEV_USER_TOKEN environment variable is required');
+      console.error('\n╔════════════════════════════════════════════════════════════════╗');
+      console.error('║  POLYDEV_USER_TOKEN is not set                                 ║');
+      console.error('╠════════════════════════════════════════════════════════════════╣');
+      console.error('║  Get your free token at:                                       ║');
+      console.error('║  👉 https://polydev.ai/dashboard/mcp-tokens                    ║');
+      console.error('║                                                                ║');
+      console.error('║  Then add to ~/.zshrc or ~/.bashrc:                            ║');
+      console.error('║  export POLYDEV_USER_TOKEN="pd_your_token_here"                ║');
+      console.error('║                                                                ║');
+      console.error('║  Restart your terminal and Claude Code after adding the token ║');
+      console.error('╚════════════════════════════════════════════════════════════════╝\n');
       process.exit(1);
     }
     
