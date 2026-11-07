@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * Polydev CLI Login - Browser-based authentication for Polydev
+ * Polydev CLI - Clean, professional onboarding
+ * Works in: Claude Code, Cursor, Cline, VS Code, any terminal
  *
- * Usage: npx polydev-ai login
- *
- * This script:
- * 1. Starts a local HTTP server to receive the callback
- * 2. Opens the browser to polydev.ai/auth/cli
- * 3. After authentication, receives the token via callback
- * 4. Saves the token to your shell config (~/.zshrc or ~/.bashrc)
+ * Usage (bin: polydev-login; `npx polydev-ai` itself starts the MCP server):
+ *   npx -p polydev-ai polydev-login            # Full setup
+ *   npx -p polydev-ai polydev-login login      # Just login
+ *   npx -p polydev-ai polydev-login status     # Show status
+ *   npx -p polydev-ai polydev-login models     # Open models page
+ *   npx -p polydev-ai polydev-login chatgpt login|logout|status   # ChatGPT plan (same as `polydev-ai chatgpt ...`)
  */
 
 const fs = require('fs');
@@ -17,173 +17,377 @@ const path = require('path');
 const os = require('os');
 const http = require('http');
 const { execFile } = require('child_process');
+const { CLIManager } = require('../lib/cliManager');
+const { ChatGPTPlan, runChatGPTCli, constants: CHATGPT } = require('../lib/chatgptPlan');
+
+// Local CLIs Polydev can ask on this machine (sign-in state comes from each CLI's own status command)
+const CLI_TOOLS = [
+  { id: 'claude_code', name: 'Claude Code', desc: 'Anthropic' },
+  { id: 'codex_cli', name: 'Codex CLI', desc: 'OpenAI' }
+];
 
 const command = process.argv[2];
 
-if (command === 'status') {
-  showStatus();
+// Route commands
+if (command === 'chatgpt') {
+  runChatGPTCli(process.argv.slice(3)).then((code) => process.exit(code));
+} else if (command === 'status') {
+  showFullStatus();
+} else if (command === 'login') {
+  runLogin();
+} else if (command === 'setup') {
+  runFullSetup();
 } else if (command === 'help' || command === '--help' || command === '-h') {
   showHelp();
+} else if (command === 'models') {
+  openModelsPage();
 } else {
-  runLogin();
+  smartOnboarding();
 }
 
 function showHelp() {
   console.log(`
-Polydev AI Login
+Polydev - any model in any agent
 
 Commands:
-  login          Authenticate with Polydev (opens browser)
-  status         Show current authentication status
-  help           Show this help message
+  npx -p polydev-ai polydev-login           Full setup (login + detect local CLIs)
+  npx -p polydev-ai polydev-login login     Sign in via browser
+  npx -p polydev-ai polydev-login status    Show current status
+  npx -p polydev-ai polydev-login models    Open model and API key settings
+  npx -y polydev-ai chatgpt login           Continue with ChatGPT: use your ChatGPT plan
+                                            for OpenAI models (also: logout, status, models)
+  npx -p polydev-ai polydev-login help      Show this help
 
-Usage:
-  npx polydev-ai login     # Opens browser to authenticate
-  npx polydev-ai status    # Check if authenticated
+Polydev is free. Each answer says what paid for it: your ChatGPT plan, Claude Code
+or Codex on this machine, your own API keys, OpenRouter, or the 10 free requests
+each account gets on Polydev's keys.
 
 After login, restart your terminal or run: source ~/.zshrc
+
+Links:
+  Dashboard: https://www.polydev.ai/dashboard
+  Docs:      https://www.polydev.ai/docs
 `);
 }
 
-function showStatus() {
-  loadEnvFile(path.join(os.homedir(), '.polydev.env'));
-  loadEnvFile(path.join(os.homedir(), '.zshrc'));
-
-  const token = process.env.POLYDEV_USER_TOKEN;
-  if (token && token.startsWith('pd_')) {
-    console.log('✓ Authenticated with Polydev');
-    console.log(`  Token: ${token.slice(0, 12)}...${token.slice(-4)}`);
+async function smartOnboarding() {
+  const token = getExistingToken();
+  if (token) {
+    await showFullStatus();
   } else {
-    console.log('✗ Not authenticated');
-    console.log('  Run: npx polydev-ai login');
+    await runFullSetup();
   }
 }
 
-function loadEnvFile(filePath) {
-  try {
-    if (!fs.existsSync(filePath)) return;
-    const content = fs.readFileSync(filePath, 'utf8');
-    const match = content.match(/POLYDEV_USER_TOKEN[=\s]["']?([^"'\n]+)["']?/);
-    if (match && !process.env.POLYDEV_USER_TOKEN) {
-      process.env.POLYDEV_USER_TOKEN = match[1];
+async function runFullSetup() {
+  printHeader();
+
+  // Step 1: Authentication
+  console.log('STEP 1 of 3: Authentication');
+  console.log('─'.repeat(40));
+
+  let token = getExistingToken();
+
+  if (token) {
+    console.log('[OK] Already authenticated');
+    console.log(`    Token: ${token.slice(0, 12)}...${token.slice(-4)}\n`);
+  } else {
+    console.log('[..] Not authenticated - opening browser...\n');
+    token = await runLoginFlow();
+
+    if (!token) {
+      console.log('\n[!] Login cancelled or timed out.');
+      console.log('    Run: npx -p polydev-ai polydev-login login\n');
+      return;
     }
-  } catch (e) {
-    // ignore
   }
+
+  // Step 2: Detect CLI tools
+  console.log('\nSTEP 2 of 3: Local AI Tools');
+  console.log('─'.repeat(40));
+
+  const cliStatus = await detectAllCLIs();
+  printCLIStatus(cliStatus);
+
+  // Step 3: Verify API
+  console.log('\nSTEP 3 of 3: API Connection');
+  console.log('─'.repeat(40));
+
+  const apiStatus = await verifyAPIConnection(token);
+  printAPIStatus(apiStatus);
+
+  // Summary
+  printSetupComplete(token, cliStatus, apiStatus);
+}
+
+function printHeader() {
+  console.log(`
+ ___  ____ _   _ ___  ____ _  _
+ |__] |  | |   |  |  | |__  |  |
+ |    |__| |__ |  |  |___|   \\/
+
+ Any model in any agent
+${'─'.repeat(50)}
+`);
 }
 
 async function runLogin() {
-  console.log('\n🔐 Polydev Authentication\n');
+  console.log('\nPolydev Authentication\n');
+  const token = await runLoginFlow();
 
-  const server = http.createServer((req, res) => {
-    const url = new URL(req.url, `http://localhost`);
+  if (token) {
+    console.log('\n[OK] Authentication successful!');
+    console.log('     Restart your terminal or run: source ~/.zshrc\n');
+  }
+}
 
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204, {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      });
-      res.end();
-      return;
-    }
+function runLoginFlow() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      const url = new URL(req.url, `http://localhost`);
 
-    if (url.pathname === '/callback') {
-      const token = url.searchParams.get('token');
-
-      if (token && token.startsWith('pd_')) {
-        const savedTo = saveToken(token);
-
-        res.writeHead(200, {
-          'Content-Type': 'text/html; charset=utf-8',
-          'Access-Control-Allow-Origin': '*'
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204, {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
         });
-        res.end(`
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Polydev - Authenticated</title>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #fff; }
-    .container { text-align: center; padding: 40px; max-width: 400px; }
-    .logo { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 24px; }
-    .logo svg { width: 48px; height: 48px; }
-    .logo span { font-size: 32px; font-weight: 700; color: #000; }
-    .success-icon { width: 64px; height: 64px; background: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
-    .success-icon svg { width: 32px; height: 32px; }
-    h1 { color: #000; margin-bottom: 16px; font-size: 24px; font-weight: 600; }
-    p { color: #666; margin: 8px 0; font-size: 14px; }
-    code { background: #f5f5f5; padding: 4px 12px; border-radius: 6px; font-size: 13px; color: #000; }
-    .close-msg { margin-top: 32px; color: #999; font-size: 13px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="logo">
-      <svg viewBox="0 0 600 600" fill="#000">
-        <g transform="translate(0,600) scale(0.1,-0.1)">
-          <path d="M2938 4023 c-31 -54 -97 -169 -148 -257 -50 -87 -96 -168 -102 -180 -8 -20 7 -52 112 -232 67 -115 149 -256 182 -314 34 -58 75 -130 93 -160 18 -30 76 -131 130 -225 134 -235 124 -221 140 -198 45 65 306 547 301 558 -13 34 -642 1105 -649 1105 -2 0 -28 -44 -59 -97z"/>
-          <path d="M2305 2933 c-164 -285 -605 -1057 -605 -1059 0 -2 144 -4 320 -4 l320 0 24 38 c13 20 85 143 159 272 74 129 204 357 289 505 85 149 160 280 167 293 l12 22 -324 0 -323 0 -39 -67z"/>
-          <path d="M2678 2418 c5 -7 36 -60 67 -118 32 -58 79 -141 105 -185 26 -44 69 -117 95 -162 l48 -83 653 0 c360 0 654 2 654 3 0 2 -71 127 -159 278 l-159 274 -657 3 c-527 2 -656 0 -647 -10z"/>
-        </g>
-      </svg>
-      <span>Polydev</span>
-    </div>
-    <div class="success-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="20 6 9 17 4 12"></polyline>
-      </svg>
-    </div>
-    <h1>Authenticated!</h1>
-    <p>Token saved to your shell config.</p>
-    <p>Restart your terminal or run:</p>
-    <p><code>source ~/.zshrc</code></p>
-    <p class="close-msg">You can close this window.</p>
-  </div>
-</body>
-</html>
-        `);
-
-        console.log('✓ Token saved successfully!');
-        console.log(`  Saved to: ${savedTo}`);
-        console.log('\n  Restart your terminal or run: source ~/.zshrc\n');
-
-        setTimeout(() => {
-          server.close();
-          process.exit(0);
-        }, 500);
-      } else {
-        res.writeHead(400, { 'Content-Type': 'text/plain' });
-        res.end('Invalid or missing token');
+        res.end();
+        return;
       }
+
+      if (url.pathname === '/callback') {
+        const token = url.searchParams.get('token');
+
+        if (token && token.startsWith('pd_')) {
+          const savedTo = saveToken(token);
+
+          res.writeHead(200, {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(getSuccessHTML());
+
+          console.log(`[OK] Token saved to ${savedTo}`);
+
+          setTimeout(() => {
+            server.close();
+            resolve(token);
+          }, 500);
+        } else {
+          res.writeHead(400, { 'Content-Type': 'text/plain' });
+          res.end('Invalid or missing token');
+        }
+      } else {
+        res.writeHead(404);
+        res.end('Not found');
+      }
+    });
+
+    server.listen(0, 'localhost', () => {
+      const port = server.address().port;
+      const callbackUrl = `http://localhost:${port}/callback`;
+      const authUrl = `https://polydev.ai/auth?callback=${encodeURIComponent(callbackUrl)}&redirect=claude-code`;
+
+      console.log('Opening browser for authentication...');
+      console.log(`If browser doesn\'t open, visit:\n${authUrl}\n`);
+
+      openBrowser(authUrl);
+
+      setTimeout(() => {
+        server.close();
+        resolve(null);
+      }, 5 * 60 * 1000);
+    });
+
+    server.on('error', (err) => {
+      console.error('[!] Server error:', err.message);
+      resolve(null);
+    });
+  });
+}
+
+async function detectAllCLIs() {
+  const results = {};
+  let detected = {};
+  try {
+    detected = await new CLIManager().forceCliDetection();
+  } catch (e) {
+    detected = {};
+  }
+
+  for (const tool of CLI_TOOLS) {
+    const st = detected[tool.id] || {};
+    if (st.available) {
+      const version = (st.version || 'installed').split('\n')[0].substring(0, 30);
+      results[tool.id] = { available: true, authenticated: !!st.authenticated, version, path: st.path, tool };
+      console.log(`[OK] ${tool.name.padEnd(12)} ${version}${st.authenticated ? '' : ' (not signed in)'}`);
     } else {
-      res.writeHead(404);
-      res.end('Not found');
+      results[tool.id] = { available: false, authenticated: false, tool };
+      console.log(`[--] ${tool.name.padEnd(12)} not installed`);
     }
-  });
+  }
 
-  server.listen(0, 'localhost', () => {
-    const port = server.address().port;
-    const callbackUrl = `http://localhost:${port}/callback`;
-    const authUrl = `https://polydev.ai/auth/cli?callback=${encodeURIComponent(callbackUrl)}&redirect=claude-code`;
+  const plan = new ChatGPTPlan().status();
+  if (plan.planEnabled) {
+    console.log(`[OK] ${'ChatGPT plan'.padEnd(12)} ${CHATGPT.TEXT.inUse} for OpenAI models (${CHATGPT.TEXT.manageUsage}: ${CHATGPT.MANAGE_USAGE_URL})`);
+  } else if (plan.signedIn) {
+    console.log(`[--] ${'ChatGPT plan'.padEnd(12)} signed in, plan usage off (run: npx -y polydev-ai chatgpt login)`);
+  } else {
+    console.log(`[--] ${'ChatGPT plan'.padEnd(12)} not connected (${CHATGPT.TEXT.action}: npx -y polydev-ai chatgpt login)`);
+  }
 
-    console.log('Opening browser for authentication...');
-    console.log(`\nIf browser doesn't open, visit:\n${authUrl}\n`);
+  return results;
+}
 
-    openBrowser(authUrl);
+function printCLIStatus(cliStatus) {
+  const available = Object.values(cliStatus).filter(s => s.available);
+  const authenticated = available.filter(s => s.authenticated);
 
-    setTimeout(() => {
-      console.log('\n✗ Login timed out. Please try again.\n');
-      server.close();
-      process.exit(1);
-    }, 5 * 60 * 1000);
-  });
+  if (available.length === 0) {
+    console.log('\n    No local CLI tools detected.');
+    console.log('    Install and sign in to Claude Code or Codex to use them through Polydev.');
+    console.log('    Or connect your ChatGPT plan: npx -y polydev-ai chatgpt login');
+  } else {
+    console.log(`\n    ${available.length} tool(s) found, ${authenticated.length} authenticated`);
+    console.log('    Polydev asks local tools first; calls count against your own plan.');
+  }
+}
 
-  server.on('error', (err) => {
-    console.error('Server error:', err.message);
-    process.exit(1);
-  });
+async function verifyAPIConnection(token) {
+  try {
+    const response = await fetch('https://www.polydev.ai/api/mcp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': 'polydev-cli/1.0.0'
+      },
+      body: JSON.stringify({ action: 'check_status' })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        connected: true,
+        email: data.email,
+        credits: data.credits_remaining,
+        tier: data.subscription_tier || 'Free',
+        models: data.enabled_models || ['GPT-5', 'Gemini', 'Grok', 'GLM']
+      };
+    } else {
+      return { connected: false, error: 'Invalid token' };
+    }
+  } catch (error) {
+    return { connected: false, error: error.message };
+  }
+}
+
+function printAPIStatus(apiStatus) {
+  if (apiStatus.connected) {
+    console.log(`[OK] Connected to Polydev API`);
+    console.log(`    Account: ${apiStatus.email || 'Connected'}`);
+  } else {
+    console.log(`[!] Could not verify API connection`);
+    console.log(`    Error: ${apiStatus.error}`);
+  }
+}
+
+function printSetupComplete(token, cliStatus, apiStatus) {
+  const availableCLIs = Object.values(cliStatus).filter(s => s.available);
+
+  console.log(`
+${'═'.repeat(50)}
+SETUP COMPLETE
+${'═'.repeat(50)}
+
+What's ready:`);
+
+  if (availableCLIs.length > 0) {
+    console.log('\n  Local tools (your own plan):');
+    for (const cli of availableCLIs) {
+      const status = cli.authenticated ? 'ready' : 'needs auth';
+      console.log(`    - ${cli.tool.name} [${status}]`);
+    }
+  }
+
+  if (apiStatus.connected) {
+    console.log('\n  Polydev API:');
+    console.log('    - Your own API keys, plus 10 free requests on Polydev\'s keys');
+  }
+
+  console.log(`
+Next steps:
+
+  1. Restart terminal or run: source ~/.zshrc
+  2. Start your IDE (Claude Code, Cursor, Cline, etc.)
+  3. Use the "ask_model" tool or the /polydev command
+  4. Optional: connect your ChatGPT plan: npx -y polydev-ai chatgpt login
+
+Links:
+  Dashboard: https://www.polydev.ai/dashboard
+  Models:    https://www.polydev.ai/dashboard/models
+`);
+}
+
+async function showFullStatus() {
+  console.log('\nPolydev Status');
+  console.log('─'.repeat(40));
+
+  const token = getExistingToken();
+
+  console.log('\nAuthentication:');
+  if (token) {
+    const apiStatus = await verifyAPIConnection(token);
+    if (apiStatus.connected) {
+      console.log(`  [OK] ${apiStatus.email || 'Authenticated'}`);
+    } else {
+      console.log('  [!] Token found but invalid');
+      console.log('      Run: npx -p polydev-ai polydev-login login');
+    }
+  } else {
+    console.log('  [--] Not authenticated');
+    console.log('       Run: npx -p polydev-ai polydev-login login');
+  }
+
+  console.log('\nLocal AI Tools (calls count against your own plan):');
+  await detectAllCLIs();
+
+  if (token) {
+    console.log('\nAPI models (your own keys; 10 free requests on Polydev\'s keys):');
+    console.log('  Configure: https://www.polydev.ai/dashboard/models');
+  }
+
+  console.log('');
+}
+
+function openModelsPage() {
+  const url = 'https://www.polydev.ai/dashboard/models';
+  console.log(`\nOpening: ${url}\n`);
+  openBrowser(url);
+}
+
+// Utility functions
+function getExistingToken() {
+  if (process.env.POLYDEV_USER_TOKEN) {
+    return process.env.POLYDEV_USER_TOKEN;
+  }
+
+  const locations = [
+    path.join(os.homedir(), '.polydev.env'),
+    path.join(os.homedir(), '.zshrc'),
+    path.join(os.homedir(), '.bashrc')
+  ];
+
+  for (const loc of locations) {
+    if (fs.existsSync(loc)) {
+      const content = fs.readFileSync(loc, 'utf8');
+      const match = content.match(/POLYDEV_USER_TOKEN[=\s]["']?([^"'\n]+)["']?/);
+      if (match) return match[1];
+    }
+  }
+
+  return null;
 }
 
 function saveToken(token) {
@@ -193,9 +397,7 @@ function saveToken(token) {
                  path.join(os.homedir(), '.profile');
 
   let content = '';
-  try {
-    content = fs.readFileSync(rcFile, 'utf8');
-  } catch (e) {}
+  try { content = fs.readFileSync(rcFile, 'utf8'); } catch (e) {}
 
   const lines = content.split('\n').filter(line =>
     !line.trim().startsWith('export POLYDEV_USER_TOKEN') &&
@@ -212,7 +414,6 @@ function saveToken(token) {
 }
 
 function openBrowser(url) {
-  // Use execFile with explicit command and arguments for safety
   const platform = process.platform;
   let cmd, args;
 
@@ -229,8 +430,121 @@ function openBrowser(url) {
 
   execFile(cmd, args, (err) => {
     if (err) {
-      console.log('Could not open browser automatically.');
-      console.log(`Please open this URL manually: ${url}`);
+      console.log('[!] Could not open browser automatically.');
+      console.log(`    Please open: ${url}`);
     }
   });
+}
+
+function getSuccessHTML() {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Polydev - Login Successful</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      display: flex; justify-content: center; align-items: center; 
+      min-height: 100vh; background: #fafafa;
+      padding: 20px;
+    }
+    .container { 
+      text-align: center; padding: 40px; max-width: 480px; width: 100%;
+      background: white; border-radius: 12px; 
+      border: 1px solid #e5e5e5;
+    }
+    .logo { 
+      width: 64px; height: 64px; margin: 0 auto 16px;
+      background: #111; border-radius: 14px; 
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo svg { width: 36px; height: 36px; }
+    .brand { font-size: 24px; font-weight: 700; color: #111; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .tagline { color: #666; font-size: 13px; margin-bottom: 24px; }
+    .success-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #f0fdf4; color: #166534; padding: 10px 20px;
+      border-radius: 6px; font-weight: 600; font-size: 14px;
+      margin-bottom: 28px; border: 1px solid #bbf7d0;
+    }
+    .success-badge svg { width: 18px; height: 18px; }
+    .section { text-align: left; margin-bottom: 20px; }
+    .section-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .api-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .api-item { 
+      padding: 10px; background: #fafafa; border-radius: 6px; 
+      font-size: 12px; color: #333; text-align: center; border: 1px solid #eee;
+    }
+    .steps {
+      background: #fafafa; border-radius: 8px; padding: 14px;
+      margin-bottom: 20px; text-align: left; border: 1px solid #eee;
+    }
+    .step { color: #333; font-size: 12px; margin-bottom: 8px; display: flex; gap: 10px; }
+    .step:last-child { margin-bottom: 0; }
+    .step-num { 
+      width: 18px; height: 18px; background: #111; color: white; 
+      border-radius: 50%; font-size: 10px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    code { background: #eee; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+    .divider { height: 1px; background: #eee; margin: 24px 0; }
+    .action-btn {
+      display: block; width: 100%; padding: 12px 20px;
+      background: #111; color: white; border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      text-decoration: none; margin-bottom: 10px;
+      transition: background 0.2s;
+    }
+    .action-btn:hover { background: #333; }
+    .secondary-btn {
+      display: block; width: 100%; padding: 10px 20px;
+      background: white; color: #333; border: 1px solid #ddd; border-radius: 8px;
+      font-size: 13px; font-weight: 500; cursor: pointer; text-decoration: none;
+    }
+    .secondary-btn:hover { background: #fafafa; }
+    .note { color: #999; font-size: 11px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2 17L12 22L22 17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2 12L12 17L22 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="brand">Polydev</div>
+    <div class="tagline">Any model in any agent</div>
+    
+    <div class="success-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+      </svg>
+      Login Successful
+    </div>
+
+    <div class="section">
+      <div class="section-title">Who pays for the tokens</div>
+      <p class="note">Polydev is free. Your local CLIs and your own API keys pay; each account also gets 10 free requests on Polydev's keys.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step"><span class="step-num">1</span>Restart terminal or run <code>source ~/.zshrc</code></div>
+      <div class="step"><span class="step-num">2</span>Start your IDE (Claude Code, Cursor, etc.)</div>
+      <div class="step"><span class="step-num">3</span>Use <code>get_perspectives</code> tool</div>
+    </div>
+
+    <a href="https://www.polydev.ai/dashboard/models" target="_blank" class="action-btn">
+      Configure API Keys
+    </a>
+    <button onclick="window.close()" class="secondary-btn">Close Window</button>
+    
+    <p class="note">Your token has been saved automatically</p>
+  </div>
+</body>
+</html>`;
 }

@@ -1,10 +1,10 @@
 {
   "name": "polydev-perspectives",
-  "version": "1.4.0",
-  "description": "Multi-model AI perspectives - query GPT 5.2, Claude Opus 4.5, Gemini 3, and Grok 4.1 simultaneously. Get diverse perspectives when stuck or need enhanced reasoning. Achieved 74.6% on SWE-bench Verified.",
+  "version": "1.12.0",
+  "description": "Any model in any agent. Ask AI models from your coding agent and compare the answers. Each answer says what paid for it: your ChatGPT plan, Claude Code or Codex on this machine, your own API key, OpenRouter, or Polydev free requests.",
   "author": "Polydev AI",
-  "license": "MIT",
-  "main": "server.js",
+  "license": "Apache-2.0",
+  "main": "stdio-wrapper.js",
   "mcpVersion": "1.0",
   "capabilities": {
     "tools": true,
@@ -14,13 +14,13 @@
   "tools": [
     {
       "name": "get_auth_status",
-      "description": "Check Polydev authentication status and get setup instructions. Use this first to verify your token is valid or get help setting up Polydev. Works in all IDEs (Claude Desktop, Cursor, Continue, Windsurf, VSCode, etc.).",
+      "description": "Show whether this machine is signed in to Polydev, which sources on this machine are ready (Claude Code, Codex, ChatGPT plan) and the configured models. When this machine is not signed in, it opens Polydev sign-in in the browser.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "user_token": {
             "type": "string",
-            "description": "Polydev user authentication token (optional - checks if provided, shows setup instructions if not)"
+            "description": "Polydev token (starts with pd_). Optional: checks this token if given, otherwise the saved one."
           }
         }
       },
@@ -29,61 +29,58 @@
         "properties": {
           "authenticated": {
             "type": "boolean",
-            "description": "Whether the user is authenticated"
+            "description": "Whether a valid Polydev token is configured"
           },
           "user_email": {
             "type": "string",
-            "description": "User email if authenticated"
-          },
-          "credits_remaining": {
-            "type": "integer",
-            "description": "Credits remaining if authenticated"
-          },
-          "subscription_tier": {
-            "type": "string",
-            "description": "Current subscription tier"
+            "description": "Account email when authenticated"
           },
           "setup_instructions": {
             "type": "object",
-            "description": "Setup instructions if not authenticated"
+            "description": "Setup steps when not authenticated"
           },
           "message": {
             "type": "string",
-            "description": "Human-readable status message"
+            "description": "Human-readable status"
           }
         }
       },
       "examples": [
         {
-          "description": "Check auth status without token",
+          "description": "Check status without a token",
           "input": {},
           "output": {
             "authenticated": false,
             "setup_instructions": {
-              "step_1": "Visit https://polydev.ai to create your free account",
-              "step_2": "Go to https://polydev.ai/dashboard/mcp-tools",
-              "step_3": "Generate your MCP access token",
-              "step_4": "Add the token to your IDE configuration"
+              "step_1": "Run the login tool, which opens https://www.polydev.ai in your browser",
+              "step_2": "Sign in; the token is saved on this machine",
+              "step_3": "Or copy a token from https://www.polydev.ai/dashboard/mcp-tokens and set POLYDEV_USER_TOKEN"
             },
-            "message": "Welcome to Polydev! Get started in 2 minutes."
+            "message": "Not connected. Run the login tool to sign in."
           }
         },
         {
-          "description": "Check auth status with valid token",
-          "input": { "user_token": "polydev_abc123..." },
+          "description": "Check status with a valid token",
+          "input": {
+            "user_token": "pd_..."
+          },
           "output": {
             "authenticated": true,
             "user_email": "user@example.com",
-            "credits_remaining": 9500,
-            "subscription_tier": "Premium",
-            "message": "Ready to use Polydev! You have 9,500 credits remaining."
+            "message": "Connected."
           }
         }
-      ]
+      ],
+      "title": "Polydev status",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
     },
     {
       "name": "login",
-      "description": "Authenticate with Polydev by opening your browser. Automatically configures your MCP token after successful login. Use this for a seamless signup/login experience - no manual token copying required.",
+      "description": "Sign in to Polydev in your browser and save the token on this machine, so you do not copy it by hand. In sandboxes without a browser, pass user_token instead.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -98,6 +95,10 @@
             "minimum": 30,
             "maximum": 600,
             "default": 300
+          },
+          "user_token": {
+            "type": "string",
+            "description": "Polydev token (pd_...). Use this where browser login is unavailable (sandboxes, containers). Get one at https://www.polydev.ai/dashboard/mcp-tokens"
           }
         }
       },
@@ -106,755 +107,350 @@
         "properties": {
           "success": {
             "type": "boolean",
-            "description": "Whether authentication was successful"
+            "description": "Whether sign-in succeeded"
           },
           "user_email": {
             "type": "string",
-            "description": "Authenticated user's email"
-          },
-          "token": {
-            "type": "string",
-            "description": "MCP access token (save this for future use)"
-          },
-          "credits_remaining": {
-            "type": "integer",
-            "description": "Available credits"
+            "description": "Signed-in account email"
           },
           "message": {
             "type": "string",
-            "description": "Human-readable status message"
+            "description": "Human-readable status"
           },
           "auth_url": {
             "type": "string",
-            "description": "URL to open if browser didn't open automatically"
+            "description": "URL to open if the browser did not open"
           }
         }
       },
       "examples": [
         {
-          "description": "Login with browser auto-open",
+          "description": "Log in with the browser",
           "input": {},
           "output": {
             "success": true,
             "user_email": "user@example.com",
-            "token": "polydev_abc123...",
-            "credits_remaining": 500,
-            "message": "Successfully authenticated! Token has been saved."
+            "message": "Login successful. Token saved."
+          }
+        }
+      ],
+      "title": "Sign in to Polydev",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "ask_model",
+      "title": "Ask models",
+      "description": "Send a prompt to one or more AI models and return each answer, labelled with what paid for it. With model or models, those models are asked. Without them, your default set is asked: sources on this machine first (your ChatGPT plan for OpenAI models when connected, then Claude Code and Codex under your own login, never the agent that called it), then models through Polydev with your own API keys, OpenRouter or Polydev free requests.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "The prompt to send. Include the relevant code, errors and constraints.",
+            "minLength": 1
+          },
+          "model": {
+            "type": "string",
+            "description": "Optional: one model ID to ask, for example a model shown by list_models."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "description": "Optional: several model IDs to ask. Without model or models, your default set is asked."
+          },
+          "user_token": {
+            "type": "string",
+            "description": "Polydev token (starts with pd_). Optional when POLYDEV_USER_TOKEN is set or you have run the login tool.",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": true
+      },
+      "examples": [
+        {
+          "description": "Compare approaches",
+          "input": {
+            "prompt": "I'm building a new API and choosing between TypeScript and JavaScript. Give the main trade-offs and a recommendation."
+          }
+        },
+        {
+          "description": "Debug with context",
+          "input": {
+            "prompt": "My React list re-renders on every keystroke. Here is the component: ... What is causing it and how do I fix it?"
+          }
+        },
+        {
+          "description": "Review a design",
+          "input": {
+            "prompt": "Review this microservices design for a payments app. What are the main risks?"
           }
         }
       ]
     },
     {
       "name": "get_perspectives",
-      "description": "When stuck in agentic workflows, get diverse perspectives from multiple LLMs to overcome roadblocks. All models use Polydev-managed API keys - just configure once in dashboard.",
+      "title": "Ask models (old name)",
+      "description": "Old name of ask_model. Same inputs and the same behaviour.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "prompt": {
             "type": "string",
-            "description": "The prompt to get perspectives on",
+            "description": "The prompt to send. Include the relevant code, errors and constraints.",
+            "minLength": 1
+          },
+          "model": {
+            "type": "string",
+            "description": "Optional: one model ID to ask, for example a model shown by list_models."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "description": "Optional: several model IDs to ask. Without model or models, your default set is asked."
+          },
+          "user_token": {
+            "type": "string",
+            "description": "Polydev token (starts with pd_). Optional when POLYDEV_USER_TOKEN is set or you have run the login tool.",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "list_models",
+      "title": "List models",
+      "description": "List the models this user can reach right now and what pays for each: the ChatGPT plan, Claude Code and Codex on this machine, and models through Polydev.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "chatgpt_plan_status",
+      "title": "ChatGPT plan status",
+      "description": "Show whether your ChatGPT plan is connected on this machine for OpenAI models, and how to connect or disconnect it.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "connect_chatgpt_plan",
+      "title": "Continue with ChatGPT",
+      "description": "Continue with ChatGPT: start ChatGPT sign-in so that OpenAI models asked through ask_model use your ChatGPT plan. Returns the sign-in link right away (it also tries to open the browser); call chatgpt_plan_status afterwards for the result. The sign-in and its tokens stay on this machine.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 30,
+            "maximum": 600,
+            "default": 300,
+            "description": "How long the sign-in stays open (default 300)"
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "rank_perspectives",
+      "description": "Rank the answers you got from ask_model, best first, when the user asks for it or agrees. Rankings feed the public leaderboard at https://www.polydev.ai/leaderboard. Pass your own model ID as base_model so the ranking records which model judged.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ranked_models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Model IDs ranked best to worst, exactly as shown in the ask_model output"
+          },
+          "model_scores": {
+            "type": "object",
+            "description": "Optional: a score from 1 to 10 per model ID"
+          },
+          "feedback_text": {
+            "type": "string",
+            "description": "Optional: why you ranked them this way"
+          },
+          "base_model": {
+            "type": "string",
+            "description": "Your own model ID (the model making this ranking)"
+          }
+        },
+        "required": [
+          "ranked_models"
+        ]
+      },
+      "title": "Rank answers",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "search_x",
+      "description": "Search X (Twitter) for recent posts and discussions with xAI's Grok. Needs your own xAI API key, added at https://www.polydev.ai/dashboard/models; it is not part of the free allowance. Returns a summary plus links to the posts.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "What to search for on X. Can be keywords, questions, or topics (e.g. 'MCP servers', 'what are people saying about Claude Code', '@elonmusk AI')",
             "minLength": 1
           },
           "user_token": {
             "type": "string",
-            "description": "Polydev user authentication token (get from dashboard)",
-            "minLength": 1
+            "description": "Polydev token (starts with pd_). Optional when POLYDEV_USER_TOKEN is set or you have run the login tool."
           },
-          "project_memory": {
-            "type": "string", 
-            "description": "Project context level - 'none', 'light' (recent files), or 'full' (TF-IDF similarity)",
-            "enum": ["none", "light", "full"],
-            "default": "none"
-          },
-          "max_messages": {
-            "type": "integer",
-            "description": "Maximum number of messages to process for tool calls",
-            "minimum": 1,
-            "maximum": 50,
-            "default": 10
-          },
-          "temperature": {
-            "type": "number",
-            "description": "Temperature for model responses",
-            "minimum": 0,
-            "maximum": 2,
-            "default": 0.7
-          },
-          "max_tokens": {
-            "type": "integer",
-            "description": "Maximum tokens per response",
-            "minimum": 100,
-            "maximum": 8000,
-            "default": 2000
-          },
-          "project_context": {
-            "type": "object",
-            "description": "Project context for memory retrieval",
-            "properties": {
-              "root_path": {
-                "type": "string",
-                "description": "Root directory path for project"
-              },
-              "includes": {
-                "type": "array",
-                "description": "File patterns to include",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "excludes": {
-                "type": "array",
-                "description": "File patterns to exclude",
-                "items": {
-                  "type": "string"
-                }
-              }
-            }
+          "model": {
+            "type": "string",
+            "description": "Optional xAI model ID. Leave empty for the default."
           }
         },
-        "required": ["prompt"]
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "responses": {
-            "type": "array",
-            "description": "Array of responses from different AI perspectives",
-            "items": {
-              "type": "object",
-              "properties": {
-                "content": {
-                  "type": "string",
-                  "description": "Response content"
-                },
-                "tokens_used": {
-                  "type": "integer",
-                  "description": "Number of tokens used"
-                },
-                "latency_ms": {
-                  "type": "integer",
-                  "description": "Response latency in milliseconds"
-                },
-                "error": {
-                  "type": "string",
-                  "description": "Error message if the request failed"
-                }
-              },
-              "required": ["content"]
-            }
-          },
-          "total_tokens": {
-            "type": "integer",
-            "description": "Total tokens used across all perspectives"
-          },
-          "total_latency_ms": {
-            "type": "integer",
-            "description": "Total latency in milliseconds"
-          },
-          "cached": {
-            "type": "boolean",
-            "description": "Whether the response was cached"
-          }
-        },
-        "required": ["responses"]
+        "required": [
+          "query"
+        ]
       },
       "examples": [
         {
-          "description": "Agent stuck on TypeScript decision",
+          "description": "Search X for trending AI topics",
           "input": {
-            "prompt": "I'm building a new API and considering TypeScript vs JavaScript. I need multiple perspectives to make the right choice.",
-            "user_token": "poly_abc123..."
+            "query": "What are developers saying about MCP servers today?"
           }
         },
         {
-          "description": "Agent debugging performance issue with context",
+          "description": "Find posts from a specific user",
           "input": {
-            "prompt": "My React app is slow and I can't figure out why. Help me identify the bottlenecks.",
-            "user_token": "poly_abc123...",
-            "project_memory": "full",
-            "project_context": {
-              "root_path": "/workspace/my-react-app",
-              "includes": ["**/*.tsx", "**/*.ts", "**/*.js"],
-              "excludes": ["node_modules/**", "dist/**", "build/**"]
-            }
-          }
-        },
-        {
-          "description": "Agent needs diverse architectural opinions",
-          "input": {
-            "prompt": "I'm designing a microservices architecture for a fintech app. What are the key considerations and potential pitfalls?",
-            "user_token": "poly_abc123..."
+            "query": "@AnthropicAI latest announcements"
           }
         }
-      ]
-    },
-    {
-      "name": "force_cli_detection",
-      "description": "Force detection and status update for CLI tools (Claude Code, Codex CLI, Gemini CLI). Updates local cache and reports status to MCP server via Supabase.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "user_id": {
-            "type": "string",
-            "description": "User ID for database status updates (optional for stdio-wrapper)",
-            "minLength": 1
-          },
-          "provider_id": {
-            "type": "string",
-            "description": "Specific CLI provider to detect (optional, detects all if not provided)",
-            "enum": ["claude_code", "codex_cli", "gemini_cli"]
-          }
-        }
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Whether detection was successful"
-          },
-          "results": {
-            "type": "object",
-            "description": "Detection results for each provider",
-            "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "available": {
-                  "type": "boolean",
-                  "description": "Whether CLI is available"
-                },
-                "authenticated": {
-                  "type": "boolean",
-                  "description": "Whether CLI is authenticated"
-                },
-                "version": {
-                  "type": "string",
-                  "description": "CLI version if available"
-                },
-                "path": {
-                  "type": "string",
-                  "description": "Path to CLI executable"
-                },
-                "error": {
-                  "type": "string",
-                  "description": "Error message if detection failed"
-                }
-              }
-            }
-          },
-          "message": {
-            "type": "string",
-            "description": "Human-readable result message"
-          },
-          "timestamp": {
-            "type": "string",
-            "description": "Detection timestamp"
-          }
-        },
-        "required": ["success", "results", "message", "timestamp"]
-      },
-      "examples": [
-        {
-          "description": "Detect all CLI providers",
-          "input": {
-            "user_id": "user_123"
-          },
-          "output": {
-            "success": true,
-            "results": {
-              "claude_code": {
-                "available": true,
-                "authenticated": true,
-                "version": "claude-code v1.2.3",
-                "path": "/usr/local/bin/claude"
-              },
-              "codex_cli": {
-                "available": false,
-                "authenticated": false,
-                "error": "Codex CLI not found in PATH. Install Codex CLI from OpenAI"
-              }
-            },
-            "message": "CLI detection completed for all providers",
-            "timestamp": "2024-01-15T10:30:00Z"
-          }
-        }
-      ]
-    },
-    {
-      "name": "get_cli_status",
-      "description": "Get current CLI status with caching support. Returns cached results if available and fresh, otherwise performs new detection.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "user_id": {
-            "type": "string",
-            "description": "User ID for database status retrieval (optional for stdio-wrapper)",
-            "minLength": 1
-          },
-          "provider_id": {
-            "type": "string",
-            "description": "Specific CLI provider status to get (optional, gets all if not provided)",
-            "enum": ["claude_code", "codex_cli", "gemini_cli"]
-          }
-        }
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Whether status retrieval was successful"
-          },
-          "results": {
-            "type": "object",
-            "description": "Status results for each provider",
-            "additionalProperties": {
-              "type": "object",
-              "properties": {
-                "available": {
-                  "type": "boolean"
-                },
-                "authenticated": {
-                  "type": "boolean"
-                },
-                "version": {
-                  "type": "string"
-                },
-                "lastChecked": {
-                  "type": "string",
-                  "description": "Last status check timestamp"
-                }
-              }
-            }
-          },
-          "message": {
-            "type": "string"
-          },
-          "timestamp": {
-            "type": "string"
-          }
-        },
-        "required": ["success", "results"]
+      ],
+      "title": "Search X",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": true
       }
     },
     {
-      "name": "send_cli_prompt",
-      "description": "Send a prompt to a CLI provider and get response. Supports both stdin and argument modes for maximum compatibility.",
+      "name": "generate_image",
+      "description": "Generate an image with OpenAI or Google Gemini. Uses your own API key if you added one at https://www.polydev.ai/dashboard/models; otherwise one image takes one request from your free allowance (provider default model, standard settings). Saves a PNG under ~/.polydev/images.",
       "inputSchema": {
         "type": "object",
         "properties": {
-          "provider_id": {
-            "type": "string",
-            "description": "CLI provider to send prompt to",
-            "enum": ["claude_code", "codex_cli", "gemini_cli"]
-          },
           "prompt": {
             "type": "string",
-            "description": "Prompt to send to the CLI",
+            "description": "Description of the image to generate (e.g. 'a futuristic dashboard with neon lights', 'logo for a developer tools company')",
             "minLength": 1
           },
-          "mode": {
+          "user_token": {
             "type": "string",
-            "description": "Prompt sending mode",
-            "enum": ["stdin", "args"],
-            "default": "args"
-          },
-          "timeout_ms": {
-            "type": "integer",
-            "description": "Timeout in milliseconds (90 seconds default for CLI-within-CLI scenarios)",
-            "minimum": 1000,
-            "maximum": 600000,
-            "default": 90000
-          },
-          "user_id": {
-            "type": "string",
-            "description": "User ID for usage tracking (optional)",
-            "minLength": 1
-          }
-        },
-        "required": ["prompt"]
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Whether the prompt was sent successfully"
-          },
-          "content": {
-            "type": "string",
-            "description": "CLI response content"
-          },
-          "error": {
-            "type": "string",
-            "description": "Error message if prompt failed"
-          },
-          "tokens_used": {
-            "type": "integer",
-            "description": "Number of tokens used"
-          },
-          "latency_ms": {
-            "type": "integer",
-            "description": "Response latency in milliseconds"
+            "description": "Polydev token (starts with pd_). Optional when POLYDEV_USER_TOKEN is set or you have run the login tool."
           },
           "provider": {
             "type": "string",
-            "description": "CLI provider used"
+            "enum": [
+              "openai",
+              "gemini"
+            ],
+            "description": "Which provider to use (default: gemini)",
+            "default": "gemini"
           },
-          "mode": {
+          "size": {
             "type": "string",
-            "description": "Mode used for sending"
+            "enum": [
+              "1024x1024",
+              "1024x1536",
+              "1536x1024",
+              "auto"
+            ],
+            "description": "Image size (OpenAI with your own key only). Default: 1024x1024",
+            "default": "1024x1024"
           },
-          "timestamp": {
+          "quality": {
             "type": "string",
-            "description": "Response timestamp"
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "auto"
+            ],
+            "description": "Image quality (OpenAI with your own key only). Default: auto",
+            "default": "auto"
           }
         },
-        "required": ["success", "provider", "timestamp"]
+        "required": [
+          "prompt"
+        ]
       },
       "examples": [
         {
-          "description": "Send prompt to Claude Code",
+          "description": "Generate a logo",
           "input": {
-            "provider_id": "claude_code",
-            "prompt": "Help me debug this TypeScript error: Property 'map' does not exist on type 'string'",
-            "mode": "args",
-            "user_id": "user_123"
-          },
-          "output": {
-            "success": true,
-            "content": "This error occurs when you're trying to use the .map() method on a string variable. The .map() method is an array method, not a string method...",
-            "tokens_used": 150,
-            "latency_ms": 1200,
-            "provider": "claude_code",
-            "mode": "args",
-            "timestamp": "2024-01-15T10:35:00Z"
-          }
-        }
-      ]
-    },
-    {
-      "name": "enable_status_reporting",
-      "description": "Enable automatic CLI status reporting to polydev.ai server. Reports are sent when CLI detection runs and via periodic heartbeat. Requires a Polydev user token.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "user_token": {
-            "type": "string",
-            "description": "Polydev user token (pd_xxx or polydev_xxx). Can also be set via POLYDEV_USER_TOKEN env var.",
-            "minLength": 1
-          },
-          "heartbeat_interval_minutes": {
-            "type": "integer",
-            "description": "How often to send status updates (in minutes)",
-            "minimum": 5,
-            "maximum": 1440,
-            "default": 15
-          },
-          "start_heartbeat": {
-            "type": "boolean",
-            "description": "Whether to start automatic heartbeat immediately",
-            "default": true
-          }
-        }
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "message": { "type": "string" },
-          "heartbeat_enabled": { "type": "boolean" },
-          "heartbeat_interval_minutes": { "type": "integer" },
-          "initial_status": { "type": "object" },
-          "timestamp": { "type": "string" }
-        }
-      }
-    },
-    {
-      "name": "disable_status_reporting",
-      "description": "Disable automatic CLI status reporting to polydev.ai server. Stops heartbeat and disables reporting.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {}
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "message": { "type": "string" },
-          "timestamp": { "type": "string" }
-        }
-      }
-    },
-    {
-      "name": "get_status_reporting_info",
-      "description": "Get current status reporting configuration and history. Shows whether reporting is enabled, heartbeat status, and recent report history.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {}
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "available": { "type": "boolean" },
-          "config": {
-            "type": "object",
-            "properties": {
-              "serverUrl": { "type": "string" },
-              "reportingEnabled": { "type": "boolean" },
-              "heartbeatRunning": { "type": "boolean" },
-              "heartbeatIntervalMs": { "type": "integer" },
-              "isOnline": { "type": "boolean" },
-              "pendingReportsCount": { "type": "integer" }
-            }
-          },
-          "history": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "provider": { "type": "string" },
-                "status": { "type": "string" },
-                "success": { "type": "boolean" },
-                "timestamp": { "type": "string" }
-              }
-            }
-          },
-          "timestamp": { "type": "string" }
-        }
-      }
-    },
-    {
-      "name": "detect_memory_sources",
-      "description": "Detect all available memory sources across CLI tools (Claude Code, Cline, Codex, Cursor, Continue, Aider). Returns file paths for global memory, project memory, and recent conversations.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "project_path": {
-            "type": "string",
-            "description": "Project directory path to scan for memory sources",
-            "default": "."
-          },
-          "cli_tools": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": ["claude_code", "cline", "codex_cli", "cursor", "continue", "aider", "generic", "all"]
-            },
-            "description": "CLI tools to detect memory for",
-            "default": ["all"]
-          },
-          "memory_types": {
-            "type": "array", 
-            "items": {
-              "type": "string",
-              "enum": ["global", "project", "conversation", "config"]
-            },
-            "description": "Types of memory to detect",
-            "default": ["global", "project", "conversation"]
-          }
-        }
-      },
-      "outputSchema": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "sources": {
-            "type": "array",
-            "items": {
-              "type": "object", 
-              "properties": {
-                "cli_tool": { "type": "string" },
-                "memory_type": { "type": "string" },
-                "file_path": { "type": "string" },
-                "exists": { "type": "boolean" },
-                "size_bytes": { "type": "number" },
-                "last_modified": { "type": "string" }
-              }
-            }
-          },
-          "summary": {
-            "type": "object",
-            "properties": {
-              "total_sources": { "type": "number" },
-              "sources_by_tool": { "type": "object" },
-              "sources_by_type": { "type": "object" }
-            }
-          }
-        }
-      }
-    },
-    {
-      "name": "extract_memory", 
-      "description": "Extract and optionally encrypt memory content from detected CLI tool sources. Provides TF-IDF relevance scoring and content analysis.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "user_token": {
-            "type": "string",
-            "description": "Polydev user authentication token for server storage",
-            "minLength": 1
-          },
-          "project_path": {
-            "type": "string", 
-            "description": "Project directory path",
-            "default": "."
-          },
-          "cli_tools": {
-            "type": "array",
-            "items": { "type": "string" },
-            "default": ["all"]
-          },
-          "memory_types": {
-            "type": "array",
-            "items": { "type": "string" },
-            "default": ["global", "project", "conversation"]
-          },
-          "encryption_enabled": { 
-            "type": "boolean", 
-            "description": "Enable zero-knowledge encryption for extracted content",
-            "default": true 
-          },
-          "max_file_size_kb": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 1000,
-            "default": 500
-          },
-          "relevance_threshold": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1,
-            "default": 0.3
+            "prompt": "Minimal logo for a developer tools company, flat, two colours"
           }
         },
-        "required": ["user_token"]
-      }
-    },
-    {
-      "name": "get_recent_conversations",
-      "description": "Get recent conversations from CLI tools with TF-IDF relevance scoring against query context. Supports encrypted storage and retrieval.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "user_token": {
-            "type": "string",
-            "description": "Polydev user authentication token",
-            "minLength": 1
-          },
-          "query_context": { 
-            "type": "string", 
-            "description": "Current query for relevance scoring and context matching"
-          },
-          "limit": { 
-            "type": "integer", 
-            "minimum": 1, 
-            "maximum": 50, 
-            "default": 6 
-          },
-          "cli_tools": { 
-            "type": "array", 
-            "items": { "type": "string" },
-            "default": ["all"] 
-          },
-          "time_range_hours": { 
-            "type": "integer", 
-            "minimum": 1, 
-            "maximum": 168, 
-            "default": 24 
-          },
-          "project_path": {
-            "type": "string",
-            "default": "."
+        {
+          "description": "Generate a diagram with OpenAI",
+          "input": {
+            "prompt": "Architecture diagram of microservices behind an API gateway, clean technical illustration",
+            "provider": "openai"
           }
-        },
-        "required": ["user_token"]
-      }
-    },
-    {
-      "name": "get_memory_context",
-      "description": "Get formatted memory and conversation context for injection into prompts. Automatically handles decryption and relevance scoring.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "user_token": {
-            "type": "string",
-            "description": "Polydev user authentication token", 
-            "minLength": 1
-          },
-          "query_context": {
-            "type": "string",
-            "description": "Query to find relevant memory and conversations for"
-          },
-          "max_memory_kb": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 200,
-            "default": 50
-          },
-          "max_conversations": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 20,
-            "default": 6
-          },
-          "cli_tools": {
-            "type": "array",
-            "items": { "type": "string" },
-            "default": ["all"]
-          },
-          "memory_types": {
-            "type": "array",
-            "items": { "type": "string" },
-            "default": ["project", "conversation"]
-          }
-        },
-        "required": ["user_token"]
-      }
-    },
-    {
-      "name": "manage_memory_preferences", 
-      "description": "Configure memory extraction and privacy preferences. Control which CLI tools and memory types are enabled, encryption settings, and context injection behavior.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "user_token": {
-            "type": "string",
-            "description": "Polydev user authentication token",
-            "minLength": 1
-          },
-          "action": {
-            "type": "string",
-            "enum": ["get", "update"],
-            "description": "Action to perform",
-            "default": "get"
-          },
-          "preferences": {
-            "type": "object",
-            "description": "Memory preferences to update",
-            "properties": {
-              "memory_enabled": { "type": "boolean" },
-              "privacy_mode": { "type": "boolean" },
-              "auto_extraction": { "type": "boolean" },
-              "cli_tools_enabled": { "type": "object" },
-              "memory_types_enabled": { "type": "object" },
-              "auto_inject_context": { "type": "boolean" },
-              "context_relevance_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
-              "max_conversations_inject": { "type": "integer" },
-              "max_memory_inject_kb": { "type": "integer" },
-              "key_rotation_days": { "type": "integer" },
-              "cache_ttl_minutes": { "type": "integer" }
-            }
-          }
-        },
-        "required": ["user_token"]
+        }
+      ],
+      "title": "Generate image",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": true
       }
     }
   ],
   "configuration": {
-    "server_url": "https://www.polydev.ai/api/perspectives",
-    "dashboard_url": "https://polydev.ai/dashboard/mcp-tools",
+    "server_url": "https://mcp.polydev.ai/api/mcp",
+    "dashboard_url": "https://www.polydev.ai/dashboard/mcp-tokens",
+    "docs_url": "https://www.polydev.ai/docs",
     "auth_required": true,
     "rate_limits": {
       "requests_per_minute": 100,
@@ -862,10 +458,10 @@
       "requests_per_day": 10000
     },
     "setup_instructions": {
-      "step_1": "Visit https://polydev.ai/dashboard/mcp-tools",
-      "step_2": "Generate your MCP access token",
-      "step_3": "Configure your preferred models and settings",
-      "step_4": "Use the token in your MCP tool calls"
+      "step_1": "Add the server to your agent: npx -y polydev-ai@latest",
+      "step_2": "Run the login tool (or set POLYDEV_USER_TOKEN from https://www.polydev.ai/dashboard/mcp-tokens)",
+      "step_3": "Optional: add your API keys at https://www.polydev.ai/dashboard/models",
+      "step_4": "Optional: connect your ChatGPT plan with: npx -y polydev-ai chatgpt login"
     }
   }
 }

@@ -1,29 +1,39 @@
 {
   "name": "polydev-ai",
-  "version": "1.8.75",
-  "engines": {
-    "node": ">=20.x <=22.x"
-  },
+  "version": "1.12.0",
+  "description": "Every AI model, inside the app you already use. Ask GPT, Claude, Gemini or Grok from Claude Code, Codex, Cursor and other MCP apps. Each answer says what paid for it: your ChatGPT plan, the Claude Code or Codex on this machine, your own API keys, or 10 free requests.",
   "mcpName": "io.github.polydev-ai/polydev",
-  "description": "Multi-model AI perspectives for coding agents - query GPT-5, Claude, Gemini, and Grok simultaneously through one MCP server",
   "keywords": [
     "mcp",
     "model-context-protocol",
+    "mcp-server",
     "ai",
     "claude",
+    "codex",
     "openai",
-    "perspectives",
-    "cli",
-    "agent",
-    "assistant"
+    "chatgpt",
+    "grok",
+    "multi-model",
+    "sign-in-with-chatgpt",
+    "image-generation"
   ],
   "author": "Polydev AI",
-  "license": "MIT",
-  "private": false,
+  "license": "Apache-2.0",
+  "homepage": "https://polydev.ai",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/polydev-ai/polydev.git"
+  },
+  "bugs": {
+    "url": "https://github.com/polydev-ai/polydev/issues"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "main": "mcp/stdio-wrapper.js",
   "bin": {
-    "polydev-stdio": "mcp/stdio-wrapper.js",
     "polydev-ai": "mcp/stdio-wrapper.js",
+    "polydev-stdio": "mcp/stdio-wrapper.js",
     "polydev-login": "mcp/login.js"
   },
   "files": [
@@ -33,77 +43,12 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:api": "jest __tests__/api",
-    "test:vm": "jest __tests__/api/vm",
-    "test:admin": "jest __tests__/api/admin",
-    "mcp": "node mcp/server.js",
-    "mcp-stdio": "node mcp/stdio-wrapper.js",
-    "cli-detect": "node -e \"const CLIManager = require('./lib/cliManager').default; const m = new CLIManager(); m.forceCliDetection().then(console.log);\""
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/polydev-ai/perspectives-mcp.git"
-  },
-  "homepage": "https://polydev.ai",
-  "bugs": {
-    "url": "https://github.com/polydev-ai/perspectives-mcp/issues"
+    "postinstall": "node mcp/postinstall.js || true",
+    "preuninstall": "node mcp/preuninstall.js || true",
+    "test": "node --test test/client/*.test.js"
   },
   "dependencies": {
-    "@hello-pangea/dnd": "^18.0.1",
-    "@radix-ui/react-dialog": "^1.1.15",
-    "@radix-ui/react-progress": "^1.1.7",
-    "@radix-ui/react-select": "^2.2.6",
-    "@radix-ui/react-slot": "^1.2.3",
-    "@radix-ui/react-tabs": "^1.1.13",
-    "@supabase/ssr": "^0.4.0",
-    "@supabase/supabase-js": "^2.45.0",
-    "@upstash/redis": "^1.34.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
-    "dotenv": "^17.2.2",
-    "framer-motion": "^12.23.22",
-    "lucide-react": "^0.542.0",
-    "marked": "^16.2.1",
-    "next": "^15.5.7",
-    "polydev-ai": "^1.8.42",
-    "posthog-js": "^1.157.2",
-    "prismjs": "^1.30.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "resend": "^6.0.2",
-    "shelljs": "^0.8.5",
-    "sonner": "^2.0.7",
-    "stripe": "^18.5.0",
-    "tailwind-merge": "^3.3.1",
-    "tailwindcss-animate": "^1.0.7",
-    "ts-node": "^10.9.2",
-    "undici": "^6.21.0",
-    "use-debounce": "^10.0.6",
-    "which": "^5.0.0"
-  },
-  "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.0",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^20.16.1",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "15.0.0",
-    "jest": "^30.2.0",
-    "jest-environment-jsdom": "^30.2.0",
-    "postcss": "^8.4.41",
-    "tailwindcss": "^3.4.10",
-    "ts-jest": "^29.4.4",
-    "typescript": "^5.5.4"
+    "which": "6.0.1",
+    "open": "11.0.4"
   }
 }

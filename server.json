@@ -1,29 +1,44 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.polydev-ai/polydev",
-  "description": "Query GPT-5, Claude, Gemini, and Grok simultaneously through one MCP server",
-  "repository": {
-    "url": "https://github.com/polydev-ai/polydev",
-    "source": "github"
-  },
-  "version": "1.8.72",
+  "description": "Every AI model, inside the app you already use: ask GPT, Claude, Gemini or Grok, and see what paid.",
+  "websiteUrl": "https://polydev.ai",
+  "version": "1.12.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://polydev.ai/mcp"
+    }
+  ],
   "packages": [
     {
       "registryType": "npm",
       "identifier": "polydev-ai",
-      "version": "1.8.72",
+      "version": "1.12.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
-          "description": "Your Polydev API token from polydev.ai/dashboard/mcp-tokens",
-          "isRequired": true,
+          "description": "Your Polydev token (starts with pd_). Optional: the first call opens the browser to sign in and saves it. Tokens: https://polydev.ai/dashboard/mcp-tokens",
+          "isRequired": false,
           "format": "string",
           "isSecret": true,
           "name": "POLYDEV_USER_TOKEN"
         }
       ]
     }
+  ],
+  "tools": [
+    "ask_model",
+    "list_models",
+    "search_x",
+    "rank_perspectives",
+    "generate_image",
+    "connect_chatgpt_plan",
+    "chatgpt_plan_status",
+    "get_auth_status",
+    "login",
+    "get_perspectives"
   ]
 }
